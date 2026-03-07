@@ -29,17 +29,20 @@
 Platform Donasi Pangan Berbasis AI untuk Mengatasi Food Insecurity di Indonesia.
 
 **Masalah yang Dipecahkan:**
+
 - Food Insecurity (ketidakamanan pangan) di Indonesia
 - Kurangnya akses pangan bergizi untuk kelompok rentan
 - Tidak adanya platform donasi pangan yang terintegrasi dengan monitoring nutrisi
 
 **Target User:**
+
 1. **Donor:** Individu atau organisasi yang ingin berdonasi pangan
 2. **Penerima Donasi:** Individu atau keluarga yang membutuhkan bantuan pangan
 3. **Vendor Pangan:** Penjual makanan segar/produk pangan lokal
 4. **Admin:** Pengelola sistem untuk memonitor dan mengelola platform
 
 **Status Project:**
+
 - Phase: Infrastructure Setup
 - Repository: Baru
 - Branching: Setup monorepo dengan Turbo workspace
@@ -95,11 +98,13 @@ Platform Donasi Pangan Berbasis AI untuk Mengatasi Food Insecurity di Indonesia.
 ### Frontend
 
 **Framework & Language:**
+
 - React 18.3.1 (UI library)
 - TypeScript 5.3.3 (Type safety)
 - Vite 5.1.4 (Build tool & dev server)
 
 **Styling & UI:**
+
 - Tailwind CSS 3.4.1 (Utility-first CSS)
 - shadcn/ui (Radix UI primitives)
 - Tailwind CSS Animate (Animations)
@@ -107,35 +112,43 @@ Platform Donasi Pangan Berbasis AI untuk Mengatasi Food Insecurity di Indonesia.
 - clsx + tailwind-merge (Utility for conditional classes)
 
 **State Management:**
+
 - Zustand 4.5.0 (Global state)
 - React Context API (Local state)
 
 **Data Fetching:**
+
 - TanStack Query 5.22.2 (Caching, optimistic updates)
 - Axios 0.26.0 (HTTP client)
 
 **Routing:**
+
 - React Router DOM 6.22.0 (Client-side routing)
 
 **Forms & Validation:**
+
 - React Hook Form 7.50.1 (Form management)
 - Zod 3.22.4 (Schema validation)
 - @hookform/resolvers (Zod integration)
 
 **Animations:**
+
 - GSAP 3.14.2 (Professional animations)
 - @gsap/react 2.1.1 (React integration)
 
 **Icons:**
+
 - Lucide React 0.344.0 (Icon library)
 
 **Testing:**
+
 - Vitest 1.3.1 (Unit testing)
 - @vitest/ui 1.3.1 (Vitest UI)
 - Testing Library (React, Jest DOM, User Event)
 - jsdom 24.0.0 (DOM environment for testing)
 
 **Linting & Formatting:**
+
 - ESLint 8.57.0 (Code linting)
 - @typescript-eslint (TypeScript linting)
 - Prettier 3.2.5 (Code formatting)
@@ -144,42 +157,52 @@ Platform Donasi Pangan Berbasis AI untuk Mengatasi Food Insecurity di Indonesia.
 ### Backend
 
 **Language & Framework:**
+
 - Python 3.11 (Programming language)
 - FastAPI 0.109.0 (Web framework)
 - Uvicorn 0.27.0 (ASGI server)
 
 **Database & ORM:**
+
 - SQLAlchemy 2.0.25 (ORM)
 - Alembic 1.13.1 (Database migrations)
 
 **Validation & Serialization:**
+
 - Pydantic 2.5.3 (Data validation)
 - Pydantic Settings 2.1.0 (Configuration management)
 
 **Authentication & Security:**
+
 - python-jose[cryptography] 3.3.0 (JWT tokens)
 - passlib[bcrypt] 1.7.4 (Password hashing)
 
 **Background Tasks:**
+
 - Celery 5.3.6 (Task queue)
 - Redis 5.0.1 (Cache & message broker)
 
 **HTTP Client:**
+
 - httpx 0.26.0 (Async HTTP client)
 
 **File Uploads:**
+
 - aiofiles 23.2.1 (Async file operations)
 - python-multipart 0.0.6 (Form data handling)
 
 **Environment Management:**
+
 - python-dotenv 1.0.0 (Environment variables)
 
 **Testing:**
+
 - Pytest 7.4.4 (Testing framework)
 - pytest-asyncio 0.23.3 (Async support)
 - pytest-cov 4.1.0 (Coverage)
 
 **Linting & Type Checking:**
+
 - Ruff 0.1.14 (Fast Python linter)
 - Mypy 1.8.0 (Static type checking)
 
@@ -508,6 +531,7 @@ External APIs (Midtrans, OpenAI)
 ### User Features (Donor)
 
 #### 1. Autentikasi
+
 - **Registrasi:** Sign up sebagai Donor dengan email & password
 - **Login:** Login dengan email & password + JWT token
 - **Reset Password:** Lupa password dengan email link reset
@@ -516,12 +540,14 @@ External APIs (Midtrans, OpenAI)
 - **Logout:** Session invalidation
 
 #### 2. Dashboard
+
 - **Overview:** Statistik donasi, saldo, aktivitas terbaru
 - **Quick Actions:** Akses cepat ke fitur-fitur utama
 - **Notifications:** Notifikasi sistem (donasi, pembayaran, dll)
 - **Profile:** Lihat dan edit profil user
 
 #### 3. Dompet Nutrisi
+
 - **Cek Saldo:** Lihat saldo dompet nutrisi
 - **Top Up:** Tambah saldo via Midtrans (QRIS, VA, E-Wallet, CC)
 - **Riwayat Transaksi:** Daftar semua transaksi (donasi, top-up, voucher)
@@ -529,6 +555,7 @@ External APIs (Midtrans, OpenAI)
 - **Download Receipt:** Download bukti transaksi
 
 #### 4. Pemantauan Gizi
+
 - **Input Data Nutrisi:** Input kalori, protein, karbohidrat, lemak harian
 - **Grafik Progress:** Visualisasi progress nutrisi mingguan/bulanan
 - **Perbandingan:** Bandingkan dengan rekomendasi harian
@@ -536,6 +563,7 @@ External APIs (Midtrans, OpenAI)
 - **Edit/Delete:** Edit atau hapus input nutrisi
 
 #### 5. Rekomendasi AI
+
 - **Generate Rekomendasi:** Request rekomendasi nutrisi via OpenAI GPT-4.1 nano
 - **Personalized:** Rekomendasi berdasarkan data nutrisi & preferensi
 - **Multiple Options:** 3-5 opsi rekomendasi makanan
@@ -545,6 +573,7 @@ External APIs (Midtrans, OpenAI)
 - **Fallback:** Rule-based recommendations jika AI gagal
 
 #### 6. Donasi
+
 - **Donasi One-Time:** Donasi sekali dengan nominal pilihan
 - **Pilih Penerima:** Pilih penerima donasi (individual, vendor, organization)
 - **Pilih Payment Method:** QRIS, Virtual Account, E-Wallet, Credit Card
@@ -555,6 +584,7 @@ External APIs (Midtrans, OpenAI)
 - **Sertifikat:** Generate sertifikat donasi (PDF)
 
 #### 7. Donor Langganan
+
 - **Paket Langganan:** Pilih paket (mingguan, bulanan, tahunan)
 - **Custom Amount:** Input nominal custom
 - **Auto-Renewal:** Pembayaran otomatis setiap periode
@@ -563,6 +593,7 @@ External APIs (Midtrans, OpenAI)
 - **Payment Method:** Update payment method
 
 #### 8. Riwayat Donasi
+
 - **Daftar Donasi:** Lihat semua donasi yang sudah dilakukan
 - **Filter:** Filter berdasarkan tanggal, tipe, status
 - **Detail Donasi:** Lihat detail lengkap setiap donasi
@@ -571,6 +602,7 @@ External APIs (Midtrans, OpenAI)
 - **Total Impact:** Lihat total dampak donasi (uang, penerima, dll)
 
 #### 9. Dampak Donasi
+
 - **Statistik Dampak:** Total donasi, jumlah penerima, dll
 - **Achievement Badges:** Badges berdasarkan total donasi
 - **Leaderboard:** Peringkat donor
@@ -578,6 +610,7 @@ External APIs (Midtrans, OpenAI)
 - **Real-time Update:** Update real-time saat donasi baru masuk
 
 #### 10. Survei FIES
+
 - **FIES Survey:** Food Insecurity Experience Scale survey
 - **8 Pertanyaan:** 8 pertanyaan standar FIES
 - **Hitung Skor:** Otomatis hitung skor FIES (0-27)
@@ -586,6 +619,7 @@ External APIs (Midtrans, OpenAI)
 - **History:** Lihat riwayat survei FIES
 
 #### 11. Penukaran Voucher
+
 - **Input Kode:** Input kode voucher
 - **Validasi:** Validasi kode voucher (valid, kadaluarsa, sudah dipakai)
 - **Cek Benefit:** Cek benefit voucher (diskon, gratis produk, dll)
@@ -594,17 +628,20 @@ External APIs (Midtrans, OpenAI)
 ### Vendor Features
 
 #### 1. Autentikasi
+
 - **Registrasi Vendor:** Sign up sebagai vendor dengan business info
 - **Verifikasi Bisnis:** Upload dokumen verifikasi (NPWP, SIUP, dll)
 - **Status Verifikasi:** Cek status verifikasi (pending, verified, rejected)
 
 #### 2. Dashboard
+
 - **Overview:** Penjualan total, order pending, saldo
 - **Analytics:** Grafik penjualan (harian, mingguan, bulanan)
 - **Orders:** Daftar pesanan terbaru
 - **Notifications:** Notifikasi pesanan baru, settlement, dll
 
 #### 3. Kelola Produk
+
 - **Tambah Produk:** Create produk baru dengan info lengkap
 - **Edit Produk:** Update produk yang ada
 - **Hapus Produk:** Delete produk (dengan konfirmasi)
@@ -615,6 +652,7 @@ External APIs (Midtrans, OpenAI)
 - **Status:** Set status aktif/nonaktif
 
 #### 4. Kelola Pesanan
+
 - **Daftar Pesanan:** Lihat semua pesanan yang masuk
 - **Filter:** Filter berdasarkan status (pending, completed, cancelled)
 - **Update Status:** Update status pesanan (confirmed, processing, shipped, delivered)
@@ -622,6 +660,7 @@ External APIs (Midtrans, OpenAI)
 - **Cetak Invoice:** Print invoice pesanan
 
 #### 5. Vendor Settlement
+
 - **Request Settlement:** Request penarikan dana
 - **Cek Balance:** Cek saldo tersedia
 - **Bank Info:** Input detail rekening bank
@@ -632,12 +671,14 @@ External APIs (Midtrans, OpenAI)
 ### Admin Features
 
 #### 1. Dashboard
+
 - **Overview Sistem:** Statistik user, vendor, donasi, transaksi
 - **Analytics:** Grafik pertumbuhan, tren, dll
 - **Recent Activity:** Aktivitas terbaru di sistem
 - **System Health:** Status sistem (database, API, dll)
 
 #### 2. Manage Users
+
 - **List Users:** Lihat semua user (donor, vendor, admin)
 - **Filter & Search:** Filter berdasarkan role, status, dll
 - **Detail User:** Lihat detail lengkap user
@@ -646,6 +687,7 @@ External APIs (Midtrans, OpenAI)
 - **Ban/Unban:** Ban atau unban user
 
 #### 3. Verify Vendor
+
 - **Pending Verifications:** Daftar vendor yang menunggu verifikasi
 - **Review Documents:** Review dokumen verifikasi vendor
 - **Approve/Reject:** Approve atau reject verifikasi
@@ -653,6 +695,7 @@ External APIs (Midtrans, OpenAI)
 - **Send Notification:** Kirim notifikasi ke vendor
 
 #### 4. Manage Vouchers
+
 - **Create Voucher:** Create voucher baru
 - **Edit Voucher:** Update voucher yang ada
 - **Delete Voucher:** Delete voucher
@@ -661,6 +704,7 @@ External APIs (Midtrans, OpenAI)
 - **Generate Code:** Generate random voucher codes
 
 #### 5. Manage Settlement Requests
+
 - **Pending Requests:** Daftar settlement yang pending
 - **Review Request:** Review detail settlement request
 - **Approve/Reject:** Approve atau reject request
@@ -669,6 +713,7 @@ External APIs (Midtrans, OpenAI)
 - **History:** Lihat riwayat settlement
 
 #### 6. View Analytics
+
 - **Donation Analytics:** Statistik donasi (total, rata-rata, tren)
 - **User Analytics:** Statistik user (growth, retention, aktifitas)
 - **Vendor Analytics:** Statistik vendor (penjualan, performance)
@@ -678,6 +723,7 @@ External APIs (Midtrans, OpenAI)
 ### Guest Features
 
 #### 1. Landing Page
+
 - **Hero Section:** Banner utama dengan CTA
 - **Impact Section:** Statistik dampak donasi
 - **How It Works:** Penjelasan cara kerja
@@ -685,6 +731,7 @@ External APIs (Midtrans, OpenAI)
 - **CTA Section:** Call-to-action untuk registrasi
 
 #### 2. Katalog Pangan
+
 - **Browse Products:** Lihat produk dari vendor
 - **Filter Kategori:** Filter berdasarkan kategori (sayur, buah, dll)
 - **Search:** Cari produk berdasarkan nama/keyword
@@ -692,6 +739,7 @@ External APIs (Midtrans, OpenAI)
 - **Add to Cart:** Tambah produk ke keranjang (future)
 
 #### 3. Registrasi
+
 - **Sign Up Donor:** Registrasi sebagai donor
 - **Sign Up Vendor:** Registrasi sebagai vendor
 - **Form Validation:** Validasi form real-time
@@ -731,6 +779,7 @@ class User(Base):
 **Purpose:** Base model untuk semua user types (Donor, Vendor, Admin)
 
 **Relationships:**
+
 - One-to-Many → Transactions (Donor)
 - One-to-Many → Subscriptions (Donor)
 - One-to-Many → Products (Vendor)
@@ -754,6 +803,7 @@ class Donor(User):
 **Purpose:** Extended model untuk donor dengan specific fields
 
 **Additional Features:**
+
 - Dompet nutrisi (wallet balance)
 - Total donasi untuk tracking
 - Skor FIES untuk food insecurity assessment
@@ -779,6 +829,7 @@ class Vendor(User):
 **Purpose:** Extended model untuk vendor dengan business info
 
 **Additional Features:**
+
 - Verification status untuk vendor approval
 - Balance untuk settlement
 - Rating system untuk vendor performance
@@ -817,10 +868,12 @@ class Transaction(Base):
 **Purpose:** Record semua transaksi di sistem (donasi, top-up, dll)
 
 **Relationships:**
+
 - Many-to-One → User (donor)
 - Many-to-One → User (recipient)
 
 **Status Flow:**
+
 - Created → Pending → Processing → Completed/Failed/Cancelled/Expired
 
 ---
@@ -844,9 +897,11 @@ class Subscription(Base):
 **Purpose:** Manage recurring subscriptions (donasi langganan)
 
 **Relationships:**
+
 - Many-to-One → User (donor)
 
 **Status Flow:**
+
 - Created → Active → PendingRenewal → Active/Suspended/Paused → Cancelled/Expired
 
 ---
@@ -872,6 +927,7 @@ class NutritionData(Base):
 **Purpose:** Track daily nutrition intake for users
 
 **Relationships:**
+
 - Many-to-One → User (donor)
 
 ---
@@ -900,10 +956,12 @@ class Product(Base):
 **Purpose:** Manage products from vendors
 
 **Relationships:**
+
 - Many-to-One → Vendor
 - One-to-Many → Transactions (purchase)
 
 **Nutrition Info (JSON):**
+
 ```json
 {
   "calories": 50,
@@ -939,6 +997,7 @@ class Voucher(Base):
 **Purpose:** Manage promotional vouchers
 
 **Relationships:**
+
 - Many-to-Many → User (UserVoucher junction table)
 
 ---
@@ -960,9 +1019,11 @@ class FIESSurvey(Base):
 **Purpose:** Track Food Insecurity Experience Scale surveys
 
 **Relationships:**
+
 - Many-to-One → User (donor)
 
 **FIES Categories:**
+
 - 0-1: Food Secure
 - 2-3: Mild Insecurity
 - 4-5: Moderate Insecurity
@@ -992,9 +1053,11 @@ class Settlement(Base):
 **Purpose:** Manage vendor settlement requests
 
 **Relationships:**
+
 - Many-to-One → Vendor
 
 **Status Flow:**
+
 - Requested → InProcess → Paid/Rejected/Cancelled
 
 ---
@@ -1017,10 +1080,12 @@ class AIRecommendation(Base):
 **Purpose:** Store AI-generated nutrition recommendations
 
 **Relationships:**
+
 - Many-to-One → User (donor)
 - Many-to-One → NutritionData
 
 **Recommendations (JSON):**
+
 ```json
 [
   {
@@ -1059,9 +1124,11 @@ class Payment(Base):
 **Purpose:** Store payment records from Midtrans
 
 **Relationships:**
+
 - Many-to-One → User
 
 **Payment Details (JSON):**
+
 ```json
 {
   "va_number": "8800123456789",
@@ -1088,6 +1155,7 @@ class Notification(Base):
 **Purpose:** Store user notifications
 
 **Relationships:**
+
 - Many-to-One → User
 
 ---
@@ -1130,22 +1198,26 @@ Product
 **Integration Method:** Python `midtrans-client` library + Midtrans Snap (frontend)
 
 **Supported Payment Methods:**
+
 - QRIS (QR code payment)
 - Virtual Account (BCA, BNI, Mandiri, Permata, etc.)
 - E-Wallet (GoPay, OVO, Dana, ShopeePay)
 - Credit Card (Visa, MasterCard, JCB)
 
 **API Endpoints Used:**
+
 - Create Transaction: POST /v2/charge
 - Get Transaction Status: GET /v2/{order_id}/status
 - Cancel Transaction: POST /v2/{order_id}/cancel
 
 **Webhook:**
+
 - Midtrans sends webhook notifications for payment status updates
 - Endpoint: POST /api/webhooks/payment
 - Signature verification required for security
 
 **Implementation:**
+
 ```python
 # Backend: Create Payment
 def create_payment(amount, payment_method, order_id):
@@ -1177,6 +1249,7 @@ async def handle_payment_webhook(request: Request):
 ```
 
 **Frontend Integration:**
+
 ```typescript
 // Redirect to Midtrans Snap
 window.location.href = payment_url; // From backend response
@@ -1191,7 +1264,7 @@ snap.pay(snap_token, {
   },
   onError: (result) => {
     console.log("Payment error", result);
-  }
+  },
 });
 ```
 
@@ -1206,9 +1279,11 @@ snap.pay(snap_token, {
 **Model:** `gpt-4.1-nano` (optimized for nutrition recommendations with fine-tuning)
 
 **API Endpoints Used:**
+
 - Chat Completions: POST /v1/chat/completions
 
 **Implementation:**
+
 ```python
 # Backend: Generate Recommendations
 def generate_ai_recommendations(user_nutrition_data, user_preferences):
@@ -1263,6 +1338,7 @@ def generate_ai_recommendations(user_nutrition_data, user_preferences):
 
 **Fallback Mechanism:**
 If OpenAI API fails (rate limit, timeout, error), system falls back to rule-based recommendations:
+
 ```python
 def generate_rule_based_recommendations(nutrition_data):
     # Simple rules based on nutrition data
@@ -1303,6 +1379,7 @@ Model will be fine-tuned on Indonesian food database for more accurate and cultu
    - Document uploads (vendor verification)
 
 **Implementation:**
+
 ```python
 # Backend: Supabase Database Connection
 from supabase import create_client
@@ -1320,24 +1397,21 @@ engine = create_engine(settings.DATABASE_URL)
 
 ```typescript
 // Frontend: Supabase JS Client
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+);
 
 // Auth
 const { data, error } = await supabase.auth.signUp({
-  email: 'user@example.com',
-  password: 'password'
-})
+  email: "user@example.com",
+  password: "password",
+});
 
 // Storage
-const { data, error } = await supabase
-  .storage
-  .from('products')
-  .upload('image.jpg', file)
+const { data, error } = await supabase.storage.from("products").upload("image.jpg", file);
 ```
 
 ---
@@ -1349,6 +1423,7 @@ const { data, error } = await supabase
 **Integration Method:** Resend API or SendGrid API
 
 **Email Types:**
+
 1. Email Verification
 2. Password Reset
 3. Donation Confirmation
@@ -1358,6 +1433,7 @@ const { data, error } = await supabase
 7. AI Recommendations (optional)
 
 **Implementation:**
+
 ```python
 # Backend: Send Email
 import resend
@@ -1412,10 +1488,12 @@ def send_donation_confirmation(email, donation_details):
 **File:** `.github/workflows/ci-frontend.yml`
 
 **Trigger:**
+
 - Push to branches: `main`, `staging`, `feature/**`
 - Pull request to branches: `main`, `staging`
 
 **Jobs:**
+
 1. **Lint:**
    - Runs ESLint
    - Ensures code quality
@@ -1427,10 +1505,12 @@ def send_donation_confirmation(email, donation_details):
    - Fails if tests fail
 
 **Quality Gates:**
+
 - All linting must pass
 - All unit tests must pass
 
 **Commands:**
+
 ```bash
 # Lint
 cd apps/frontend && npm run lint
@@ -1446,10 +1526,12 @@ cd apps/frontend && npm run test:run
 **File:** `.github/workflows/ci-backend.yml`
 
 **Trigger:**
+
 - Push to branches: `main`, `staging`, `feature/**`
 - Pull request to branches: `main`, `staging`
 
 **Jobs:**
+
 1. **Lint:**
    - Runs Ruff (Python linter)
    - Runs Mypy (Type checker)
@@ -1462,10 +1544,12 @@ cd apps/frontend && npm run test:run
    - Fails if tests fail
 
 **Quality Gates:**
+
 - All linting must pass
 - All unit tests must pass
 
 **Commands:**
+
 ```bash
 # Lint
 cd apps/backend && ruff check .
@@ -1482,9 +1566,11 @@ cd apps/backend && pytest tests/unit/
 **File:** `.github/workflows/branch-protection.yml`
 
 **Trigger:**
+
 - Pull request to branches: `main`, `staging`
 
 **Purpose:**
+
 - Placeholder workflow for branch protection
 - Actual enforcement via GitHub branch protection settings
 
@@ -1493,6 +1579,7 @@ cd apps/backend && pytest tests/unit/
 ### CI/CD Quality Gates
 
 **Before Merge to Staging:**
+
 - ✅ Frontend Lint (ESLint) must pass
 - ✅ Frontend Unit Tests (Vitest) must pass
 - ✅ Backend Lint (Ruff, Mypy) must pass
@@ -1501,20 +1588,24 @@ cd apps/backend && pytest tests/unit/
 - ✅ Conversation resolution required
 
 **Before Merge to Main:**
+
 - ✅ All staging quality gates
 - ✅ All tests pass (including staging tests)
 
 ### Future CI/CD Enhancements
 
 **Integration Tests:**
+
 - Frontend: API integration tests
 - Backend: Database integration tests
 
 **E2E Tests:**
+
 - Playwright for critical user flows
 - Run on staging environment
 
 **Deployment:**
+
 - Auto-deploy to Vercel (frontend) on merge to `main`/`staging`
 - Auto-deploy to Render (backend) on merge to `main`/`staging`
 
@@ -1531,13 +1622,16 @@ cd apps/backend && pytest tests/unit/
 **Protected:** Yes
 
 **Merge from:**
+
 - `staging` (PR required, CI must pass)
 
 **Deployment:**
+
 - Manual (currently)
 - Auto (future: on merge to main)
 
 **Rules:**
+
 - Require pull request before merging
 - Require status checks to pass (Frontend CI, Backend CI)
 - Require conversation resolution
@@ -1552,13 +1646,16 @@ cd apps/backend && pytest tests/unit/
 **Protected:** Yes
 
 **Merge from:**
+
 - `feature/*` (PR required, CI must pass)
 
 **Deployment:**
+
 - Manual (currently)
 - Auto (future: on merge to staging)
 
 **Rules:**
+
 - Require pull request before merging
 - Require status checks to pass (Frontend CI, Backend CI)
 - Require conversation resolution
@@ -1566,19 +1663,22 @@ cd apps/backend && pytest tests/unit/
 
 ---
 
-#### 3. Feature/*
+#### 3. Feature/\*
 
 **Purpose:** Feature development
 
 **Protected:** No
 
 **Merge to:**
+
 - `staging` (PR required)
 
 **Deployment:**
+
 - None
 
 **Rules:**
+
 - No restrictions
 - Developer can push directly
 
@@ -1670,6 +1770,7 @@ git push origin main
 ### Prerequisites
 
 **Software Required:**
+
 - Node.js 20+ (Frontend)
 - Python 3.11+ (Backend)
 - npm (Package manager)
@@ -1677,6 +1778,7 @@ git push origin main
 - Docker (optional, for local development)
 
 **Account Required:**
+
 - GitHub account (for repository)
 - Supabase account (for database)
 - Midtrans account (for payment testing)
@@ -1712,6 +1814,7 @@ nano .env
 ```
 
 **Environment Variables (Frontend):**
+
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -1734,6 +1837,7 @@ nano .env
 ```
 
 **Environment Variables (Backend):**
+
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/nutriguard
 REDIS_URL=redis://localhost:6379
@@ -1754,6 +1858,7 @@ MIDTRANS_MERCHANT_ID=your_midtrans_merchant_id
 #### Option 1: Run Individually
 
 **Frontend:**
+
 ```bash
 cd apps/frontend
 npm run dev
@@ -1761,6 +1866,7 @@ npm run dev
 ```
 
 **Backend:**
+
 ```bash
 cd apps/backend
 uvicorn app.main:app --reload
@@ -1881,6 +1987,7 @@ cd apps/backend && black .
 **Coverage Goal:** >80%
 
 **Example Test:**
+
 ```typescript
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -1910,6 +2017,7 @@ describe("App", () => {
 ```
 
 **Test Categories:**
+
 - Components: UI components testing
 - Pages: Page-level testing
 - Hooks: Custom hooks testing
@@ -1931,6 +2039,7 @@ describe("App", () => {
 **Coverage Goal:** >80%
 
 **Example Test:**
+
 ```python
 def test_root(client):
     response = client.get("/")
@@ -1946,6 +2055,7 @@ def test_health_check(client):
 ```
 
 **Test Categories:**
+
 - Models: SQLAlchemy model testing
 - Schemas: Pydantic schema testing
 - Services: Business logic testing
@@ -1959,11 +2069,13 @@ def test_health_check(client):
 #### Integration Tests
 
 **Frontend:**
+
 - API integration tests
 - State management tests
 - Router tests
 
 **Backend:**
+
 - Database integration tests (with test database)
 - API endpoint tests (integration with real database)
 - External API integration tests (mocked Midtrans, OpenAI)
@@ -1975,12 +2087,14 @@ def test_health_check(client):
 **Test Location:** `apps/frontend/e2e/`
 
 **Test Flows:**
+
 1. **Auth Flow:** Register → Email verify → Login → Logout
 2. **Donation Flow:** Login → Donasi → Payment → Success
 3. **AI Recommendation Flow:** Login → Input Nutrisi → Generate Recommendation → Save
 4. **Vendor Flow:** Register Vendor → Add Product → Settlement Request
 
 **Example E2E Test:**
+
 ```typescript
 import { test, expect } from "@playwright/test";
 
@@ -1999,16 +2113,19 @@ test("user can login", async ({ page }) => {
 ### Testing Workflow
 
 **Before Commit:**
+
 1. Run linting: `npm run lint`
 2. Run unit tests: `npm run test:run`
 3. Fix any errors
 
 **Before PR:**
+
 1. Update tests if needed
 2. Ensure all tests pass
 3. Check coverage (>80%)
 
 **During CI/CD:**
+
 1. Linting runs automatically
 2. Unit tests run automatically
 3. Tests must pass before merge
@@ -2029,10 +2146,12 @@ test("user can login", async ({ page }) => {
 **Platform:** Vercel
 
 **Environments:**
+
 - Staging: Pre-production testing
 - Production: Live production
 
 **Process (Future):**
+
 ```yaml
 # GitHub Action: Deploy to Staging
 on: push to staging
@@ -2050,6 +2169,7 @@ steps:
 ```
 
 **Configuration:**
+
 - Framework: Vite
 - Build Command: `npm run build`
 - Output Directory: `dist`
@@ -2062,10 +2182,12 @@ steps:
 **Platform:** Render
 
 **Environments:**
+
 - Staging: Pre-production testing
 - Production: Live production
 
 **Process (Future):**
+
 ```yaml
 # GitHub Action: Deploy to Staging
 on: push to staging
@@ -2085,6 +2207,7 @@ steps:
 ```
 
 **Configuration:**
+
 - Runtime: Docker
 - Dockerfile: `apps/backend/Dockerfile`
 - Port: 8000
@@ -2097,11 +2220,13 @@ steps:
 **Platform:** Supabase
 
 **Process:**
+
 - Supabase manages database automatically
 - Migrations via Alembic
 - Backups via Supabase dashboard
 
 **Environments:**
+
 - Production: Main Supabase project
 - Staging: Separate Supabase project (future)
 
@@ -2163,6 +2288,7 @@ steps:
 - **INDEX.md** - Quick index for navigation
 
 **Diagram Types:**
+
 1. Use Case Diagram - Actor-system interactions
 2. Class Diagrams - Backend & Frontend structure
 3. Sequence Diagrams - Communication flows (Login, Donation, AI)
@@ -2189,6 +2315,7 @@ steps:
 ### Roles
 
 #### Frontend Developer
+
 - **Focus:** React 18 + TypeScript + Vite
 - **Responsibilities:**
   - Build and maintain frontend components
@@ -2198,6 +2325,7 @@ steps:
   - Unit testing (Vitest)
 
 #### Backend Developer
+
 - **Focus:** Python 3.11 + FastAPI
 - **Responsibilities:**
   - Build and maintain API endpoints
@@ -2207,6 +2335,7 @@ steps:
   - Unit testing (Pytest)
 
 #### Full Stack Developer
+
 - **Focus:** Both frontend and backend
 - **Responsibilities:**
   - End-to-end feature development
@@ -2215,6 +2344,7 @@ steps:
   - Testing (Frontend + Backend)
 
 #### DevOps Engineer
+
 - **Focus:** CI/CD, deployment, infrastructure
 - **Responsibilities:**
   - Setup CI/CD workflows
@@ -2223,6 +2353,7 @@ steps:
   - Monitor system health
 
 #### QA Engineer
+
 - **Focus:** Testing, quality assurance
 - **Responsibilities:**
   - Write tests (Unit, Integration, E2E)
