@@ -125,7 +125,7 @@ export default function Register() {
         {/* Login link */}
         <p className="text-sm text-center text-gray-500 mt-6">
           Sudah punya akun?{" "}
-          <Link to="/login" className="text-green-600 font-medium hover:underline">
+          <Link to="/daftar" className="text-green-600 font-medium hover:underline">
             Masuk
           </Link>
         </p>
