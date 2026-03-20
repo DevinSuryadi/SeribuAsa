@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Users, ArrowRight } from 'lucide-react';
+import {Users, ArrowRight } from 'lucide-react';
 import gsap from 'gsap';
 
 const stats = [
@@ -92,7 +92,6 @@ export function HeroSection() {
             marginBottom: 24,
           }}
         >
-          <Heart size={14} />
           Ekosistem Ketahanan Pangan & Gizi Indonesia
         </div>
 

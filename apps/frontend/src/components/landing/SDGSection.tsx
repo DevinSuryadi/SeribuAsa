@@ -85,7 +85,7 @@ export function SDGSection() {
               lineHeight: 1.6,
             }}
           >
-            NutriGuard berkontribusi langsung pada pencapaian SDGs Indonesia.
+            SeribuAsa berkontribusi langsung pada pencapaian SDGs Indonesia.
           </p>
         </div>
 

@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Leaf } from 'lucide-react';
 
 const footerLinks = [
   {
@@ -56,20 +55,7 @@ export function Footer() {
                 marginBottom: 10,
               }}
             >
-              <div
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 8,
-                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Leaf style={{ width: 15, height: 15, color: 'white' }} />
-              </div>
-              <span style={{ fontSize: 16, fontWeight: 600, color: '#111' }}>SeribuAsa</span>
+              <span style={{ fontSize: 17, fontWeight: 600, color: '#111' }}>SeribuAsa</span>
             </Link>
             <p style={{ fontSize: 13, color: '#888', lineHeight: 1.6, maxWidth: 200, margin: 0 }}>
               Ekosistem digital untuk ketahanan pangan dan nutrisi Indonesia.

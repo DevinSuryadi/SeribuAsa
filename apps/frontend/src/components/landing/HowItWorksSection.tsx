@@ -21,8 +21,8 @@ const steps = [
     icon: ShoppingBasket,
     title: 'Belanja Pangan Bergizi',
     desc: 'Penerima menggunakan e-voucher untuk membeli bahan pangan bergizi di mitra vendor terverifikasi.',
-    iconBg: 'rgba(0,0,0,0.05)',
-    iconColor: '#333',
+    iconBg: 'rgba(34,197,94,0.07)',
+    iconColor: '#15803d',
   },
   {
     icon: TrendingUp,
