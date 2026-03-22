@@ -1,0 +1,27 @@
+# Cache directories
+node_modules/
+.turbo/
+.next/
+dist/
+build/
+
+# Python cache
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.venv/
+venv/
+
+# Lock files (not needed for formatting)
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Environment files
+.env
+.env.*
+
+# Documentation files (already formatted)
+CHANGELOG.md
+LICENSE
