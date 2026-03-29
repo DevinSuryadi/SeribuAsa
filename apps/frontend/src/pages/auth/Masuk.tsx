@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Eye, EyeOff, Shield } from "lucide-react";
 
-export default function Login() {
+export default function Masuk() {
   const [showPw, setShowPw] = useState(false);
 
   return (
@@ -61,11 +61,11 @@ export default function Login() {
           </div>
 
           {/* Forgot password */}
-          <div className="text-right">
-            <a href="#" className="text-sm text-green-600 hover:underline">
+          <p className="text-right">
+            <Link to="/lupa-sandi" className="text-sm text-green-600 hover:underline">
               Lupa kata sandi?
-            </a>
-          </div>
+            </Link>
+          </p>
 
           {/* Button */}
           <button
