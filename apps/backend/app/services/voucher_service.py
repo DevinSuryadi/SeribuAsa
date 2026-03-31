@@ -1,0 +1,203 @@
+"""
+Voucher Service
+Business logic for voucher management
+"""
+from sqlalchemy.orm import Session
+from typing import List, Optional, Dict
+from datetime import datetime, timedelta
+from decimal import Decimal
+import logging
+import uuid
+
+from app.models.donation import Donation, DonationStatusEnum, Voucher, VoucherRedemption, VoucherStatusEnum
+from app.models.user import BeneficiaryProfile
+from app.schemas.voucher import VoucherAllocationCreate
+
+logger = logging.getLogger(__name__)
+
+
+class VoucherService:
+    """Service for voucher operations"""
+    
+    @staticmethod
+    def generate_voucher_code() -> str:
+        """Generate unique voucher code: VCH-YYYY-XXXXXX"""
+        year = datetime.utcnow().year
+        random_part = uuid.uuid4().hex[:6].upper()
+        return f"VCH-{year}-{random_part}"
+    
+    @staticmethod
+    def allocate_vouchers(
+        db: Session,
+        donation: Donation
+    ) -> List[Voucher]:
+        """Allocate vouchers to beneficiary after successful donation"""
+        beneficiary = db.query(BeneficiaryProfile).filter(
+            BeneficiaryProfile.user_id == donation.recipient_id
+        ).first()
+        
+        if not beneficiary:
+            logger.error(f"Beneficiary {donation.recipient_id} not found")
+            return []
+        
+        vouchers = []
+        
+        if donation.type.value == "subscription" and donation.subscription_config:
+            duration_months = donation.subscription_config.get("duration_months", 1)
+            monthly_amount = donation.amount / duration_months
+            
+            for month in range(duration_months):
+                voucher = Voucher(
+                    code=VoucherService.generate_voucher_code(),
+                    beneficiary_id=beneficiary.user_id,
+                    donation_id=donation.id,
+                    balance=monthly_amount,
+                    allocated_date=datetime.utcnow(),
+                    expiry_date=datetime.utcnow().date() + timedelta(days=30*(month+1)),
+                    status=VoucherStatusEnum.active
+                )
+                vouchers.append(voucher)
+                db.add(voucher)
+        else:
+            voucher = Voucher(
+                code=VoucherService.generate_voucher_code(),
+                beneficiary_id=beneficiary.user_id,
+                donation_id=donation.id,
+                balance=donation.amount,
+                allocated_date=datetime.utcnow(),
+                expiry_date=datetime.utcnow().date() + timedelta(days=30),
+                status=VoucherStatusEnum.active
+            )
+            vouchers.append(voucher)
+            db.add(voucher)
+        
+        total_amount = sum(v.balance for v in vouchers)
+        beneficiary.vouchers_balance += total_amount
+        
+        db.commit()
+        
+        for voucher in vouchers:
+            db.refresh(voucher)
+        
+        logger.info(f"Allocated {len(vouchers)} vouchers to beneficiary {beneficiary.user_id}")
+        
+        return vouchers
+    
+    @staticmethod
+    def get_voucher_by_code(
+        db: Session,
+        code: str
+    ) -> Optional[Voucher]:
+        """Get voucher by code"""
+        return db.query(Voucher).filter(
+            Voucher.code == code,
+            Voucher.is_active == True
+        ).first()
+    
+    @staticmethod
+    def get_balance(
+        db: Session,
+        beneficiary_id: str
+    ) -> Dict:
+        """Get voucher balance for beneficiary"""
+        active_vouchers = db.query(Voucher).filter(
+            Voucher.beneficiary_id == beneficiary_id,
+            Voucher.status == VoucherStatusEnum.active,
+            Voucher.expiry_date >= datetime.utcnow().date()
+        ).all()
+        
+        total_balance = sum(v.balance for v in active_vouchers)
+        
+        expiring_soon = [
+            v for v in active_vouchers
+            if v.expiry_date <= datetime.utcnow().date() + timedelta(days=7)
+        ]
+        
+        return {
+            "beneficiary_id": beneficiary_id,
+            "total_balance": total_balance,
+            "active_vouchers": active_vouchers,
+            "expiring_soon": {
+                "count": len(expiring_soon),
+                "total_amount": sum(v.balance for v in expiring_soon)
+            }
+        }
+    
+    @staticmethod
+    def redeem_voucher(
+        db: Session,
+        voucher_codes: List[str],
+        amount: Decimal,
+        order_id: str
+    ) -> Dict:
+        """Redeem vouchers for order payment"""
+        vouchers = []
+        for code in voucher_codes:
+            voucher = VoucherService.get_voucher_by_code(db, code)
+            if not voucher:
+                raise ValueError(f"Voucher {code} not found")
+            vouchers.append(voucher)
+        
+        total_balance = sum(v.balance for v in vouchers)
+        
+        if total_balance < amount:
+            raise ValueError(
+                f"Insufficient balance. Required: {amount}, Available: {total_balance}"
+            )
+        
+        for voucher in vouchers:
+            if voucher.expiry_date < datetime.utcnow().date():
+                raise ValueError(f"Voucher {voucher.code} is expired")
+            
+            if voucher.status != VoucherStatusEnum.active:
+                raise ValueError(f"Voucher {voucher.code} is not active")
+        
+        redemptions = []
+        remaining_amount = amount
+        
+        for voucher in vouchers:
+            if remaining_amount <= 0:
+                break
+            
+            redemption_amount = min(voucher.balance, remaining_amount)
+            
+            redemption = VoucherRedemption(
+                voucher_id=voucher.id,
+                order_id=order_id,
+                amount=redemption_amount
+            )
+            redemptions.append(redemption)
+            db.add(redemption)
+            
+            voucher.balance -= redemption_amount
+            remaining_amount -= redemption_amount
+            
+            if voucher.balance <= 0:
+                voucher.status = VoucherStatusEnum.redeemed
+        
+        beneficiary = db.query(BeneficiaryProfile).filter(
+            BeneficiaryProfile.user_id == vouchers[0].beneficiary_id
+        ).first()
+        
+        if beneficiary:
+            beneficiary.vouchers_balance -= amount
+        
+        db.commit()
+        
+        for redemption in redemptions:
+            db.refresh(redemption)
+        
+        logger.info(f"Redeemed {amount} from {len(vouchers)} vouchers for order {order_id}")
+        
+        return {
+            "order_id": order_id,
+            "vouchers_used": [
+                {
+                    "code": v.code,
+                    "amount": r.amount,
+                    "remaining_balance": v.balance
+                }
+                for v, r in zip(vouchers, redemptions)
+            ],
+            "total_redeemed": amount
+        }
