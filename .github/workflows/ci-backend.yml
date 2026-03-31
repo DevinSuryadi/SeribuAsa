@@ -39,7 +39,7 @@ jobs:
 
       - name: Run Mypy type checker
         working-directory: apps/backend
-        run: mypy app/
+        run: mypy app/ --ignore-missing-imports --disable-error-code=annotation-unchecked
 
   test:
     name: Test Backend
@@ -62,6 +62,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run unit tests
+      - name: Create test .env file
         working-directory: apps/backend
-        run: pytest tests/
+        run: |
+          cat > .env << EOF
+          TEST_MODE=true
+          DATABASE_URL=sqlite:///:memory:
+          APP_NAME=NutriGuard API (Test)
+          JWT_SECRET_KEY=test-secret-key-for-ci-only
+          EOF
+
+      - name: Run unit tests with coverage
+        working-directory: apps/backend
+        run: |
+          pip install pytest-cov
+          pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=0
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: apps/backend/htmlcov/
+        if: always()

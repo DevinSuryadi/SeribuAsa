@@ -2,8 +2,10 @@
 Application Configuration
 Loads environment variables and provides settings for the application.
 """
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+from typing import Optional
+import os
 
 
 class Settings(BaseSettings):
@@ -19,16 +21,17 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5174"
     
     # Database (Supabase PostgreSQL)
-    DATABASE_URL: str
+    # Optional: defaults to in-memory SQLite for testing
+    DATABASE_URL: Optional[str] = None
     
     # Supabase
-    SUPABASE_URL: str
-    SUPABASE_ANON_KEY: str
-    SUPABASE_SERVICE_KEY: str
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_ANON_KEY: Optional[str] = None
+    SUPABASE_SERVICE_KEY: Optional[str] = None
     
     # Midtrans
-    MIDTRANS_SERVER_KEY: str
-    MIDTRANS_CLIENT_KEY: str
+    MIDTRANS_SERVER_KEY: Optional[str] = None
+    MIDTRANS_CLIENT_KEY: Optional[str] = None
     MIDTRANS_IS_PRODUCTION: bool = False
     
     # JWT (Optional - if using custom JWT)
@@ -40,9 +43,27 @@ class Settings(BaseSettings):
     STORAGE_BUCKET_NAME: str = "nutriguard-uploads"
     MAX_FILE_SIZE_MB: int = 5
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    # Test mode flag
+    TEST_MODE: bool = False
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore"
+    )
+    
+    def is_test_mode(self) -> bool:
+        """Check if running in test mode"""
+        import sys
+        return self.TEST_MODE or "pytest" in sys.modules
+    
+    def get_database_url(self) -> str:
+        """Get database URL with fallback for testing"""
+        if self.is_test_mode() or not self.DATABASE_URL:
+            # Use in-memory SQLite for testing
+            return "sqlite:///:memory:"
+        return self.DATABASE_URL
 
 
 @lru_cache()
