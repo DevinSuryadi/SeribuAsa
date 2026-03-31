@@ -3,6 +3,8 @@ User Profile Models
 - UserProfile: Base profile for all users
 - DonorProfile: Donor-specific data
 - BeneficiaryProfile: Beneficiary-specific data
+- VendorProfile: Vendor-specific data
+- Child: Children of beneficiaries
 """
 from sqlalchemy import Column, String, Text, Date, Enum, ForeignKey, Integer, Numeric
 from sqlalchemy.dialects.postgresql import UUID
@@ -93,5 +95,77 @@ class BeneficiaryProfile(BaseModel):
     # Relationships
     user_profile = relationship("UserProfile", back_populates="beneficiary_profile")
     
+    # Children
+    children = relationship("Child", back_populates="beneficiary_profile", cascade="all, delete-orphan")
+    
+    # Vouchers
+    vouchers = relationship("Voucher", back_populates="beneficiary_profile", cascade="all, delete-orphan")
+    
+    # Orders
+    orders = relationship("Order", back_populates="beneficiary_profile", foreign_keys="Order.beneficiary_id", cascade="all, delete-orphan")
+    
+    # FIES surveys
+    fies_surveys = relationship("FIESSurvey", back_populates="beneficiary_profile", cascade="all, delete-orphan")
+    
     def __repr__(self):
         return f"<BeneficiaryProfile {self.user_profile.full_name}>"
+
+
+# ============================================
+# VendorProfile - Vendor-specific data
+# ============================================
+class VendorProfile(BaseModel):
+    __tablename__ = "vendor_profiles"
+    
+    # Foreign key to user_profiles
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    
+    # Store information
+    store_name = Column(String(255), nullable=False)
+    store_address = Column(Text, nullable=False)
+    store_phone = Column(String(20))
+    
+    # Bank account for settlement
+    bank_name = Column(String(100))
+    bank_account_number = Column(String(50))
+    bank_account_holder = Column(String(255))
+    
+    # Settlement status
+    settlement_status = Column(String(50), default="active")
+    approval_status = Column(String(50), default="pending")
+    
+    # Relationship
+    user_profile = relationship("UserProfile", back_populates="vendor_profile")
+    
+    # Products
+    products = relationship("Product", back_populates="vendor_profile", cascade="all, delete-orphan")
+    
+    # Orders (as vendor)
+    orders = relationship("Order", back_populates="vendor_profile", foreign_keys="Order.vendor_id", cascade="all, delete-orphan")
+    
+    # Settlements
+    settlements = relationship("Settlement", back_populates="vendor_profile", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<VendorProfile {self.store_name}>"
+
+
+# ============================================
+# Child - Children of beneficiaries
+# ============================================
+class Child(BaseModel):
+    __tablename__ = "children"
+    
+    # Foreign key to beneficiary
+    beneficiary_id = Column(UUID(as_uuid=True), ForeignKey("beneficiary_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # Child information
+    full_name = Column(String(255), nullable=False)
+    date_of_birth = Column(Date, nullable=False)
+    gender = Column(Enum(GenderEnum))
+    
+    # Relationship
+    beneficiary_profile = relationship("BeneficiaryProfile", back_populates="children")
+    
+    def __repr__(self):
+        return f"<Child {self.full_name}>"
