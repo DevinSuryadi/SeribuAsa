@@ -132,6 +132,7 @@ class VoucherRedemption(BaseModel):
     
     # Relationships
     voucher = relationship("Voucher", back_populates="redemptions")
+    order = relationship("Order", back_populates="voucher_redemptions")
     
     def __repr__(self):
         return f"<VoucherRedemption {self.id} - {self.amount}>"

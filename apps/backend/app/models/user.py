@@ -70,6 +70,9 @@ class DonorProfile(BaseModel):
     # Relationship
     user_profile = relationship("UserProfile", back_populates="donor_profile")
     
+    # Donations
+    donations = relationship("Donation", back_populates="donor_profile", cascade="all, delete-orphan")
+    
     def __repr__(self):
         return f"<DonorProfile {self.user_profile.full_name}>"
 
