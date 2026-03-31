@@ -25,8 +25,9 @@ class GenderEnum(str, enum.Enum):
 class UserProfile(BaseModel):
     __tablename__ = "user_profiles"
     
-    # Foreign key to Supabase auth.users
-    user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    # User ID (references Supabase auth.users in production)
+    # For local development, this is just a UUID field
+    user_id = Column(UUID(as_uuid=True), unique=True, nullable=False, index=True)
     
     # Personal information
     full_name = Column(String(255), nullable=False)

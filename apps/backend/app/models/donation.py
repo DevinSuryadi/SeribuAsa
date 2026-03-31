@@ -5,7 +5,8 @@ Donation and Voucher Models
 - VoucherRedemption: Redemption tracking
 """
 from sqlalchemy import Column, String, Text, Date, DateTime, Enum, Integer, Numeric, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import JSON as JSONB
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime, timedelta
