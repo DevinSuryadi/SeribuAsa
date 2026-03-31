@@ -128,7 +128,7 @@ export function Navbar() {
           </Link>
 
           <Link
-            to="/daftar"
+            to="/register"
             style={{
               padding: '8px 18px',
               borderRadius: 9,
@@ -216,7 +216,7 @@ export function Navbar() {
             </Link>
 
             <Link
-              to="/daftar"
+              to="/register"
               style={{
                 padding: '11px 14px',
                 borderRadius: 9,
