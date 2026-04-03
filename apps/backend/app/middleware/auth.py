@@ -44,7 +44,7 @@ async def get_current_user(
     if is_dev_mode() or not credentials:
         logger.debug("Using mock authentication (development mode)")
         return AuthenticatedUser(
-            user_id="mock-user-123",
+            user_id="00000000-0000-0000-0000-000000000001",
             email="donor@nutriguard.id",
             role="donor",
             email_verified=True
