@@ -2,11 +2,12 @@
 Donation Schemas
 Pydantic schemas for donation-related requests and responses
 """
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from enum import Enum
 from decimal import Decimal
+from uuid import UUID
 
 
 class DonationTypeEnum(str, Enum):
@@ -53,9 +54,9 @@ class DonationUpdate(BaseModel):
 
 class DonationResponse(DonationBase):
     """Schema for donation response"""
-    id: str
-    donor_id: str
-    recipient_id: Optional[str] = None
+    id: UUID
+    donor_id: UUID
+    recipient_id: Optional[UUID] = None
     status: DonationStatusEnum
     midtrans_transaction_id: Optional[str] = None
     subscription_config: Optional[Dict[str, Any]] = None

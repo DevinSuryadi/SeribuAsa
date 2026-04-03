@@ -195,10 +195,12 @@ export function Navbar() {
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = '0 2px 10px rgba(34,197,94,0.3)';
-            }}
-          >
-            Mulai Donasi 
-          </Link>
+                }}
+              >
+                Mulai Donasi 
+              </Link>
+            </>
+          )}
         </div>
 
       </div>
