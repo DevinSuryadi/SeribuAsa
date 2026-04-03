@@ -55,7 +55,7 @@ export default function MockPaymentModal() {
           },
         })
       }, 1500)
-    } catch (error) {
+    } catch {
       toast.error("Simulasi pembayaran gagal", { description: "Silakan coba lagi" })
       setLoading(false)
     }

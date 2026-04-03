@@ -5,7 +5,7 @@ Product and Order Models
 - Order: Orders from beneficiaries
 - OrderItem: Order line items
 """
-from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index, Boolean
+from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship

@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Heart, Users, TrendingUp, ArrowUpRight } from "lucide-react"
+import { Users, TrendingUp, ArrowUpRight } from "lucide-react"
 
 // Dummy data for demo
 const dummyDonations = [

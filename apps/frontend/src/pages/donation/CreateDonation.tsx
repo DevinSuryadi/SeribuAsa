@@ -1,13 +1,11 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useAuth } from "@/contexts/AuthContext"
 import DashboardLayout from "@/components/dashboard/DashboardLayout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
 import { Heart, CreditCard, Wallet, Smartphone, ArrowRight, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -20,7 +18,6 @@ const paymentMethods = [
 ]
 
 export default function CreateDonation() {
-  const { user } = useAuth()
   const navigate = useNavigate()
   const [amount, setAmount] = useState("")
   const [customAmount, setCustomAmount] = useState("")
@@ -70,7 +67,7 @@ export default function CreateDonation() {
       navigate(`/donation/payment/${donation.id}`, {
         state: { amount: parseInt(amount), paymentMethod },
       })
-    } catch (error) {
+    } catch {
       toast.error("Gagal membuat donasi", { description: "Silakan coba lagi" })
       setLoading(false)
     }

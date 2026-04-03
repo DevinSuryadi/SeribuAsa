@@ -7,7 +7,12 @@ from alembic import context
 
 # Import models and Base
 from app.database import Base
-from app.models import *  # Import all models
+from app.models import (  # noqa: F401
+    UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, Child,
+    Donation, Voucher, VoucherRedemption,
+    Category, Product, Order, OrderItem,
+    NutritionMeasurement, FIESSurvey, Settlement, AuditLog
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

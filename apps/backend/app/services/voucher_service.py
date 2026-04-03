@@ -9,9 +9,8 @@ from decimal import Decimal
 import logging
 import uuid
 
-from app.models.donation import Donation, DonationStatusEnum, Voucher, VoucherRedemption, VoucherStatusEnum
+from app.models.donation import Donation, Voucher, VoucherRedemption, VoucherStatusEnum
 from app.models.user import BeneficiaryProfile
-from app.schemas.voucher import VoucherAllocationCreate
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +90,7 @@ class VoucherService:
         """Get voucher by code"""
         return db.query(Voucher).filter(
             Voucher.code == code,
-            Voucher.is_active == True
+            Voucher.is_active
         ).first()
     
     @staticmethod

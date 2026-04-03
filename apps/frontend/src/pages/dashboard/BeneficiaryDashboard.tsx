@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Wallet, History, AlertTriangle, Users } from "lucide-react"
+import { History, AlertTriangle, Users } from "lucide-react"
 
 // Dummy data for demo
 const dummyTransactions = [
