@@ -10,6 +10,7 @@ from decimal import Decimal
 
 from app.database import get_db
 from app.services.donation_service import DonationService
+from app.middleware.auth import get_current_user, RequireRole, AuthenticatedUser
 from app.schemas.donation import (
     DonationCreate,
     DonationResponse,
@@ -28,29 +29,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/donations", tags=["donations"])
 
 
-def get_mock_current_user():
-    """Mock authentication - returns fake user data"""
-    return {
-        "user_id": "mock-donor-123",
-        "email": "donor@example.com",
-        "roles": ["donor"]
-    }
-
-
 @router.post("/", response_model=DonationResponse, status_code=status.HTTP_201_CREATED)
 async def create_donation(
     donation_data: DonationCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_mock_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Create new donation"""
     donation = DonationService.create_donation(
         db=db,
-        donor_id=current_user["user_id"],
+        donor_id=current_user.user_id,
         donation_data=donation_data
     )
     
-    logger.info(f"Donation created: {donation.id} by user {current_user['user_id']}")
+    logger.info(f"Donation created: {donation.id} by user {current_user.user_id}")
     
     return donation
 
@@ -64,7 +56,7 @@ async def get_donations(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_mock_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Get user's donations with filtering and pagination"""
     params = DonationQueryParams(
@@ -78,13 +70,13 @@ async def get_donations(
     
     donations = DonationService.get_donations(
         db=db,
-        donor_id=current_user["user_id"],
+        donor_id=current_user.user_id,
         params=params
     )
     
     total = DonationService.get_donations_count(
         db=db,
-        donor_id=current_user["user_id"],
+        donor_id=current_user.user_id,
         params=params
     )
     
@@ -103,13 +95,13 @@ async def get_donations(
 async def get_donation(
     donation_id: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_mock_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Get donation by ID with impact metrics"""
     donation = DonationService.get_donation_by_id(
         db=db,
         donation_id=donation_id,
-        donor_id=current_user["user_id"]
+        donor_id=current_user.user_id
     )
     
     if not donation:
@@ -144,7 +136,7 @@ async def get_donation(
 async def get_impact_metrics(
     donor_id: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_mock_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Get donor impact metrics"""
     metrics = DonationService.get_impact_metrics(

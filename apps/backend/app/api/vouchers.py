@@ -11,6 +11,7 @@ from decimal import Decimal
 from app.database import get_db
 from app.services.voucher_service import VoucherService
 from app.services.donation_service import DonationService
+from app.middleware.auth import get_current_user, RequireRole, AuthenticatedUser
 from app.schemas.voucher import (
     VoucherAllocationCreate,
     VoucherAllocationResponse,
@@ -29,20 +30,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/vouchers", tags=["vouchers"])
 
 
-def get_mock_current_user():
-    """Mock authentication - returns fake user data"""
-    return {
-        "user_id": "mock-user-123",
-        "email": "user@example.com",
-        "roles": ["admin"]
-    }
-
-
 @router.post("/allocate", response_model=VoucherAllocationResponse, status_code=status.HTTP_201_CREATED)
 async def allocate_vouchers(
     allocation_data: VoucherAllocationCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_mock_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Allocate vouchers to beneficiary after successful donation"""
     # Get donation
@@ -92,7 +84,7 @@ async def allocate_vouchers(
 async def get_balance(
     beneficiary_id: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_mock_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Get voucher balance for beneficiary"""
     balance_data = VoucherService.get_balance(
@@ -116,7 +108,7 @@ async def get_history(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_mock_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Get voucher transaction history"""
     params = VoucherQueryParams(
@@ -144,7 +136,7 @@ async def get_history(
 async def redeem_voucher(
     redemption_data: VoucherRedemptionRequest,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_mock_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Redeem vouchers for order payment"""
     try:
