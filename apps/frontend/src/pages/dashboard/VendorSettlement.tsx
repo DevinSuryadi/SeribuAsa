@@ -49,10 +49,7 @@ const VendorSettlement = () => {
     <DashboardLayout title="Settlement" subtitle="Riwayat pencairan dana voucher yang telah ditukarkan.">
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Settlement</h1>
-            <p className="text-sm text-muted-foreground">Riwayat pencairan dana voucher yang telah ditukarkan.</p>
-          </div>
+          <div className="flex-1" />
           <Button variant="outline" className="gap-2 self-start" onClick={() => toast.success('Mengunduh laporan...')}>
             <Download className="h-4 w-4" /> Unduh Laporan
           </Button>

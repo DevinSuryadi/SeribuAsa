@@ -19,11 +19,7 @@ export default function VendorDashboard() {
   return (
     <DashboardLayout title="Dashboard Vendor" subtitle="Kelola produk dan penukaran voucher.">
       <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Dashboard Vendor</h1>
-            <p className="text-sm text-muted-foreground">Kelola produk dan penukaran voucher.</p>
-          </div>
+        <div className="flex justify-end">
           <Button className="gap-2 self-start" asChild>
             <Link to="/dashboard/penukaran"><QrCode className="h-4 w-4" /> Tukar Voucher</Link>
           </Button>

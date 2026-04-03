@@ -53,10 +53,7 @@ const PemantauanGizi = () => {
       <div className="space-y-6">
         {/* Children List */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Data Anak</h1>
-            <p className="text-sm text-muted-foreground">Kelola data tumbuh kembang anak.</p>
-          </div>
+          <div className="flex-1" />
           <Button className="gap-2" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4" /> Tambah Anak
           </Button>

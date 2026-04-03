@@ -38,10 +38,7 @@ const KelolaProduk = () => {
     <DashboardLayout title="Kelola Produk" subtitle="Tambah, edit, dan kelola produk pangan Anda.">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Kelola Produk</h1>
-            <p className="text-muted-foreground text-sm">Tambah, edit, dan kelola produk pangan Anda.</p>
-          </div>
+          <div className="flex-1" />
           <Button className="gap-2" onClick={() => { setEditingProduct(null); setShowForm(true); }}>
             <Plus className="h-4 w-4" /> Tambah Produk
           </Button>
