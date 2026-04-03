@@ -7,7 +7,7 @@ Product and Order Models
 """
 from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index, Boolean
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import JSON as JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 import enum
 from app.models.base import BaseModel

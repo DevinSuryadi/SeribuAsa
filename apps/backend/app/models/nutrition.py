@@ -7,7 +7,7 @@ Nutrition and System Models
 """
 from sqlalchemy import Column, String, Text, Date, DateTime, Enum, Integer, Numeric, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import JSON as JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
