@@ -197,10 +197,10 @@ export default function BeneficiaryDashboard() {
             <CardContent className="flex-1">
               <div className="space-y-2">
                 {[
-                  { label: 'Belanja Pangan', desc: 'Beli bahan makanan bergizi', icon: ShoppingBasket, href: '#', accent: true },
+                  { label: 'Belanja Pangan', desc: 'Beli bahan makanan bergizi', icon: ShoppingBasket, href: '/dashboard/katalog', accent: true },
+                  { label: 'Penukaran Voucher', desc: 'Tukar voucher di vendor', icon: Wallet, href: '/dashboard/penukaran', accent: false },
                   { label: 'Isi Survei FIES', desc: 'Survei ketahanan pangan', icon: ClipboardList, href: '#', accent: false },
                   { label: 'Cek Gizi Anak', desc: 'Input data tumbuh kembang', icon: Activity, href: '#', accent: false },
-                  { label: 'Rekomendasi AI', desc: 'Saran nutrisi pintar', icon: Sparkles, href: '#', accent: false },
                 ].map((action) => (
                   <Link
                     key={action.label}

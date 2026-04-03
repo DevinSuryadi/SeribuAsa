@@ -11,6 +11,11 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DonorDashboard from "./pages/dashboard/DonorDashboard";
 import BeneficiaryDashboard from "./pages/dashboard/BeneficiaryDashboard";
+import DonorRiwayat from "./pages/dashboard/DonorRiwayat";
+import DonorDampak from "./pages/dashboard/DonorDampak";
+import KatalogPangan from "./pages/dashboard/KatalogPangan";
+import PenukaranVoucher from "./pages/dashboard/PenukaranVoucher";
+import Profile from "./pages/dashboard/Profile";
 import CreateDonation from "./pages/donation/CreateDonation";
 import MockPaymentModal from "./pages/donation/MockPaymentModal";
 import DonationSuccess from "./pages/donation/DonationSuccess";
@@ -54,6 +59,11 @@ function App() {
         <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
         <Route path="/dashboard/donor" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/beneficiary" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><BeneficiaryDashboard /></ProtectedRoute>} />
+        <Route path="/dashboard/riwayat" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorRiwayat /></ProtectedRoute>} />
+        <Route path="/dashboard/dampak" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorDampak /></ProtectedRoute>} />
+        <Route path="/dashboard/katalog" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><KatalogPangan /></ProtectedRoute>} />
+        <Route path="/dashboard/penukaran" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><PenukaranVoucher /></ProtectedRoute>} />
+        <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Donation flow routes */}
         <Route path="/donation/create" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><CreateDonation /></ProtectedRoute>} />

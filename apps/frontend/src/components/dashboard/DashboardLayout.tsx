@@ -29,19 +29,16 @@ interface DashboardLayoutProps {
 
 const donorNavItems = [
   { icon: LayoutDashboard, label: "Ringkasan", href: "/dashboard/donor" },
-  { icon: History, label: "Riwayat Donasi", href: "/dashboard/donor/riwayat" },
-  { icon: TrendingUp, label: "Dampak", href: "/dashboard/donor/dampak" },
-  { icon: Users, label: "Anak Asuh", href: "/dashboard/donor/anak-asuh" },
-  { icon: Settings, label: "Pengaturan", href: "/dashboard/donor/pengaturan" },
+  { icon: History, label: "Riwayat Donasi", href: "/dashboard/riwayat" },
+  { icon: TrendingUp, label: "Dampak", href: "/dashboard/dampak" },
+  { icon: Settings, label: "Profil", href: "/dashboard/profile" },
 ]
 
 const beneficiaryNavItems = [
   { icon: LayoutDashboard, label: "Ringkasan", href: "/dashboard/beneficiary" },
-  { icon: Wallet, label: "Voucher Saya", href: "/dashboard/beneficiary/voucher" },
-  { icon: Package, label: "Katalog Pangan", href: "/dashboard/beneficiary/katalog" },
-  { icon: History, label: "Riwayat", href: "/dashboard/beneficiary/riwayat" },
-  { icon: Users, label: "Keluarga", href: "/dashboard/beneficiary/keluarga" },
-  { icon: Settings, label: "Pengaturan", href: "/dashboard/beneficiary/pengaturan" },
+  { icon: Package, label: "Katalog Pangan", href: "/dashboard/katalog" },
+  { icon: Wallet, label: "Penukaran Voucher", href: "/dashboard/penukaran" },
+  { icon: Settings, label: "Profil", href: "/dashboard/profile" },
 ]
 
 export default function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {

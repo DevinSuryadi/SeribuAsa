@@ -122,7 +122,7 @@ export default function DonorDashboard() {
                 <CardTitle className="text-base">Riwayat Donasi Terbaru</CardTitle>
                 <CardDescription>Transaksi donasi terakhir Anda</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => {}}>
+              <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => navigate("/dashboard/riwayat")}>
                 Semua <ArrowRight className="h-3 w-3" />
               </Button>
             </CardHeader>
