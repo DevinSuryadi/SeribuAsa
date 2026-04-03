@@ -24,6 +24,20 @@ vi.mock("gsap/ScrollTrigger", () => ({
   },
 }));
 
+// Mock auth context to avoid AuthProvider requirement in tests
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({
+    user: null,
+    userRole: null,
+    loading: false,
+    signIn: vi.fn(),
+    signUp: vi.fn(),
+    signInAsDemo: vi.fn(),
+    signOut: vi.fn(),
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 // Import after mocking
 import Index from "../pages/Index";
 
@@ -34,7 +48,6 @@ describe("Index Page", () => {
         <Index />
       </BrowserRouter>
     );
-    // Use getAllByText since "SeribuAsa" appears multiple times on the page
     expect(screen.getAllByText(/SeribuAsa/).length).toBeGreaterThan(0);
   });
 });

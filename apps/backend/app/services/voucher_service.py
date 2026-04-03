@@ -3,7 +3,7 @@ Voucher Service
 Business logic for voucher management
 """
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from decimal import Decimal
 import logging
@@ -206,7 +206,7 @@ class VoucherService:
         db: Session,
         beneficiary_id: str,
         params=None
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """Get voucher transaction history for a beneficiary"""
         transactions = []
         
@@ -218,8 +218,8 @@ class VoucherService:
             transactions.append({
                 "id": str(voucher.id),
                 "type": "allocation",
-                "amount": voucher.balance,
-                "balance_after": voucher.balance,
+                "amount": float(voucher.balance) if voucher.balance else 0,
+                "balance_after": float(voucher.balance) if voucher.balance else 0,
                 "source": f"Donation {voucher.donation_id}" if voucher.donation_id else "Direct allocation",
                 "date": voucher.allocated_date,
                 "description": f"Voucher {voucher.code} allocated"
@@ -235,8 +235,8 @@ class VoucherService:
             transactions.append({
                 "id": str(redemption.id),
                 "type": "redemption",
-                "amount": -redemption.amount,
-                "balance_after": 0,
+                "amount": -float(redemption.amount) if redemption.amount else 0,
+                "balance_after": 0.0,
                 "source": f"Order {redemption.order_id}",
                 "date": redemption.created_at,
                 "description": "Redeemed at vendor"

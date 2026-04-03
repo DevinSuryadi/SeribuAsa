@@ -2,7 +2,7 @@
 Donation Schemas
 Pydantic schemas for donation-related requests and responses
 """
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from enum import Enum
