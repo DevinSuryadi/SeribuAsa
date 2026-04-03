@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
 import Index from "./pages/Index";
 import Masuk from "./pages/auth/Masuk";
 import Register from "./pages/auth/Register";
@@ -6,19 +7,55 @@ import Donasi from "./pages/Donasi";
 import Tentang from "./pages/Tentang";
 import Dampak from "./pages/Dampak";
 import LupaSandi from "./pages/auth/LupaSandi";
+import ResetPassword from "./pages/auth/ResetPassword";
+import ProtectedRoute from "./components/ProtectedRoute";
+import DonorDashboard from "./pages/dashboard/DonorDashboard";
+import BeneficiaryDashboard from "./pages/dashboard/BeneficiaryDashboard";
+import { useAuth } from "./contexts/AuthContext";
+
+function DashboardRedirect() {
+  const { userRole, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (userRole === "donor") return <Navigate to="/dashboard/donor" replace />;
+  if (userRole === "beneficiary") return <Navigate to="/dashboard/beneficiary" replace />;
+  if (userRole === "vendor") return <Navigate to="/dashboard/vendor" replace />;
+  if (userRole === "admin") return <Navigate to="/dashboard/admin" replace />;
+
+  return <Navigate to="/" replace />;
+}
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/masuk" element={<Masuk />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/donasi" element={<Donasi />} />
-      <Route path="/tentang" element={<Tentang />} />
-      <Route path="/dampak" element={<Dampak />} />
-      <Route path="/lupa-sandi" element={<LupaSandi/>} />
+    <>
+      <Toaster position="top-right" richColors />
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Index />} />
+        <Route path="/masuk" element={<Masuk />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/donasi" element={<Donasi />} />
+        <Route path="/tentang" element={<Tentang />} />
+        <Route path="/dampak" element={<Dampak />} />
+        <Route path="/lupa-sandi" element={<LupaSandi />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-    </Routes>
+        {/* Authenticated routes */}
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
+        <Route path="/dashboard/donor" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorDashboard /></ProtectedRoute>} />
+        <Route path="/dashboard/beneficiary" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><BeneficiaryDashboard /></ProtectedRoute>} />
+
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 
