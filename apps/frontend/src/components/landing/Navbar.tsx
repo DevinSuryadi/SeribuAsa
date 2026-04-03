@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {Leaf } from 'lucide-react';
+import { Leaf, LogOut, LayoutDashboard } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navLinks = [
   { label: 'Beranda', href: '/' },
@@ -13,6 +14,7 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -110,43 +112,89 @@ export function Navbar() {
 
         {/* CTA desktop */}
         <div className="hidden md:flex" style={{ alignItems: 'center', gap: 8 }}>
-          <Link
-            to="/masuk"
-            style={{
-              padding: '7px 16px',
-              borderRadius: 8,
-              fontSize: 16,
-              fontWeight: 500,
-              color: '#444',
-              textDecoration: 'none',
-              transition: 'color 0.15s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#111')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#444')}
-          >
-            Masuk
-          </Link>
+          {user ? (
+            <>
+              <Link
+                to="/dashboard"
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: 8,
+                  fontSize: 16,
+                  fontWeight: 500,
+                  color: '#16a34a',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'color 0.15s ease',
+                }}
+              >
+                <LayoutDashboard size={16} />
+                Dashboard
+              </Link>
+              <span style={{ fontSize: 14, color: '#666', padding: '0 8px' }}>
+                {user.email}
+              </span>
+              <button
+                onClick={() => signOut()}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: 8,
+                  fontSize: 16,
+                  fontWeight: 500,
+                  color: '#ef4444',
+                  background: 'transparent',
+                  border: '1px solid #ef4444',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <LogOut size={16} />
+                Keluar
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/masuk"
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: 8,
+                  fontSize: 16,
+                  fontWeight: 500,
+                  color: '#444',
+                  textDecoration: 'none',
+                  transition: 'color 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#111')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#444')}
+              >
+                Masuk
+              </Link>
 
-          <Link
-            to="/register"
-            style={{
-              padding: '8px 18px',
-              borderRadius: 9,
-              fontSize: 16,
-              fontWeight: 600,
-              color: 'white',
-              textDecoration: 'none',
-              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-              boxShadow: '0 2px 10px rgba(34,197,94,0.3)',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(34,197,94,0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 10px rgba(34,197,94,0.3)';
+              <Link
+                to="/register"
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 9,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: 'white',
+                  textDecoration: 'none',
+                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                  boxShadow: '0 2px 10px rgba(34,197,94,0.3)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(34,197,94,0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 10px rgba(34,197,94,0.3)';
             }}
           >
             Mulai Donasi 

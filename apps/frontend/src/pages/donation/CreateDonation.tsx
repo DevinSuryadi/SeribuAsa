@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Heart, CreditCard, Wallet, Smartphone, ArrowRight, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { createDonation } from "@/services/donations"
 
 const quickAmounts = [50000, 100000, 250000, 300000, 500000, 1000000]
 
@@ -46,29 +47,20 @@ export default function CreateDonation() {
     setLoading(true)
 
     try {
-      // Step 1: Create donation
-      const donationResponse = await fetch("/api/v1/donations/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: parseInt(amount),
-          type: donationType,
-          payment_method: paymentMethod,
-        }),
+      const donation = await createDonation({
+        amount: parseInt(amount),
+        type: donationType,
+        payment_method: paymentMethod,
       })
 
-      if (!donationResponse.ok) {
-        throw new Error("Failed to create donation")
-      }
+      toast.success("Donasi berhasil dibuat!")
 
-      const donation = await donationResponse.json()
-
-      // Step 2: Navigate to mock payment
       navigate(`/donation/payment/${donation.id}`, {
         state: { amount: parseInt(amount), paymentMethod },
       })
-    } catch {
-      toast.error("Gagal membuat donasi", { description: "Silakan coba lagi" })
+    } catch (err: any) {
+      toast.error("Gagal membuat donasi", { description: err.message })
+    } finally {
       setLoading(false)
     }
   }
