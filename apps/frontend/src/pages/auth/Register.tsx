@@ -38,16 +38,16 @@ export default function Register() {
 
     setLoading(true)
 
-    const { error } = await signUp(email, password, fullName, selectedRole, selectedRole === "beneficiary" ? nik : undefined)
+    const { error } = await signUp(email, password, fullName, selectedRole)
 
     if (error) {
-      toast.error("Registrasi gagal", { description: error.message })
+      toast.error("Registrasi gagal", { description: error })
       setLoading(false)
       return
     }
 
-    toast.success("Registrasi berhasil! Silakan login.")
-    navigate("/masuk")
+    toast.success("Registrasi berhasil!")
+    navigate("/dashboard")
   }
 
   return (
