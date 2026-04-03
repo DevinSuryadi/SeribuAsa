@@ -18,7 +18,9 @@ import {
   X,
   TrendingUp,
   Package,
-
+  ClipboardList,
+  Activity,
+  CreditCard,
 } from "lucide-react"
 
 interface DashboardLayoutProps {
@@ -38,6 +40,15 @@ const beneficiaryNavItems = [
   { icon: LayoutDashboard, label: "Ringkasan", href: "/dashboard/beneficiary" },
   { icon: Package, label: "Katalog Pangan", href: "/dashboard/katalog" },
   { icon: Wallet, label: "Penukaran Voucher", href: "/dashboard/penukaran" },
+  { icon: ClipboardList, label: "Survei FIES", href: "/dashboard/survei-fies" },
+  { icon: Activity, label: "Pemantauan Gizi", href: "/dashboard/pemantauan-gizi" },
+  { icon: Settings, label: "Profil", href: "/dashboard/profile" },
+]
+
+const vendorNavItems = [
+  { icon: LayoutDashboard, label: "Ringkasan", href: "/dashboard/vendor" },
+  { icon: Package, label: "Kelola Produk", href: "/dashboard/kelola-produk" },
+  { icon: CreditCard, label: "Settlement", href: "/dashboard/settlement" },
   { icon: Settings, label: "Profil", href: "/dashboard/profile" },
 ]
 
@@ -47,7 +58,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const navItems = userRole === "donor" ? donorNavItems : beneficiaryNavItems
+  const navItems = userRole === "donor" ? donorNavItems : userRole === "beneficiary" ? beneficiaryNavItems : userRole === "vendor" ? vendorNavItems : donorNavItems
 
   const roleConfig = {
     donor: { icon: Heart, label: "Donatur", color: "bg-green-600" },

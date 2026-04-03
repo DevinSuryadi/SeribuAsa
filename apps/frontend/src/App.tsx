@@ -16,6 +16,10 @@ import DonorDampak from "./pages/dashboard/DonorDampak";
 import KatalogPangan from "./pages/dashboard/KatalogPangan";
 import PenukaranVoucher from "./pages/dashboard/PenukaranVoucher";
 import Profile from "./pages/dashboard/Profile";
+import KelolaProduk from "./pages/dashboard/KelolaProduk";
+import VendorSettlement from "./pages/dashboard/VendorSettlement";
+import SurveiFIES from "./pages/dashboard/SurveiFIES";
+import PemantauanGizi from "./pages/dashboard/PemantauanGizi";
 import CreateDonation from "./pages/donation/CreateDonation";
 import MockPaymentModal from "./pages/donation/MockPaymentModal";
 import DonationSuccess from "./pages/donation/DonationSuccess";
@@ -63,6 +67,10 @@ function App() {
         <Route path="/dashboard/dampak" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorDampak /></ProtectedRoute>} />
         <Route path="/dashboard/katalog" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><KatalogPangan /></ProtectedRoute>} />
         <Route path="/dashboard/penukaran" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><PenukaranVoucher /></ProtectedRoute>} />
+        <Route path="/dashboard/survei-fies" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><SurveiFIES /></ProtectedRoute>} />
+        <Route path="/dashboard/pemantauan-gizi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><PemantauanGizi /></ProtectedRoute>} />
+        <Route path="/dashboard/kelola-produk" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><KelolaProduk /></ProtectedRoute>} />
+        <Route path="/dashboard/settlement" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorSettlement /></ProtectedRoute>} />
         <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Donation flow routes */}
