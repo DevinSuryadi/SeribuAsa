@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Activity,
   CreditCard,
+  Sparkles,
 } from "lucide-react"
 
 interface DashboardLayoutProps {
@@ -33,16 +34,19 @@ type NavItem = { label: string; href: string; icon: React.ElementType }
 const navByRole: Record<string, NavItem[]> = {
   donor: [
     { label: "Ringkasan", href: "/dashboard/donor", icon: LayoutDashboard },
+    { label: "Langganan", href: "/dashboard/langganan", icon: CreditCard },
     { label: "Riwayat Donasi", href: "/dashboard/riwayat", icon: History },
     { label: "Dampak", href: "/dashboard/dampak", icon: TrendingUp },
     { label: "Profil", href: "/dashboard/profile", icon: Settings },
   ],
   beneficiary: [
     { label: "Ringkasan", href: "/dashboard/beneficiary", icon: LayoutDashboard },
+    { label: "Dompet Nutrisi", href: "/dashboard/dompet", icon: Wallet },
     { label: "Katalog Pangan", href: "/dashboard/katalog", icon: Package },
-    { label: "Penukaran Voucher", href: "/dashboard/penukaran", icon: Wallet },
+    { label: "Penukaran Voucher", href: "/dashboard/penukaran", icon: CreditCard },
     { label: "Survei FIES", href: "/dashboard/survei-fies", icon: ClipboardList },
     { label: "Pemantauan Gizi", href: "/dashboard/pemantauan-gizi", icon: Activity },
+    { label: "Rekomendasi AI", href: "/dashboard/rekomendasi", icon: Sparkles },
     { label: "Profil", href: "/dashboard/profile", icon: Settings },
   ],
   vendor: [

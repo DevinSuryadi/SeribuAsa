@@ -408,3 +408,39 @@ export const mockVendorOrders = [
   { id: 'vo4', date: '2026-03-23', beneficiary: 'Ibu Fitri N.', items: ['Susu 2L', 'Telur', 'Pisang'], total: 59000, status: 'selesai' },
   { id: 'vo5', date: '2026-03-22', beneficiary: 'Ibu Maya K.', items: ['Beras Merah', 'Kacang Hijau'], total: 32000, status: 'selesai' },
 ];
+
+// === AI NUTRITION RECOMMENDATIONS ===
+export const mockRecommendations = [
+  {
+    id: 'r1',
+    title: 'Paket Nutrisi Ibu Hamil Trimester 3',
+    items: ['Susu UHT', 'Telur', 'Bayam', 'Ikan Salmon', 'Wortel'],
+    reason: 'Pada trimester ketiga, kebutuhan zat besi, kalsium, dan omega-3 meningkat signifikan untuk mendukung pertumbuhan otak janin dan persiapan persalinan.',
+    forGroup: 'Ibu Hamil',
+    confidence: 'Tinggi',
+  },
+  {
+    id: 'r2',
+    title: 'Paket MPASI Bayi 6-12 Bulan',
+    items: ['Telur', 'Tempe', 'Wortel', 'Pisang', 'Beras Merah'],
+    reason: 'Periode emas pengenalan makanan pendamping ASI membutuhkan protein hewani, karbohidrat kompleks, dan vitamin A untuk tumbuh kembang optimal.',
+    forGroup: 'Bayi 6-12 Bulan',
+    confidence: 'Tinggi',
+  },
+  {
+    id: 'r3',
+    title: 'Paket Nutrisi Balita 1-3 Tahun',
+    items: ['Susu Formula', 'Telur', 'Daging Ayam', 'Bayam', 'Pisang'],
+    reason: 'Balita membutuhkan asupan protein tinggi, zat besi, dan kalsium untuk mendukung pertumbuhan tulang dan perkembangan motorik.',
+    forGroup: 'Balita 1-3 Tahun',
+    confidence: 'Sedang',
+  },
+  {
+    id: 'r4',
+    title: 'Paket Pangan Keluarga (4 Orang)',
+    items: ['Beras Premium', 'Telur', 'Tempe', 'Bayam', 'Wortel', 'Susu UHT'],
+    reason: 'Berdasarkan skor FIES Anda (5/8 - Moderate), keluarga membutuhkan paket pangan bergizi lengkap dengan fokus pada protein dan sayuran.',
+    forGroup: 'Keluarga (4 Orang)',
+    confidence: 'Sedang',
+  },
+];

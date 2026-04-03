@@ -21,6 +21,9 @@ import VendorSettlement from "./pages/dashboard/VendorSettlement";
 import VendorDashboard from "./pages/dashboard/VendorDashboard";
 import SurveiFIES from "./pages/dashboard/SurveiFIES";
 import PemantauanGizi from "./pages/dashboard/PemantauanGizi";
+import DompetNutrisi from "./pages/dashboard/DompetNutrisi";
+import DonorLangganan from "./pages/dashboard/DonorLangganan";
+import RekomendasiAI from "./pages/dashboard/RekomendasiAI";
 import CreateDonation from "./pages/donation/CreateDonation";
 import MockPaymentModal from "./pages/donation/MockPaymentModal";
 import DonationSuccess from "./pages/donation/DonationSuccess";
@@ -66,10 +69,13 @@ function App() {
         <Route path="/dashboard/beneficiary" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><BeneficiaryDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/riwayat" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorRiwayat /></ProtectedRoute>} />
         <Route path="/dashboard/dampak" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorDampak /></ProtectedRoute>} />
+        <Route path="/dashboard/langganan" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorLangganan /></ProtectedRoute>} />
         <Route path="/dashboard/katalog" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><KatalogPangan /></ProtectedRoute>} />
         <Route path="/dashboard/penukaran" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><PenukaranVoucher /></ProtectedRoute>} />
         <Route path="/dashboard/survei-fies" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><SurveiFIES /></ProtectedRoute>} />
         <Route path="/dashboard/pemantauan-gizi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><PemantauanGizi /></ProtectedRoute>} />
+        <Route path="/dashboard/dompet" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><DompetNutrisi /></ProtectedRoute>} />
+        <Route path="/dashboard/rekomendasi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><RekomendasiAI /></ProtectedRoute>} />
         <Route path="/dashboard/kelola-produk" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><KelolaProduk /></ProtectedRoute>} />
         <Route path="/dashboard/settlement" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorSettlement /></ProtectedRoute>} />
         <Route path="/dashboard/vendor" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorDashboard /></ProtectedRoute>} />
