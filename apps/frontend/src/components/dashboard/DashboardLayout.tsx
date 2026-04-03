@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
 import {
   Heart,
   Wallet,
@@ -11,7 +11,6 @@ import {
   Shield,
   LayoutDashboard,
   History,
-  Users,
   Settings,
   LogOut,
   Menu,
@@ -29,28 +28,51 @@ interface DashboardLayoutProps {
   subtitle: string
 }
 
-const donorNavItems = [
-  { icon: LayoutDashboard, label: "Ringkasan", href: "/dashboard/donor" },
-  { icon: History, label: "Riwayat Donasi", href: "/dashboard/riwayat" },
-  { icon: TrendingUp, label: "Dampak", href: "/dashboard/dampak" },
-  { icon: Settings, label: "Profil", href: "/dashboard/profile" },
-]
+type NavItem = { label: string; href: string; icon: React.ElementType }
 
-const beneficiaryNavItems = [
-  { icon: LayoutDashboard, label: "Ringkasan", href: "/dashboard/beneficiary" },
-  { icon: Package, label: "Katalog Pangan", href: "/dashboard/katalog" },
-  { icon: Wallet, label: "Penukaran Voucher", href: "/dashboard/penukaran" },
-  { icon: ClipboardList, label: "Survei FIES", href: "/dashboard/survei-fies" },
-  { icon: Activity, label: "Pemantauan Gizi", href: "/dashboard/pemantauan-gizi" },
-  { icon: Settings, label: "Profil", href: "/dashboard/profile" },
-]
+const navByRole: Record<string, NavItem[]> = {
+  donor: [
+    { label: "Ringkasan", href: "/dashboard/donor", icon: LayoutDashboard },
+    { label: "Riwayat Donasi", href: "/dashboard/riwayat", icon: History },
+    { label: "Dampak", href: "/dashboard/dampak", icon: TrendingUp },
+    { label: "Profil", href: "/dashboard/profile", icon: Settings },
+  ],
+  beneficiary: [
+    { label: "Ringkasan", href: "/dashboard/beneficiary", icon: LayoutDashboard },
+    { label: "Katalog Pangan", href: "/dashboard/katalog", icon: Package },
+    { label: "Penukaran Voucher", href: "/dashboard/penukaran", icon: Wallet },
+    { label: "Survei FIES", href: "/dashboard/survei-fies", icon: ClipboardList },
+    { label: "Pemantauan Gizi", href: "/dashboard/pemantauan-gizi", icon: Activity },
+    { label: "Profil", href: "/dashboard/profile", icon: Settings },
+  ],
+  vendor: [
+    { label: "Ringkasan", href: "/dashboard/vendor", icon: LayoutDashboard },
+    { label: "Kelola Produk", href: "/dashboard/kelola-produk", icon: Package },
+    { label: "Settlement", href: "/dashboard/settlement", icon: CreditCard },
+    { label: "Profil", href: "/dashboard/profile", icon: Settings },
+  ],
+}
 
-const vendorNavItems = [
-  { icon: LayoutDashboard, label: "Ringkasan", href: "/dashboard/vendor" },
-  { icon: Package, label: "Kelola Produk", href: "/dashboard/kelola-produk" },
-  { icon: CreditCard, label: "Settlement", href: "/dashboard/settlement" },
-  { icon: Settings, label: "Profil", href: "/dashboard/profile" },
-]
+const roleLabel: Record<string, string> = {
+  donor: "Donatur",
+  beneficiary: "Penerima",
+  vendor: "Vendor",
+  admin: "Admin",
+}
+
+const roleColor: Record<string, string> = {
+  donor: "bg-green-600",
+  beneficiary: "bg-blue-600",
+  vendor: "bg-purple-600",
+  admin: "bg-red-600",
+}
+
+const RoleIconMap: Record<string, React.ElementType> = {
+  donor: Heart,
+  beneficiary: Wallet,
+  vendor: Store,
+  admin: Shield,
+}
 
 export default function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   const { user, userRole, signOut } = useAuth()
@@ -58,128 +80,148 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const navItems = userRole === "donor" ? donorNavItems : userRole === "beneficiary" ? beneficiaryNavItems : userRole === "vendor" ? vendorNavItems : donorNavItems
-
-  const roleConfig = {
-    donor: { icon: Heart, label: "Donatur", color: "bg-green-600" },
-    beneficiary: { icon: Wallet, label: "Penerima", color: "bg-blue-600" },
-    vendor: { icon: Store, label: "Vendor", color: "bg-purple-600" },
-    admin: { icon: Shield, label: "Admin", color: "bg-red-600" },
-  }
-
-  const config = roleConfig[userRole as keyof typeof roleConfig] || roleConfig.donor
-  const RoleIcon = config.icon
+  const role = userRole || "donor"
+  const navItems = navByRole[role] || navByRole.donor
+  const displayName = user?.email?.split("@")[0] || "Pengguna"
+  const IconComponent = RoleIconMap[role] || Shield
+  const colorClass = roleColor[role] || "bg-gray-600"
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-white transition-transform lg:static lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="flex items-center gap-3 border-b px-6 py-4">
-            <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", config.color)}>
-              <RoleIcon className="text-white h-5 w-5" />
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-border bg-card">
+        <div className="flex h-16 items-center gap-2 border-b border-border px-4">
+          <Link to="/" className="flex items-center gap-2">
+            <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", colorClass)}>
+              <IconComponent className="h-4 w-4 text-white" />
             </div>
-            <div>
-              <h1 className="text-lg font-bold">SeribuAsa</h1>
-              <p className="text-xs text-gray-500">{config.label}</p>
+            <span className="font-bold text-foreground">SeribuAsa</span>
+          </Link>
+        </div>
+        <nav className="flex-1 p-3 space-y-1">
+          {navItems.map((item) => {
+            const active = location.pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+        <div className="border-t border-border p-3">
+          <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">
+              {displayName.charAt(0).toUpperCase()}
             </div>
-            <button
-              className="ml-auto lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.href
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-green-50 text-green-700"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-
-          <Separator />
-
-          {/* User info */}
-          <div className="px-4 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                <span className="text-sm font-medium text-gray-600">
-                  {user?.email?.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <p className="truncate text-sm font-medium">{user?.email}</p>
-                <p className="truncate text-xs text-gray-500">{config.label}</p>
-              </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-foreground truncate">{displayName}</div>
+              <div className="text-xs text-muted-foreground">{roleLabel[role]}</div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3 w-full"
-              onClick={() => {
-                signOut()
-                navigate("/")
-              }}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Keluar
+            <Button variant="ghost" size="icon" onClick={() => { signOut(); navigate("/") }} className="h-8 w-8">
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="lg:ml-64">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 border-b bg-white px-4 py-3 lg:px-6">
-          <div className="flex items-center gap-4">
-            <button
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            <div>
-              <h2 className="text-lg font-semibold">{title}</h2>
-              <p className="text-sm text-gray-500">{subtitle}</p>
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex flex-col">
+            <div className="flex h-16 items-center justify-between border-b border-border px-4">
+              <div className="flex items-center gap-2">
+                <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", colorClass)}>
+                  <IconComponent className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-bold text-foreground">SeribuAsa</span>
+              </div>
+              <button onClick={() => setSidebarOpen(false)} className="p-1 text-muted-foreground">
+                <X className="h-5 w-5" />
+              </button>
             </div>
+            <nav className="flex-1 p-3 space-y-1">
+              {navItems.map((item) => {
+                const active = location.pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </nav>
+            <div className="border-t border-border p-3">
+              <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground truncate">{displayName}</div>
+                  <div className="text-xs text-muted-foreground">{roleLabel[role]}</div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => { signOut(); navigate("/") }} className="h-8 w-8">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Bar */}
+        <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
+          <button className="lg:hidden p-2 text-foreground" onClick={() => setSidebarOpen(true)}>
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="lg:hidden flex items-center gap-2">
+            <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg", colorClass)}>
+              <IconComponent className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="font-bold text-foreground text-sm">SeribuAsa</span>
+          </div>
+          <div className="hidden lg:block" />
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+              {displayName}
+            </div>
+            <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={() => { signOut(); navigate("/") }}>
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="p-4 lg:p-6">
-          {children}
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto p-4 lg:p-6">
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+              <p className="text-sm text-muted-foreground">{subtitle}</p>
+            </div>
+            {children}
+          </div>
         </main>
       </div>
     </div>
