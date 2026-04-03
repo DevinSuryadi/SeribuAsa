@@ -18,7 +18,7 @@ import {
   X,
   TrendingUp,
   Package,
-  BarChart3,
+
 } from "lucide-react"
 
 interface DashboardLayoutProps {

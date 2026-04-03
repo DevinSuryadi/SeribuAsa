@@ -4,14 +4,13 @@ Handles voucher allocation, balance checking, and redemption
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Optional
 from datetime import date
 from decimal import Decimal
 
 from app.database import get_db
 from app.services.voucher_service import VoucherService
-from app.services.donation_service import DonationService
-from app.middleware.auth import get_current_user, RequireRole, AuthenticatedUser
+from app.middleware.auth import get_current_user, AuthenticatedUser
 from app.schemas.voucher import (
     VoucherAllocationCreate,
     VoucherAllocationResponse,

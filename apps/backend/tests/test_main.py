@@ -2,11 +2,8 @@
 Main Application Tests
 Tests for root endpoints and basic functionality
 """
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 
-from app.main import app
 
 
 def test_root(client: TestClient):

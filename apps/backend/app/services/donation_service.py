@@ -5,11 +5,10 @@ Business logic for donation management
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from datetime import datetime
 from decimal import Decimal
 import logging
 
-from app.models.donation import Donation, DonationTypeEnum, DonationStatusEnum, Voucher
+from app.models.donation import Donation, DonationStatusEnum, Voucher
 from app.schemas.donation import DonationCreate, DonationQueryParams
 
 logger = logging.getLogger(__name__)
@@ -149,7 +148,7 @@ class DonationService:
         
         children_helped = db.query(func.count(func.distinct(Donation.recipient_id))).filter(
             Donation.donor_id == donor_id,
-            Donation.recipient_id != None
+            Donation.recipient_id is not None
         ).scalar() or 0
         
         vouchers_allocated = db.query(func.count(Voucher.id)).join(

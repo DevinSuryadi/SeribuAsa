@@ -8,7 +8,7 @@ import { CheckCircle2, Heart, Users, Calendar, ArrowRight, Home } from "lucide-r
 export default function DonationSuccess() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { donationId, amount, transactionId, impact } = location.state || {}
+  const { amount, transactionId, impact } = location.state || {}
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">

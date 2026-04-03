@@ -4,13 +4,12 @@ Handles donation creation, listing, and management
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Optional
 from datetime import date
-from decimal import Decimal
 
 from app.database import get_db
 from app.services.donation_service import DonationService
-from app.middleware.auth import get_current_user, RequireRole, AuthenticatedUser
+from app.middleware.auth import get_current_user, AuthenticatedUser
 from app.schemas.donation import (
     DonationCreate,
     DonationResponse,
@@ -21,7 +20,6 @@ from app.schemas.donation import (
     DonationTypeEnum,
     DonationStatusEnum
 )
-from app.models.donation import Donation
 import logging
 
 logger = logging.getLogger(__name__)
@@ -151,7 +149,7 @@ async def get_impact_metrics(
 async def simulate_payment(
     donation_id: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_mock_current_user)
+    current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """
     Simulate successful payment (DEMO ONLY).
