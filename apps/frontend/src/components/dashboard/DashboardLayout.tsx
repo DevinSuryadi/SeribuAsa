@@ -160,7 +160,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
       </aside>
 
       {/* Main content */}
-      <div className="lg:ml-0">
+      <div className="lg:ml-64">
         {/* Top bar */}
         <header className="sticky top-0 z-30 border-b bg-white px-4 py-3 lg:px-6">
           <div className="flex items-center gap-4">

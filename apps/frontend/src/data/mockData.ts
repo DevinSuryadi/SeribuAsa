@@ -399,3 +399,12 @@ export const mockUserProfile = {
     createdAt: '2026-01-20T10:00:00Z',
   },
 };
+
+// === VENDOR ORDERS ===
+export const mockVendorOrders = [
+  { id: 'vo1', date: '2026-03-25', beneficiary: 'Ibu Sari W.', items: ['Telur 1kg', 'Bayam', 'Susu UHT'], total: 47000, status: 'selesai' },
+  { id: 'vo2', date: '2026-03-24', beneficiary: 'Ibu Rani A.', items: ['Daging Ayam', 'Wortel', 'Tempe'], total: 48000, status: 'selesai' },
+  { id: 'vo3', date: '2026-03-24', beneficiary: 'Bpk. Dedi S.', items: ['Ikan Tongkol', 'Kangkung', 'Tahu'], total: 39000, status: 'diproses' },
+  { id: 'vo4', date: '2026-03-23', beneficiary: 'Ibu Fitri N.', items: ['Susu 2L', 'Telur', 'Pisang'], total: 59000, status: 'selesai' },
+  { id: 'vo5', date: '2026-03-22', beneficiary: 'Ibu Maya K.', items: ['Beras Merah', 'Kacang Hijau'], total: 32000, status: 'selesai' },
+];

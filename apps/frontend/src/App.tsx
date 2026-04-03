@@ -18,6 +18,7 @@ import PenukaranVoucher from "./pages/dashboard/PenukaranVoucher";
 import Profile from "./pages/dashboard/Profile";
 import KelolaProduk from "./pages/dashboard/KelolaProduk";
 import VendorSettlement from "./pages/dashboard/VendorSettlement";
+import VendorDashboard from "./pages/dashboard/VendorDashboard";
 import SurveiFIES from "./pages/dashboard/SurveiFIES";
 import PemantauanGizi from "./pages/dashboard/PemantauanGizi";
 import CreateDonation from "./pages/donation/CreateDonation";
@@ -71,6 +72,7 @@ function App() {
         <Route path="/dashboard/pemantauan-gizi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><PemantauanGizi /></ProtectedRoute>} />
         <Route path="/dashboard/kelola-produk" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><KelolaProduk /></ProtectedRoute>} />
         <Route path="/dashboard/settlement" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorSettlement /></ProtectedRoute>} />
+        <Route path="/dashboard/vendor" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Donation flow routes */}

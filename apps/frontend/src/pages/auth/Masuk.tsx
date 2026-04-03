@@ -14,6 +14,20 @@ export default function Masuk() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Email validation with regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      toast.error("Email tidak valid", { description: "Masukkan email dengan format yang benar (contoh: nama@email.com)" })
+      return
+    }
+
+    // Password validation
+    if (password.length < 6) {
+      toast.error("Password terlalu pendek", { description: "Password minimal 6 karakter" })
+      return
+    }
+
     setLoading(true)
 
     const { error } = await signIn(email, password)
