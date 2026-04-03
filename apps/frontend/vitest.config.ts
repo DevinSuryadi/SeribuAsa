@@ -14,6 +14,11 @@ export default defineConfig({
       reporter: ["text", "json", "html"],
       exclude: ["node_modules/", "src/test/setup.ts", "*.config.ts", "*.config.js"],
     },
+    server: {
+      deps: {
+        inline: ["gsap"],
+      },
+    },
   },
   resolve: {
     alias: {
