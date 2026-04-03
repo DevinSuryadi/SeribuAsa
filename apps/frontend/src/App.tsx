@@ -11,6 +11,9 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DonorDashboard from "./pages/dashboard/DonorDashboard";
 import BeneficiaryDashboard from "./pages/dashboard/BeneficiaryDashboard";
+import CreateDonation from "./pages/donation/CreateDonation";
+import MockPaymentModal from "./pages/donation/MockPaymentModal";
+import DonationSuccess from "./pages/donation/DonationSuccess";
 import { useAuth } from "./contexts/AuthContext";
 
 function DashboardRedirect() {
@@ -51,6 +54,11 @@ function App() {
         <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
         <Route path="/dashboard/donor" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/beneficiary" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><BeneficiaryDashboard /></ProtectedRoute>} />
+
+        {/* Donation flow routes */}
+        <Route path="/donation/create" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><CreateDonation /></ProtectedRoute>} />
+        <Route path="/donation/payment/:donationId" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><MockPaymentModal /></ProtectedRoute>} />
+        <Route path="/donation/success" element={<ProtectedRoute><DonationSuccess /></ProtectedRoute>} />
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
