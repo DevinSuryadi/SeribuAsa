@@ -158,7 +158,7 @@ class VoucherService:
             if remaining_amount <= 0:
                 break
             
-            redemption_amount = min(voucher.balance, remaining_amount)
+            redemption_amount = min(float(voucher.balance), float(remaining_amount))  # type: ignore[arg-type]
             
             redemption = VoucherRedemption(
                 voucher_id=voucher.id,
@@ -168,8 +168,8 @@ class VoucherService:
             redemptions.append(redemption)
             db.add(redemption)
             
-            voucher.balance -= redemption_amount
-            remaining_amount -= redemption_amount
+            voucher.balance -= redemption_amount  # type: ignore[assignment]
+            remaining_amount -= redemption_amount  # type: ignore[operator]
             
             if voucher.balance <= 0:
                 voucher.status = VoucherStatusEnum.redeemed
@@ -179,7 +179,7 @@ class VoucherService:
         ).first()
         
         if beneficiary:
-            beneficiary.vouchers_balance -= amount
+            beneficiary.vouchers_balance -= amount  # type: ignore[assignment]
         
         db.commit()
         
@@ -200,3 +200,52 @@ class VoucherService:
             ],
             "total_redeemed": amount
         }
+    
+    @staticmethod
+    def get_transaction_history(
+        db: Session,
+        beneficiary_id: str,
+        params=None
+    ) -> List[Dict]:
+        """Get voucher transaction history for a beneficiary"""
+        transactions = []
+        
+        vouchers = db.query(Voucher).filter(
+            Voucher.beneficiary_id == beneficiary_id
+        ).order_by(Voucher.allocated_date.desc()).all()
+        
+        for voucher in vouchers:
+            transactions.append({
+                "id": str(voucher.id),
+                "type": "allocation",
+                "amount": voucher.balance,
+                "balance_after": voucher.balance,
+                "source": f"Donation {voucher.donation_id}" if voucher.donation_id else "Direct allocation",
+                "date": voucher.allocated_date,
+                "description": f"Voucher {voucher.code} allocated"
+            })
+        
+        redemptions = db.query(VoucherRedemption).join(
+            Voucher, VoucherRedemption.voucher_id == Voucher.id
+        ).filter(
+            Voucher.beneficiary_id == beneficiary_id
+        ).order_by(VoucherRedemption.created_at.desc()).all()
+        
+        for redemption in redemptions:
+            transactions.append({
+                "id": str(redemption.id),
+                "type": "redemption",
+                "amount": -redemption.amount,
+                "balance_after": 0,
+                "source": f"Order {redemption.order_id}",
+                "date": redemption.created_at,
+                "description": "Redeemed at vendor"
+            })
+        
+        transactions.sort(key=lambda x: x["date"], reverse=True)
+        
+        if params:
+            offset = (params.page - 1) * params.page_size
+            transactions = transactions[offset:offset + params.page_size]
+        
+        return transactions
