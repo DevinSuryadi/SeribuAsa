@@ -170,6 +170,7 @@ class Child(BaseModel):
     
     # Relationship
     beneficiary_profile = relationship("BeneficiaryProfile", back_populates="children")
+    nutrition_measurements = relationship("NutritionMeasurement", back_populates="child", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Child {self.full_name}>"
