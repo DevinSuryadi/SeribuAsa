@@ -5,40 +5,81 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Wallet, History, AlertTriangle, Users } from "lucide-react"
-
-// Dummy data for demo
-const dummyTransactions = [
-  { id: 1, type: "allocation", amount: 300000, date: "2026-03-28", source: "Donasi dari Donatur A" },
-  { id: 2, type: "redemption", amount: -75000, date: "2026-03-25", source: "Penukaran di Warung B" },
-  { id: 3, type: "allocation", amount: 200000, date: "2026-03-15", source: "Donasi dari Donatur C" },
-]
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { History, AlertTriangle, Users, RefreshCw, AlertCircle } from "lucide-react"
+import { getVoucherBalance, getVoucherHistory } from "@/services/vouchers"
+import { toast } from "sonner"
 
 export default function BeneficiaryDashboard() {
-  const { user, loading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const [balance, setBalance] = useState<any>(null)
+  const [transactions, setTransactions] = useState<any[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       navigate("/masuk")
     }
-  }, [user, loading, navigate])
+  }, [user, authLoading, navigate])
+
+  const fetchData = async () => {
+    if (!user?.id) return
+    
+    try {
+      setDataLoading(true)
+      setError(null)
+      
+      const [balanceData, historyData] = await Promise.all([
+        getVoucherBalance(user.id),
+        getVoucherHistory(user.id),
+      ])
+      
+      setBalance(balanceData)
+      setTransactions(historyData.items || [])
+    } catch (err: any) {
+      setError(err.message || "Gagal memuat data voucher")
+      toast.error("Gagal memuat data voucher")
+    } finally {
+      setDataLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const timer = setTimeout(() => setDataLoading(false), 500)
-    return () => clearTimeout(timer)
-  }, [])
+    if (user) {
+      fetchData()
+    }
+  }, [user])
 
-  const totalBalance = 300000
-  const activeVouchers = 2
-  const expiringSoon = 1
+  const totalBalance = balance?.total_balance || 0
+  const activeVouchers = balance?.active_vouchers?.length || 0
+  const expiringSoon = balance?.expiring_soon?.count || 0
 
-  if (loading || dataLoading) {
+  if (authLoading || dataLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div>
       </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout title="Ringkasan" subtitle="Selamat datang kembali!">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Gagal memuat data</AlertTitle>
+          <AlertDescription className="flex items-center gap-2 mt-2">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={fetchData}>
+              <RefreshCw className="mr-1 h-3 w-3" />
+              Coba Lagi
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </DashboardLayout>
     )
   }
 
@@ -51,7 +92,7 @@ export default function BeneficiaryDashboard() {
         </CardHeader>
         <CardContent>
           <div className="text-4xl font-bold text-green-700">
-            Rp {totalBalance.toLocaleString("id-ID")}
+            Rp {parseFloat(totalBalance || 0).toLocaleString("id-ID")}
           </div>
           <div className="mt-4 flex gap-6">
             <div>
@@ -102,24 +143,32 @@ export default function BeneficiaryDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {dummyTransactions.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <p className="font-medium">{tx.source}</p>
-                  <p className="text-sm text-gray-500">{tx.date}</p>
+          {transactions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>Belum ada transaksi</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {transactions.map((tx: any) => (
+                <div key={tx.id} className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="font-medium">{tx.source || tx.description}</p>
+                    <p className="text-sm text-gray-500">
+                      {tx.date ? new Date(tx.date).toLocaleDateString("id-ID") : "-"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-semibold ${(tx.amount || 0) > 0 ? "text-green-600" : "text-red-600"}`}>
+                      {(tx.amount || 0) > 0 ? "+" : ""}Rp {Math.abs(tx.amount || 0).toLocaleString("id-ID")}
+                    </p>
+                    <Badge variant={tx.type === "allocation" ? "default" : "secondary"} className="mt-1">
+                      {tx.type === "allocation" ? "Alokasi" : "Penukaran"}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className={`font-semibold ${tx.amount > 0 ? "text-green-600" : "text-red-600"}`}>
-                    {tx.amount > 0 ? "+" : ""}Rp {Math.abs(tx.amount).toLocaleString("id-ID")}
-                  </p>
-                  <Badge variant={tx.type === "allocation" ? "default" : "secondary"} className="mt-1">
-                    {tx.type === "allocation" ? "Alokasi" : "Penukaran"}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </DashboardLayout>

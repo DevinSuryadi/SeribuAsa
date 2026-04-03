@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CreditCard, AlertTriangle, Loader2, CheckCircle2, Copy } from "lucide-react"
 import { toast } from "sonner"
+import { simulatePayment } from "@/services/donations"
 
 export default function MockPaymentModal() {
   const { donationId } = useParams()
@@ -28,23 +29,13 @@ export default function MockPaymentModal() {
   const handleSimulatePayment = async () => {
     setLoading(true)
 
-    // Simulate processing time
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
     try {
-      // Call backend to simulate payment success
-      const response = await fetch(`/api/v1/donations/${donationId}/simulate-payment`, {
-        method: "POST",
-      })
-
-      if (!response.ok) {
-        throw new Error("Payment simulation failed")
-      }
-
-      const result = await response.json()
+      // Add small delay for demo UX
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      
+      const result = await simulatePayment(donationId!)
       setSuccess(true)
 
-      // Navigate to success page after brief delay
       setTimeout(() => {
         navigate("/donation/success", {
           state: {
@@ -55,8 +46,8 @@ export default function MockPaymentModal() {
           },
         })
       }, 1500)
-    } catch (error) {
-      toast.error("Simulasi pembayaran gagal", { description: "Silakan coba lagi" })
+    } catch (err: any) {
+      toast.error("Simulasi pembayaran gagal", { description: err.message })
       setLoading(false)
     }
   }

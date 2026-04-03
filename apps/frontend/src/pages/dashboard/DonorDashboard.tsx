@@ -5,42 +5,74 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Heart, Users, TrendingUp, ArrowUpRight } from "lucide-react"
-
-// Dummy data for demo
-const dummyDonations = [
-  { id: 1, amount: 300000, date: "2026-03-28", status: "success", recipient: "Anak A" },
-  { id: 2, amount: 500000, date: "2026-03-15", status: "success", recipient: "Anak B" },
-  { id: 3, amount: 150000, date: "2026-03-01", status: "pending", recipient: null },
-]
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Users, TrendingUp, ArrowUpRight, RefreshCw, AlertCircle, Plus } from "lucide-react"
+import { getDonations } from "@/services/donations"
+import { toast } from "sonner"
 
 export default function DonorDashboard() {
-  const { user, loading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const [donations, setDonations] = useState<any[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       navigate("/masuk")
     }
-  }, [user, loading, navigate])
+  }, [user, authLoading, navigate])
+
+  const fetchDonations = async () => {
+    try {
+      setDataLoading(true)
+      setError(null)
+      const data = await getDonations()
+      setDonations(data.items || [])
+    } catch (err: any) {
+      setError(err.message || "Gagal memuat data donasi")
+      toast.error("Gagal memuat data donasi")
+    } finally {
+      setDataLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const timer = setTimeout(() => setDataLoading(false), 500)
-    return () => clearTimeout(timer)
-  }, [])
+    if (user) {
+      fetchDonations()
+    }
+  }, [user])
 
-  const totalDonated = dummyDonations
+  const totalDonated = donations
     .filter((d) => d.status === "success")
-    .reduce((sum, d) => sum + d.amount, 0)
+    .reduce((sum, d) => sum + parseFloat(d.amount || 0), 0)
 
-  const childrenHelped = dummyDonations.filter((d) => d.recipient).length
+  const childrenHelped = donations.filter((d) => d.recipient_id).length
 
-  if (loading || dataLoading) {
+  if (authLoading || dataLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div>
       </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout title="Ringkasan" subtitle="Selamat datang kembali, Donatur!">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Gagal memuat data</AlertTitle>
+          <AlertDescription className="flex items-center gap-2 mt-2">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={fetchDonations}>
+              <RefreshCw className="mr-1 h-3 w-3" />
+              Coba Lagi
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </DashboardLayout>
     )
   }
 
@@ -55,7 +87,7 @@ export default function DonorDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">Rp {totalDonated.toLocaleString("id-ID")}</div>
-            <p className="text-xs text-muted-foreground">Dari {dummyDonations.filter((d) => d.status === "success").length} donasi berhasil</p>
+            <p className="text-xs text-muted-foreground">Dari {donations.filter((d) => d.status === "success").length} donasi berhasil</p>
           </CardContent>
         </Card>
 
@@ -82,6 +114,14 @@ export default function DonorDashboard() {
         </Card>
       </div>
 
+      {/* Quick Action */}
+      <div className="mt-6 flex justify-end">
+        <Button onClick={() => navigate("/donation/create")}>
+          <Plus className="mr-2 h-4 w-4" />
+          Donasi Baru
+        </Button>
+      </div>
+
       <Separator className="my-8" />
 
       {/* Recent Donations */}
@@ -90,24 +130,32 @@ export default function DonorDashboard() {
           <CardTitle>Donasi Terbaru</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {dummyDonations.map((donation) => (
-              <div key={donation.id} className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <p className="font-medium">
-                    Rp {donation.amount.toLocaleString("id-ID")}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {donation.date}
-                    {donation.recipient && ` • ${donation.recipient}`}
-                  </p>
+          {donations.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>Belum ada donasi</p>
+              <Button variant="link" onClick={() => navigate("/donation/create")} className="mt-2">
+                Buat donasi pertama Anda
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {donations.map((donation: any) => (
+                <div key={donation.id} className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="font-medium">
+                      Rp {parseFloat(donation.amount || 0).toLocaleString("id-ID")}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(donation.created_at).toLocaleDateString("id-ID")}
+                    </p>
+                  </div>
+                  <Badge variant={donation.status === "success" ? "default" : "secondary"}>
+                    {donation.status === "success" ? "Berhasil" : donation.status === "pending" ? "Pending" : donation.status}
+                  </Badge>
                 </div>
-                <Badge variant={donation.status === "success" ? "default" : "secondary"}>
-                  {donation.status === "success" ? "Berhasil" : "Pending"}
-                </Badge>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </DashboardLayout>
