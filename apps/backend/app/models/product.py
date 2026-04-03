@@ -76,6 +76,7 @@ class Product(BaseModel):
     # Relationship
     category = relationship("Category", back_populates="products")
     vendor_profile = relationship("VendorProfile", back_populates="products")
+    order_items = relationship("OrderItem", back_populates="product", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Product {self.name} - {self.price}>"
