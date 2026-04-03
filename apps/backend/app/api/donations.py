@@ -153,3 +153,36 @@ async def get_impact_metrics(
     )
     
     return ImpactMetrics(**metrics)
+
+
+@router.post("/{donation_id}/simulate-payment")
+async def simulate_payment(
+    donation_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_mock_current_user)
+):
+    """
+    Simulate successful payment (DEMO ONLY).
+    In production, this will be replaced by Midtrans webhook.
+    """
+    try:
+        from app.services.mock_payment_service import MockPaymentService
+        
+        result = MockPaymentService.simulate_payment_success(
+            db=db,
+            donation_id=donation_id
+        )
+        
+        return result
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Payment simulation failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to simulate payment"
+        )
