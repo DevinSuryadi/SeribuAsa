@@ -266,7 +266,7 @@ const Donasi = () => {
                 </ul>
 
                 <Link
-                  to="/daftar"
+                  to="/register"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -361,24 +361,28 @@ const Donasi = () => {
               ))}
             </div>
 
-            <button
-              disabled={!customAmount}
+            <Link
+              to="/register"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 width: '100%',
                 marginTop: 16,
                 padding: '12px',
                 borderRadius: 10,
-                border: 'none',
                 fontSize: 14,
                 fontWeight: 600,
+                textDecoration: 'none',
                 cursor: customAmount ? 'pointer' : 'not-allowed',
                 background: customAmount ? '#16a34a' : 'rgba(0,0,0,0.06)',
                 color: customAmount ? 'white' : '#bbb',
                 transition: 'all 0.15s ease',
                 boxShadow: customAmount ? '0 2px 10px rgba(22,163,74,0.2)' : 'none',
               }}
-            > <Link to="/daftar"> Donasi Sekarang</Link>
-            </button>
+            >
+              Donasi Sekarang
+            </Link>
           </div>
           
         </div>

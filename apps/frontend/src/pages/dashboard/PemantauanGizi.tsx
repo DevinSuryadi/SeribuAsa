@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -37,7 +37,7 @@ const PemantauanGizi = () => {
   const [formHeight, setFormHeight] = useState('');
   const [formMuac, setFormMuac] = useState('');
 
-  const fetchChildren = async () => {
+  const fetchChildren = useCallback(async () => {
     try {
       const data = await getChildren();
       const childList = data.data || [];
@@ -48,7 +48,7 @@ const PemantauanGizi = () => {
     } catch {
       setChildren([]);
     }
-  };
+  }, [selectedChild]);
 
   useEffect(() => {
     if (user) {
@@ -121,14 +121,14 @@ const PemantauanGizi = () => {
     }
   };
 
-  const chartData = measurements
-    .slice(0, 10)
-    .reverse()
-    .map((m: any) => ({
+  const chartData = useMemo(
+    () => measurements.slice(0, 10).reverse().map((m: any) => ({
       month: formatDate(m.measurement_date).split(' ')[0] || m.measurement_date,
       weight: parseFloat(m.weight),
       height: parseFloat(m.height),
-    }));
+    })),
+    [measurements]
+  );
 
   if (loading) {
     return (
@@ -158,7 +158,7 @@ const PemantauanGizi = () => {
             <Card className="md:col-span-2 text-center"><CardContent className="pt-8 pb-8"><Baby className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" /><p className="text-muted-foreground">Belum ada data anak</p><p className="text-sm text-muted-foreground/70 mt-1">Tambahkan data anak untuk memulai pemantauan gizi</p></CardContent></Card>
           ) : (
             children.map((child) => {
-              const childMeasurements = measurements.filter(() => true);
+              const childMeasurements = measurements.filter((m) => m.child_id === child.id);
               const latest = childMeasurements[0];
               return (
                 <Card key={child.id} className={`cursor-pointer hover:border-primary/30 transition-colors ${selectedChild?.id === child.id ? 'border-primary/30' : ''}`} onClick={() => setSelectedChild(child)}>

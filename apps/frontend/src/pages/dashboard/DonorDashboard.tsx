@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import DashboardLayout from "@/components/dashboard/DashboardLayout"
@@ -43,7 +43,7 @@ export default function DonorDashboard() {
     }
   }, [user, authLoading, navigate])
 
-  const fetchDonations = async () => {
+  const fetchDonations = useCallback(async () => {
     try {
       setDataLoading(true)
       setError(null)
@@ -55,17 +55,18 @@ export default function DonorDashboard() {
     } finally {
       setDataLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (user) {
       fetchDonations()
     }
-  }, [user])
+  }, [user, fetchDonations])
 
-  const totalDonated = donations
-    .filter((d) => d.status === "success")
-    .reduce((sum, d) => sum + parseFloat(d.amount || 0), 0)
+  const totalDonated = useMemo(
+    () => donations.filter((d) => d.status === "success").reduce((sum, d) => sum + parseFloat(d.amount || 0), 0),
+    [donations]
+  )
 
   const childrenHelped = donations.filter((d) => d.recipient_id).length
   const redemptionRate = donations.length > 0 ? Math.round((donations.filter((d) => d.status === "success").length / donations.length) * 100) : 0

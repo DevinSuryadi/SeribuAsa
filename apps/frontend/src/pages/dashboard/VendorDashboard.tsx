@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -20,7 +20,7 @@ export default function VendorDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -36,18 +36,25 @@ export default function VendorDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     if (user) fetchData();
-  }, [user]);
+  }, [user, fetchData]);
 
   const totalOrders = orders.length;
-  const totalRevenue = orders
-    .filter((o) => o.status === 'completed')
-    .reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
-  const activeProducts = products.filter((p) => p.approval_status === 'approved').length;
-  const pendingOrders = orders.filter((o) => o.status === 'pending').length;
+  const totalRevenue = useMemo(
+    () => orders.filter((o) => o.status === 'completed').reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0),
+    [orders]
+  );
+  const activeProducts = useMemo(
+    () => products.filter((p) => p.approval_status === 'approved').length,
+    [products]
+  );
+  const pendingOrders = useMemo(
+    () => orders.filter((o) => o.status === 'pending').length,
+    [orders]
+  );
 
   const statusColor: Record<string, string> = {
     completed: 'bg-primary/10 text-primary border-primary/20',
@@ -61,7 +68,7 @@ export default function VendorDashboard() {
     cancelled: 'Dibatalkan',
   };
 
-  const handleStatusUpdate = async (orderId: string, status: 'completed' | 'cancelled') => {
+  const handleStatusUpdate = useCallback(async (orderId: string, status: 'completed' | 'cancelled') => {
     try {
       await updateOrderStatus(orderId, status);
       toast.success(`Pesanan ${status === 'completed' ? 'diselesaikan' : 'dibatalkan'}`);
@@ -69,7 +76,7 @@ export default function VendorDashboard() {
     } catch (err: any) {
       toast.error(err.message || 'Gagal memperbarui status');
     }
-  };
+  }, [fetchData]);
 
   if (loading) {
     return (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,20 +69,20 @@ const DonorDampak = () => {
     );
   }
 
-  const totalDonated = parseFloat(metrics?.total_donated || 0);
-  const childrenHelped = metrics?.total_children_helped || 0;
-  const vouchersAllocated = metrics?.total_vouchers_allocated || 0;
-  const trendData = metrics?.donation_trend || [];
-  const geoData = metrics?.geographic_distribution || [];
+  const totalDonated = useMemo(() => parseFloat(metrics?.total_donated || 0), [metrics?.total_donated]);
+  const childrenHelped = useMemo(() => metrics?.total_children_helped || 0, [metrics?.total_children_helped]);
+  const vouchersAllocated = useMemo(() => metrics?.total_vouchers_allocated || 0, [metrics?.total_vouchers_allocated]);
+  const trendData = useMemo(() => metrics?.donation_trend || [], [metrics?.donation_trend]);
+  const geoData = useMemo(() => metrics?.geographic_distribution || [], [metrics?.geographic_distribution]);
 
   const redemptionRate = vouchersAllocated > 0 ? Math.round((vouchersAllocated * 0.83)) : 0;
 
-  const categoryData = [
+  const categoryData = useMemo(() => [
     { name: 'Telur & Susu', value: 45 },
     { name: 'Beras', value: 30 },
     { name: 'Sayuran', value: 15 },
     { name: 'Lainnya', value: 10 },
-  ];
+  ], []);
 
   return (
     <DashboardLayout title="Dampak Donasi Anda" subtitle="Lihat bagaimana donasi Anda membuat perubahan nyata.">

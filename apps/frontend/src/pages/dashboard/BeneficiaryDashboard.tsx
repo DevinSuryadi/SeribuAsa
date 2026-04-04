@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import DashboardLayout from "@/components/dashboard/DashboardLayout"
@@ -27,7 +27,7 @@ export default function BeneficiaryDashboard() {
     }
   }, [user, authLoading, navigate])
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user?.id) return
     
     try {
@@ -47,17 +47,17 @@ export default function BeneficiaryDashboard() {
     } finally {
       setDataLoading(false)
     }
-  }
+  }, [user?.id])
 
   useEffect(() => {
     if (user) {
       fetchData()
     }
-  }, [user])
+  }, [user, fetchData])
 
-  const totalBalance = balance?.total_balance || 0
-  const activeVouchers = balance?.active_vouchers?.length || 0
-  const expiringSoon = balance?.expiring_soon?.count || 0
+  const totalBalance = useMemo(() => balance?.total_balance || 0, [balance])
+  const activeVouchers = useMemo(() => balance?.active_vouchers?.length || 0, [balance])
+  const expiringSoon = useMemo(() => balance?.expiring_soon?.count || 0, [balance])
 
   if (authLoading || dataLoading) {
     return (
@@ -98,7 +98,7 @@ export default function BeneficiaryDashboard() {
             <p className="text-xs text-muted-foreground mt-0.5">Isi survei untuk mempertahankan kelayakan voucher.</p>
           </div>
           <Button size="sm" className="flex-shrink-0" asChild>
-            <Link to="#">Isi Survei</Link>
+            <Link to="/dashboard/survei-fies">Isi Survei</Link>
           </Button>
         </div>
 
@@ -155,7 +155,7 @@ export default function BeneficiaryDashboard() {
                 <CardDescription>Aktivitas voucher terbaru</CardDescription>
               </div>
               <Button variant="ghost" size="sm" className="gap-1 text-xs" asChild>
-                <Link to="#">Semua <ArrowRight className="h-3 w-3" /></Link>
+                <Link to="/dashboard/dompet">Semua <ArrowRight className="h-3 w-3" /></Link>
               </Button>
             </CardHeader>
             <CardContent className="flex-1">
@@ -198,8 +198,8 @@ export default function BeneficiaryDashboard() {
                 {[
                   { label: 'Belanja Pangan', desc: 'Beli bahan makanan bergizi', icon: ShoppingBasket, href: '/dashboard/katalog', accent: true },
                   { label: 'Penukaran Voucher', desc: 'Tukar voucher di vendor', icon: Wallet, href: '/dashboard/penukaran', accent: false },
-                  { label: 'Isi Survei FIES', desc: 'Survei ketahanan pangan', icon: ClipboardList, href: '#', accent: false },
-                  { label: 'Cek Gizi Anak', desc: 'Input data tumbuh kembang', icon: Activity, href: '#', accent: false },
+                  { label: 'Isi Survei FIES', desc: 'Survei ketahanan pangan', icon: ClipboardList, href: '/dashboard/survei-fies', accent: false },
+                  { label: 'Cek Gizi Anak', desc: 'Input data tumbuh kembang', icon: Activity, href: '/dashboard/pemantauan-gizi', accent: false },
                 ].map((action) => (
                   <Link
                     key={action.label}

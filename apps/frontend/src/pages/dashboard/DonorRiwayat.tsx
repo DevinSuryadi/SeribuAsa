@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -32,7 +32,7 @@ const DonorRiwayat = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const fetchDonations = async () => {
+  const fetchDonations = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -44,24 +44,27 @@ const DonorRiwayat = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (user) {
       fetchDonations();
     }
-  }, [user]);
+  }, [user, fetchDonations]);
 
-  const filtered = donations.filter((d: any) => {
+  const filtered = useMemo(() => donations.filter((d: any) => {
     if (statusFilter !== 'all' && d.status !== statusFilter) return false;
     if (search) {
       const typeLabel = d.type === 'subscription' ? 'Donasi Langganan' : 'Donasi Satu Kali';
       return typeLabel.toLowerCase().includes(search.toLowerCase());
     }
     return true;
-  });
+  }), [donations, search, statusFilter]);
 
-  const totalDonated = filtered
+  const totalDonated = useMemo(
+    () => filtered.filter((d: any) => d.status === 'success').reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0),
+    [filtered]
+  );
     .filter((d: any) => d.status === 'success')
     .reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0);
 

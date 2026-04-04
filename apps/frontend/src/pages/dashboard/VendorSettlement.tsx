@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { CreditCard, Download, CheckCircle, Clock, ArrowRight, Wallet, Calendar } from 'lucide-react';
+import { CreditCard, Download, CheckCircle, Clock, ArrowRight, Wallet, Calendar, RefreshCw, AlertCircle } from 'lucide-react';
 import { formatIDR, formatDate } from '@/lib/format';
 import { useStaggerChildren } from '@/hooks/useStaggerChildren';
+import { apiFetch } from '@/services/api';
 import { toast } from 'sonner';
 
 const VendorSettlement = () => {
@@ -19,15 +20,11 @@ const VendorSettlement = () => {
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
 
-  const fetchSettlements = async () => {
+  const fetchSettlements = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`http://localhost:8000/api/v1/settlements/?page=1&page_size=20`, {
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error('Gagal memuat data settlement');
-      const data = await res.json();
+      const data = await apiFetch('/settlements/?page=1&page_size=20');
       setSettlements(data.items || []);
     } catch (err: any) {
       setError(err.message);
@@ -35,7 +32,7 @@ const VendorSettlement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (user) fetchSettlements();

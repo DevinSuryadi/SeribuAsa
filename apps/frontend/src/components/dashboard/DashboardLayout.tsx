@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, memo } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
@@ -230,3 +230,5 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
     </div>
   )
 }
+
+export default memo(DashboardLayout);
