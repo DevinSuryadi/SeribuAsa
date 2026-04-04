@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -7,22 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut } from 'lucide-react';
-import { mockUserProfile } from '@/data/mockData';
 import { formatDate } from '@/lib/format';
 import { toast } from 'sonner';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { user, userRole, signOut } = useAuth();
-  const [showEditProfile, setShowEditProfile] = useState(false);
-
-  const profile = userRole === 'beneficiary' ? mockUserProfile.beneficiary : mockUserProfile.donor;
 
   const handleSignOut = () => {
     signOut();
     toast.success('Berhasil keluar');
     navigate('/');
   };
+
+  const roleLabel = userRole === 'donor' ? 'Donatur' : userRole === 'beneficiary' ? 'Penerima Manfaat' : userRole === 'vendor' ? 'Vendor' : userRole;
 
   return (
     <DashboardLayout title="Profil Saya" subtitle="Kelola informasi pribadi dan pengaturan akun Anda.">
@@ -44,9 +41,9 @@ const Profile = () => {
                 <User className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <div className="text-lg font-semibold text-foreground">{profile.fullName}</div>
-                <div className="text-sm text-muted-foreground">{profile.email}</div>
-                <Badge className="mt-1 capitalize">{userRole}</Badge>
+                <div className="text-lg font-semibold text-foreground">{user?.fullName || 'Pengguna'}</div>
+                <div className="text-sm text-muted-foreground">{user?.email || '-'}</div>
+                <Badge className="mt-1 capitalize">{roleLabel}</Badge>
               </div>
             </div>
 
@@ -57,28 +54,28 @@ const Profile = () => {
                 <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Email</div>
-                  <div className="text-sm font-medium text-foreground">{profile.email}</div>
+                  <div className="text-sm font-medium text-foreground">{user?.email || '-'}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Nomor HP</div>
-                  <div className="text-sm font-medium text-foreground">{profile.phone}</div>
+                  <div className="text-sm font-medium text-foreground">Belum diatur</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Tanggal Lahir</div>
-                  <div className="text-sm font-medium text-foreground">{formatDate(profile.dateOfBirth)}</div>
+                  <div className="text-sm font-medium text-foreground">Belum diatur</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Jenis Kelamin</div>
-                  <div className="text-sm font-medium text-foreground capitalize">{profile.gender === 'male' ? 'Laki-laki' : 'Perempuan'}</div>
+                  <div className="text-sm font-medium text-foreground">Belum diatur</div>
                 </div>
               </div>
             </div>
@@ -96,11 +93,11 @@ const Profile = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{profile.fullName}</span>
+                    <span className="font-medium text-foreground">{user?.fullName || 'Pengguna'}</span>
                     <Badge variant="secondary" className="text-[10px]">Utama</Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{profile.phone}</p>
-                  <p className="text-sm text-foreground mt-2">{profile.address}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Belum diatur</p>
+                  <p className="text-sm text-foreground mt-2 text-muted-foreground italic">Silakan lengkapi profil Anda untuk menambahkan alamat.</p>
                 </div>
               </div>
             </div>
@@ -117,15 +114,8 @@ const Profile = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <div className="text-sm font-medium text-foreground">Bergabung Sejak</div>
-                  <div className="text-xs text-muted-foreground">{formatDate(profile.createdAt)}</div>
-                </div>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between py-2">
-                <div>
                   <div className="text-sm font-medium text-foreground">Role Akun</div>
-                  <div className="text-xs text-muted-foreground capitalize">{userRole === 'donor' ? 'Donatur' : userRole === 'beneficiary' ? 'Penerima Manfaat' : userRole}</div>
+                  <div className="text-xs text-muted-foreground capitalize">{roleLabel}</div>
                 </div>
                 <Badge variant="outline" className="capitalize">{userRole}</Badge>
               </div>

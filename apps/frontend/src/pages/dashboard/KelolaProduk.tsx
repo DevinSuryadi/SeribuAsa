@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,37 +9,176 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Search, Edit, Trash2, Package } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { formatIDR } from '@/lib/format';
-import { mockProducts } from '@/data/mockData';
+import { getProducts, createProduct, updateProduct, deleteProduct, getCategories } from '@/services/products';
 import { toast } from 'sonner';
 
-const vendorProducts = mockProducts.slice(0, 8);
+type Product = {
+  id: string;
+  name: string;
+  category_id: string | null;
+  category_name: string | null;
+  price: number;
+  voucher_price: number;
+  stock_quantity: number;
+  unit: string;
+  approval_status: string;
+  description: string | null;
+};
 
 const KelolaProduk = () => {
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [searchQ, setSearchQ] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<typeof mockProducts[0] | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const filtered = vendorProducts.filter((p) => !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase()));
+  const [formName, setFormName] = useState('');
+  const [formCategory, setFormCategory] = useState('');
+  const [formPrice, setFormPrice] = useState('');
+  const [formVoucherPrice, setFormVoucherPrice] = useState('');
+  const [formStock, setFormStock] = useState('');
+  const [formUnit, setFormUnit] = useState('pcs');
 
-  const handleSave = () => {
-    toast.success(editingProduct ? 'Produk diperbarui' : 'Produk ditambahkan');
-    setShowForm(false);
-    setEditingProduct(null);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [productsData, catsData] = await Promise.all([
+        getProducts({ vendor_id: user?.id || '' }),
+        getCategories(),
+      ]);
+      setProducts(productsData.items || []);
+      setCategories(catsData || []);
+    } catch (err: any) {
+      setError(err.message || 'Gagal memuat data produk');
+      toast.error('Gagal memuat data produk');
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user) fetchData();
+  }, [user, fetchData]);
+
+  const filtered = products.filter((p) => !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase()));
+
+  const openForm = (product?: Product) => {
+    if (product) {
+      setEditingProduct(product);
+      setFormName(product.name);
+      setFormCategory(product.category_id || '');
+      setFormPrice(String(product.price));
+      setFormVoucherPrice(String(product.voucher_price));
+      setFormStock(String(product.stock_quantity));
+      setFormUnit(product.unit);
+    } else {
+      setEditingProduct(null);
+      setFormName('');
+      setFormCategory('');
+      setFormPrice('');
+      setFormVoucherPrice('');
+      setFormStock('');
+      setFormUnit('pcs');
+    }
+    setShowForm(true);
   };
 
-  const handleDelete = (name: string) => {
-    toast.success(`"${name}" dihapus`);
+  const handleSave = async () => {
+    if (!formName || !formPrice || !formVoucherPrice) {
+      toast.error('Lengkapi semua field wajib');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const data = {
+        name: formName,
+        category_id: formCategory || undefined,
+        price: parseFloat(formPrice),
+        voucher_price: parseFloat(formVoucherPrice),
+        stock_quantity: parseInt(formStock) || 0,
+        unit: formUnit,
+      };
+
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, data);
+        toast.success('Produk diperbarui');
+      } else {
+        await createProduct(data);
+        toast.success('Produk ditambahkan');
+      }
+      setShowForm(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menyimpan produk');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const handleDelete = async (product: Product) => {
+    try {
+      await deleteProduct(product.id);
+      toast.success(`"${product.name}" dihapus`);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menghapus produk');
+    }
+  };
+
+  const approvalColor: Record<string, string> = {
+    approved: 'bg-primary/10 text-primary border-primary/20',
+    pending: 'bg-accent/10 text-accent-foreground border-accent/20',
+    rejected: 'bg-destructive/10 text-destructive border-destructive/20',
+  };
+
+  const approvalLabel: Record<string, string> = {
+    approved: 'Disetujui',
+    pending: 'Menunggu',
+    rejected: 'Ditolak',
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Kelola Produk" subtitle="Tambah, edit, dan kelola produk pangan Anda.">
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}><CardContent className="py-4"><div className="animate-pulse flex items-center gap-4"><div className="h-12 w-12 bg-secondary rounded-lg" /><div className="flex-1 space-y-2"><div className="h-4 w-32 bg-secondary rounded" /><div className="h-3 w-20 bg-secondary rounded" /></div></div></CardContent></Card>
+          ))}
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout title="Kelola Produk" subtitle="Tambah, edit, dan kelola produk pangan Anda.">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-destructive">Gagal memuat data</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="mr-1 h-3 w-3" /> Coba Lagi
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="Kelola Produk" subtitle="Tambah, edit, dan kelola produk pangan Anda.">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex-1" />
-          <Button className="gap-2" onClick={() => { setEditingProduct(null); setShowForm(true); }}>
+          <Button className="gap-2" onClick={() => openForm()}>
             <Plus className="h-4 w-4" /> Tambah Produk
           </Button>
         </div>
@@ -60,19 +199,22 @@ const KelolaProduk = () => {
                   <div>
                     <div className="font-medium text-foreground">{product.name}</div>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-[10px]">{product.category}</Badge>
+                      <Badge variant="outline" className="text-[10px]">{product.category_name || 'Uncategorized'}</Badge>
+                      <Badge variant="outline" className={`text-[10px] ${approvalColor[product.approval_status] || ''}`}>
+                        {approvalLabel[product.approval_status] || product.approval_status}
+                      </Badge>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <div className="font-semibold text-foreground">{formatIDR(product.price)}</div>
-                    <div className="text-xs text-muted-foreground">Stok: {product.stock}</div>
+                    <div className="text-xs text-muted-foreground">Stok: {product.stock_quantity}</div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => { setEditingProduct(product); setShowForm(true); }}>
+                  <Button variant="ghost" size="icon" onClick={() => openForm(product)}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(product.name)}>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(product)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
@@ -97,37 +239,50 @@ const KelolaProduk = () => {
             <div className="space-y-4">
               <div>
                 <Label>Nama Produk</Label>
-                <Input defaultValue={editingProduct?.name || ''} placeholder="Contoh: Telur Ayam 1 kg" />
+                <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Contoh: Telur Ayam 1 kg" />
               </div>
               <div>
                 <Label>Kategori</Label>
-                <Select defaultValue={editingProduct?.category}>
+                <Select value={formCategory} onValueChange={setFormCategory}>
                   <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Pokok">🌾 Pokok</SelectItem>
-                    <SelectItem value="Protein">🥚 Protein</SelectItem>
-                    <SelectItem value="Susu">🥛 Susu</SelectItem>
-                    <SelectItem value="Sayuran">🥬 Sayuran</SelectItem>
-                    <SelectItem value="Buah">🍌 Buah</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Harga (IDR)</Label>
-                  <Input type="number" defaultValue={editingProduct?.price || ''} placeholder="0" />
+                  <Input type="number" value={formPrice} onChange={(e) => setFormPrice(e.target.value)} placeholder="0" />
                 </div>
                 <div>
-                  <Label>Stok</Label>
-                  <Input type="number" defaultValue={editingProduct?.stock || ''} placeholder="0" />
+                  <Label>Harga Voucher (IDR)</Label>
+                  <Input type="number" value={formVoucherPrice} onChange={(e) => setFormVoucherPrice(e.target.value)} placeholder="0" />
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <Label>Produk Aktif</Label>
-                <Switch defaultChecked />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Stok</Label>
+                  <Input type="number" value={formStock} onChange={(e) => setFormStock(e.target.value)} placeholder="0" />
+                </div>
+                <div>
+                  <Label>Satuan</Label>
+                  <Select value={formUnit} onValueChange={setFormUnit}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pcs">Pcs</SelectItem>
+                      <SelectItem value="kg">Kg</SelectItem>
+                      <SelectItem value="liter">Liter</SelectItem>
+                      <SelectItem value="ikat">Ikat</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <Button className="w-full" onClick={handleSave}>
-                {editingProduct ? 'Simpan Perubahan' : 'Tambah Produk'}
+              <Button className="w-full" onClick={handleSave} disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {submitting ? 'Menyimpan...' : editingProduct ? 'Simpan Perubahan' : 'Tambah Produk'}
               </Button>
             </div>
           </DialogContent>

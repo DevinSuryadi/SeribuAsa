@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, FileText, Search, Heart } from 'lucide-react';
+import { Download, FileText, Search, Heart, RefreshCw, AlertCircle } from 'lucide-react';
 import { formatIDR, formatDate } from '@/lib/format';
-import { mockDonorTransactions } from '@/data/mockData';
+import { getDonations } from '@/services/donations';
 import { toast } from 'sonner';
 
 const statusColor: Record<string, string> = {
@@ -24,24 +25,89 @@ const statusLabel: Record<string, string> = {
 
 const DonorRiwayat = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [donations, setDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  const fetchDonations = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getDonations();
+      setDonations(data.items || []);
+    } catch (err: any) {
+      setError(err.message || 'Gagal memuat riwayat donasi');
+      toast.error('Gagal memuat riwayat donasi');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const filtered = mockDonorTransactions.filter((t) => {
-    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
-    if (search && !t.plan.toLowerCase().includes(search.toLowerCase()) && !t.recipient?.toLowerCase().includes(search.toLowerCase())) return false;
+  useEffect(() => {
+    if (user) {
+      fetchDonations();
+    }
+  }, [user]);
+
+  const filtered = donations.filter((d: any) => {
+    if (statusFilter !== 'all' && d.status !== statusFilter) return false;
+    if (search) {
+      const typeLabel = d.type === 'subscription' ? 'Donasi Langganan' : 'Donasi Satu Kali';
+      return typeLabel.toLowerCase().includes(search.toLowerCase());
+    }
     return true;
   });
 
   const totalDonated = filtered
-    .filter((t) => t.status === 'success')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((d: any) => d.status === 'success')
+    .reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0);
+
+  if (loading) {
+    return (
+      <DashboardLayout title="Riwayat Donasi" subtitle="Semua transaksi donasi Anda.">
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between border-b border-border/50 pb-4 last:border-0 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-secondary" />
+                      <div>
+                        <div className="h-4 w-32 bg-secondary rounded" />
+                        <div className="h-3 w-24 bg-secondary rounded mt-2" />
+                      </div>
+                    </div>
+                    <div className="h-8 w-24 bg-secondary rounded" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout title="Riwayat Donasi" subtitle="Semua transaksi donasi Anda.">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-destructive">Gagal memuat data</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchDonations}>
+            <RefreshCw className="mr-1 h-3 w-3" /> Coba Lagi
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="Riwayat Donasi" subtitle="Semua transaksi donasi Anda.">
@@ -81,22 +147,7 @@ const DonorRiwayat = () => {
         {/* Transaction List */}
         <Card>
           <CardContent className="pt-6">
-            {loading ? (
-              <div className="space-y-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between border-b border-border/50 pb-4 last:border-0 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-secondary" />
-                      <div>
-                        <div className="h-4 w-32 bg-secondary rounded" />
-                        <div className="h-3 w-24 bg-secondary rounded mt-2" />
-                      </div>
-                    </div>
-                    <div className="h-8 w-24 bg-secondary rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
+            {filtered.length === 0 ? (
               <div className="text-center py-12">
                 <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground">Tidak ada donasi ditemukan</p>
@@ -106,36 +157,38 @@ const DonorRiwayat = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {filtered.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between border-b border-border/50 pb-4 last:border-0 -mx-2 px-2 rounded-lg transition-colors hover:bg-secondary/30"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                        <FileText className="h-5 w-5 text-primary" />
+                {filtered.map((d: any) => {
+                  const typeLabel = d.type === 'subscription' ? 'Donasi Langganan' : 'Donasi Satu Kali';
+                  return (
+                    <div
+                      key={d.id}
+                      className="flex items-center justify-between border-b border-border/50 pb-4 last:border-0 -mx-2 px-2 rounded-lg transition-colors hover:bg-secondary/30"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                          <FileText className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-foreground">{typeLabel}</div>
+                          <div className="text-xs text-muted-foreground">{formatDate(d.created_at)} • {d.payment_method?.replace('_', ' ')}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-medium text-foreground">{t.plan}</div>
-                        <div className="text-xs text-muted-foreground">{formatDate(t.date)} • {t.method}</div>
-                        {t.recipient && <div className="text-xs text-muted-foreground mt-0.5">{t.recipient}</div>}
+                      <div className="text-right flex items-center gap-3">
+                        <div>
+                          <div className="font-semibold text-foreground">{formatIDR(d.amount)}</div>
+                          <Badge variant="outline" className={`text-[10px] ${statusColor[d.status]}`}>
+                            {statusLabel[d.status] || d.status}
+                          </Badge>
+                        </div>
+                        {d.status === 'success' && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.success('Mengunduh kwitansi...')}>
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right flex items-center gap-3">
-                      <div>
-                        <div className="font-semibold text-foreground">{formatIDR(t.amount)}</div>
-                        <Badge variant="outline" className={`text-[10px] ${statusColor[t.status]}`}>
-                          {statusLabel[t.status]}
-                        </Badge>
-                      </div>
-                      {t.status === 'success' && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.success('Mengunduh kwitansi...')}>
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
