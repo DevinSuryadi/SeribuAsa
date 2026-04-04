@@ -3,41 +3,57 @@ Pytest Test Fixtures
 Provides reusable fixtures for all tests
 """
 import pytest
+import os
 from fastapi.testclient import TestClient
 from typing import Generator
+from unittest.mock import MagicMock, patch
 
 from app.main import app
+from app.database import get_db
+from app.middleware.auth import get_current_user, AuthenticatedUser
+from app.models import *  # noqa: F401
 
 
 @pytest.fixture(scope="function")
 def client() -> Generator[TestClient, None, None]:
-    """
-    Create a test client for basic endpoint tests.
-    
-    This fixture creates a simple TestClient without database setup.
-    Use this for testing endpoints that don't require database.
-    
-    Usage:
-        def test_health_endpoint(client):
-            response = client.get("/health")
-            assert response.status_code == 200
-    """
+    """Create a test client with mock auth and mocked database"""
+    def override_auth():
+        return AuthenticatedUser(
+            user_id="00000000-0000-0000-0000-000000000001",
+            email="donor@nutriguard.id",
+            role="donor",
+            email_verified=True,
+        )
+
+    mock_db = MagicMock()
+    def override_get_db():
+        yield mock_db
+
+    app.dependency_overrides[get_current_user] = override_auth
+    app.dependency_overrides[get_db] = override_get_db
+    os.environ["DEV_MODE"] = "true"
+
     with TestClient(app) as test_client:
         yield test_client
 
+    app.dependency_overrides.clear()
+
 
 @pytest.fixture(scope="function")
-def mock_user_data() -> dict:
-    """
-    Mock user data for authentication tests.
-    
-    Usage:
-        def test_authenticated_endpoint(client, mock_user_data):
-            # Use mock_user_data in test
-            pass
-    """
-    return {
-        "user_id": "test-user-123",
-        "email": "test@example.com",
-        "roles": ["user", "donor"]
-    }
+def auth_headers() -> dict:
+    return {"Authorization": "Bearer mock-token"}
+
+
+@pytest.fixture(scope="function")
+def mock_donor_id() -> str:
+    return "00000000-0000-0000-0000-000000000001"
+
+
+@pytest.fixture(scope="function")
+def mock_beneficiary_id() -> str:
+    return "00000000-0000-0000-0000-000000000002"
+
+
+@pytest.fixture(scope="function")
+def mock_vendor_id() -> str:
+    return "00000000-0000-0000-0000-000000000003"

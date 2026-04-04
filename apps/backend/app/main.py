@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import donations, vouchers
+from app.api import donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports
 
 app = FastAPI(title="NutriGuard API", version="1.0.0")
 
@@ -17,6 +17,13 @@ app.add_middleware(
 # Include routers
 app.include_router(donations.router, prefix="/api/v1")
 app.include_router(vouchers.router, prefix="/api/v1")
+app.include_router(products.router, prefix="/api/v1")
+app.include_router(orders.router, prefix="/api/v1")
+app.include_router(fies.router, prefix="/api/v1")
+app.include_router(nutrition.router, prefix="/api/v1")
+app.include_router(recommendations.router, prefix="/api/v1")
+app.include_router(settlements.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1")
 
 
 @app.get("/")
@@ -43,6 +50,13 @@ def api_v1_root():
         "endpoints": {
             "donations": "/api/v1/donations",
             "vouchers": "/api/v1/vouchers",
+            "products": "/api/v1/products",
+            "orders": "/api/v1/orders",
+            "fies": "/api/v1/fies",
+            "nutrition": "/api/v1/nutrition",
+            "recommendations": "/api/v1/recommendations",
+            "settlements": "/api/v1/settlements",
+            "reports": "/api/v1/reports",
             "docs": "/docs"
         }
     }

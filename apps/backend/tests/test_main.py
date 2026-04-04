@@ -33,3 +33,8 @@ def test_api_v1_root(client: TestClient):
     assert "endpoints" in data
     assert "donations" in data["endpoints"]
     assert "vouchers" in data["endpoints"]
+    assert "products" in data["endpoints"]
+    assert "orders" in data["endpoints"]
+    assert "fies" in data["endpoints"]
+    assert "nutrition" in data["endpoints"]
+    assert "recommendations" in data["endpoints"]
