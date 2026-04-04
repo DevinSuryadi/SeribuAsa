@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Heart,
   Wallet,
@@ -150,7 +149,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
                 </div>
                 <span className="font-bold text-foreground">SeribuAsa</span>
               </div>
-              <button onClick={() => setSidebarOpen(false)} className="p-1 text-muted-foreground">
+              <button onClick={() => setSidebarOpen(false)} className="p-1 text-muted-foreground" aria-label="Tutup menu">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -197,7 +196,7 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
         <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
-          <button className="lg:hidden p-2 text-foreground" onClick={() => setSidebarOpen(true)}>
+          <button className="lg:hidden p-2 text-foreground" onClick={() => setSidebarOpen(true)} aria-label="Buka menu">
             <Menu className="h-5 w-5" />
           </button>
           <div className="lg:hidden flex items-center gap-2">
