@@ -20,3 +20,7 @@ export async function simulatePayment(donationId: string) {
     method: "POST",
   });
 }
+
+export async function getImpactMetrics(donorId: string) {
+  return apiFetch(`/donations/impact/${donorId}`);
+}
