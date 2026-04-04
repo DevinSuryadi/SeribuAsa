@@ -7,7 +7,7 @@ from datetime import datetime, date
 from uuid import uuid4
 from unittest.mock import MagicMock
 
-from app.models.donation import Voucher, VoucherStatusEnum
+from app.models.donation import VoucherStatusEnum
 from app.schemas.voucher import VoucherResponse, VoucherBalanceResponse, VoucherRedemptionRequest
 from app.services.voucher_service import VoucherService
 

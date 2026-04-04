@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { CreditCard, Pause, Play, XCircle, ArrowUp, Baby, CheckCircle, Heart, Wallet, QrCode, Landmark, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { CreditCard, Pause, Play, XCircle, ArrowUp, Baby, CheckCircle, Heart, Wallet, QrCode, Landmark } from 'lucide-react';
 import { formatIDR, formatDate } from '@/lib/format';
 import { getDonations } from '@/services/donations';
 import { toast } from 'sonner';

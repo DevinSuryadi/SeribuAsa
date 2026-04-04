@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut } from 'lucide-react';
-import { formatDate } from '@/lib/format';
+import { User, MapPin, Phone, Mail, Edit, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Profile = () => {

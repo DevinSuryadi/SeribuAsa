@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { QrCode, CheckCircle, XCircle, Search, ShoppingBasket, Star, RefreshCw, Loader2 } from 'lucide-react';
+import { QrCode, CheckCircle, XCircle, Search, ShoppingBasket, Star } from 'lucide-react';
 import { formatIDR } from '@/lib/format';
 import { getVoucherBalance, redeemVoucher } from '@/services/vouchers';
 import { toast } from 'sonner';

@@ -108,6 +108,6 @@ def test_product_service_create_product():
         stock_quantity=100,
     )
 
-    result = ProductService.create_product(mock_db, str(uuid4()), data)
+    ProductService.create_product(mock_db, str(uuid4()), data)
     mock_db.add.assert_called_once()
     mock_db.commit.assert_called_once()

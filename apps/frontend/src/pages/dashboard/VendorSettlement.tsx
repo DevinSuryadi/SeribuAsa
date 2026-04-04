@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { CreditCard, Download, CheckCircle, Clock, ArrowRight, Wallet, Calendar, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { CreditCard, Download, CheckCircle, Clock, ArrowRight, Wallet, Calendar } from 'lucide-react';
 import { formatIDR, formatDate } from '@/lib/format';
 import { useStaggerChildren } from '@/hooks/useStaggerChildren';
 import { toast } from 'sonner';

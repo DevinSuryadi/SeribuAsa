@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false)
   }, [])
 
-  const signIn = async (email: string, _password: string) => {
+  const signIn = async (email: string) => {
     try {
       const role: UserRole = email.toLowerCase().includes("penerima") || email.toLowerCase().includes("beneficiary")
         ? "beneficiary"

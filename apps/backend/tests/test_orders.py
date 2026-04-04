@@ -5,7 +5,6 @@ Tests for order service logic, schemas, and enums
 from decimal import Decimal
 from datetime import datetime
 from uuid import uuid4
-from unittest.mock import MagicMock
 
 from app.models.product import OrderStatusEnum, PaymentStatusEnum
 from app.schemas.order import OrderCreate, OrderItemCreate, OrderResponse, OrderStatusUpdate

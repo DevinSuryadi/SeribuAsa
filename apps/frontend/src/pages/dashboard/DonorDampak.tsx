@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -77,12 +77,12 @@ const DonorDampak = () => {
 
   const redemptionRate = vouchersAllocated > 0 ? Math.round((vouchersAllocated * 0.83)) : 0;
 
-  const categoryData = useMemo(() => [
+  const categoryData = [
     { name: 'Telur & Susu', value: 45 },
     { name: 'Beras', value: 30 },
     { name: 'Sayuran', value: 15 },
     { name: 'Lainnya', value: 10 },
-  ], []);
+  ];
 
   return (
     <DashboardLayout title="Dampak Donasi Anda" subtitle="Lihat bagaimana donasi Anda membuat perubahan nyata.">

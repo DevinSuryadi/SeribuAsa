@@ -6,12 +6,12 @@ import pytest
 import os
 from fastapi.testclient import TestClient
 from typing import Generator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from app.main import app
 from app.database import get_db
 from app.middleware.auth import get_current_user, AuthenticatedUser
-from app.models import *  # noqa: F401
+from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, Child  # noqa: F401
 
 
 @pytest.fixture(scope="function")

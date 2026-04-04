@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { Activity, Plus, Baby, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { Activity, Plus, Baby } from 'lucide-react';
 import { useStaggerChildren } from '@/hooks/useStaggerChildren';
 import { addMeasurement, getChildren, getMeasurementHistory } from '@/services/nutrition';
 import { formatDate } from '@/lib/format';
@@ -31,7 +31,6 @@ const PemantauanGizi = () => {
   const [selectedChild, setSelectedChild] = useState<ChildData | null>(null);
   const [measurements, setMeasurements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [formWeight, setFormWeight] = useState('');
@@ -60,11 +59,10 @@ const PemantauanGizi = () => {
   const fetchMeasurements = async (childId: string) => {
     try {
       setLoading(true);
-      setError(null);
       const result = await getMeasurementHistory(childId);
       setMeasurements(result.data?.measurements || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch {
+      setMeasurements([]);
     } finally {
       setLoading(false);
     }
@@ -84,7 +82,7 @@ const PemantauanGizi = () => {
     setSubmitting(true);
     try {
       const today = new Date().toISOString().split('T')[0];
-      const result = await addMeasurement({
+      await addMeasurement({
         child_id: selectedChild.id,
         measurement_date: today,
         weight: parseFloat(formWeight),
@@ -131,8 +129,6 @@ const PemantauanGizi = () => {
       weight: parseFloat(m.weight),
       height: parseFloat(m.height),
     }));
-
-  const latestMeasurement = measurements[0];
 
   if (loading) {
     return (

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ClipboardList, ChevronRight, ChevronLeft, CheckCircle, AlertTriangle, Info, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { ClipboardList, ChevronRight, ChevronLeft, CheckCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 import { submitFies, getFiesHistory } from '@/services/fies';
 import { formatDate } from '@/lib/format';
 import { toast } from 'sonner';
@@ -40,7 +40,6 @@ const SurveiFIES = () => {
   const [submitting, setSubmitting] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const progress = ((currentQ + 1) / fiesQuestions.length) * 100;
   const score = answers.filter((a) => a === 'ya').length;

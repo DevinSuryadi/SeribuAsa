@@ -18,8 +18,7 @@ export default function MockPaymentModal() {
 
   const { amount = 0, paymentMethod = "bank_transfer" } = location.state || {}
 
-  // Generate mock VA number
-  const vaNumber = `8801 ${Math.random().toString().slice(2, 6)} ${Math.random().toString().slice(2, 6)} ${Math.random().toString().slice(2, 6)}`
+  const [vaNumber] = useState(() => `8801 ${Math.random().toString().slice(2, 6)} ${Math.random().toString().slice(2, 6)} ${Math.random().toString().slice(2, 6)}`)
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(vaNumber.replace(/\s/g, ""))

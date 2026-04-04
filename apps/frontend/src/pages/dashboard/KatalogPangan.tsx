@@ -100,7 +100,8 @@ const KatalogPangan = () => {
     setCart((prev) => {
       const next = (prev[id] || 0) + delta;
       if (next <= 0) {
-        const { [id]: _, ...rest } = prev;
+        const rest = { ...prev };
+        delete rest[id];
         return rest;
       }
       return { ...prev, [id]: next };

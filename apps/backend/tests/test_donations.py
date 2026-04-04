@@ -6,7 +6,7 @@ from decimal import Decimal
 from datetime import datetime
 from uuid import uuid4
 
-from app.models.donation import Donation, DonationTypeEnum, DonationStatusEnum, Voucher, VoucherStatusEnum
+from app.models.donation import DonationTypeEnum, DonationStatusEnum, VoucherStatusEnum
 from app.schemas.donation import PaymentMethodEnum
 from app.schemas.donation import DonationCreate, DonationResponse, DonationListResponse, ImpactMetrics
 

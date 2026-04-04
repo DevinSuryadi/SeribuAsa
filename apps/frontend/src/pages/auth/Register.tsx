@@ -38,7 +38,7 @@ export default function Register() {
 
     setLoading(true)
 
-    const { error } = await signUp(email, password, fullName, selectedRole)
+    await signUp(email, password, fullName, selectedRole)
 
     if (error) {
       toast.error("Registrasi gagal", { description: error })
