@@ -36,15 +36,15 @@ export default function Register() {
       return
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      toast.error("Email tidak valid", { description: "Masukkan email dengan format yang benar (contoh: nama@email.com)" })
+      return
+    }
+
     setLoading(true)
 
     await signUp(email, password, fullName, selectedRole)
-
-    if (error) {
-      toast.error("Registrasi gagal", { description: error })
-      setLoading(false)
-      return
-    }
 
     toast.success("Registrasi berhasil!")
     navigate("/dashboard")
