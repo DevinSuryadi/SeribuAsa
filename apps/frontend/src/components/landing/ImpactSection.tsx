@@ -13,7 +13,7 @@ export function ImpactSection() {
   const titleRef = useScrollReveal({ y: 30 });
 
   return (
-    <section style={{ position: 'relative', overflow: 'hidden', padding: '80px 0' }}>
+    <section style={{ position: 'relative', overflow: 'hidden', padding: 'clamp(48px, 8vh, 80px) 0' }}>
       {/* Background blobs */}
       <div style={{
         position: 'absolute',
@@ -23,10 +23,10 @@ export function ImpactSection() {
       }} />
       <div style={{
         position: 'absolute',
-        top: 80,
-        right: 40,
-        width: 288,
-        height: 288,
+        top: 60,
+        right: 20,
+        width: 'clamp(150px, 30vw, 288px)',
+        height: 'clamp(150px, 30vw, 288px)',
         borderRadius: '50%',
         background: 'rgba(34,197,94,0.05)',
         filter: 'blur(64px)',
@@ -34,17 +34,17 @@ export function ImpactSection() {
       }} />
       <div style={{
         position: 'absolute',
-        bottom: 40,
-        left: 40,
-        width: 256,
-        height: 256,
+        bottom: 20,
+        left: 20,
+        width: 'clamp(120px, 25vw, 256px)',
+        height: 'clamp(120px, 25vw, 256px)',
         borderRadius: '50%',
         background: 'rgba(34,197,94,0.07)',
         filter: 'blur(64px)',
         zIndex: -1,
       }} />
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
-        <div ref={titleRef} style={{ textAlign: 'center', marginBottom: 56 }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 5vw, 24px)' }}>
+        <div ref={titleRef} style={{ textAlign: 'center', marginBottom: 'clamp(32px, 6vw, 56px)' }}>
           <h2
             style={{
               fontSize: 'clamp(28px, 4vw, 36px)',

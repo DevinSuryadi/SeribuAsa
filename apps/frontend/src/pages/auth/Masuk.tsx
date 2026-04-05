@@ -1,10 +1,12 @@
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { Eye, EyeOff, Shield, Loader2, Heart, Users, Store } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 
 export default function Masuk() {
+  const [searchParams] = useSearchParams()
+  const fromCheckout = searchParams.get("from") === "checkout"
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
@@ -39,7 +41,13 @@ export default function Masuk() {
     }
 
     toast.success("Login berhasil!")
-    navigate("/dashboard")
+
+    // If coming from checkout, redirect to donation create
+    if (fromCheckout) {
+      navigate("/donation/create")
+    } else {
+      navigate("/dashboard")
+    }
   }
 
   const handleDemoLogin = (role: "donor" | "beneficiary" | "vendor") => {
@@ -62,6 +70,13 @@ export default function Masuk() {
         {/* Title */}
         <h2 className="text-2xl font-semibold text-center mb-1">Masuk ke Akun</h2>
         <p className="text-sm text-gray-500 text-center mb-6">Masukkan email dan kata sandi Anda</p>
+
+        {/* Checkout redirect banner */}
+        {fromCheckout && (
+          <div className="mb-6 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700 text-center">
+            Silakan login untuk melanjutkan proses donasi Anda.
+          </div>
+        )}
 
         {/* Demo Account Buttons */}
         <div className="mb-6">

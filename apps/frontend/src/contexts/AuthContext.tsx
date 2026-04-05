@@ -130,10 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
           setUserRole(role)
         })
-      } else {
-        setUser(null)
-        setUserRole(null)
       }
+      // Don't clear user when session is null — demo users stored in localStorage
+      // should persist across navigation. Only signOut() clears the user.
     })
 
     return () => {
@@ -181,16 +180,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .from("user_roles")
           .insert({ user_id: data.user.id, role })
         if (roleError) console.error("Failed to insert user role:", roleError)
+
+        // Auto-login after signup (skip email verification)
         if (data.session) {
           setSession(data.session)
-          setUser({
-            id: data.user.id,
-            email: data.user.email || "",
-            fullName,
-            role: role as UserRole,
-          })
-          setUserRole(role as UserRole)
         }
+        setUser({
+          id: data.user.id,
+          email: data.user.email || "",
+          fullName,
+          role: role as UserRole,
+        })
+        setUserRole(role as UserRole)
       }
       return { error: null }
     } catch {

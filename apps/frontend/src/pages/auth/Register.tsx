@@ -17,7 +17,6 @@ export default function Register() {
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [nik, setNik] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
@@ -44,7 +43,13 @@ export default function Register() {
 
     setLoading(true)
 
-    await signUp(email, password, fullName, selectedRole)
+    const { error } = await signUp(email, password, fullName, selectedRole)
+
+    if (error) {
+      toast.error("Registrasi gagal", { description: error })
+      setLoading(false)
+      return
+    }
 
     toast.success("Registrasi berhasil!")
     navigate("/dashboard")
@@ -99,21 +104,6 @@ export default function Register() {
               className="w-full border rounded-md px-3 py-2 mt-1"
             />
           </div>
-
-          {/* NIK hanya untuk beneficiary */}
-          {selectedRole === "beneficiary" && (
-            <div>
-              <label className="text-sm font-medium">NIK</label>
-              <input
-                type="text"
-                value={nik}
-                onChange={(e) => setNik(e.target.value)}
-                placeholder="Masukkan NIK"
-                className="w-full border rounded-md px-3 py-2 mt-1"
-                maxLength={16}
-              />
-            </div>
-          )}
 
           {/* Email */}
           <div>

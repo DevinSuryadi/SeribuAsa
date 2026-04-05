@@ -36,8 +36,8 @@ export function HeroSection() {
       style={{
         position: 'relative',
         overflow: 'hidden',
-        padding: '160px 0 64px',
-        minHeight: '100vh',
+        padding: 'clamp(100px, 18vh, 160px) 0 clamp(40px, 8vh, 64px)',
+        minHeight: '100dvh',
         display: 'flex',
         alignItems: 'center',
         background: '#ffffff'
@@ -55,10 +55,10 @@ export function HeroSection() {
       <div
         style={{
           position: 'absolute',
-          top: 80,
-          right: 40,
-          width: 288,
-          height: 288,
+          top: 60,
+          right: 20,
+          width: 'clamp(150px, 30vw, 288px)',
+          height: 'clamp(150px, 30vw, 288px)',
           borderRadius: '50%',
           background: 'rgba(34,197,94,0.05)',
           filter: 'blur(64px)',
@@ -68,10 +68,10 @@ export function HeroSection() {
       <div
         style={{
           position: 'absolute',
-          bottom: 40,
-          left: 40,
-          width: 256,
-          height: 256,
+          bottom: 20,
+          left: 20,
+          width: 'clamp(120px, 25vw, 256px)',
+          height: 'clamp(120px, 25vw, 256px)',
           borderRadius: '50%',
           background: 'rgba(34,197,94,0.07)',
           filter: 'blur(64px)',
@@ -80,13 +80,13 @@ export function HeroSection() {
       />
 
       {/* SVG Geometric Curves - Smooth & Organic */}
-      <div 
+      <div
         className="hero-curves"
         style={{
           position: 'absolute',
           top: 0,
           right: 0,
-          width: '60%',
+          width: 'clamp(40%, 60vw, 60%)',
           height: '100%',
           zIndex: 1,
           pointerEvents: 'none'
@@ -139,7 +139,7 @@ export function HeroSection() {
         width: '100%',
         maxWidth: 1300, 
         margin: '0 auto', 
-        padding: '0 24px', 
+        padding: '0 clamp(16px, 5vw, 24px)', 
       }}>
         <div style={{ maxWidth: 650 }}>
           {/* Badge */}
@@ -153,10 +153,10 @@ export function HeroSection() {
               borderRadius: 999,
               border: '1px solid rgba(34,197,94,0.25)',
               background: 'rgba(34,197,94,0.06)',
-              fontSize: 16,
+              fontSize: 'clamp(13px, 3.5vw, 16px)',
               fontWeight: 500,
               color: '#16a34a',
-              marginBottom: 24,
+              marginBottom: 'clamp(16px, 4vw, 24px)',
             }}
           >
             Ekosistem Ketahanan Pangan & Gizi Indonesia
@@ -212,7 +212,7 @@ export function HeroSection() {
             }}
           >
             <Link
-              to="/daftar"
+              to="/donasi"
               className="hero-cta"
               style={{
                 display: 'inline-flex',

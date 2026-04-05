@@ -77,7 +77,7 @@ const RoleIconMap: Record<string, React.ElementType> = {
   admin: Shield,
 }
 
-export default function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
+function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   const { user, userRole, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
