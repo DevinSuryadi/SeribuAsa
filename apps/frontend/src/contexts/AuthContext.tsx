@@ -29,9 +29,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 async function getUserRole(userId: string): Promise<UserRole> {
   try {
     const { data, error } = await supabase
-      .from("user_roles")
+      .from("user_profiles")
       .select("role")
-      .eq("user_id", userId)
+      .eq("id", userId)
       .single()
     if (error || !data) return "donor"
     return data.role as UserRole
@@ -43,9 +43,9 @@ async function getUserRole(userId: string): Promise<UserRole> {
 async function getUserProfile(userId: string): Promise<{ fullName: string }> {
   try {
     const { data, error } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("full_name")
-      .eq("user_id", userId)
+      .eq("id", userId)
       .single()
     if (error || !data) return { fullName: "User" }
     return { fullName: data.full_name || "User" }
@@ -130,10 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
           setUserRole(role)
         })
-      } else {
-        setUser(null)
-        setUserRole(null)
       }
+      // Don't clear user when session is null — demo users stored in localStorage
+      // should persist across navigation. Only signOut() clears the user.
     })
 
     return () => {
@@ -177,12 +176,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       if (error) return { error: error.message }
       if (data.user) {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({ user_id: data.user.id, role })
-        if (roleError) console.error("Failed to insert user role:", roleError)
-        if (data.session) {
-          setSession(data.session)
+        const { error: profileError } = await supabase
+          .from("user_profiles")
+          .insert({
+            id: data.user.id,
+            user_id: data.user.id,
+            full_name: fullName,
+            role,
+            is_active: true,
+          })
+        if (profileError) {
+          console.error("Failed to insert user profile:", profileError)
+        }
+
+        // Auto-login after signup - try to get session if not immediately available
+        let session = data.session
+        if (!session) {
+          // If no immediate session (email verification required), try to sign in directly
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          })
+          if (!signInError && signInData.session) {
+            session = signInData.session
+          }
+        }
+
+        if (session) {
+          setSession(session)
+          const [roleFromDb, profile] = await Promise.all([
+            getUserRole(session.user.id),
+            getUserProfile(session.user.id),
+          ])
+          setUser({
+            id: session.user.id,
+            email: session.user.email || "",
+            fullName: profile.fullName,
+            role: roleFromDb,
+          })
+          setUserRole(roleFromDb)
+        } else {
+          // Fallback: set user data without session (will require manual login)
           setUser({
             id: data.user.id,
             email: data.user.email || "",
