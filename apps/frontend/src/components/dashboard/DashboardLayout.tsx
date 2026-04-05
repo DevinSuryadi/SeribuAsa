@@ -40,12 +40,12 @@ const navByRole: Record<string, NavItem[]> = {
   ],
   beneficiary: [
     { label: "Ringkasan", href: "/dashboard/beneficiary", icon: LayoutDashboard },
-    { label: "Dompet Nutrisi", href: "/dashboard/dompet", icon: Wallet },
+    { label: "Dompet Nutrisi", href: "/dashboard/dompet-nutrisi", icon: Wallet },
     { label: "Katalog Pangan", href: "/dashboard/katalog", icon: Package },
-    { label: "Penukaran Voucher", href: "/dashboard/penukaran", icon: CreditCard },
+    { label: "Penukaran Voucher", href: "/dashboard/penukaran-voucher", icon: CreditCard },
     { label: "Survei FIES", href: "/dashboard/survei-fies", icon: ClipboardList },
     { label: "Pemantauan Gizi", href: "/dashboard/pemantauan-gizi", icon: Activity },
-    { label: "Rekomendasi AI", href: "/dashboard/rekomendasi", icon: Sparkles },
+    { label: "Rekomendasi AI", href: "/dashboard/rekomendasi-ai", icon: Sparkles },
     { label: "Profil", href: "/dashboard/profile", icon: Settings },
   ],
   vendor: [
@@ -128,7 +128,6 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-foreground truncate">{displayName}</div>
-              <div className="text-xs text-muted-foreground">{roleLabel[role]}</div>
             </div>
             <Button variant="ghost" size="icon" onClick={() => { signOut(); navigate("/") }} className="h-8 w-8">
               <LogOut className="h-4 w-4" />

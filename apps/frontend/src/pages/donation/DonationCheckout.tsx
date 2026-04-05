@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Navbar } from '@/components/landing/Navbar';
 import { Footer } from '@/components/landing/Footer';
 import { useAuth } from '@/contexts/AuthContext';
-import { Check, ArrowRight, Baby, Heart, Building2, CreditCard, QrCode, Landmark, Wallet, ArrowLeft, User } from 'lucide-react';
+import { Check, ArrowRight, Baby, Heart, Building2, CreditCard, QrCode, Landmark, Wallet, User } from 'lucide-react';
 import { formatIDR } from '@/lib/format';
 import { toast } from 'sonner';
 

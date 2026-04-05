@@ -16,11 +16,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import DonorDashboard from "./pages/dashboard/DonorDashboard";
 import BeneficiaryDashboard from "./pages/dashboard/BeneficiaryDashboard";
 import DonorRiwayat from "./pages/dashboard/DonorRiwayat";
-import PenukaranVoucher from "./pages/dashboard/PenukaranVoucher";
 import Profile from "./pages/dashboard/Profile";
 import VendorDashboard from "./pages/dashboard/VendorDashboard";
-import DompetNutrisi from "./pages/dashboard/DompetNutrisi";
-import RekomendasiAI from "./pages/dashboard/RekomendasiAI";
 import DonationCheckout from "./pages/donation/DonationCheckout";
 import CreateDonation from "./pages/donation/CreateDonation";
 import MockPaymentModal from "./pages/donation/MockPaymentModal";
@@ -35,6 +32,9 @@ const DonorLangganan = lazy(() => import("./pages/dashboard/DonorLangganan"));
 const KelolaProduk = lazy(() => import("./pages/dashboard/KelolaProduk"));
 const VendorSettlement = lazy(() => import("./pages/dashboard/VendorSettlement"));
 const SurveiFIES = lazy(() => import("./pages/dashboard/SurveiFIES"));
+const PenukaranVoucher = lazy(() => import("./pages/dashboard/PenukaranVoucher"));
+const DompetNutrisi = lazy(() => import("./pages/dashboard/DompetNutrisi"));
+const RekomendasiAI = lazy(() => import("./pages/dashboard/RekomendasiAI"));
 
 function PageLoader() {
   return (
@@ -91,6 +91,9 @@ function App() {
         <Route path="/dashboard/katalog" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><KatalogPangan /></Suspense></ProtectedRoute>} />
         <Route path="/dashboard/survei-fies" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><SurveiFIES /></Suspense></ProtectedRoute>} />
         <Route path="/dashboard/pemantauan-gizi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><PemantauanGizi /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/dompet-nutrisi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><DompetNutrisi /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/rekomendasi-ai" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><RekomendasiAI /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/penukaran-voucher" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><PenukaranVoucher /></Suspense></ProtectedRoute>} />
         <Route path="/dashboard/kelola-produk" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><Suspense fallback={<PageLoader />}><KelolaProduk /></Suspense></ProtectedRoute>} />
         <Route path="/dashboard/settlement" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><Suspense fallback={<PageLoader />}><VendorSettlement /></Suspense></ProtectedRoute>} />
         <Route path="/dashboard/vendor" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorDashboard /></ProtectedRoute>} />
