@@ -38,6 +38,21 @@ const DonorDampak = () => {
     }
   }, [user, fetchMetrics]);
 
+  const totalDonated = useMemo(() => parseFloat(metrics?.total_donated || 0), [metrics?.total_donated]);
+  const childrenHelped = useMemo(() => metrics?.total_children_helped || 0, [metrics?.total_children_helped]);
+  const vouchersAllocated = useMemo(() => metrics?.total_vouchers_allocated || 0, [metrics?.total_vouchers_allocated]);
+  const trendData = useMemo(() => metrics?.donation_trend || [], [metrics?.donation_trend]);
+  const geoData = useMemo(() => metrics?.geographic_distribution || [], [metrics?.geographic_distribution]);
+
+  const redemptionRate = vouchersAllocated > 0 ? Math.round((vouchersAllocated * 0.83)) : 0;
+
+  const categoryData = useMemo(() => [
+    { name: 'Telur & Susu', value: 45 },
+    { name: 'Beras', value: 30 },
+    { name: 'Sayuran', value: 15 },
+    { name: 'Lainnya', value: 10 },
+  ], []);
+
   if (loading) {
     return (
       <DashboardLayout title="Dampak Donasi Anda" subtitle="Lihat bagaimana donasi Anda membuat perubahan nyata.">
@@ -68,21 +83,6 @@ const DonorDampak = () => {
       </DashboardLayout>
     );
   }
-
-  const totalDonated = useMemo(() => parseFloat(metrics?.total_donated || 0), [metrics?.total_donated]);
-  const childrenHelped = useMemo(() => metrics?.total_children_helped || 0, [metrics?.total_children_helped]);
-  const vouchersAllocated = useMemo(() => metrics?.total_vouchers_allocated || 0, [metrics?.total_vouchers_allocated]);
-  const trendData = useMemo(() => metrics?.donation_trend || [], [metrics?.donation_trend]);
-  const geoData = useMemo(() => metrics?.geographic_distribution || [], [metrics?.geographic_distribution]);
-
-  const redemptionRate = vouchersAllocated > 0 ? Math.round((vouchersAllocated * 0.83)) : 0;
-
-  const categoryData = useMemo(() => [
-    { name: 'Telur & Susu', value: 45 },
-    { name: 'Beras', value: 30 },
-    { name: 'Sayuran', value: 15 },
-    { name: 'Lainnya', value: 10 },
-  ], []);
 
   return (
     <DashboardLayout title="Dampak Donasi Anda" subtitle="Lihat bagaimana donasi Anda membuat perubahan nyata.">

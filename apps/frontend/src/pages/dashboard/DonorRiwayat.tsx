@@ -65,8 +65,6 @@ const DonorRiwayat = () => {
     () => filtered.filter((d: any) => d.status === 'success').reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0),
     [filtered]
   );
-    .filter((d: any) => d.status === 'success')
-    .reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0);
 
   if (loading) {
     return (
