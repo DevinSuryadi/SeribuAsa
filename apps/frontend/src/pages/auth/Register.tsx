@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Shield, Eye, EyeOff, Heart, Users, Store, Loader2 } from "lucide-react"
+import { Shield, Eye, EyeOff, Heart, Users, Store, Loader2, Check, X } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -17,11 +17,25 @@ export default function Register() {
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [nik, setNik] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
+  const [showConfirmPw, setShowConfirmPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
+
+  const passwordRules = {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSymbol: /[@$!%*?&]/.test(password),
+  }
+
+  const isPasswordValid =
+    passwordRules.minLength &&
+    passwordRules.hasUppercase &&
+    passwordRules.hasNumber &&
+    passwordRules.hasSymbol
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,8 +45,13 @@ export default function Register() {
       return
     }
 
-    if (password.length < 6) {
-      toast.error("Password minimal 6 karakter")
+    if (!isPasswordValid) {
+      toast.error("Password tidak memenuhi syarat keamanan")
+      return
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Password tidak cocok")
       return
     }
 
@@ -44,7 +63,19 @@ export default function Register() {
 
     setLoading(true)
 
-    await signUp(email, password, fullName, selectedRole)
+    const { error } = await signUp(email, password, fullName, selectedRole)
+
+    if (error) {
+      let errorMessage = error
+      if (error.toLowerCase().includes("email")) {
+        errorMessage = "Email sudah terdaftar. Silakan gunakan email lain."
+      } else if (error.toLowerCase().includes("password")) {
+        errorMessage = "Password terlalu lemah. Gunakan kombinasi yang lebih kuat."
+      }
+      toast.error("Registrasi gagal", { description: errorMessage })
+      setLoading(false)
+      return
+    }
 
     toast.success("Registrasi berhasil!")
     navigate("/dashboard")
@@ -53,7 +84,6 @@ export default function Register() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
-        {/* Logo */}
         <div className="flex flex-col items-center mb-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-600">
             <Shield className="text-white w-5 h-5" />
@@ -65,7 +95,6 @@ export default function Register() {
         <p className="text-sm text-gray-500 text-center mb-6">Bergabunglah dengan SeribuAsa</p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          {/* Role */}
           <div>
             <label className="text-sm font-medium">Daftar sebagai</label>
             <div className="grid grid-cols-3 gap-2 mt-2">
@@ -87,7 +116,6 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Nama */}
           <div>
             <label className="text-sm font-medium">Nama Lengkap</label>
             <input
@@ -100,22 +128,6 @@ export default function Register() {
             />
           </div>
 
-          {/* NIK hanya untuk beneficiary */}
-          {selectedRole === "beneficiary" && (
-            <div>
-              <label className="text-sm font-medium">NIK</label>
-              <input
-                type="text"
-                value={nik}
-                onChange={(e) => setNik(e.target.value)}
-                placeholder="Masukkan NIK"
-                className="w-full border rounded-md px-3 py-2 mt-1"
-                maxLength={16}
-              />
-            </div>
-          )}
-
-          {/* Email */}
           <div>
             <label className="text-sm font-medium">Email</label>
             <input
@@ -128,7 +140,6 @@ export default function Register() {
             />
           </div>
 
-          {/* Password */}
           <div>
             <label className="text-sm font-medium">Kata Sandi</label>
             <div className="relative mt-1">
@@ -136,7 +147,7 @@ export default function Register() {
                 type={showPw ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min. 6 karakter"
+                placeholder="Min. 8 karakter dengan kombinasi"
                 required
                 className="w-full border rounded-md px-3 py-2 pr-10"
               />
@@ -148,12 +159,88 @@ export default function Register() {
                 {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+
+            {password.length > 0 && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-md border border-gray-200 space-y-2">
+                <p className="text-xs font-semibold text-gray-700">Syarat Kata Sandi:</p>
+                <div className="flex items-center gap-2 text-xs">
+                  {passwordRules.minLength ? (
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  )}
+                  <span className={passwordRules.minLength ? "text-green-600 font-medium" : "text-gray-500"}>
+                    Minimal 8 karakter
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {passwordRules.hasUppercase ? (
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  )}
+                  <span className={passwordRules.hasUppercase ? "text-green-600 font-medium" : "text-gray-500"}>
+                    Minimal 1 huruf besar (A-Z)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {passwordRules.hasNumber ? (
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  )}
+                  <span className={passwordRules.hasNumber ? "text-green-600 font-medium" : "text-gray-500"}>
+                    Minimal 1 angka (0-9)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {passwordRules.hasSymbol ? (
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  )}
+                  <span className={passwordRules.hasSymbol ? "text-green-600 font-medium" : "text-gray-500"}>
+                    Minimal 1 simbol (@$!%*?&)
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Button */}
+          <div>
+            <label className="text-sm font-medium">Konfirmasi Kata Sandi</label>
+            <div className="relative mt-1">
+              <input
+                type={showConfirmPw ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Ulangi kata sandi"
+                required
+                className="w-full border rounded-md px-3 py-2 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPw(!showConfirmPw)}
+                className="absolute right-3 top-2.5 text-gray-500"
+              >
+                {showConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {confirmPassword.length > 0 && password !== confirmPassword && (
+              <p className="text-xs text-red-500 mt-1">Password tidak cocok</p>
+            )}
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading ||
+              !selectedRole ||
+              !fullName.trim() ||
+              !email ||
+              !isPasswordValid ||
+              password !== confirmPassword
+            }
             className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
@@ -167,7 +254,6 @@ export default function Register() {
           </button>
         </form>
 
-        {/* Login link */}
         <p className="text-sm text-center text-gray-500 mt-6">
           Sudah punya akun?{" "}
           <Link to="/masuk" className="text-green-600 font-medium hover:underline">
