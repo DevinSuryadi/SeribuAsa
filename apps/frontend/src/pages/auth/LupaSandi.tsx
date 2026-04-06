@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { Leaf, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 

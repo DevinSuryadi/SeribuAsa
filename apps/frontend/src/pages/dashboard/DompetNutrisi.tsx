@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, ArrowUpRight, ArrowDownRight, QrCode, Info } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, QrCode, Info } from 'lucide-react';
 import { formatIDR, formatDate } from '@/lib/format';
 import { mockBeneficiaryTransactions, mockCategories } from '@/data/mockData';
 import { useStaggerChildren } from '@/hooks/useStaggerChildren';

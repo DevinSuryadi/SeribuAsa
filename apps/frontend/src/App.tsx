@@ -28,6 +28,7 @@ import CreateDonation from "./pages/donation/CreateDonation";
 import MockPaymentModal from "./pages/donation/MockPaymentModal";
 import DonationSuccess from "./pages/donation/DonationSuccess";
 import { useAuth } from "./contexts/AuthContext";
+import ScrollToTop from "./components/ScrollToTop";
 
 function DashboardRedirect() {
   const { userRole, loading } = useAuth();
@@ -52,6 +53,7 @@ function App() {
   return (
     <>
       <Toaster position="top-right" richColors />
+      <ScrollToTop />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Index />} />
