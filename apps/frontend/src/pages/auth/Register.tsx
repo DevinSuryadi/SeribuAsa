@@ -121,9 +121,13 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-6">
+    <div className="min-h-screen flex items-center justify-center px-4 py-6"
+    style={{
+        background:"#F9FBF9",
+      }}>
       <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-6">
         {/* Logo */}
+        <Link to="/"> 
         <div className="flex flex-col items-center mb-8">
           <img 
             src={logo} 
@@ -144,6 +148,7 @@ export default function Register() {
             SeribuAsa
           </h1>
         </div>
+        </Link>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-3">

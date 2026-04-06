@@ -118,10 +118,13 @@ export default function Login() {
   const passwordValid = isPasswordValid(password)
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+    <div className="flex min-h-screen justify-center px-4 py-12 overflow-y-auto"
+      style={{
+        background:"#F9FBF9",
+      }}>
       <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-6">
         {/* Logo */}
-        {/* Logo */}
+        <Link to="/">
         <div className="flex flex-col items-center mb-8">
             <img 
               src={logo} 
@@ -140,6 +143,7 @@ export default function Login() {
                 color: '#346A43'
               }}> SeribuAsa </h1>
         </div>
+        </Link>
 
         {/* Title */}
         <h2 style={{ 
