@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -12,14 +12,26 @@ import { Label } from '@/components/ui/label';
 import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
+const BACKEND_BASE_URL = 'http://localhost:8000/api/v1';
+
+type BackendProfile = {
+  full_name: string;
+  role?: string | null;
+  phone?: string | null;
+  address?: string | null;
+};
+
 const Profile = () => {
   const navigate = useNavigate();
   const { user, userRole, signOut } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [profileData, setProfileData] = useState<BackendProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [editFormData, setEditFormData] = useState({
     fullName: user?.fullName || '',
     phone: '',
+    address: '',
     dateOfBirth: '',
     gender: '',
   });
@@ -29,6 +41,48 @@ const Profile = () => {
     confirmPassword: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadProfile = async () => {
+      if (!user?.id) return;
+
+      setProfileLoading(true);
+      try {
+        const response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!isActive) return;
+
+        const nextProfile: BackendProfile = {
+          full_name: data.full_name || user.fullName || 'Pengguna',
+          role: data.role || null,
+          phone: data.phone || null,
+          address: data.address || null,
+        };
+
+        setProfileData(nextProfile);
+        setEditFormData((prev) => ({
+          ...prev,
+          fullName: nextProfile.full_name,
+          phone: nextProfile.phone || '',
+          address: nextProfile.address || '',
+        }));
+      } catch (error) {
+        console.warn('[PROFILE] Failed to load profile from backend', error);
+      } finally {
+        if (isActive) setProfileLoading(false);
+      }
+    };
+
+    void loadProfile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id, user?.fullName]);
 
   const handleSignOut = () => {
     signOut();
@@ -82,7 +136,24 @@ const Profile = () => {
     }
   };
 
-  const roleLabel = userRole === 'donor' ? 'Donatur' : userRole === 'beneficiary' ? 'Penerima Manfaat' : userRole === 'vendor' ? 'Vendor' : userRole;
+  const resolvedRole = profileData?.role || userRole;
+  const resolvedName = profileData?.full_name || user?.fullName || 'Pengguna';
+  const resolvedPhone = profileLoading ? 'Memuat...' : (profileData?.phone || 'Belum diatur');
+  const resolvedAddress = profileLoading ? 'Memuat...' : (profileData?.address || 'Belum diatur');
+  const roleLabel =
+    resolvedRole === 'donor'
+      ? 'Donatur'
+      : resolvedRole === 'corporate_donor'
+        ? 'Donatur Korporat'
+        : resolvedRole === 'beneficiary'
+          ? 'Penerima Manfaat'
+          : resolvedRole === 'vendor'
+            ? 'Vendor'
+            : resolvedRole === 'admin'
+              ? 'Admin'
+              : resolvedRole === 'government'
+                ? 'Pemerintah'
+                : '-';
 
   return (
     <DashboardLayout title="Profil Saya" subtitle="Kelola informasi pribadi dan pengaturan akun Anda.">
@@ -104,7 +175,7 @@ const Profile = () => {
                 <User className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <div className="text-lg font-semibold text-foreground">{user?.fullName || 'Pengguna'}</div>
+                <div className="text-lg font-semibold text-foreground">{resolvedName}</div>
                 <div className="text-sm text-muted-foreground">{user?.email || '-'}</div>
                 <Badge className="mt-1 capitalize">{roleLabel}</Badge>
               </div>
@@ -124,7 +195,7 @@ const Profile = () => {
                 <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Nomor HP</div>
-                  <div className="text-sm font-medium text-foreground">Belum diatur</div>
+                  <div className="text-sm font-medium text-foreground">{resolvedPhone}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -156,11 +227,13 @@ const Profile = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{user?.fullName || 'Pengguna'}</span>
+                    <span className="font-medium text-foreground">{resolvedName}</span>
                     <Badge variant="secondary" className="text-[10px]">Utama</Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">Belum diatur</p>
-                  <p className="text-sm text-foreground mt-2 text-muted-foreground italic">Silakan lengkapi profil Anda untuk menambahkan alamat.</p>
+                  <p className="text-sm text-muted-foreground mt-1">{resolvedAddress}</p>
+                  {!profileData?.address && !profileLoading && (
+                    <p className="text-sm text-foreground mt-2 text-muted-foreground italic">Silakan lengkapi profil Anda untuk menambahkan alamat.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -180,7 +253,7 @@ const Profile = () => {
                   <div className="text-sm font-medium text-foreground">Role Akun</div>
                   <div className="text-xs text-muted-foreground capitalize">{roleLabel}</div>
                 </div>
-                <Badge variant="outline" className="capitalize">{userRole}</Badge>
+                <Badge variant="outline" className="capitalize">{resolvedRole || '-'}</Badge>
               </div>
             </div>
             <Separator />
@@ -219,6 +292,16 @@ const Profile = () => {
                   value={editFormData.phone}
                   onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
                   className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="address">Alamat</Label>
+                <textarea
+                  id="address"
+                  value={editFormData.address}
+                  onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                  className="w-full mt-1.5 px-3 py-2 border border-input rounded-md bg-background min-h-[80px]"
+                  placeholder="Masukkan alamat"
                 />
               </div>
               <div>
