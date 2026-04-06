@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from decimal import Decimal
 import logging
+from uuid import UUID
 
 from app.models.product import Order, OrderItem, OrderStatusEnum, Product
 from app.models.donation import Voucher, VoucherRedemption, VoucherStatusEnum
@@ -16,8 +17,19 @@ logger = logging.getLogger(__name__)
 
 class OrderService:
     @staticmethod
+    def _to_uuid(value: Optional[str | UUID]) -> Optional[UUID]:
+        """Normalize incoming ID values to UUID for UUID-backed columns."""
+        if value is None:
+            return None
+        if isinstance(value, UUID):
+            return value
+        return UUID(str(value))
+
+    @staticmethod
     def create_order(db: Session, beneficiary_id: str, data: OrderCreate) -> Order:
         try:
+            beneficiary_uuid = OrderService._to_uuid(beneficiary_id)
+            vendor_uuid = OrderService._to_uuid(data.vendor_id)
             total_amount = Decimal(0)
 
             # Validate all products first
@@ -72,8 +84,8 @@ class OrderService:
 
             # Create order
             order = Order(
-                beneficiary_id=beneficiary_id,
-                vendor_id=data.vendor_id,
+                beneficiary_id=beneficiary_uuid,
+                vendor_id=vendor_uuid,
                 total_amount=total_amount,
                 voucher_used=voucher_used,
                 cash_paid=cash_paid,
@@ -109,7 +121,7 @@ class OrderService:
 
             db.commit()
             db.refresh(order)
-            logger.info(f"Order created: {order.id} by beneficiary {beneficiary_id}")
+            logger.info(f"Order created: {order.id} by beneficiary {beneficiary_uuid}")
             return order
 
         except Exception as e:
@@ -120,11 +132,13 @@ class OrderService:
     @staticmethod
     def get_orders(db: Session, user_id: str, role: str, params: OrderQueryParams, vendor_id: Optional[str] = None) -> List[Order]:
         query = db.query(Order).filter(Order.is_active)
+        user_uuid = OrderService._to_uuid(user_id)
+        vendor_uuid = OrderService._to_uuid(vendor_id) if vendor_id else None
 
         if role == "beneficiary":
-            query = query.filter(Order.beneficiary_id == user_id)
+            query = query.filter(Order.beneficiary_id == user_uuid)
         elif role == "vendor":
-            effective_vendor_id = vendor_id or user_id
+            effective_vendor_id = vendor_uuid or user_uuid
             query = query.filter(Order.vendor_id == effective_vendor_id)
 
         if params.status:
@@ -134,20 +148,24 @@ class OrderService:
 
     @staticmethod
     def get_order_by_id(db: Session, order_id: str, user_id: str, role: str) -> Optional[Order]:
-        query = db.query(Order).filter(Order.id == order_id)
+        order_uuid = OrderService._to_uuid(order_id)
+        user_uuid = OrderService._to_uuid(user_id)
+        query = db.query(Order).filter(Order.id == order_uuid)
 
         if role == "beneficiary":
-            query = query.filter(Order.beneficiary_id == user_id)
+            query = query.filter(Order.beneficiary_id == user_uuid)
         elif role == "vendor":
-            query = query.filter(Order.vendor_id == user_id)
+            query = query.filter(Order.vendor_id == user_uuid)
 
         return query.first()
 
     @staticmethod
     def update_order_status(db: Session, order_id: str, vendor_id: str, data: OrderStatusUpdate) -> Optional[Order]:
+        order_uuid = OrderService._to_uuid(order_id)
+        vendor_uuid = OrderService._to_uuid(vendor_id)
         order = db.query(Order).filter(
-            Order.id == order_id,
-            Order.vendor_id == vendor_id,
+            Order.id == order_uuid,
+            Order.vendor_id == vendor_uuid,
             Order.is_active
         ).first()
 

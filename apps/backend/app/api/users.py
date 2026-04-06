@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 import logging
+from uuid import UUID
 
 from app.database import get_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
@@ -136,7 +137,7 @@ async def create_user_on_signup(
 
 @router.get("/{user_id}", response_model=UserProfileResponse)
 async def get_user_profile(
-    user_id: str,
+    user_id: UUID,
     db: Session = Depends(get_db)
 ):
     """Get user profile by user ID"""

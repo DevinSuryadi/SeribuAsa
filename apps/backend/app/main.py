@@ -1,8 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from uuid import UUID
+import logging
 
 from app.api import donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users
-from app.database import IS_SQLITE, init_db
+from app.database import IS_SQLITE, SessionLocal, init_db
+from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NutriGuard API", version="1.0.0")
 
@@ -28,12 +33,51 @@ app.include_router(settlements.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 
 
+def _seed_demo_profiles() -> None:
+    """Seed local demo profiles for SQLite fallback mode."""
+    demo_users = {
+        UUID("00000000-0000-0000-0000-000000000001"): {"name": "Donor Demo", "role": "donor"},
+        UUID("00000000-0000-0000-0000-000000000002"): {"name": "Penerima Demo", "role": "beneficiary"},
+        UUID("00000000-0000-0000-0000-000000000003"): {"name": "Vendor Demo", "role": "vendor"},
+    }
+
+    db = SessionLocal()
+    try:
+        for user_id, info in demo_users.items():
+            existing_user = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+            if not existing_user:
+                db.add(UserProfile(user_id=user_id, full_name=info["name"]))
+
+        db.flush()
+
+        donor_id = UUID("00000000-0000-0000-0000-000000000001")
+        if not db.query(DonorProfile).filter(DonorProfile.user_id == donor_id).first():
+            db.add(DonorProfile(user_id=donor_id, total_donated=0, children_sponsored=0, subscription_status="inactive"))
+
+        beneficiary_id = UUID("00000000-0000-0000-0000-000000000002")
+        if not db.query(BeneficiaryProfile).filter(BeneficiaryProfile.user_id == beneficiary_id).first():
+            db.add(BeneficiaryProfile(user_id=beneficiary_id, family_size=1, vouchers_balance=0))
+
+        vendor_id = UUID("00000000-0000-0000-0000-000000000003")
+        if not db.query(VendorProfile).filter(VendorProfile.user_id == vendor_id).first():
+            db.add(VendorProfile(user_id=vendor_id, store_name="Vendor Demo", store_address="Alamat Demo", approval_status="approved"))
+
+        db.commit()
+        logger.info("Demo profiles seeded for SQLite fallback mode")
+    except Exception as exc:
+        db.rollback()
+        logger.warning("Failed to seed demo profiles: %s", exc)
+    finally:
+        db.close()
+
+
 @app.on_event("startup")
 def startup_event() -> None:
     # When DATABASE_URL is not set, app uses SQLite fallback.
     # Initialize schema so local dashboard fetches don't fail with missing tables.
     if IS_SQLITE:
         init_db()
+        _seed_demo_profiles()
 
 
 @app.get("/")

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 import logging
 import uuid
+from uuid import UUID
 
 from app.models.donation import Donation, Voucher, VoucherRedemption, VoucherStatusEnum
 from app.models.user import BeneficiaryProfile
@@ -17,6 +18,15 @@ logger = logging.getLogger(__name__)
 
 class VoucherService:
     """Service for voucher operations"""
+
+    @staticmethod
+    def _to_uuid(value: Optional[str | UUID]) -> Optional[UUID]:
+        """Normalize incoming ID values to UUID for UUID-backed columns."""
+        if value is None:
+            return None
+        if isinstance(value, UUID):
+            return value
+        return UUID(str(value))
     
     @staticmethod
     def generate_voucher_code() -> str:
@@ -99,8 +109,10 @@ class VoucherService:
         beneficiary_id: str
     ) -> Dict:
         """Get voucher balance for beneficiary"""
+        beneficiary_uuid = VoucherService._to_uuid(beneficiary_id)
+
         active_vouchers = db.query(Voucher).filter(
-            Voucher.beneficiary_id == beneficiary_id,
+            Voucher.beneficiary_id == beneficiary_uuid,
             Voucher.status == VoucherStatusEnum.active,
             Voucher.expiry_date >= datetime.utcnow().date()
         ).all()
@@ -113,7 +125,7 @@ class VoucherService:
         ]
         
         return {
-            "beneficiary_id": beneficiary_id,
+            "beneficiary_id": str(beneficiary_uuid),
             "total_balance": total_balance,
             "active_vouchers": active_vouchers,
             "expiring_soon": {
@@ -130,6 +142,8 @@ class VoucherService:
         order_id: str
     ) -> Dict:
         """Redeem vouchers for order payment"""
+        order_uuid = VoucherService._to_uuid(order_id)
+
         vouchers = []
         for code in voucher_codes:
             voucher = VoucherService.get_voucher_by_code(db, code)
@@ -162,7 +176,7 @@ class VoucherService:
             
             redemption = VoucherRedemption(
                 voucher_id=voucher.id,
-                order_id=order_id,
+                order_id=order_uuid,
                 amount=redemption_amount
             )
             redemptions.append(redemption)
@@ -189,7 +203,7 @@ class VoucherService:
         logger.info(f"Redeemed {amount} from {len(vouchers)} vouchers for order {order_id}")
         
         return {
-            "order_id": order_id,
+            "order_id": str(order_uuid),
             "vouchers_used": [
                 {
                     "code": v.code,
@@ -208,10 +222,11 @@ class VoucherService:
         params=None
     ) -> List[Dict[str, Any]]:
         """Get voucher transaction history for a beneficiary"""
+        beneficiary_uuid = VoucherService._to_uuid(beneficiary_id)
         transactions = []
         
         vouchers = db.query(Voucher).filter(
-            Voucher.beneficiary_id == beneficiary_id
+            Voucher.beneficiary_id == beneficiary_uuid
         ).order_by(Voucher.allocated_date.desc()).all()
         
         for voucher in vouchers:
@@ -228,7 +243,7 @@ class VoucherService:
         redemptions = db.query(VoucherRedemption).join(
             Voucher, VoucherRedemption.voucher_id == Voucher.id
         ).filter(
-            Voucher.beneficiary_id == beneficiary_id
+            Voucher.beneficiary_id == beneficiary_uuid
         ).order_by(VoucherRedemption.created_at.desc()).all()
         
         for redemption in redemptions:
