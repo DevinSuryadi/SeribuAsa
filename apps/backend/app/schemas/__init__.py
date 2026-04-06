@@ -20,6 +20,13 @@ from app.schemas.voucher import (
     VoucherAllocationResponse,
     VoucherStatusEnum
 )
+from app.schemas.auth import (
+    GoogleRole,
+    GoogleTokenExchangeRequest,
+    GoogleSyncRequest,
+    GoogleAuthUser,
+    GoogleAuthResponse,
+)
 
 __all__ = [
     # Donation
@@ -42,4 +49,11 @@ __all__ = [
     "VoucherAllocationCreate",
     "VoucherAllocationResponse",
     "VoucherStatusEnum",
+
+    # Auth
+    "GoogleRole",
+    "GoogleTokenExchangeRequest",
+    "GoogleSyncRequest",
+    "GoogleAuthUser",
+    "GoogleAuthResponse",
 ]

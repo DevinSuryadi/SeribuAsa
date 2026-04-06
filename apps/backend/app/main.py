@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 import logging
 
-from app.api import donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users
+from app.api import auth, donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users
 from app.database import IS_SQLITE, SessionLocal, init_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
 
@@ -21,6 +21,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(donations.router, prefix="/api/v1")
 app.include_router(vouchers.router, prefix="/api/v1")
@@ -102,6 +103,7 @@ def api_v1_root():
     return {
         "message": "NutriGuard API v1",
         "endpoints": {
+            "auth": "/api/v1/auth",
             "users": "/api/v1/users",
             "donations": "/api/v1/donations",
             "vouchers": "/api/v1/vouchers",
