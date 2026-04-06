@@ -341,7 +341,7 @@ export function Navbar() {
           ) : (
             <>
               <Link
-                to="/masuk"
+                to="/login"
                 style={{
                   padding: '8px 16px',
                   borderRadius: 8,

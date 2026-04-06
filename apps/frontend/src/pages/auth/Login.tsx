@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
-import { Eye, EyeOff, Leaf, Loader2, Heart, Users, Store } from "lucide-react"
+import { Eye, EyeOff, Loader2, Heart, Users, Store } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
+import logo from '@/assets/logo.svg'
 
 type Role = "donor" | "beneficiary" | "vendor"
 
@@ -120,28 +121,24 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-6">
         {/* Logo */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
-          <div style={{
-            width: 52,
-            height: 52,
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(22,163,74,0.3)',
-          }}>
-            <Leaf style={{ width: 26, height: 26, color: '#fff' }} />
-          </div>
-          <h1 style={{ 
-            fontSize: 24, 
-            fontWeight: 700, 
-            marginTop: 14, 
-            color: '#111',
-            letterSpacing: '-0.02em',
-          }}>
-            SeribuAsa
-          </h1>
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+            <img 
+              src={logo} 
+              alt="Logo" 
+              style={{ 
+              width: 100, 
+              height: 100, 
+              objectFit: 'contain',
+              marginTop: -10, 
+              }} 
+            />
+          <h1 className="text-xl font-bold mt-2 "
+              style={{
+                marginTop: -23,
+                marginBottom: -17,
+                color: '#346A43'
+              }}> SeribuAsa </h1>
         </div>
 
         {/* Title */}

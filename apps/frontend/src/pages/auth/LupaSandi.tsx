@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Leaf, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import logo from '@/assets/logo.svg'
 
 export default function LupaSandi() {
   const [email, setEmail] = useState('');
@@ -46,12 +47,27 @@ export default function LupaSandi() {
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-8">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 justify-center mb-8 no-underline">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center shadow-md">
-            <Leaf className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-lg font-bold text-gray-900 tracking-tight">SeribuAsa</span>
-        </Link>
+        <div className="flex flex-col items-center mb-8">
+          <img 
+            src={logo} 
+            alt="Logo" 
+            style={{ 
+              width: 100, 
+              height: 100, 
+              objectFit: 'contain',
+              marginTop: -10,
+            }} 
+          />
+          <h1 
+            className="text-xl font-bold" 
+            style={{ 
+              marginTop: -20,
+              color: "#346A43"
+            }}
+          >
+            SeribuAsa
+          </h1>
+        </div>
 
         <div className="text-center mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-1">Lupa Kata Sandi</h2>

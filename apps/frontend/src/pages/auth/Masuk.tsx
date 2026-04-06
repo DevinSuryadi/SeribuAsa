@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Loader2, Heart, Users, Store } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
-import logo from "@/assets/logo.svg"
+import logo from '@/assets/logo.svg'
 
 export default function Masuk() {
   const [email, setEmail] = useState("")

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../integrations/supabase/client';
-import { Leaf, Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle } from 'lucide-react';
+import logo from '@/assets/logo.svg'
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -85,16 +86,27 @@ const ResetPassword = () => {
       <div style={{ ...cardStyle, position: 'relative', zIndex: 1 }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 20 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(34,197,94,0.3)',
-            }}>
-              <Leaf style={{ width: 17, height: 17, color: 'white' }} />
-            </div>
-          </Link>
+          <div className="flex flex-col items-center mb-8">
+          <img 
+            src={logo} 
+            alt="Logo" 
+            style={{ 
+              width: 100, 
+              height: 100, 
+              objectFit: 'contain',
+              marginTop: -10,
+            }} 
+          />
+          <h1 
+            className="text-xl font-bold" 
+            style={{ 
+              marginTop: -20,
+              color: "#346A43"
+            }}
+          >
+            SeribuAsa
+          </h1>
+        </div>
           <div style={{ fontSize: 18, fontWeight: 700, color: '#111', letterSpacing: '-0.3px' }}>
             Reset Kata Sandi
           </div>
