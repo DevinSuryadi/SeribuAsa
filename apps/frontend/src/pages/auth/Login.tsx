@@ -1,8 +1,27 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { Eye, EyeOff, Leaf, Loader2, Heart, Users, Store } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
+
+type Role = "donor" | "beneficiary" | "vendor"
+
+const roles: { id: Role; label: string; icon: React.ElementType; desc: string }[] = [
+  { id: "donor", label: "Donatur", icon: Heart, desc: "Bantu nutrisi" },
+  { id: "beneficiary", label: "Penerima", icon: Users, desc: "Terima dukungan" },
+  { id: "vendor", label: "Vendor", icon: Store, desc: "Jual pangan" },
+]
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.25-.95 2.31-2.02 3.01l3.27 2.53c1.9-1.75 3-4.33 3-7.43 0-.7-.06-1.37-.18-2.01H12z" />
+      <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.61-2.45l-3.27-2.53c-.9.61-2.05.97-3.34.97-2.57 0-4.76-1.74-5.54-4.08l-3.37 2.6A9.99 9.99 0 0 0 12 22z" />
+      <path fill="#4A90E2" d="M6.46 13.91A5.99 5.99 0 0 1 6.15 12c0-.66.11-1.29.31-1.91l-3.37-2.6A9.99 9.99 0 0 0 2 12c0 1.61.38 3.13 1.09 4.51l3.37-2.6z" />
+      <path fill="#FBBC05" d="M12 6.01c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.95 2.99 14.7 2 12 2a9.99 9.99 0 0 0-8.91 5.49l3.37 2.6c.78-2.34 2.97-4.08 5.54-4.08z" />
+    </svg>
+  )
+}
 
 const passwordRequirements = [
   { regex: /.{8,}/, label: "Minimal 8 karakter" },
@@ -22,8 +41,20 @@ export default function Login() {
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { signIn, signInAsDemo } = useAuth()
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [googleRole, setGoogleRole] = useState<Role>("donor")
+  const { signIn, signInWithGoogle, signInAsDemo, user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (fromCheckout) {
+        navigate("/donation/create")
+      } else {
+        navigate("/dashboard")
+      }
+    }
+  }, [authLoading, user, fromCheckout, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,6 +99,19 @@ export default function Login() {
     signInAsDemo(role)
     toast.success(`Login sebagai Demo ${role === "donor" ? "Donatur" : role === "beneficiary" ? "Penerima" : "Vendor"}!`)
     navigate("/dashboard")
+  }
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true)
+    const { error } = await signInWithGoogle(googleRole)
+
+    if (error) {
+      toast.error("Login Google gagal", { description: error })
+      setGoogleLoading(false)
+      return
+    }
+
+    toast.info("Mengalihkan ke Google...")
   }
 
   const passwordValid = isPasswordValid(password)
@@ -347,6 +391,74 @@ export default function Login() {
             )}
           </button>
         </form>
+
+        {/* Google Login */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ marginBottom: 12 }}>
+            <p className="text-sm font-semibold text-gray-700 mb-2">Masuk Google sebagai</p>
+            <div className="grid grid-cols-3 gap-2">
+              {roles.map((r) => {
+                const Icon = r.icon
+                const isSelected = googleRole === r.id
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setGoogleRole(r.id)}
+                    className={`p-2 rounded-lg border-2 transition ${
+                      isSelected
+                        ? "border-green-600 bg-green-50"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 mx-auto mb-1 ${isSelected ? "text-green-600" : "text-gray-400"}`} />
+                    <p className="text-xs font-medium text-gray-900">{r.label}</p>
+                    <p className="text-xs text-gray-500">{r.desc}</p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <div style={{ flex: 1, height: '1px', background: '#e5e5e5' }} />
+            <span style={{ fontSize: 12, color: '#a3a3a3' }}>atau lanjutkan dengan</span>
+            <div style={{ flex: 1, height: '1px', background: '#e5e5e5' }} />
+          </div>
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading || googleLoading}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              fontSize: 14,
+              fontWeight: 600,
+              color: '#262626',
+              background: '#fff',
+              border: '1.5px solid #d4d4d4',
+              cursor: loading || googleLoading ? 'not-allowed' : 'pointer',
+              opacity: loading || googleLoading ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {googleLoading ? (
+              <>
+                <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Mengalihkan...</span>
+              </>
+            ) : (
+              <>
+                <GoogleIcon />
+                <span>Masuk dengan Google ({roles.find((r) => r.id === googleRole)?.label})</span>
+              </>
+            )}
+          </button>
+        </div>
 
         {/* Register Link */}
         <p style={{ fontSize: 13, textAlign: 'center', color: '#737373', marginTop: 24 }}>

@@ -1,8 +1,21 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { supabase } from "@/integrations/supabase/client"
-import type { Session } from "@supabase/supabase-js"
+
+type Session = {
+  access_token: string
+  user: {
+    id: string
+    email?: string | null
+    app_metadata?: {
+      provider?: string
+      providers?: string[]
+    }
+    identities?: Array<{ provider?: string | null } | null>
+  }
+}
 
 type UserRole = "donor" | "beneficiary" | "vendor" | "admin" | "government" | "corporate_donor" | null
+type GoogleSignInRole = Exclude<UserRole, "admin" | "government" | null>
 
 interface AuthUser {
   id: string
@@ -17,19 +30,81 @@ interface AuthContextType {
   loading: boolean
   session: Session | null
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
+  signInWithGoogle: (role?: GoogleSignInRole) => Promise<{ error: string | null }>
   signUp: (email: string, password: string, fullName: string, role: string) => Promise<{ error: string | null }>
   signInAsDemo: (role: UserRole) => void
   signOut: () => Promise<void>
 }
 
 const AUTH_KEY = "nutriguard-auth"
+const GOOGLE_ROLE_KEY = "nutriguard-google-role"
+const BACKEND_BASE_URL = "http://localhost:8000/api/v1"
+const KNOWN_ROLES = new Set(["donor", "beneficiary", "vendor", "admin", "government", "corporate_donor"])
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+function resolveRoleFromEmail(email?: string | null): UserRole {
+  if (!email) return null
+
+  const lowered = email.toLowerCase()
+  if (lowered.includes("penerima") || lowered.includes("beneficiary")) return "beneficiary"
+  if (lowered.includes("vendor")) return "vendor"
+  if (lowered.includes("admin")) return "admin"
+  if (lowered.includes("government")) return "government"
+  if (lowered.includes("corporate")) return "corporate_donor"
+  return "donor"
+}
+
+function isKnownRole(value: unknown): value is Exclude<UserRole, null> {
+  return typeof value === "string" && KNOWN_ROLES.has(value)
+}
+
+function isGoogleSession(currentSession: Session): boolean {
+  const provider = currentSession.user.app_metadata?.provider
+  if (provider === "google") return true
+
+  const providers = currentSession.user.app_metadata?.providers
+  if (Array.isArray(providers) && providers.includes("google")) return true
+
+  const identities = currentSession.user.identities || []
+  return identities.some((identity: { provider?: string | null } | null) => identity?.provider === "google")
+}
+
+async function syncGoogleProfile(accessToken: string): Promise<{ role: UserRole; fullName: string | null }> {
+  const preferredRole = localStorage.getItem(GOOGLE_ROLE_KEY)
+  const body = preferredRole ? { role: preferredRole } : {}
+
+  const response = await fetch(`${BACKEND_BASE_URL}/auth/google/sync`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: "Google profile sync failed" }))
+    throw new Error(errorData.detail || "Google profile sync failed")
+  }
+
+  const data = await response.json()
+  localStorage.removeItem(GOOGLE_ROLE_KEY)
+
+  const roleCandidate = data?.user?.role
+  const resolvedRole: UserRole = isKnownRole(roleCandidate) ? roleCandidate : null
+  const fullNameCandidate = data?.user?.full_name
+
+  return {
+    role: resolvedRole,
+    fullName: typeof fullNameCandidate === "string" ? fullNameCandidate : null,
+  }
+}
 
 async function getUserRole(userId: string): Promise<UserRole> {
   try {
     // Try to fetch from backend first (more reliable)
-    const response = await fetch(`http://localhost:8000/api/v1/users/${userId}`, {
+    const response = await fetch(`${BACKEND_BASE_URL}/users/${userId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -39,62 +114,21 @@ async function getUserRole(userId: string): Promise<UserRole> {
     if (!response.ok) {
       // Backend unavailable, fall back to email-based detection
       const { data: sessionData } = await supabase.auth.getSession()
-      if (sessionData?.session?.user?.email) {
-        const email = sessionData.session.user.email.toLowerCase()
-        if (email.includes("penerima") || email.includes("beneficiary")) {
-          return "beneficiary"
-        } else if (email.includes("vendor")) {
-          return "vendor"
-        } else if (email.includes("admin")) {
-          return "admin"
-        } else if (email.includes("government")) {
-          return "government"
-        } else if (email.includes("corporate")) {
-          return "corporate_donor"
-        }
-      }
-      return "donor"
+      return resolveRoleFromEmail(sessionData?.session?.user?.email) || "donor"
     }
     
     // const data = await response.json() // unused
     // For now, we need to detect role from email since role isn't directly in user_profiles table
     // In a future improvement, we could add role to user_profiles or check role-specific tables
     const { data: sessionData } = await supabase.auth.getSession()
-    if (sessionData?.session?.user?.email) {
-      const email = sessionData.session.user.email.toLowerCase()
-      if (email.includes("penerima") || email.includes("beneficiary")) {
-        return "beneficiary"
-      } else if (email.includes("vendor")) {
-        return "vendor"
-      } else if (email.includes("admin")) {
-        return "admin"
-      } else if (email.includes("government")) {
-        return "government"
-      } else if (email.includes("corporate")) {
-        return "corporate_donor"
-      }
-    }
-    return "donor"
+    return resolveRoleFromEmail(sessionData?.session?.user?.email) || "donor"
   } catch {
     // Error fetching from backend, fall back to email-based detection
     try {
       const { data: sessionData } = await supabase.auth.getSession()
-      if (sessionData?.session?.user?.email) {
-        const email = sessionData.session.user.email.toLowerCase()
-        if (email.includes("penerima") || email.includes("beneficiary")) {
-          return "beneficiary"
-        } else if (email.includes("vendor")) {
-          return "vendor"
-        } else if (email.includes("admin")) {
-          return "admin"
-        } else if (email.includes("government")) {
-          return "government"
-        } else if (email.includes("corporate")) {
-          return "corporate_donor"
-        }
-      }
-    } catch (e) {
-      // Ignore errors in fallback
+      return resolveRoleFromEmail(sessionData?.session?.user?.email) || "donor"
+    } catch {
+      // Ignore fallback errors
     }
     return "donor"
   }
@@ -103,7 +137,7 @@ async function getUserRole(userId: string): Promise<UserRole> {
 async function getUserProfile(userId: string): Promise<{ fullName: string }> {
   try {
     // Try to fetch from backend first (more reliable)
-    const response = await fetch(`http://localhost:8000/api/v1/users/${userId}`, {
+    const response = await fetch(`${BACKEND_BASE_URL}/users/${userId}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -128,6 +162,36 @@ async function getUserProfile(userId: string): Promise<{ fullName: string }> {
   }
 }
 
+async function buildAuthUserFromSession(currentSession: Session): Promise<AuthUser> {
+  let syncedRole: UserRole = null
+  let syncedFullName: string | null = null
+
+  if (isGoogleSession(currentSession)) {
+    try {
+      const synced = await syncGoogleProfile(currentSession.access_token)
+      syncedRole = synced.role
+      syncedFullName = synced.fullName
+    } catch (error) {
+      console.warn("[AUTH] Google profile sync failed, using fallback detection", error)
+    }
+  }
+
+  const [fallbackRole, profile] = await Promise.all([
+    getUserRole(currentSession.user.id),
+    getUserProfile(currentSession.user.id),
+  ])
+
+  const resolvedRole = syncedRole || fallbackRole || "donor"
+  const resolvedFullName = syncedFullName || profile.fullName || currentSession.user.email?.split("@")[0] || "User"
+
+  return {
+    id: currentSession.user.id,
+    email: currentSession.user.email || "",
+    fullName: resolvedFullName,
+    role: resolvedRole,
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [userRole, setUserRole] = useState<UserRole>(null)
@@ -135,25 +199,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }: { data: { session: Session | null } }) => {
       setSession(currentSession)
       if (currentSession) {
-        Promise.all([
-          getUserRole(currentSession.user.id),
-          getUserProfile(currentSession.user.id),
-        ]).then(([role, profile]) => {
-          setUser({
-            id: currentSession.user.id,
-            email: currentSession.user.email || "",
-            fullName: profile.fullName,
-            role,
-          })
-          setUserRole(role)
-        }).catch(() => {
+        try {
+          const authUser = await buildAuthUserFromSession(currentSession)
+          setUser(authUser)
+          setUserRole(authUser.role)
+        } catch {
           const email = currentSession.user.email || ""
-          const role: UserRole = email.toLowerCase().includes("penerima") || email.toLowerCase().includes("beneficiary")
-            ? "beneficiary"
-            : "donor"
+          const role = resolveRoleFromEmail(email) || "donor"
           setUser({
             id: currentSession.user.id,
             email,
@@ -161,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role,
           })
           setUserRole(role)
-        })
+        }
       } else {
         const stored = localStorage.getItem(AUTH_KEY)
         if (stored) {
@@ -177,33 +232,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, newSession: Session | null) => {
       setSession(newSession)
       if (newSession) {
-        Promise.all([
-          getUserRole(newSession.user.id),
-          getUserProfile(newSession.user.id),
-        ]).then(([role, profile]) => {
-          setUser({
-            id: newSession.user.id,
-            email: newSession.user.email || "",
-            fullName: profile.fullName,
-            role,
+        void buildAuthUserFromSession(newSession)
+          .then((authUser) => {
+            setUser(authUser)
+            setUserRole(authUser.role)
           })
-          setUserRole(role)
-        }).catch(() => {
-          const email = newSession.user.email || ""
-          const role: UserRole = email.toLowerCase().includes("penerima") || email.toLowerCase().includes("beneficiary")
-            ? "beneficiary"
-            : "donor"
-          setUser({
-            id: newSession.user.id,
-            email,
-            fullName: email.split("@")[0],
-            role,
+          .catch(() => {
+            const email = newSession.user.email || ""
+            const role = resolveRoleFromEmail(email) || "donor"
+            setUser({
+              id: newSession.user.id,
+              email,
+              fullName: email.split("@")[0],
+              role,
+            })
+            setUserRole(role)
           })
-          setUserRole(role)
-        })
       }
       // Don't clear user when session is null — demo users stored in localStorage
       // should persist across navigation. Only signOut() clears the user.
@@ -235,6 +282,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: null }
     } catch {
       return { error: "Login gagal. Silakan coba lagi." }
+    }
+  }
+
+  const signInWithGoogle = async (role: GoogleSignInRole = "donor") => {
+    try {
+      localStorage.removeItem(AUTH_KEY)
+      localStorage.setItem(GOOGLE_ROLE_KEY, role)
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/login`,
+        },
+      })
+
+      if (error) {
+        return { error: error.message }
+      }
+
+      return { error: null }
+    } catch {
+      return { error: "Login Google gagal. Silakan coba lagi." }
     }
   }
 
@@ -382,6 +451,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserRole(null)
     setSession(null)
     localStorage.removeItem(AUTH_KEY)
+    localStorage.removeItem(GOOGLE_ROLE_KEY)
   }
 
   const value = {
@@ -390,6 +460,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     session,
     signIn,
+    signInWithGoogle,
     signUp,
     signInAsDemo,
     signOut,
