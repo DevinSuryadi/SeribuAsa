@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 
 const statusColor: Record<string, string> = {
   success: 'bg-primary/10 text-primary border-primary/20',
-  pending: 'bg-accent/10 text-accent-foreground border-accent/20',
+  pending: 'bg-orange-100 text-orange-700 border-orange-200',
   failed: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 

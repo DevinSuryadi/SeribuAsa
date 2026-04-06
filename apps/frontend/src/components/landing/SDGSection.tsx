@@ -1,6 +1,6 @@
 import { useScrollReveal } from '../../hooks/useScrollReveal';
 import { useStaggerChildren } from '../../hooks/useStaggerChildren';
-import { Wheat, HeartPulse, Scale } from 'lucide-react';
+import { Wheat } from 'lucide-react';
 
 const sdgs = [
   {
@@ -10,20 +10,20 @@ const sdgs = [
     iconBg: 'rgba(234,179,8,0.12)',
     iconColor: '#a16207',
   },
-  {
-    icon: HeartPulse,
-    title: 'SDG 3: Kesehatan yang Baik',
-    desc: 'Mendukung nutrisi ibu hamil dan 1000 Hari Pertama Kehidupan.',
-    iconBg: 'rgba(34,197,94,0.1)',
-    iconColor: '#16a34a',
-  },
-  {
-    icon: Scale,
-    title: 'SDG 10: Mengurangi Ketimpangan',
-    desc: 'Distribusi bantuan yang adil berdasarkan data dan skor ketahanan pangan.',
-    iconBg: 'rgba(0,0,0,0.05)',
-    iconColor: '#444',
-  },
+  // {
+  //   icon: HeartPulse,
+  //   title: 'SDG 3: Kesehatan yang Baik',
+  //   desc: 'Mendukung nutrisi ibu hamil dan 1000 Hari Pertama Kehidupan.',
+  //   iconBg: 'rgba(34,197,94,0.1)',
+  //   iconColor: '#16a34a',
+  // },
+  // {
+  //   icon: Scale,
+  //   title: 'SDG 10: Mengurangi Ketimpangan',
+  //   desc: 'Distribusi bantuan yang adil berdasarkan data dan skor ketahanan pangan.',
+  //   iconBg: 'rgba(0,0,0,0.05)',
+  //   iconColor: '#444',
+  // },
 ];
 
 export function SDGSection() {

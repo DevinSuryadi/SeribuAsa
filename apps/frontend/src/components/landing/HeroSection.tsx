@@ -81,7 +81,7 @@ export function HeroSection() {
 
       {/* SVG Geometric Curves - Smooth & Organic */}
       <div
-        className="hero-curves"
+        className="hidden md:block hero-curves"
         style={{
           position: 'absolute',
           top: 0,

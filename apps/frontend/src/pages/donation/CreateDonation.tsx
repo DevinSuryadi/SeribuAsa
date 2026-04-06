@@ -1,19 +1,13 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import DashboardLayout from "@/components/dashboard/DashboardLayout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Heart, ArrowRight, Loader2, ArrowLeft, CheckCircle } from "lucide-react"
+import { Heart, ArrowRight, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { createDonation } from "@/services/donations"
 import { formatIDR } from "@/lib/format"
-
-const paymentLabels: Record<string, string> = {
-  qris: "QRIS",
-  bank_transfer: "Transfer Bank",
-  e_wallet: "E-Wallet",
-}
+import { PLAN_NAMES, PAYMENT_LABELS, PAYMENT_METHOD_MAP, DONATION_CHECKOUT_STORAGE_KEY } from "@/lib/donation-constants"
+import { DonationHero } from "@/components/donation/DonationHero"
 
 export default function CreateDonation() {
   const navigate = useNavigate()
@@ -28,18 +22,12 @@ export default function CreateDonation() {
   const [donorEmail, setDonorEmail] = useState("")
 
   useEffect(() => {
-    // Restore from checkout data
-    const checkoutData = sessionStorage.getItem("donation_checkout_data")
+    const checkoutData = sessionStorage.getItem(DONATION_CHECKOUT_STORAGE_KEY)
     if (checkoutData) {
       try {
         const data = JSON.parse(checkoutData)
         if (data.plan) {
-          const planNames: Record<string, string> = {
-            balita: "Adopsi Nutrisi 1 Balita",
-            "1000hpk": "Paket 1000 HPK",
-            corporate: "Corporate Impact Plan",
-          }
-          setPlanName(planNames[data.plan] || "Donasi Custom")
+          setPlanName(PLAN_NAMES[data.plan] || "Donasi Custom")
         }
         if (data.amount) {
           setAmount(data.amount.toString())
@@ -47,24 +35,16 @@ export default function CreateDonation() {
         if (data.type === "monthly") setDonationType("subscription")
         else if (data.type === "once") setDonationType("one_time")
         if (data.payment) {
-          const methodMap: Record<string, string> = {
-            qris: "qris",
-            va_bca: "bank_transfer",
-            va_mandiri: "bank_transfer",
-            gopay: "e_wallet",
-            cc: "bank_transfer",
-          }
-          setPaymentMethod(methodMap[data.payment] || "qris")
+          setPaymentMethod(PAYMENT_METHOD_MAP[data.payment] || "qris")
         }
         if (data.name) setDonorName(data.name)
         if (data.email) setDonorEmail(data.email)
-        sessionStorage.removeItem("donation_checkout_data")
+        sessionStorage.removeItem(DONATION_CHECKOUT_STORAGE_KEY)
       } catch {
         // ignore
       }
     }
 
-    // Also accept URL params as fallback
     const planAmount = searchParams.get("amount")
     const planType = searchParams.get("type")
     const planPayment = searchParams.get("payment")
@@ -74,24 +54,12 @@ export default function CreateDonation() {
     if (planType === "monthly" && donationType !== "subscription") setDonationType("subscription")
     if (planType === "once" && donationType !== "one_time") setDonationType("one_time")
     if (planPayment) {
-      const methodMap: Record<string, string> = {
-        qris: "qris",
-        va_bca: "bank_transfer",
-        va_mandiri: "bank_transfer",
-        gopay: "e_wallet",
-        cc: "bank_transfer",
-      }
-      setPaymentMethod(methodMap[planPayment] || "qris")
+      setPaymentMethod(PAYMENT_METHOD_MAP[planPayment] || "qris")
     }
     if (planId && !planName) {
-      const planNames: Record<string, string> = {
-        balita: "Adopsi Nutrisi 1 Balita",
-        "1000hpk": "Paket 1000 HPK",
-        corporate: "Corporate Impact Plan",
-      }
-      setPlanName(planNames[planId] || "Donasi Custom")
+      setPlanName(PLAN_NAMES[planId] || "Donasi Custom")
     }
-  }, [searchParams])
+  }, [searchParams, amount, donationType, planName])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,98 +78,101 @@ export default function CreateDonation() {
       navigate(`/donation/payment/${donation.id}`, {
         state: { amount: parseInt(amount), paymentMethod },
       })
-    } catch (err: any) {
-      toast.error("Gagal membuat donasi", { description: err.message })
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      toast.error("Gagal membuat donasi", { description: errorMessage })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <DashboardLayout title="Konfirmasi Donasi" subtitle="Periksa kembali detail donasi Anda sebelum melanjutkan ke pembayaran.">
-      <div className="mx-auto max-w-2xl">
-        <Button variant="ghost" size="sm" className="mb-4 gap-1" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4" /> Kembali
-        </Button>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-6">
+      <Card className="w-full max-w-md">
+        <CardHeader className="pb-3">
+          <DonationHero
+            icon={Heart}
+            title="Konfirmasi Donasi"
+            subtitle="Periksa detail sebelum pembayaran."
+            color="green"
+            iconSize="small"
+          />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Plan Info - Compact */}
+            {planName && (
+              <div className="rounded-lg bg-green-50 border border-green-200 p-2">
+                <p className="text-xs font-semibold text-green-800">{planName}</p>
+                <p className="text-xs text-green-600">
+                  {donationType === "subscription" ? "Donasi Bulanan" : "Sekali"}
+                </p>
+              </div>
+            )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-red-500" />
-              Ringkasan Donasi
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Plan Info */}
-              {planName && (
-                <div className="rounded-lg bg-green-50 border border-green-200 p-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="font-medium text-green-800">{planName}</span>
-                  </div>
+            {/* Details Grid - Compact */}
+            <div className="space-y-1.5 text-xs bg-gray-50 p-3 rounded-lg">
+              {donorName && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Donatur:</span>
+                  <span className="font-medium text-gray-900">{donorName}</span>
                 </div>
               )}
+              {donorEmail && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Email:</span>
+                  <span className="font-medium text-gray-900 truncate ml-2">{donorEmail}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-1 border-t border-gray-200">
+                <span className="text-gray-600">Jenis:</span>
+                <span className="font-medium text-gray-900">
+                  {donationType === "one_time" ? "Sekali" : "Bulanan"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Metode:</span>
+                <span className="font-medium text-gray-900">{PAYMENT_LABELS[paymentMethod] || paymentMethod}</span>
+              </div>
+            </div>
 
-              {/* Donor Info */}
-              {(donorName || donorEmail) && (
+            {/* Amount & CTA */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 p-3 rounded-lg text-center">
+              <p className="text-xs text-gray-600 mb-1">Total Donasi</p>
+              <p className="text-2xl font-bold text-green-700">{formatIDR(parseInt(amount) || 0)}</p>
+              {parseInt(amount) >= 500000 && (
+                <p className="text-xs text-green-600 mt-1">
+                  = {Math.floor(parseInt(amount) / 500000)} anak + {Math.floor(parseInt(amount) / 500000) * 1000} hari dukungan
+                </p>
+              )}
+            </div>
+
+            {/* CTA Button */}
+            <Button
+              type="submit"
+              disabled={loading || !amount}
+              className="w-full h-10 text-sm bg-green-600 hover:bg-green-700"
+              size="sm"
+            >
+              {loading ? (
                 <>
-                  <Separator />
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-2">Donatur</h4>
-                    <div className="space-y-1 text-sm">
-                      {donorName && <div className="flex justify-between"><span className="text-gray-600">Nama</span><span className="font-medium">{donorName}</span></div>}
-                      {donorEmail && <div className="flex justify-between"><span className="text-gray-600">Email</span><span className="font-medium">{donorEmail}</span></div>}
-                    </div>
-                  </div>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  Bayar Sekarang
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
+            </Button>
 
-              <Separator />
-
-              {/* Donation Details */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-2">Detail Donasi</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Jenis</span>
-                    <span className="font-medium">{donationType === "one_time" ? "Sekali Donasi" : "Donasi Rutin (Bulanan)"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Jumlah</span>
-                    <span className="font-semibold text-lg">{formatIDR(parseInt(amount) || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Metode Pembayaran</span>
-                    <span className="font-medium">{paymentLabels[paymentMethod] || paymentMethod}</span>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Submit */}
-              <Button type="submit" disabled={loading || !amount} className="w-full" size="lg">
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    Bayar {amount ? formatIDR(parseInt(amount)) : "Sekarang"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-
-              <p className="text-xs text-center text-gray-400">
-                Setelah klik tombol, Anda akan diarahkan ke halaman pembayaran.
-              </p>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </DashboardLayout>
+            <p className="text-xs text-center text-gray-500">
+              Anda akan diarahkan ke halaman pembayaran yang aman.
+            </p>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

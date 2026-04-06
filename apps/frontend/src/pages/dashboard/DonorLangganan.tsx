@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { CreditCard, Pause, Play, XCircle, ArrowUp, Baby, CheckCircle, Heart, Wallet, QrCode, Landmark } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { formatIDR, formatDate } from '@/lib/format';
 import { getDonations } from '@/services/donations';
 import { toast } from 'sonner';
@@ -38,7 +39,7 @@ const DonorLangganan = () => {
 
   useEffect(() => {
     if (user) {
-      getDonations({ type: 'subscription' })
+      getDonations()
         .then((data) => {
           setSubscriptions(data.items || []);
           setLoading(false);
@@ -146,7 +147,7 @@ const DonorLangganan = () => {
               </div>
               <Badge className={
                 cancelled ? 'bg-destructive/10 text-destructive border-destructive/20'
-                : paused ? 'bg-accent/10 text-accent-foreground border-accent/20'
+                : paused ? 'bg-orange-100 text-orange-700 border-orange-200'
                 : 'bg-primary/10 text-primary border-primary/20'
               }>
                 {cancelled ? 'Dibatalkan' : paused ? 'Dijeda' : subscriptions.length > 0 ? 'Aktif' : 'Tidak Aktif'}
@@ -283,7 +284,7 @@ const DonorLangganan = () => {
                     <span className="text-sm font-medium text-foreground">{formatIDR(bill.amount)}</span>
                     <Badge variant="outline" className={`text-[10px] ${
                       bill.status === 'success' ? 'bg-primary/10 text-primary border-primary/20' :
-                      bill.status === 'pending' ? 'bg-accent/10 text-accent-foreground border-accent/20' :
+                      bill.status === 'pending' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                       'bg-destructive/10 text-destructive border-destructive/20'
                     }`}>
                       <CheckCircle className="h-3 w-3 mr-1" />

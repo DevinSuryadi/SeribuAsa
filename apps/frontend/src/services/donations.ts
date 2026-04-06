@@ -4,6 +4,10 @@ export async function getDonations() {
   return apiFetch("/donations/");
 }
 
+export async function getDonation(donationId: string) {
+  return apiFetch(`/donations/${donationId}`);
+}
+
 export async function createDonation(data: {
   amount: number;
   type: string;

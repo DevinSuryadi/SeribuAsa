@@ -23,7 +23,7 @@ export default function BeneficiaryDashboard() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate("/masuk")
+      navigate("/login")
     }
   }, [user, authLoading, navigate])
 
@@ -103,7 +103,7 @@ export default function BeneficiaryDashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div ref={gridRef} className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div ref={gridRef} className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <Card className="border-primary/30 bg-primary/5 col-span-2">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-3">

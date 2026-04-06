@@ -121,7 +121,7 @@ const VendorSettlement = () => {
         </div>
 
         {/* KPI */}
-        <div ref={gridRef} className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div ref={gridRef} className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="pt-6">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 mb-3">

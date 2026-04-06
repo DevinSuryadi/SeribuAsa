@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
-import { Eye, EyeOff, Shield, Loader2, Heart, Users, Store } from "lucide-react"
+import { Eye, EyeOff, Leaf, Loader2, Heart, Users, Store } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -15,7 +15,7 @@ function isPasswordValid(password: string): boolean {
   return passwordRequirements.every((req) => req.regex.test(password))
 }
 
-export default function Masuk() {
+export default function Login() {
   const [searchParams] = useSearchParams()
   const fromCheckout = searchParams.get("from") === "checkout"
   const [email, setEmail] = useState("")
@@ -74,7 +74,7 @@ export default function Masuk() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-8">
+      <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-6">
         {/* Logo */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
           <div style={{
@@ -87,7 +87,7 @@ export default function Masuk() {
             justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(22,163,74,0.3)',
           }}>
-            <Shield style={{ width: 26, height: 26, color: '#fff' }} />
+            <Leaf style={{ width: 26, height: 26, color: '#fff' }} />
           </div>
           <h1 style={{ 
             fontSize: 24, 

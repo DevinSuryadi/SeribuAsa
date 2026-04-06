@@ -74,7 +74,7 @@ const SurveiFIES = () => {
   const handleSubmit = async () => {
     if (!user?.id) return;
     setSubmitting(true);
-    setError(null);
+    // setError(null);
 
     try {
       const responses: Record<string, number> = {};
@@ -88,7 +88,7 @@ const SurveiFIES = () => {
         toast.success('Survei berhasil dikirim!');
       }
     } catch (err: any) {
-      setError(err.message || 'Gagal mengirim survei');
+      // setError(err.message || 'Gagal mengirim survei');
       toast.error(err.message || 'Gagal mengirim survei');
     } finally {
       setSubmitting(false);
@@ -223,6 +223,7 @@ const SurveiFIES = () => {
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => handleAnswer('ya')}
+                aria-label="Jawab ya untuk pertanyaan"
                 className={`rounded-xl border-2 p-4 text-center font-medium transition-all ${
                   answers[currentQ] === 'ya'
                     ? 'border-primary bg-primary/5 text-primary'
@@ -233,6 +234,7 @@ const SurveiFIES = () => {
               </button>
               <button
                 onClick={() => handleAnswer('tidak')}
+                aria-label="Jawab tidak untuk pertanyaan"
                 className={`rounded-xl border-2 p-4 text-center font-medium transition-all ${
                   answers[currentQ] === 'tidak'
                     ? 'border-primary bg-primary/5 text-primary'

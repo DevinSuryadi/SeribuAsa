@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Leaf, LogOut, LayoutDashboard, ChevronDown, User } from 'lucide-react';
+import { Leaf, LogOut, LayoutDashboard, ChevronDown, User, X, Menu } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const navLinks = [
@@ -30,6 +30,8 @@ function getInitials(name: string) {
 export function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 1024 : false);
   const location = useLocation();
   const { user, userRole, signOut } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -51,7 +53,20 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      const newIsMobile = window.innerWidth < 1024;
+      setIsMobile(newIsMobile);
+      if (!newIsMobile && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [mobileMenuOpen]);
+
   return (
+    <>
     <header
       style={{
         position: 'fixed',
@@ -343,8 +358,161 @@ export function Navbar() {
             </>
           )}
         </div>
+
+        {/* Mobile menu trigger */}
+        {isMobile && (
+          <button
+            data-mobile-trigger="true"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#333',
+            }}
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        )}
       </div>
     </header>
+
+      {/* Mobile menu */}
+      {isMobile && mobileMenuOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 64,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: '#fff',
+            borderTop: '1px solid rgba(0,0,0,0.06)',
+            zIndex: 40,
+            overflowY: 'auto',
+          }}
+        >
+          <div style={{ padding: '12px 0' }}>
+            {navLinks.map((link) => {
+              const active = location.pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: 'block',
+                    padding: '12px 16px',
+                    fontSize: 14,
+                    fontWeight: active ? 600 : 500,
+                    color: active ? '#15803d' : '#666',
+                    textDecoration: 'none',
+                    borderLeft: active ? '3px solid #15803d' : '3px solid transparent',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+
+            {/* Divider */}
+            <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)', margin: '8px 0' }} />
+
+            {/* User menu mobile */}
+            {user ? (
+              <>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '12px 16px',
+                    textAlign: 'left',
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#666',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <LayoutDashboard size={18} />
+                    Dashboard
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    signOut();
+                    setMobileMenuOpen(false);
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '12px 16px',
+                    textAlign: 'left',
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#dc2626',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <LogOut size={18} />
+                    Keluar
+                  </div>
+                </button>
+              </>
+            ) : (
+              <div style={{ padding: '8px 12px', display: 'flex', gap: 8, flexDirection: 'column' }}>
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: 'block',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#666',
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                  }}
+                >
+                  Masuk
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    display: 'block',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#fff',
+                    background: 'linear-gradient(135deg, #22c55e, #15803d)',
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                  }}
+                >
+                  Daftar
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

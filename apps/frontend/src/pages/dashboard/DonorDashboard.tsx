@@ -39,7 +39,7 @@ export default function DonorDashboard() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate("/masuk")
+      navigate("/login")
     }
   }, [user, authLoading, navigate])
 
@@ -73,7 +73,7 @@ export default function DonorDashboard() {
 
   const statusColor: Record<string, string> = {
     success: 'bg-primary/10 text-primary border-primary/20',
-    pending: 'bg-accent/10 text-accent-foreground border-accent/20',
+    pending: 'bg-orange-100 text-orange-700 border-orange-200',
     failed: 'bg-destructive/10 text-destructive border-destructive/20',
   };
 
@@ -122,7 +122,7 @@ export default function DonorDashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div ref={gridRef} className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div ref={gridRef} className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <KPICard icon={Heart} label="Total Donasi" value={formatIDR(totalDonated)} sub="Bulan ini" accent />
           <KPICard icon={CreditCard} label="Langganan Aktif" value="1 Paket" sub="Adopsi Nutrisi Balita" />
           <KPICard icon={Users} label="Penerima Didukung" value={`${childrenHelped} Anak`} sub="Menerima bantuan" />

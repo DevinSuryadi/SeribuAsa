@@ -34,7 +34,7 @@ export default function LupaSandi() {
           <p className="text-sm text-gray-500 mb-6">
             Silakan cek inbox email <strong className="text-gray-700">{email}</strong> untuk tautan reset kata sandi.
           </p>
-          <Link to="/masuk" className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-700 font-medium">
+          <Link to="/login" className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-700 font-medium">
             <ArrowLeft size={14} /> Kembali ke Masuk
           </Link>
         </div>
@@ -80,7 +80,7 @@ export default function LupaSandi() {
             Kirim Tautan Reset
           </button>
 
-          <Link to="/masuk" className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 font-medium transition">
+          <Link to="/login" className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 font-medium transition">
             <ArrowLeft size={13} /> Kembali ke Masuk
           </Link>
         </form>

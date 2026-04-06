@@ -133,7 +133,7 @@ const KelolaProduk = () => {
 
   const approvalColor: Record<string, string> = {
     approved: 'bg-primary/10 text-primary border-primary/20',
-    pending: 'bg-accent/10 text-accent-foreground border-accent/20',
+    pending: 'bg-orange-100 text-orange-700 border-orange-200',
     rejected: 'bg-destructive/10 text-destructive border-destructive/20',
   };
 
@@ -196,7 +196,7 @@ const KelolaProduk = () => {
                     🍽️
                   </div>
                   <div>
-                    <div className="font-medium text-foreground">{product.name}</div>
+                    <div className="font-medium text-foreground line-clamp-1">{product.name}</div>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline" className="text-[10px]">{product.category_name || 'Uncategorized'}</Badge>
                       <Badge variant="outline" className={`text-[10px] ${approvalColor[product.approval_status] || ''}`}>

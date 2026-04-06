@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { supabase } from "@/integrations/supabase/client"
 import type { Session } from "@supabase/supabase-js"
 
-type UserRole = "donor" | "beneficiary" | "vendor" | "admin" | "government" | null
+type UserRole = "donor" | "beneficiary" | "vendor" | "admin" | "government" | "corporate_donor" | null
 
 interface AuthUser {
   id: string
@@ -56,7 +56,7 @@ async function getUserRole(userId: string): Promise<UserRole> {
       return "donor"
     }
     
-    const data = await response.json()
+    // const data = await response.json() // unused
     // For now, we need to detect role from email since role isn't directly in user_profiles table
     // In a future improvement, we could add role to user_profiles or check role-specific tables
     const { data: sessionData } = await supabase.auth.getSession()

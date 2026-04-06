@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   }
 
   if (!user) {
-    return <Navigate to="/masuk" replace />
+    return <Navigate to="/login" replace />
   }
 
   if (allowedRoles && userRole && !allowedRoles.includes(userRole)) {

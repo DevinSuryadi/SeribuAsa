@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { Activity, Plus, Baby } from 'lucide-react';
+import { Activity, Plus, Baby, Loader2 } from 'lucide-react';
 import { useStaggerChildren } from '@/hooks/useStaggerChildren';
 import { addMeasurement, getChildren, getMeasurementHistory } from '@/services/nutrition';
 import { formatDate } from '@/lib/format';
@@ -80,6 +80,11 @@ const PemantauanGizi = () => {
       return;
     }
     setSubmitting(true);
+    if (!selectedChild) {
+      toast.error("Silakan pilih anak terlebih dahulu");
+      setSubmitting(false);
+      return;
+    }
     try {
       const today = new Date().toISOString().split('T')[0];
       await addMeasurement({
@@ -253,7 +258,7 @@ const PemantauanGizi = () => {
             <div className="space-y-4">
               <div>
                 <Label>Anak</Label>
-                <Select value={selectedChild?.id || ''} onValueChange={(v) => {
+                <Select value={selectedChild?.id || ''} onValueChange={(v: string) => {
                   const child = children.find((c) => c.id === v);
                   if (child) setSelectedChild(child);
                 }}>

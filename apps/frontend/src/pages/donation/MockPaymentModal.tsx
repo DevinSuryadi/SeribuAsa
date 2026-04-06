@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CreditCard, AlertTriangle, Loader2, CheckCircle2, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { simulatePayment } from "@/services/donations"
+import { DonationHero } from "@/components/donation/DonationHero"
 
 export default function MockPaymentModal() {
   const { donationId } = useParams()
@@ -41,15 +42,16 @@ export default function MockPaymentModal() {
             donationId: result.donation_id,
             amount: result.amount,
             transactionId: result.transaction_id,
-            impact: result.impact,
-          },
-        })
-      }, 1500)
-    } catch (err: any) {
-      toast.error("Simulasi pembayaran gagal", { description: err.message })
-      setLoading(false)
-    }
-  }
+             impact: result.impact,
+           },
+         })
+       }, 1500)
+     } catch (err) {
+       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+       toast.error("Simulasi pembayaran gagal", { description: errorMessage })
+       setLoading(false)
+     }
+   }
 
   if (success) {
     return (
@@ -69,14 +71,13 @@ export default function MockPaymentModal() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
-            <CreditCard className="h-8 w-8 text-blue-600" />
-          </div>
-          <CardTitle className="text-2xl">Simulasi Pembayaran</CardTitle>
-          <p className="text-sm text-gray-500">
-            Ini adalah mode demo. Klik tombol di bawah untuk mensimulasikan pembayaran berhasil.
-          </p>
+        <CardHeader className="text-center pb-6">
+          <DonationHero
+            icon={CreditCard}
+            title="Simulasi Pembayaran"
+            subtitle="Ini adalah mode demo. Klik tombol di bawah untuk mensimulasikan pembayaran berhasil."
+            color="green"
+          />
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Payment Details */}
@@ -104,11 +105,11 @@ export default function MockPaymentModal() {
               <span className="text-gray-600">Berlaku sampai</span>
               <span className="font-semibold">24 jam</span>
             </div>
-          </div>
+           </div>
 
-          <Separator />
+           <Separator className="my-6" />
 
-          {/* Warning Banner */}
+           {/* Warning Banner */}
           <Alert className="bg-yellow-50 border-yellow-200">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800">

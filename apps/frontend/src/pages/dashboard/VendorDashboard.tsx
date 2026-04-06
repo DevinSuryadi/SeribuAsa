@@ -58,7 +58,7 @@ export default function VendorDashboard() {
 
   const statusColor: Record<string, string> = {
     completed: 'bg-primary/10 text-primary border-primary/20',
-    pending: 'bg-accent/10 text-accent-foreground border-accent/20',
+    pending: 'bg-orange-100 text-orange-700 border-orange-200',
     cancelled: 'bg-destructive/10 text-destructive border-destructive/20',
   };
 
@@ -112,7 +112,7 @@ export default function VendorDashboard() {
           </Button>
         </div>
 
-        <div ref={gridRef} className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div ref={gridRef} className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary mb-3">

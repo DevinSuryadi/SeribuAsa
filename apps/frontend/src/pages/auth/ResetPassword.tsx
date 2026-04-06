@@ -27,7 +27,7 @@ const ResetPassword = () => {
       setError(error.message);
     } else {
       setSuccess(true);
-      setTimeout(() => navigate('/masuk'), 3000);
+      setTimeout(() => navigate('/login'), 3000);
     }
   };
 

@@ -81,7 +81,9 @@ export function CTASection() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 10,
+              flexDirection: 'column',
             }}
+            className="sm:flex-row"
           >
             {/* Primary */}
             <Link
@@ -99,6 +101,8 @@ export function CTASection() {
                 background: 'linear-gradient(135deg, #22c55e, #16a34a)',
                 boxShadow: '0 2px 12px rgba(34,197,94,0.3)',
                 transition: 'all 0.2s ease',
+                width: 'clamp(200px, 100%, 300px)',
+                justifyContent: 'center',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-1px)';
@@ -129,6 +133,8 @@ export function CTASection() {
                 border: '1px solid rgba(0,0,0,0.15)',
                 background: 'transparent',
                 transition: 'all 0.15s ease',
+                width: 'clamp(200px, 100%, 300px)',
+                justifyContent: 'center',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
@@ -158,6 +164,8 @@ export function CTASection() {
                 textDecoration: 'none',
                 background: 'transparent',
                 transition: 'all 0.15s ease',
+                width: 'clamp(200px, 100%, 300px)',
+                justifyContent: 'center',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = '#111';

@@ -2,7 +2,7 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ShoppingBasket, Info } from 'lucide-react';
+import { Sparkles, ShoppingBasket, Info, AlertCircle, RefreshCw } from 'lucide-react';
 import { useStaggerChildren } from '@/hooks/useStaggerChildren';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
