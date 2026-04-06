@@ -36,6 +36,7 @@ class UserProfileResponse(BaseModel):
     id: UUID
     user_id: UUID
     full_name: str
+    role: Optional[UserRole] = None
     phone: Optional[str]
     address: Optional[str]
     avatar_url: Optional[str]
@@ -51,6 +52,8 @@ class UserSignUpRequest(BaseModel):
     user_id: UUID = Field(..., description="Supabase auth user ID")
     full_name: str = Field(..., min_length=1, max_length=255)
     role: UserRole = Field(...)
+    phone: Optional[str] = Field(None, max_length=20)
+    address: Optional[str] = Field(None)
 
     class Config:
         json_schema_extra = {

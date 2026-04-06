@@ -22,6 +22,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+def _resolve_user_role(db: Session, user_id: UUID) -> UserRole | None:
+    """Resolve user role from role-specific profile tables."""
+    donor_profile = db.query(DonorProfile).filter(DonorProfile.user_id == user_id).first()
+    if donor_profile:
+        if donor_profile.corporate_name:
+            return "corporate_donor"
+        return "donor"
+
+    if db.query(BeneficiaryProfile).filter(BeneficiaryProfile.user_id == user_id).first():
+        return "beneficiary"
+
+    if db.query(VendorProfile).filter(VendorProfile.user_id == user_id).first():
+        return "vendor"
+
+    return None
+
+
 @router.post("/signup", response_model=UserSignUpResponse, status_code=status.HTTP_201_CREATED)
 async def create_user_on_signup(
     user_data: UserSignUpRequest,
@@ -55,7 +72,9 @@ async def create_user_on_signup(
         logger.info(f"[SIGNUP] Creating user_profile for: {user_data.user_id}")
         user_profile = UserProfile(
             user_id=user_data.user_id,
-            full_name=user_data.full_name
+            full_name=user_data.full_name,
+            phone=user_data.phone,
+            address=user_data.address,
         )
         db.add(user_profile)
         db.flush()  # Flush to ensure the profile is created before adding role-specific profiles
@@ -150,5 +169,17 @@ async def get_user_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User profile not found"
         )
-    
-    return user_profile
+
+    resolved_role = _resolve_user_role(db, user_id)
+
+    return UserProfileResponse(
+        id=user_profile.id,
+        user_id=user_profile.user_id,
+        full_name=user_profile.full_name,
+        role=resolved_role,
+        phone=user_profile.phone,
+        address=user_profile.address,
+        avatar_url=user_profile.avatar_url,
+        created_at=user_profile.created_at,
+        updated_at=user_profile.updated_at,
+    )

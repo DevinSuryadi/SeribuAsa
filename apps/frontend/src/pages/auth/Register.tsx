@@ -82,7 +82,20 @@ export default function Register() {
 
     setLoading(true)
     try {
-      await signUp(email, password, fullName, role)
+      const { error } = await signUp(email, password, fullName, role)
+
+      if (error) {
+        const errorMsg = error.toLowerCase()
+        if (errorMsg.includes("email") || errorMsg.includes("already")) {
+          toast.error("Email sudah terdaftar", { description: "Gunakan email lain atau coba login" })
+        } else if (errorMsg.includes("password")) {
+          toast.error("Password error", { description: error })
+        } else {
+          toast.error("Registrasi gagal", { description: error })
+        }
+        return
+      }
+
       toast.success("Registrasi berhasil!")
       navigate("/dashboard")
     } catch (err) {

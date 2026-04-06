@@ -158,25 +158,31 @@ class GoogleAuthService:
         Returns: (profile, resolved_role, profile_created)
         """
         profile_created = False
+        normalized_full_name = (full_name or "").strip()
+        fallback_name = email.split("@", 1)[0] if email and "@" in email else "Google User"
+        fallback_candidates = {"google user", fallback_name.lower()}
 
         profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
         if not profile:
-            profile = UserProfile(user_id=user_id, full_name=full_name)
+            profile = UserProfile(user_id=user_id, full_name=normalized_full_name or fallback_name)
             db.add(profile)
             db.flush()
             profile_created = True
-        elif not profile.full_name and full_name:
-            profile.full_name = full_name
+        else:
+            current_name = (profile.full_name or "").strip()
+            if normalized_full_name and (
+                not current_name or current_name.lower() in fallback_candidates
+            ):
+                profile.full_name = normalized_full_name
 
         resolved_role = GoogleAuthService.get_existing_role(db, user_id)
         if not resolved_role:
             role_to_create = GoogleAuthService.resolve_signup_role(preferred_role, None)
-            GoogleAuthService._create_role_profile(db, user_id, full_name, role_to_create)
+            GoogleAuthService._create_role_profile(db, user_id, normalized_full_name or fallback_name, role_to_create)
             resolved_role = role_to_create
             profile_created = True
 
         if not profile.full_name:
-            fallback_name = email.split("@", 1)[0] if email and "@" in email else "Google User"
             profile.full_name = fallback_name
 
         return profile, resolved_role, profile_created

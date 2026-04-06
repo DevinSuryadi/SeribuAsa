@@ -1,11 +1,18 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { supabase } from "@/integrations/supabase/client"
 
+type SupabaseUserMetadata = {
+  full_name?: string | null
+  name?: string | null
+  role?: string | null
+}
+
 type Session = {
   access_token: string
   user: {
     id: string
     email?: string | null
+    user_metadata?: SupabaseUserMetadata
     app_metadata?: {
       provider?: string
       providers?: string[]
@@ -40,6 +47,7 @@ const AUTH_KEY = "nutriguard-auth"
 const GOOGLE_ROLE_KEY = "nutriguard-google-role"
 const BACKEND_BASE_URL = "http://localhost:8000/api/v1"
 const KNOWN_ROLES = new Set(["donor", "beneficiary", "vendor", "admin", "government", "corporate_donor"])
+const PROFILE_ROLES = new Set(["donor", "beneficiary", "vendor", "corporate_donor"])
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -59,6 +67,23 @@ function isKnownRole(value: unknown): value is Exclude<UserRole, null> {
   return typeof value === "string" && KNOWN_ROLES.has(value)
 }
 
+function isProfileRole(value: unknown): value is GoogleSignInRole {
+  return typeof value === "string" && PROFILE_ROLES.has(value)
+}
+
+function resolveFullNameFromMetadata(metadata: SupabaseUserMetadata | undefined, email?: string | null): string | null {
+  const directName = metadata?.full_name || metadata?.name
+  if (typeof directName === "string" && directName.trim()) {
+    return directName.trim()
+  }
+
+  if (email && email.includes("@")) {
+    return email.split("@")[0]
+  }
+
+  return null
+}
+
 function isGoogleSession(currentSession: Session): boolean {
   const provider = currentSession.user.app_metadata?.provider
   if (provider === "google") return true
@@ -70,15 +95,23 @@ function isGoogleSession(currentSession: Session): boolean {
   return identities.some((identity: { provider?: string | null } | null) => identity?.provider === "google")
 }
 
-async function syncGoogleProfile(accessToken: string): Promise<{ role: UserRole; fullName: string | null }> {
+async function syncGoogleProfile(currentSession: Session): Promise<{ role: UserRole; fullName: string | null }> {
   const preferredRole = localStorage.getItem(GOOGLE_ROLE_KEY)
-  const body = preferredRole ? { role: preferredRole } : {}
+  const metadataFullName = resolveFullNameFromMetadata(currentSession.user.user_metadata, currentSession.user.email)
+  const body: Record<string, string> = {}
+
+  if (preferredRole && isProfileRole(preferredRole)) {
+    body.role = preferredRole
+  }
+  if (metadataFullName) {
+    body.full_name = metadataFullName
+  }
 
   const response = await fetch(`${BACKEND_BASE_URL}/auth/google/sync`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${currentSession.access_token}`,
     },
     body: JSON.stringify(body),
   })
@@ -101,6 +134,43 @@ async function syncGoogleProfile(accessToken: string): Promise<{ role: UserRole;
   }
 }
 
+async function ensureBackendProfileForSession(currentSession: Session): Promise<void> {
+  if (isGoogleSession(currentSession)) return
+
+  const metadataRole = currentSession.user.user_metadata?.role
+  if (!isProfileRole(metadataRole)) return
+
+  const existingResponse = await fetch(`${BACKEND_BASE_URL}/users/${currentSession.user.id}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+
+  if (existingResponse.ok || existingResponse.status !== 404) {
+    return
+  }
+
+  const fullName = resolveFullNameFromMetadata(currentSession.user.user_metadata, currentSession.user.email) || "User"
+
+  const createResponse = await fetch(`${BACKEND_BASE_URL}/users/signup`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_id: currentSession.user.id,
+      full_name: fullName,
+      role: metadataRole,
+    }),
+  })
+
+  if (!createResponse.ok && createResponse.status !== 409) {
+    const errorData = await createResponse.json().catch(() => ({ detail: "Profile sync failed" }))
+    throw new Error(errorData.detail || "Profile sync failed")
+  }
+}
+
 async function getUserRole(userId: string): Promise<UserRole> {
   try {
     // Try to fetch from backend first (more reliable)
@@ -116,10 +186,13 @@ async function getUserRole(userId: string): Promise<UserRole> {
       const { data: sessionData } = await supabase.auth.getSession()
       return resolveRoleFromEmail(sessionData?.session?.user?.email) || "donor"
     }
-    
-    // const data = await response.json() // unused
-    // For now, we need to detect role from email since role isn't directly in user_profiles table
-    // In a future improvement, we could add role to user_profiles or check role-specific tables
+
+    const data = await response.json().catch(() => null)
+    const roleCandidate = data?.role
+    if (isKnownRole(roleCandidate)) {
+      return roleCandidate
+    }
+
     const { data: sessionData } = await supabase.auth.getSession()
     return resolveRoleFromEmail(sessionData?.session?.user?.email) || "donor"
   } catch {
@@ -168,11 +241,17 @@ async function buildAuthUserFromSession(currentSession: Session): Promise<AuthUs
 
   if (isGoogleSession(currentSession)) {
     try {
-      const synced = await syncGoogleProfile(currentSession.access_token)
+      const synced = await syncGoogleProfile(currentSession)
       syncedRole = synced.role
       syncedFullName = synced.fullName
     } catch (error) {
       console.warn("[AUTH] Google profile sync failed, using fallback detection", error)
+    }
+  } else {
+    try {
+      await ensureBackendProfileForSession(currentSession)
+    } catch (error) {
+      console.warn("[AUTH] Profile sync for non-Google session failed", error)
     }
   }
 
@@ -317,7 +396,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
         options: {
-          data: { full_name: fullName },
+          data: { full_name: fullName, role },
           emailRedirectTo: window.location.origin,
         },
       })
@@ -335,7 +414,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[SIGNUP] Step 2: Creating backend user profile...")
       let backendSuccess = false
       try {
-        const profileResponse = await fetch("http://localhost:8000/api/v1/users/signup", {
+        const profileResponse = await fetch(`${BACKEND_BASE_URL}/users/signup`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -347,16 +426,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }),
         })
 
-        if (!profileResponse.ok) {
-          const errorData = await profileResponse.json()
+        if (!profileResponse.ok && profileResponse.status !== 409) {
+          const errorData = await profileResponse.json().catch(() => ({ detail: "Unknown error" }))
           console.error("[SIGNUP] Backend returned error:", profileResponse.status, errorData)
           return { 
             error: `Profile creation failed: ${errorData.detail || "Unknown error"}` 
           }
         }
-        
-        const backendData = await profileResponse.json()
-        console.log("[SIGNUP] ✓ Backend user profile created:", backendData)
+
+        if (profileResponse.status === 409) {
+          console.warn("[SIGNUP] Profile already exists, continuing signup flow")
+        } else {
+          const backendData = await profileResponse.json()
+          console.log("[SIGNUP] ✓ Backend user profile created:", backendData)
+        }
         backendSuccess = true
       } catch (backendError) {
         console.error("[SIGNUP] Backend connection error:", backendError)
