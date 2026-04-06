@@ -5,6 +5,8 @@ type SupabaseUserMetadata = {
   full_name?: string | null
   name?: string | null
   role?: string | null
+  phone?: string | null
+  address?: string | null
 }
 
 type Session = {
@@ -38,7 +40,13 @@ interface AuthContextType {
   session: Session | null
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signInWithGoogle: (role?: GoogleSignInRole) => Promise<{ error: string | null }>
-  signUp: (email: string, password: string, fullName: string, role: string) => Promise<{ error: string | null }>
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    role: string,
+    profileData?: { phone?: string; address?: string }
+  ) => Promise<{ error: string | null }>
   signInAsDemo: (role: UserRole) => void
   signOut: () => Promise<void>
 }
@@ -82,6 +90,12 @@ function resolveFullNameFromMetadata(metadata: SupabaseUserMetadata | undefined,
   }
 
   return null
+}
+
+function normalizeOptionalProfileField(value?: string | null): string | null {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
 function isGoogleSession(currentSession: Session): boolean {
@@ -152,6 +166,8 @@ async function ensureBackendProfileForSession(currentSession: Session): Promise<
   }
 
   const fullName = resolveFullNameFromMetadata(currentSession.user.user_metadata, currentSession.user.email) || "User"
+  const phone = normalizeOptionalProfileField(currentSession.user.user_metadata?.phone)
+  const address = normalizeOptionalProfileField(currentSession.user.user_metadata?.address)
 
   const createResponse = await fetch(`${BACKEND_BASE_URL}/users/signup`, {
     method: "POST",
@@ -162,6 +178,8 @@ async function ensureBackendProfileForSession(currentSession: Session): Promise<
       user_id: currentSession.user.id,
       full_name: fullName,
       role: metadataRole,
+      phone,
+      address,
     }),
   })
 
@@ -386,9 +404,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signUp = async (email: string, password: string, fullName: string, role: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    role: string,
+    profileData?: { phone?: string; address?: string }
+  ) => {
     try {
       console.log("[SIGNUP] Starting registration for:", email, "role:", role)
+      const normalizedPhone = normalizeOptionalProfileField(profileData?.phone)
+      const normalizedAddress = normalizeOptionalProfileField(profileData?.address)
       
       // Step 1: Create auth user in Supabase
       console.log("[SIGNUP] Step 1: Creating Supabase auth user...")
@@ -396,7 +422,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
         options: {
-          data: { full_name: fullName, role },
+          data: {
+            full_name: fullName,
+            role,
+            phone: normalizedPhone,
+            address: normalizedAddress,
+          },
           emailRedirectTo: window.location.origin,
         },
       })
@@ -423,6 +454,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             user_id: data.user.id,
             full_name: fullName,
             role,
+            phone: normalizedPhone,
+            address: normalizedAddress,
           }),
         })
 

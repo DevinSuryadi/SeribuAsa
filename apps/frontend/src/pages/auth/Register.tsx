@@ -40,6 +40,8 @@ export default function Register() {
   const { signUp, signInWithGoogle } = useAuth()
   const [role, setRole] = useState<Role | null>(null)
   const [fullName, setFullName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [address, setAddress] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -70,6 +72,14 @@ export default function Register() {
       return
     }
 
+    if (phone.trim()) {
+      const phoneRegex = /^[0-9+\-\s]{8,20}$/
+      if (!phoneRegex.test(phone.trim())) {
+        toast.error("Nomor HP tidak valid")
+        return
+      }
+    }
+
     if (!passwordValid) {
       toast.error("Password tidak memenuhi syarat")
       return
@@ -82,7 +92,10 @@ export default function Register() {
 
     setLoading(true)
     try {
-      const { error } = await signUp(email, password, fullName, role)
+      const { error } = await signUp(email, password, fullName, role, {
+        phone,
+        address,
+      })
 
       if (error) {
         const errorMsg = error.toLowerCase()
@@ -194,6 +207,31 @@ export default function Register() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-600 focus:ring-1 focus:ring-green-600 outline-none"
               placeholder="nama@email.com"
+              disabled={loading}
+            />
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Nomor HP (opsional)</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-600 focus:ring-1 focus:ring-green-600 outline-none"
+              placeholder="08xxxxxxxxxx"
+              disabled={loading}
+            />
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Alamat (opsional)</label>
+            <textarea
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-600 focus:ring-1 focus:ring-green-600 outline-none resize-y min-h-[80px]"
+              placeholder="Masukkan alamat"
               disabled={loading}
             />
           </div>
