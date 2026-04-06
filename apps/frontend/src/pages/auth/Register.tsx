@@ -80,8 +80,13 @@ export default function Register() {
         errorMessage = "Email sudah terdaftar atau tidak valid. Silakan gunakan email lain."
       } else if (error.toLowerCase().includes("password")) {
         errorMessage = "Password terlalu lemah. Gunakan kombinasi yang lebih kuat."
+      } else if (error.toLowerCase().includes("backend")) {
+        errorMessage = "Server backend tidak merespons. Pastikan backend sudah berjalan di localhost:8000"
+      } else if (error.toLowerCase().includes("profile")) {
+        errorMessage = "Gagal membuat profil pengguna. Silakan coba lagi."
       }
       toast.error("Registrasi gagal", { description: errorMessage })
+      console.error("[REGISTER] Error:", error)
       setLoading(false)
       return
     }

@@ -34,13 +34,30 @@ async def create_donation(
     current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Create new donation"""
+    logger.info(f"[DONATION] Attempting to create donation for user {current_user.user_id}")
+    
+    # Validate that donor profile exists
+    from app.models.user import DonorProfile
+    donor_profile = db.query(DonorProfile).filter(
+        DonorProfile.user_id == current_user.user_id
+    ).first()
+    
+    if not donor_profile:
+        logger.error(f"[DONATION] Donor profile not found for user {current_user.user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please complete your donor profile before creating a donation"
+        )
+    
+    logger.info(f"[DONATION] Donor profile verified for user {current_user.user_id}")
+    
     donation = DonationService.create_donation(
         db=db,
         donor_id=current_user.user_id,
         donation_data=donation_data
     )
     
-    logger.info(f"Donation created: {donation.id} by user {current_user.user_id}")
+    logger.info(f"[DONATION] ✓ Donation created: {donation.id} by user {current_user.user_id}")
     
     return donation
 

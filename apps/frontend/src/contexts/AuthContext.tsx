@@ -240,7 +240,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string, role: string) => {
     try {
+      console.log("[SIGNUP] Starting registration for:", email, "role:", role)
+      
       // Step 1: Create auth user in Supabase
+      console.log("[SIGNUP] Step 1: Creating Supabase auth user...")
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -249,10 +252,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailRedirectTo: window.location.origin,
         },
       })
-      if (error) return { error: error.message }
-      if (!data.user) return { error: "Signup failed: No user created" }
+      if (error) {
+        console.error("[SIGNUP] Supabase signup error:", error)
+        return { error: error.message }
+      }
+      if (!data.user) {
+        console.error("[SIGNUP] No user returned from Supabase")
+        return { error: "Signup failed: No user created" }
+      }
+      console.log("[SIGNUP] ✓ Supabase auth user created:", data.user.id)
 
       // Step 2: Create user profile in backend database
+      console.log("[SIGNUP] Step 2: Creating backend user profile...")
+      let backendSuccess = false
       try {
         const profileResponse = await fetch("http://localhost:8000/api/v1/users/signup", {
           method: "POST",
@@ -268,24 +280,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!profileResponse.ok) {
           const errorData = await profileResponse.json()
-          console.error("Failed to create user profile:", errorData)
-          // Don't return error - let user still login, profile might be created
+          console.error("[SIGNUP] Backend returned error:", profileResponse.status, errorData)
+          return { 
+            error: `Profile creation failed: ${errorData.detail || "Unknown error"}` 
+          }
         }
+        
+        const backendData = await profileResponse.json()
+        console.log("[SIGNUP] ✓ Backend user profile created:", backendData)
+        backendSuccess = true
       } catch (backendError) {
-        console.error("Backend connection error:", backendError)
-        // Continue anyway - backend might be down temporarily
+        console.error("[SIGNUP] Backend connection error:", backendError)
+        return { 
+          error: "Backend server is not responding. Please try again or contact support." 
+        }
+      }
+
+      if (!backendSuccess) {
+        return { error: "Failed to create user profile. Please try again." }
       }
 
       // Step 3: Auto-login after signup
+      console.log("[SIGNUP] Step 3: Auto-logging in...")
       let session = data.session
       if (!session) {
         // If no immediate session (email verification required), try to sign in directly
+        console.log("[SIGNUP] No immediate session, attempting direct signin...")
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
         if (!signInError && signInData.session) {
           session = signInData.session
+          console.log("[SIGNUP] ✓ Auto-login successful")
+        } else {
+          console.log("[SIGNUP] Auto-login failed, user will need to login manually")
         }
       }
 
@@ -300,6 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: (role as UserRole) || "donor",
         })
         setUserRole((role as UserRole) || "donor")
+        console.log("[SIGNUP] ✓ Registration complete and logged in")
       } else {
         // Fallback: set user data without session (will require manual login)
         setUser({
@@ -309,61 +339,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: role as UserRole,
         })
         setUserRole(role as UserRole)
+        console.log("[SIGNUP] ✓ Registration complete, please login")
       }
       return { error: null }
-    } catch {
-      return { error: "Registrasi gagal. Silakan coba lagi." }
-    }
-  }
-      } catch (backendError) {
-        console.error("Backend connection error:", backendError)
-        // Continue anyway - backend might be down temporarily
-      }
-
-      // Step 3: Auto-login after signup
-      let session = data.session
-      if (!session) {
-        // If no immediate session (email verification required), try to sign in directly
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (!signInError && signInData.session) {
-          session = signInData.session
-        }
-      }
-
-      if (session) {
-        setSession(session)
-        // Get profile from backend or set defaults
-        const profile = await getUserProfile(session.user.id)
-        setUser({
-          id: session.user.id,
-          email: session.user.email || "",
-          fullName: profile.fullName,
-          role: (role as UserRole) || "donor",
-        })
-        setUserRole((role as UserRole) || "donor")
-      } else {
-        // Fallback: set user data without session (will require manual login)
-        setUser({
-          id: data.user.id,
-          email: data.user.email || "",
-          fullName,
-          role: role as UserRole,
-        })
-        setUserRole(role as UserRole)
-      }
-        setUser({
-          id: data.user.id,
-          email: data.user.email || "",
-          fullName,
-          role: role as UserRole,
-        })
-        setUserRole(role as UserRole)
-      }
-      return { error: null }
-    } catch {
+    } catch (error) {
+      console.error("[SIGNUP] Unexpected error:", error)
       return { error: "Registrasi gagal. Silakan coba lagi." }
     }
   }
