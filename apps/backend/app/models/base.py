@@ -3,8 +3,7 @@ Base Model for all SQLAlchemy models
 Provides common fields and functionality
 """
 from datetime import datetime
-from sqlalchemy import Column, DateTime, Boolean
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, DateTime, Boolean, Uuid as UUID
 import uuid
 from app.database import Base
 

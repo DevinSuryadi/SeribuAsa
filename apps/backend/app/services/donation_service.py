@@ -7,6 +7,7 @@ from sqlalchemy import func
 from typing import List, Optional
 from decimal import Decimal
 import logging
+from uuid import UUID
 
 from app.models.donation import Donation, DonationStatusEnum, Voucher
 from app.schemas.donation import DonationCreate, DonationQueryParams
@@ -16,6 +17,15 @@ logger = logging.getLogger(__name__)
 
 class DonationService:
     """Service for donation operations"""
+
+    @staticmethod
+    def _to_uuid(value: Optional[str | UUID]) -> Optional[UUID]:
+        """Normalize incoming ID values to UUID for UUID-backed columns."""
+        if value is None:
+            return None
+        if isinstance(value, UUID):
+            return value
+        return UUID(str(value))
     
     @staticmethod
     def create_donation(
@@ -24,9 +34,12 @@ class DonationService:
         donation_data: DonationCreate
     ) -> Donation:
         """Create new donation"""
+        donor_uuid = DonationService._to_uuid(donor_id)
+        recipient_uuid = DonationService._to_uuid(donation_data.recipient_id)
+
         donation = Donation(
-            donor_id=donor_id,
-            recipient_id=donation_data.recipient_id,
+            donor_id=donor_uuid,
+            recipient_id=recipient_uuid,
             amount=donation_data.amount,
             type=donation_data.type,
             payment_method=donation_data.payment_method.value,
@@ -38,7 +51,7 @@ class DonationService:
         db.commit()
         db.refresh(donation)
         
-        logger.info(f"Created donation {donation.id} for donor {donor_id}")
+        logger.info(f"Created donation {donation.id} for donor {donor_uuid}")
         
         return donation
     
@@ -49,10 +62,12 @@ class DonationService:
         donor_id: Optional[str] = None
     ) -> Optional[Donation]:
         """Get donation by ID"""
-        query = db.query(Donation).filter(Donation.id == donation_id)
+        donation_uuid = DonationService._to_uuid(donation_id)
+        query = db.query(Donation).filter(Donation.id == donation_uuid)
         
         if donor_id:
-            query = query.filter(Donation.donor_id == donor_id)
+            donor_uuid = DonationService._to_uuid(donor_id)
+            query = query.filter(Donation.donor_id == donor_uuid)
         
         return query.first()
     
@@ -66,7 +81,8 @@ class DonationService:
         query = db.query(Donation)
         
         if donor_id:
-            query = query.filter(Donation.donor_id == donor_id)
+            donor_uuid = DonationService._to_uuid(donor_id)
+            query = query.filter(Donation.donor_id == donor_uuid)
         
         if params:
             if params.status:
@@ -96,7 +112,8 @@ class DonationService:
         query = db.query(func.count(Donation.id))
         
         if donor_id:
-            query = query.filter(Donation.donor_id == donor_id)
+            donor_uuid = DonationService._to_uuid(donor_id)
+            query = query.filter(Donation.donor_id == donor_uuid)
         
         if params:
             if params.status:
@@ -118,7 +135,8 @@ class DonationService:
         midtrans_transaction_id: Optional[str] = None
     ) -> Optional[Donation]:
         """Update donation status"""
-        donation = db.query(Donation).filter(Donation.id == donation_id).first()
+        donation_uuid = DonationService._to_uuid(donation_id)
+        donation = db.query(Donation).filter(Donation.id == donation_uuid).first()
         
         if not donation:
             return None
@@ -141,25 +159,27 @@ class DonationService:
         donor_id: str
     ) -> dict:
         """Get impact metrics for donor"""
+        donor_uuid = DonationService._to_uuid(donor_id)
+
         total_donated = db.query(func.sum(Donation.amount)).filter(
-            Donation.donor_id == donor_id,
+            Donation.donor_id == donor_uuid,
             Donation.status == DonationStatusEnum.success
         ).scalar() or Decimal(0)
         
         children_helped = db.query(func.count(func.distinct(Donation.recipient_id))).filter(
-            Donation.donor_id == donor_id,
-            Donation.recipient_id is not None
+            Donation.donor_id == donor_uuid,
+            Donation.recipient_id.isnot(None)
         ).scalar() or 0
         
         vouchers_allocated = db.query(func.count(Voucher.id)).join(
             Donation,
             Voucher.donation_id == Donation.id
         ).filter(
-            Donation.donor_id == donor_id
+            Donation.donor_id == donor_uuid
         ).scalar() or 0
         
         return {
-            "donor_id": donor_id,
+            "donor_id": str(donor_uuid),
             "total_donated": total_donated,
             "total_children_helped": children_helped,
             "total_vouchers_allocated": vouchers_allocated,

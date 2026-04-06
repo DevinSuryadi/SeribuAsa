@@ -5,9 +5,7 @@ Product and Order Models
 - Order: Orders from beneficiaries
 - OrderItem: Order line items
 """
-from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB
 from sqlalchemy.orm import relationship
 import enum
 from app.models.base import BaseModel

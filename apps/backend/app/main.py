@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users
+from app.database import IS_SQLITE, init_db
 
 app = FastAPI(title="NutriGuard API", version="1.0.0")
 
@@ -25,6 +26,14 @@ app.include_router(nutrition.router, prefix="/api/v1")
 app.include_router(recommendations.router, prefix="/api/v1")
 app.include_router(settlements.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    # When DATABASE_URL is not set, app uses SQLite fallback.
+    # Initialize schema so local dashboard fetches don't fail with missing tables.
+    if IS_SQLITE:
+        init_db()
 
 
 @app.get("/")

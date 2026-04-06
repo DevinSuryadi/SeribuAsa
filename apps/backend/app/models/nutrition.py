@@ -5,9 +5,7 @@ Nutrition and System Models
 - Settlement: Vendor settlements
 - AuditLog: System audit trail
 """
-from sqlalchemy import Column, String, Date, DateTime, Integer, Numeric, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, Date, DateTime, Integer, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB
 from sqlalchemy.orm import relationship
 import enum
 from app.models.base import BaseModel
