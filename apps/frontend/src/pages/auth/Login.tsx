@@ -394,31 +394,6 @@ export default function Login() {
 
         {/* Google Login */}
         <div style={{ marginTop: 16 }}>
-          <div style={{ marginBottom: 12 }}>
-            <p className="text-sm font-semibold text-gray-700 mb-2">Masuk Google sebagai</p>
-            <div className="grid grid-cols-3 gap-2">
-              {roles.map((r) => {
-                const Icon = r.icon
-                const isSelected = googleRole === r.id
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => setGoogleRole(r.id)}
-                    className={`p-2 rounded-lg border-2 transition ${
-                      isSelected
-                        ? "border-green-600 bg-green-50"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 mx-auto mb-1 ${isSelected ? "text-green-600" : "text-gray-400"}`} />
-                    <p className="text-xs font-medium text-gray-900">{r.label}</p>
-                    <p className="text-xs text-gray-500">{r.desc}</p>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <div style={{ flex: 1, height: '1px', background: '#e5e5e5' }} />
             <span style={{ fontSize: 12, color: '#a3a3a3' }}>atau lanjutkan dengan</span>
@@ -454,10 +429,34 @@ export default function Login() {
             ) : (
               <>
                 <GoogleIcon />
-                <span>Masuk dengan Google ({roles.find((r) => r.id === googleRole)?.label})</span>
+                <span>Masuk dengan Google</span>
               </>
             )}
           </button>
+          <div style={{ marginTop: 12 }}>
+            <div className="grid grid-cols-3 gap-2">
+              {roles.map((r) => {
+                const Icon = r.icon
+                const isSelected = googleRole === r.id
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setGoogleRole(r.id)}
+                    className={`p-2 rounded-lg border-2 transition ${
+                      isSelected
+                        ? "border-green-600 bg-green-50"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 mx-auto mb-1 ${isSelected ? "text-green-600" : "text-gray-400"}`} />
+                    <p className="text-xs font-medium text-gray-900">{r.label}</p>
+                    <p className="text-xs text-gray-500">{r.desc}</p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Register Link */}
