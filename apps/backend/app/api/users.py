@@ -9,10 +9,11 @@ import logging
 from uuid import UUID
 
 from app.database import get_db
-from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
+from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, GenderEnum
 from app.schemas.user import (
     UserSignUpRequest,
     UserSignUpResponse,
+    UserProfileUpdateRequest,
     UserProfileResponse,
     UserRole
 )
@@ -37,6 +38,25 @@ def _resolve_user_role(db: Session, user_id: UUID) -> UserRole | None:
         return "vendor"
 
     return None
+
+
+def _build_user_profile_response(db: Session, user_profile: UserProfile) -> UserProfileResponse:
+    resolved_role = _resolve_user_role(db, user_profile.user_id)
+    gender_value = user_profile.gender.value if user_profile.gender else None
+
+    return UserProfileResponse(
+        id=user_profile.id,
+        user_id=user_profile.user_id,
+        full_name=user_profile.full_name,
+        role=resolved_role,
+        phone=user_profile.phone,
+        address=user_profile.address,
+        date_of_birth=user_profile.date_of_birth,
+        gender=gender_value,
+        avatar_url=user_profile.avatar_url,
+        created_at=user_profile.created_at,
+        updated_at=user_profile.updated_at,
+    )
 
 
 @router.post("/signup", response_model=UserSignUpResponse, status_code=status.HTTP_201_CREATED)
@@ -170,16 +190,63 @@ async def get_user_profile(
             detail="User profile not found"
         )
 
-    resolved_role = _resolve_user_role(db, user_id)
+    return _build_user_profile_response(db, user_profile)
 
-    return UserProfileResponse(
-        id=user_profile.id,
-        user_id=user_profile.user_id,
-        full_name=user_profile.full_name,
-        role=resolved_role,
-        phone=user_profile.phone,
-        address=user_profile.address,
-        avatar_url=user_profile.avatar_url,
-        created_at=user_profile.created_at,
-        updated_at=user_profile.updated_at,
-    )
+
+@router.patch("/{user_id}", response_model=UserProfileResponse)
+async def update_user_profile(
+    user_id: UUID,
+    update_data: UserProfileUpdateRequest,
+    db: Session = Depends(get_db)
+):
+    """Update existing user profile fields."""
+    user_profile = db.query(UserProfile).filter(
+        UserProfile.user_id == user_id
+    ).first()
+
+    if not user_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User profile not found"
+        )
+
+    payload = update_data.model_dump(exclude_unset=True)
+    if not payload:
+        return _build_user_profile_response(db, user_profile)
+
+    if "full_name" in payload:
+        full_name = (payload.get("full_name") or "").strip()
+        if not full_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="full_name cannot be empty"
+            )
+        user_profile.full_name = full_name
+
+    if "phone" in payload:
+        phone = payload.get("phone")
+        user_profile.phone = phone.strip() if isinstance(phone, str) and phone.strip() else None
+
+    if "address" in payload:
+        address = payload.get("address")
+        user_profile.address = address.strip() if isinstance(address, str) and address.strip() else None
+
+    if "date_of_birth" in payload:
+        user_profile.date_of_birth = payload.get("date_of_birth")
+
+    if "gender" in payload:
+        gender = payload.get("gender")
+        user_profile.gender = GenderEnum(gender) if gender else None
+
+    try:
+        db.commit()
+        db.refresh(user_profile)
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"[PROFILE] Failed to update user profile {user_id}: {str(exc)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user profile"
+        ) from exc
+
+    return _build_user_profile_response(db, user_profile)

@@ -19,6 +19,8 @@ type BackendProfile = {
   role?: string | null;
   phone?: string | null;
   address?: string | null;
+  date_of_birth?: string | null;
+  gender?: 'male' | 'female' | null;
 };
 
 const Profile = () => {
@@ -42,6 +44,19 @@ const Profile = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const formatDateForDisplay = (dateText?: string | null) => {
+    if (!dateText) return 'Belum diatur';
+
+    const [year, month, day] = dateText.split('-').map(Number);
+    if (!year || !month || !day) return dateText;
+
+    return new Date(year, month - 1, day).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
   useEffect(() => {
     let isActive = true;
 
@@ -61,6 +76,8 @@ const Profile = () => {
           role: data.role || null,
           phone: data.phone || null,
           address: data.address || null,
+          date_of_birth: data.date_of_birth || null,
+          gender: data.gender || null,
         };
 
         setProfileData(nextProfile);
@@ -69,6 +86,8 @@ const Profile = () => {
           fullName: nextProfile.full_name,
           phone: nextProfile.phone || '',
           address: nextProfile.address || '',
+          dateOfBirth: nextProfile.date_of_birth || '',
+          gender: nextProfile.gender || '',
         }));
       } catch (error) {
         console.warn('[PROFILE] Failed to load profile from backend', error);
@@ -95,10 +114,63 @@ const Profile = () => {
       toast.error('Nama tidak boleh kosong');
       return;
     }
+
+    if (editFormData.phone.trim()) {
+      const phoneRegex = /^[0-9+\-\s]{8,20}$/;
+      if (!phoneRegex.test(editFormData.phone.trim())) {
+        toast.error('Nomor HP tidak valid');
+        return;
+      }
+    }
+
+    if (!user?.id) {
+      toast.error('User tidak ditemukan. Silakan login ulang.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // TODO: Call API to update profile
-      await new Promise(r => setTimeout(r, 500));
+      const payload = {
+        full_name: editFormData.fullName.trim(),
+        phone: editFormData.phone.trim() || null,
+        address: editFormData.address.trim() || null,
+        date_of_birth: editFormData.dateOfBirth || null,
+        gender: (editFormData.gender || null) as 'male' | 'female' | null,
+      };
+
+      const response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Gagal memperbarui profil' }));
+        throw new Error(errorData.detail || 'Gagal memperbarui profil');
+      }
+
+      const updatedProfile = await response.json();
+      const nextProfile: BackendProfile = {
+        full_name: updatedProfile.full_name || payload.full_name,
+        role: updatedProfile.role || profileData?.role || null,
+        phone: updatedProfile.phone || null,
+        address: updatedProfile.address || null,
+        date_of_birth: updatedProfile.date_of_birth || null,
+        gender: updatedProfile.gender || null,
+      };
+
+      setProfileData(nextProfile);
+      setEditFormData((prev) => ({
+        ...prev,
+        fullName: nextProfile.full_name,
+        phone: nextProfile.phone || '',
+        address: nextProfile.address || '',
+        dateOfBirth: nextProfile.date_of_birth || '',
+        gender: nextProfile.gender || '',
+      }));
+
       toast.success('Profil berhasil diperbarui');
       setShowEditModal(false);
     } catch (error: any) {
@@ -140,6 +212,15 @@ const Profile = () => {
   const resolvedName = profileData?.full_name || user?.fullName || 'Pengguna';
   const resolvedPhone = profileLoading ? 'Memuat...' : (profileData?.phone || 'Belum diatur');
   const resolvedAddress = profileLoading ? 'Memuat...' : (profileData?.address || 'Belum diatur');
+  const resolvedDateOfBirth = profileLoading ? 'Memuat...' : formatDateForDisplay(profileData?.date_of_birth);
+  const resolvedGender =
+    profileLoading
+      ? 'Memuat...'
+      : profileData?.gender === 'male'
+        ? 'Laki-laki'
+        : profileData?.gender === 'female'
+          ? 'Perempuan'
+          : 'Belum diatur';
   const roleLabel =
     resolvedRole === 'donor'
       ? 'Donatur'
@@ -202,14 +283,14 @@ const Profile = () => {
                 <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Tanggal Lahir</div>
-                  <div className="text-sm font-medium text-foreground">Belum diatur</div>
+                  <div className="text-sm font-medium text-foreground">{resolvedDateOfBirth}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Jenis Kelamin</div>
-                  <div className="text-sm font-medium text-foreground">Belum diatur</div>
+                  <div className="text-sm font-medium text-foreground">{resolvedGender}</div>
                 </div>
               </div>
             </div>
