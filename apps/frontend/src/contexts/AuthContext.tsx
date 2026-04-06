@@ -28,30 +28,105 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 async function getUserRole(userId: string): Promise<UserRole> {
   try {
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .select("role")
-      .eq("id", userId)
-      .single()
-    if (error || !data) return "donor"
-    return data.role as UserRole
+    // Try to fetch from backend first (more reliable)
+    const response = await fetch(`http://localhost:8000/api/v1/users/${userId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+    
+    if (!response.ok) {
+      // Backend unavailable, fall back to email-based detection
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (sessionData?.session?.user?.email) {
+        const email = sessionData.session.user.email.toLowerCase()
+        if (email.includes("penerima") || email.includes("beneficiary")) {
+          return "beneficiary"
+        } else if (email.includes("vendor")) {
+          return "vendor"
+        } else if (email.includes("admin")) {
+          return "admin"
+        } else if (email.includes("government")) {
+          return "government"
+        } else if (email.includes("corporate")) {
+          return "corporate_donor"
+        }
+      }
+      return "donor"
+    }
+    
+    const data = await response.json()
+    // For now, we need to detect role from email since role isn't directly in user_profiles table
+    // In a future improvement, we could add role to user_profiles or check role-specific tables
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (sessionData?.session?.user?.email) {
+      const email = sessionData.session.user.email.toLowerCase()
+      if (email.includes("penerima") || email.includes("beneficiary")) {
+        return "beneficiary"
+      } else if (email.includes("vendor")) {
+        return "vendor"
+      } else if (email.includes("admin")) {
+        return "admin"
+      } else if (email.includes("government")) {
+        return "government"
+      } else if (email.includes("corporate")) {
+        return "corporate_donor"
+      }
+    }
+    return "donor"
   } catch {
+    // Error fetching from backend, fall back to email-based detection
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (sessionData?.session?.user?.email) {
+        const email = sessionData.session.user.email.toLowerCase()
+        if (email.includes("penerima") || email.includes("beneficiary")) {
+          return "beneficiary"
+        } else if (email.includes("vendor")) {
+          return "vendor"
+        } else if (email.includes("admin")) {
+          return "admin"
+        } else if (email.includes("government")) {
+          return "government"
+        } else if (email.includes("corporate")) {
+          return "corporate_donor"
+        }
+      }
+    } catch (e) {
+      // Ignore errors in fallback
+    }
     return "donor"
   }
 }
 
 async function getUserProfile(userId: string): Promise<{ fullName: string }> {
   try {
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .select("full_name")
-      .eq("id", userId)
-      .single()
-    if (error || !data) return { fullName: "User" }
+    // Try to fetch from backend first (more reliable)
+    const response = await fetch(`http://localhost:8000/api/v1/users/${userId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+    
+    if (!response.ok) {
+      // Fallback to Supabase profiles table if backend fetch fails
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", userId)
+        .single()
+      if (error || !data) return { fullName: "User" }
+      return { fullName: data.full_name || "User" }
+    }
+    
+    const data = await response.json()
     return { fullName: data.full_name || "User" }
   } catch {
     return { fullName: "User" }
   }
+}
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -166,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string, role: string) => {
     try {
+      // Step 1: Create auth user in Supabase
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -175,56 +251,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       })
       if (error) return { error: error.message }
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from("user_profiles")
-          .insert({
-            id: data.user.id,
+      if (!data.user) return { error: "Signup failed: No user created" }
+
+      // Step 2: Create user profile in backend database
+      try {
+        const profileResponse = await fetch("http://localhost:8000/api/v1/users/signup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
             user_id: data.user.id,
             full_name: fullName,
             role,
-            is_active: true,
-          })
-        if (profileError) {
-          console.error("Failed to insert user profile:", profileError)
-        }
+          }),
+        })
 
-        // Auto-login after signup - try to get session if not immediately available
-        let session = data.session
-        if (!session) {
-          // If no immediate session (email verification required), try to sign in directly
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          })
-          if (!signInError && signInData.session) {
-            session = signInData.session
-          }
+        if (!profileResponse.ok) {
+          const errorData = await profileResponse.json()
+          console.error("Failed to create user profile:", errorData)
+          // Don't return error - let user still login, profile might be created
         }
+      } catch (backendError) {
+        console.error("Backend connection error:", backendError)
+        // Continue anyway - backend might be down temporarily
+      }
 
-        if (session) {
-          setSession(session)
-          const [roleFromDb, profile] = await Promise.all([
-            getUserRole(session.user.id),
-            getUserProfile(session.user.id),
-          ])
-          setUser({
-            id: session.user.id,
-            email: session.user.email || "",
-            fullName: profile.fullName,
-            role: roleFromDb,
-          })
-          setUserRole(roleFromDb)
-        } else {
-          // Fallback: set user data without session (will require manual login)
-          setUser({
-            id: data.user.id,
-            email: data.user.email || "",
-            fullName,
-            role: role as UserRole,
-          })
-          setUserRole(role as UserRole)
+      // Step 3: Auto-login after signup
+      let session = data.session
+      if (!session) {
+        // If no immediate session (email verification required), try to sign in directly
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (!signInError && signInData.session) {
+          session = signInData.session
         }
+      }
+
+      if (session) {
+        setSession(session)
+        // Get profile from backend or set defaults
+        const profile = await getUserProfile(session.user.id)
+        setUser({
+          id: session.user.id,
+          email: session.user.email || "",
+          fullName: profile.fullName,
+          role: (role as UserRole) || "donor",
+        })
+        setUserRole((role as UserRole) || "donor")
+      } else {
+        // Fallback: set user data without session (will require manual login)
+        setUser({
+          id: data.user.id,
+          email: data.user.email || "",
+          fullName,
+          role: role as UserRole,
+        })
+        setUserRole(role as UserRole)
       }
       return { error: null }
     } catch {
