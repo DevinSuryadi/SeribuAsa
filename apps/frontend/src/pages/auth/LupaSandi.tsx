@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { Leaf, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from 'sonner';
 
-const LupaSandi = () => {
+export default function LupaSandi() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +17,7 @@ const LupaSandi = () => {
     });
     setLoading(false);
     if (error) {
-      toast({ title: 'Gagal mengirim', description: error.message, variant: 'destructive' });
+      toast.error('Gagal mengirim', { description: error.message });
     } else {
       setSent(true);
     }
@@ -26,48 +25,16 @@ const LupaSandi = () => {
 
   if (sent) {
     return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', padding: '0 24px',
-        background: '#fff', position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 65%)',
-        }} />
-
-        <div style={{
-          width: '100%', maxWidth: 400, textAlign: 'center',
-          borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)',
-          background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(12px)',
-          padding: '40px 32px',
-          boxShadow: '0 2px 20px rgba(0,0,0,0.06)',
-          position: 'relative', zIndex: 1,
-        }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'rgba(34,197,94,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 20px',
-          }}>
-            <CheckCircle style={{ width: 26, height: 26, color: '#16a34a' }} />
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+        <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-8 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 mx-auto mb-4">
+            <CheckCircle className="w-6 h-6 text-green-600" />
           </div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#111', marginBottom: 8 }}>
-            Email Terkirim!
-          </div>
-          <p style={{ fontSize: 14, color: '#888', lineHeight: 1.7, margin: '0 0 28px' }}>
-            Silakan cek inbox email <strong style={{ color: '#555' }}>{email}</strong> untuk tautan reset kata sandi.
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Email Terkirim!</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Silakan cek inbox email <strong className="text-gray-700">{email}</strong> untuk tautan reset kata sandi.
           </p>
-          <Link
-            to="/masuk"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontSize: 14, fontWeight: 500, color: '#555',
-              textDecoration: 'none', transition: 'color 0.15s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#111')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}
-          >
+          <Link to="/masuk" className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-700 font-medium">
             <ArrowLeft size={14} /> Kembali ke Masuk
           </Link>
         </div>
@@ -76,128 +43,48 @@ const LupaSandi = () => {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', padding: '0 24px',
-      background: '#fff', position: 'relative', overflow: 'hidden',
-    }}>
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 65%)',
-      }} />
-      <div style={{
-        position: 'absolute', top: -60, left: -100, pointerEvents: 'none',
-        width: 500, height: 500, borderRadius: '50%',
-        background: 'rgba(34,197,94,0.06)', filter: 'blur(90px)',
-      }} />
-
-      <div style={{
-        width: '100%', maxWidth: 400,
-        borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)',
-        background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(12px)',
-        padding: '40px 32px',
-        boxShadow: '0 2px 20px rgba(0,0,0,0.06)',
-        position: 'relative', zIndex: 1,
-      }}>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+      <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-8">
         {/* Logo */}
-        <Link to="/" style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          textDecoration: 'none', justifyContent: 'center', marginBottom: 28,
-        }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 10,
-            background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(34,197,94,0.3)',
-          }}>
-            <Leaf style={{ width: 17, height: 17, color: 'white' }} />
+        <Link to="/" className="flex items-center gap-3 justify-center mb-8 no-underline">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center shadow-md">
+            <Leaf className="w-5 h-5 text-white" />
           </div>
-          <span style={{ fontSize: 17, fontWeight: 700, color: '#111', letterSpacing: '-0.3px' }}>
-            SeribuAsa
-          </span>
+          <span className="text-lg font-bold text-gray-900 tracking-tight">SeribuAsa</span>
         </Link>
 
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#111', marginBottom: 6 }}>
-            Lupa Kata Sandi
-          </div>
-          <p style={{ fontSize: 13, color: '#888', margin: 0 }}>
-            Masukkan email Anda untuk menerima tautan reset
-          </p>
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Lupa Kata Sandi</h2>
+          <p className="text-sm text-gray-500">Masukkan email Anda untuk menerima tautan reset</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label style={{
-              fontSize: 13, fontWeight: 500, color: '#555',
-              display: 'block', marginBottom: 6,
-            }}>
-              Email
-            </label>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">Email</label>
             <input
               type="email"
               placeholder="email@contoh.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              style={{
-                width: '100%', height: 42, padding: '0 12px',
-                borderRadius: 8, border: '1px solid rgba(0,0,0,0.12)',
-                fontSize: 14, color: '#111', outline: 'none',
-                boxSizing: 'border-box', background: '#fafafa',
-                transition: 'all 0.15s ease',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#16a34a';
-                e.currentTarget.style.background = 'white';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)';
-                e.currentTarget.style.background = '#fafafa';
-              }}
+              className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-green-500 transition bg-gray-50 focus:bg-white"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: '100%', padding: '11px', borderRadius: 9,
-              border: 'none', fontSize: 14, fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              background: loading ? 'rgba(0,0,0,0.06)' : '#16a34a',
-              color: loading ? '#bbb' : 'white',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              transition: 'all 0.15s ease',
-              boxShadow: loading ? 'none' : '0 2px 10px rgba(22,163,74,0.2)',
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) e.currentTarget.style.background = '#15803d';
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) e.currentTarget.style.background = '#16a34a';
-            }}
+            className="w-full h-10 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 text-white hover:bg-green-700 shadow-sm"
           >
-            {loading && <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />}
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             Kirim Tautan Reset
           </button>
 
-          <Link
-            to="/masuk"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              fontSize: 13, fontWeight: 500, color: '#888',
-              textDecoration: 'none', transition: 'color 0.15s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#111')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#888')}
-          >
+          <Link to="/masuk" className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 font-medium transition">
             <ArrowLeft size={13} /> Kembali ke Masuk
           </Link>
         </form>
       </div>
     </div>
   );
-};
-
-export default LupaSandi;
+}

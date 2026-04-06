@@ -87,7 +87,7 @@ const KatalogPangan = () => {
   const cartTotal = useMemo(() => Object.entries(cart).reduce((sum, [id, qty]) => {
     const p = products.find((x) => x.id === id);
     return sum + (p ? p.voucher_price * qty : 0);
-  }), [products, cart]);
+  }, 0), [products, cart]);
 
   const cartCount = useMemo(() => Object.values(cart).reduce((a, b) => a + b, 0), [cart]);
 

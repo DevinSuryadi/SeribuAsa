@@ -1,6 +1,6 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Leaf, LogOut, LayoutDashboard } from 'lucide-react';
+import { Leaf, LogOut, LayoutDashboard, ChevronDown, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const navLinks = [
@@ -10,11 +10,29 @@ const navLinks = [
   { label: 'Dampak', href: '/dampak' },
 ];
 
+const roleLabels: Record<string, string> = {
+  donor: 'Donatur',
+  beneficiary: 'Penerima',
+  vendor: 'Vendor',
+  admin: 'Admin',
+  government: 'Pemerintah',
+};
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export function Navbar() {
-  const [open, setOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, userRole, signOut } = useAuth();
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -22,9 +40,16 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Close user menu on outside click
   useEffect(() => {
-    setOpen(false);
-  }, [location.pathname]);
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   return (
     <header
@@ -35,10 +60,9 @@ export function Navbar() {
         right: 0,
         zIndex: 50,
         transition: 'all 0.3s ease',
-        background: scrolled ? 'rgba(255,255,255,0.92)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(12px)' : 'none',
+        background: scrolled ? 'rgba(255,255,255,0.95)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(16px)' : 'none',
         borderBottom: scrolled ? '1px solid rgba(0,0,0,0.06)' : '1px solid transparent',
-        boxShadow: scrolled ? '0 1px 20px rgba(0,0,0,0.06)' : 'none',
       }}
     >
       <div
@@ -48,33 +72,33 @@ export function Navbar() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          height: 90,
-          padding: '0 24px',
+          height: 'clamp(64px, 10vh, 80px)',
+          padding: '0 clamp(12px, 4vw, 24px)',
         }}
       >
         {/* Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
           <div
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #22c55e, #15803d)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(34,197,94,0.35)',
+              boxShadow: '0 2px 8px rgba(21,128,61,0.3)',
             }}
           >
-            <Leaf style={{ width: 20, height: 17, color: 'white' }} />
+            <Leaf style={{ width: 18, height: 16, color: 'white' }} />
           </div>
-          <span style={{ fontSize: 20, fontWeight: 600, color: '#111', letterSpacing: '-0.3px' }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#111', letterSpacing: '-0.5px' }}>
             SeribuAsa
           </span>
         </Link>
 
         {/* Nav desktop */}
-        <nav className="hidden md:flex" style={{ alignItems: 'center', gap: 20 }}>
+        <nav className="hidden lg:flex" style={{ alignItems: 'center', gap: 4 }}>
           {navLinks.map((link) => {
             const active = location.pathname === link.href;
             return (
@@ -82,13 +106,13 @@ export function Navbar() {
                 key={link.href}
                 to={link.href}
                 style={{
-                  padding: '6px 14px',
+                  padding: '8px 14px',
                   borderRadius: 8,
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: active ? 600 : 500,
-                  color: active ? '#16a34a' : '#555',
+                  color: active ? '#15803d' : '#666',
                   textDecoration: 'none',
-                  background: active ? 'rgba(34,197,94,0.09)' : 'transparent',
+                  background: active ? 'rgba(21,128,61,0.08)' : 'transparent',
                   transition: 'all 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
@@ -99,7 +123,7 @@ export function Navbar() {
                 }}
                 onMouseLeave={(e) => {
                   if (!active) {
-                    e.currentTarget.style.color = '#555';
+                    e.currentTarget.style.color = '#666';
                     e.currentTarget.style.background = 'transparent';
                   }
                 }}
@@ -111,66 +135,183 @@ export function Navbar() {
         </nav>
 
         {/* CTA desktop */}
-        <div className="hidden md:flex" style={{ alignItems: 'center', gap: 8 }}>
+        <div className="hidden lg:flex" style={{ alignItems: 'center', gap: 12 }}>
           {user ? (
             <>
-              <Link
-                to="/dashboard"
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: 8,
-                  fontSize: 16,
-                  fontWeight: 500,
-                  color: '#16a34a',
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  transition: 'color 0.15s ease',
-                }}
-              >
-                <LayoutDashboard size={16} />
-                Dashboard
-              </Link>
-              <span style={{ fontSize: 14, color: '#666', padding: '0 8px' }}>
-                {user.email}
-              </span>
-              <button
-                onClick={() => signOut()}
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: 8,
-                  fontSize: 16,
-                  fontWeight: 500,
-                  color: '#ef4444',
-                  background: 'transparent',
-                  border: '1px solid #ef4444',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <LogOut size={16} />
-                Keluar
-              </button>
+              {/* User Menu */}
+              <div ref={menuRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '4px 8px 4px 4px',
+                    borderRadius: 999,
+                    border: '1px solid rgba(0,0,0,0.1)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0,0,0,0.03)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  {/* Avatar */}
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #22c55e, #15803d)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    {user.fullName ? getInitials(user.fullName) : <User size={14} />}
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#333', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.fullName || user.email}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    style={{
+                      color: '#999',
+                      transition: 'transform 0.2s ease',
+                      transform: userMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }}
+                  />
+                </button>
+
+                {/* Dropdown */}
+                {userMenuOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: 0,
+                      minWidth: 200,
+                      borderRadius: 12,
+                      border: '1px solid rgba(0,0,0,0.08)',
+                      background: '#fff',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                      overflow: 'hidden',
+                      zIndex: 60,
+                    }}
+                  >
+                    {/* User Info */}
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{user.fullName}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <span style={{ fontSize: 11, color: '#999' }}>{user.email}</span>
+                        {userRole && (
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: '#15803d',
+                            background: 'rgba(21,128,61,0.08)',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                          }}>
+                            {roleLabels[userRole] || userRole}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div style={{ padding: '4px 0' }}>
+                      <Link
+                        to="/dashboard"
+                        onClick={() => setUserMenuOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '8px 16px',
+                          fontSize: 13,
+                          color: '#333',
+                          textDecoration: 'none',
+                          transition: 'background 0.1s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.03)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <LayoutDashboard size={15} style={{ color: '#999' }} />
+                        Dashboard
+                      </Link>
+                      <Link
+                        to="/dashboard/profile"
+                        onClick={() => setUserMenuOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '8px 16px',
+                          fontSize: 13,
+                          color: '#333',
+                          textDecoration: 'none',
+                          transition: 'background 0.1s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.03)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <User size={15} style={{ color: '#999' }} />
+                        Profil Saya
+                      </Link>
+                    </div>
+
+                    {/* Sign Out */}
+                    <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', padding: '4px 0' }}>
+                      <button
+                        onClick={() => { signOut(); setUserMenuOpen(false); }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          width: '100%',
+                          padding: '8px 16px',
+                          fontSize: 13,
+                          color: '#ef4444',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          transition: 'background 0.1s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.04)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <LogOut size={15} style={{ color: '#ef4444' }} />
+                        Keluar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>
               <Link
                 to="/masuk"
                 style={{
-                  padding: '7px 16px',
+                  padding: '8px 16px',
                   borderRadius: 8,
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: 500,
-                  color: '#444',
+                  color: '#555',
                   textDecoration: 'none',
                   transition: 'color 0.15s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#111')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#444')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}
               >
                 Masuk
               </Link>
@@ -179,110 +320,29 @@ export function Navbar() {
                 to="/register"
                 style={{
                   padding: '8px 18px',
-                  borderRadius: 9,
-                  fontSize: 16,
+                  borderRadius: 8,
+                  fontSize: 14,
                   fontWeight: 600,
                   color: 'white',
                   textDecoration: 'none',
-                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                  boxShadow: '0 2px 10px rgba(34,197,94,0.3)',
+                  background: 'linear-gradient(135deg, #22c55e, #15803d)',
+                  boxShadow: '0 2px 8px rgba(21,128,61,0.25)',
                   transition: 'all 0.2s ease',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(34,197,94,0.4)';
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(21,128,61,0.35)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 10px rgba(34,197,94,0.3)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(21,128,61,0.25)';
                 }}
               >
-                Mulai Donasi 
+                Mulai Donasi
               </Link>
             </>
           )}
         </div>
-
-      </div>
-
-      {/* Mobile menu */}
-      <div
-        className="md:hidden"
-        style={{
-          overflow: 'hidden',
-          maxHeight: open ? 400 : 0,
-          transition: 'max-height 0.3s ease',
-          background: 'rgba(255,255,255,0.97)',
-          backdropFilter: 'blur(12px)',
-          borderTop: open ? '1px solid rgba(0,0,0,0.06)' : 'none',
-        }}
-      >
-        <nav style={{ display: 'flex', flexDirection: 'column', padding: '12px 16px', gap: 4 }}>
-          {navLinks.map((link) => {
-            const active = location.pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                to={link.href}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  fontSize: 16,
-                  fontWeight: active ? 600 : 500,
-                  color: active ? '#16a34a' : '#333',
-                  textDecoration: 'none',
-                  background: active ? 'rgba(34,197,94,0.08)' : 'transparent',
-                }}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              marginTop: 8,
-              paddingTop: 12,
-              borderTop: '1px solid rgba(0,0,0,0.07)',
-            }}
-          >
-            <Link
-              to="/masuk"
-              style={{
-                padding: '10px 14px',
-                borderRadius: 8,
-                fontSize: 16,
-                fontWeight: 500,
-                color: '#444',
-                textDecoration: 'none',
-                textAlign: 'center',
-                border: '1px solid rgba(0,0,0,0.1)',
-              }}
-            >
-              Masuk
-            </Link>
-
-            <Link
-              to="/register"
-              style={{
-                padding: '11px 14px',
-                borderRadius: 9,
-                fontSize: 16,
-                fontWeight: 600,
-                color: 'white',
-                textDecoration: 'none',
-                textAlign: 'center',
-                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                boxShadow: '0 2px 10px rgba(34,197,94,0.25)',
-              }}
-            >
-              Mulai Donasi
-            </Link>
-          </div>
-        </nav>
       </div>
     </header>
   );

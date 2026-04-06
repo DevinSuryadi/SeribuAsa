@@ -106,6 +106,21 @@ export default function DonorDashboard() {
   return (
     <DashboardLayout title="Dashboard Donatur" subtitle="Ringkasan donasi dan dampak Anda bulan ini.">
       <div className="space-y-6">
+        {/* Quick Actions Bar */}
+        <div className="flex items-center justify-between">
+          <div />
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate("/donasi")}>
+              <Heart className="mr-2 h-4 w-4" />
+              Lihat Paket
+            </Button>
+            <Button size="sm" onClick={() => navigate("/donation/checkout")}>
+              <Plus className="mr-2 h-4 w-4" />
+              Donasi Baru
+            </Button>
+          </div>
+        </div>
+
         {/* KPI Cards */}
         <div ref={gridRef} className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <KPICard icon={Heart} label="Total Donasi" value={formatIDR(totalDonated)} sub="Bulan ini" accent />
@@ -192,14 +207,6 @@ export default function DonorDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Quick Action */}
-        <div className="flex justify-end">
-          <Button onClick={() => navigate("/donation/create")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Donasi Baru
-          </Button>
         </div>
       </div>
     </DashboardLayout>

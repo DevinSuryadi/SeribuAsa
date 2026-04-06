@@ -127,7 +127,6 @@ async function getUserProfile(userId: string): Promise<{ fullName: string }> {
     return { fullName: "User" }
   }
 }
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -303,6 +302,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserRole((role as UserRole) || "donor")
       } else {
         // Fallback: set user data without session (will require manual login)
+        setUser({
+          id: data.user.id,
+          email: data.user.email || "",
+          fullName,
+          role: role as UserRole,
+        })
+        setUserRole(role as UserRole)
+      }
+      return { error: null }
+    } catch {
+      return { error: "Registrasi gagal. Silakan coba lagi." }
+    }
+  }
+      } catch (backendError) {
+        console.error("Backend connection error:", backendError)
+        // Continue anyway - backend might be down temporarily
+      }
+
+      // Step 3: Auto-login after signup
+      let session = data.session
+      if (!session) {
+        // If no immediate session (email verification required), try to sign in directly
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (!signInError && signInData.session) {
+          session = signInData.session
+        }
+      }
+
+      if (session) {
+        setSession(session)
+        // Get profile from backend or set defaults
+        const profile = await getUserProfile(session.user.id)
+        setUser({
+          id: session.user.id,
+          email: session.user.email || "",
+          fullName: profile.fullName,
+          role: (role as UserRole) || "donor",
+        })
+        setUserRole((role as UserRole) || "donor")
+      } else {
+        // Fallback: set user data without session (will require manual login)
+        setUser({
+          id: data.user.id,
+          email: data.user.email || "",
+          fullName,
+          role: role as UserRole,
+        })
+        setUserRole(role as UserRole)
+      }
         setUser({
           id: data.user.id,
           email: data.user.email || "",

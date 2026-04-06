@@ -1,10 +1,23 @@
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { Eye, EyeOff, Shield, Loader2, Heart, Users, Store } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 
+const passwordRequirements = [
+  { regex: /.{8,}/, label: "Minimal 8 karakter" },
+  { regex: /[A-Z]/, label: "1 huruf besar" },
+  { regex: /[0-9]/, label: "1 angka" },
+  { regex: /[@$!%*?&]/, label: "1 simbol (@$!%*?&)" },
+]
+
+function isPasswordValid(password: string): boolean {
+  return passwordRequirements.every((req) => req.regex.test(password))
+}
+
 export default function Masuk() {
+  const [searchParams] = useSearchParams()
+  const fromCheckout = searchParams.get("from") === "checkout"
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
@@ -15,14 +28,12 @@ export default function Masuk() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Email validation with regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       toast.error("Email tidak valid", { description: "Masukkan email dengan format yang benar (contoh: nama@email.com)" })
       return
     }
 
-    // Password validation
     if (password.length < 6) {
       toast.error("Password terlalu pendek", { description: "Password minimal 6 karakter" })
       return
@@ -33,13 +44,24 @@ export default function Masuk() {
     const { error } = await signIn(email, password)
 
     if (error) {
-      toast.error("Login gagal", { description: error })
+      let errorMessage = error
+      if (error.toLowerCase().includes("invalid") || error.toLowerCase().includes("credentials")) {
+        errorMessage = "Email atau password salah. Silakan coba lagi."
+      } else if (error.toLowerCase().includes("email")) {
+        errorMessage = "Email belum terdaftar. Silakan daftar terlebih dahulu."
+      }
+      toast.error("Login gagal", { description: errorMessage })
       setLoading(false)
       return
     }
 
-    toast.success("Login berhasil!")
-    navigate("/dashboard")
+    toast.success("Login berhasil!", { description: "Selamat datang kembali" })
+
+    if (fromCheckout) {
+      navigate("/donation/create")
+    } else {
+      navigate("/dashboard")
+    }
   }
 
   const handleDemoLogin = (role: "donor" | "beneficiary" | "vendor") => {
@@ -48,112 +70,276 @@ export default function Masuk() {
     navigate("/dashboard")
   }
 
+  const passwordValid = isPasswordValid(password)
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-8">
         {/* Logo */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-600">
-            <Shield className="text-white w-5 h-5" />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
+          <div style={{
+            width: 52,
+            height: 52,
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(22,163,74,0.3)',
+          }}>
+            <Shield style={{ width: 26, height: 26, color: '#fff' }} />
           </div>
-          <h1 className="text-xl font-bold mt-2">SeribuAsa</h1>
+          <h1 style={{ 
+            fontSize: 24, 
+            fontWeight: 700, 
+            marginTop: 14, 
+            color: '#111',
+            letterSpacing: '-0.02em',
+          }}>
+            SeribuAsa
+          </h1>
         </div>
 
         {/* Title */}
-        <h2 className="text-2xl font-semibold text-center mb-1">Masuk ke Akun</h2>
-        <p className="text-sm text-gray-500 text-center mb-6">Masukkan email dan kata sandi Anda</p>
+        <h2 style={{ 
+          fontSize: 22, 
+          fontWeight: 600, 
+          textAlign: 'center', 
+          marginBottom: 4, 
+          color: '#111',
+        }}>
+          Masuk ke Akun
+        </h2>
+        <p style={{ 
+          fontSize: 14, 
+          color: '#737373', 
+          textAlign: 'center', 
+          marginBottom: 24,
+        }}>
+          Masukkan email dan kata sandi Anda
+        </p>
+
+        {/* Checkout redirect banner */}
+        {fromCheckout && (
+          <div style={{
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'rgba(22,163,74,0.08)',
+            border: '1px solid rgba(22,163,74,0.2)',
+            marginBottom: 20,
+            textAlign: 'center',
+          }}>
+            <p style={{ fontSize: 13, color: '#15803d', fontWeight: 500 }}>
+              Silakan login untuk melanjutkan donasi Anda
+            </p>
+          </div>
+        )}
 
         {/* Demo Account Buttons */}
-        <div className="mb-6">
-          <p className="text-sm font-medium text-center text-gray-600 mb-3">Login Cepat (Demo)</p>
-          <div className="grid grid-cols-3 gap-2">
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ fontSize: 12, fontWeight: 500, color: '#737373', textAlign: 'center', marginBottom: 12 }}>
+            Login Cepat (Demo)
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
             <button
               type="button"
               onClick={() => handleDemoLogin("donor")}
-              className="flex flex-col items-center gap-1 border border-green-200 rounded-lg p-3 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 transition"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+                padding: '14px 8px',
+                borderRadius: '14px',
+                border: '1.5px solid #bbf7d0',
+                background: '#f0fdf4',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#dcfce7'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#f0fdf4'}
             >
-              <Heart size={18} />
-              Donatur
+              <Heart size={20} style={{ color: '#16a34a' }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#15803d' }}>Donatur</span>
             </button>
             <button
               type="button"
               onClick={() => handleDemoLogin("beneficiary")}
-              className="flex flex-col items-center gap-1 border border-blue-200 rounded-lg p-3 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+                padding: '14px 8px',
+                borderRadius: '14px',
+                border: '1.5px solid #bfdbfe',
+                background: '#eff6ff',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#dbeafe'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#eff6ff'}
             >
-              <Users size={18} />
-              Penerima
+              <Users size={20} style={{ color: '#2563eb' }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#1d4ed8' }}>Penerima</span>
             </button>
             <button
               type="button"
               onClick={() => handleDemoLogin("vendor")}
-              className="flex flex-col items-center gap-1 border border-purple-200 rounded-lg p-3 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 transition"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+                padding: '14px 8px',
+                borderRadius: '14px',
+                border: '1.5px solid #e9d5ff',
+                background: '#faf5ff',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#f3e8ff'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#faf5ff'}
             >
-              <Store size={18} />
-              Vendor
+              <Store size={20} style={{ color: '#9333ea' }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#7e22ce' }}>Vendor</span>
             </button>
           </div>
         </div>
 
         {/* Divider */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex-1 h-px bg-gray-200"></div>
-          <span className="text-sm text-gray-400">atau</span>
-          <div className="flex-1 h-px bg-gray-200"></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <div style={{ flex: 1, height: '1px', background: '#e5e5e5' }} />
+          <span style={{ fontSize: 12, color: '#a3a3a3' }}>atau</span>
+          <div style={{ flex: 1, height: '1px', background: '#e5e5e5' }} />
         </div>
 
         {/* Form */}
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Email */}
           <div>
-            <label className="text-sm font-medium">Email</label>
+            <label style={{ fontSize: 13, fontWeight: 500, color: '#404040', display: 'block', marginBottom: 6 }}>
+              Email
+            </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@contoh.com"
               required
-              className="w-full mt-1 border rounded-md px-3 py-2 focus:outline-none focus:ring focus:ring-green-300"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '12px',
+                border: '1.5px solid #e5e5e5',
+                fontSize: 14,
+                outline: 'none',
+                boxSizing: 'border-box',
+                transition: 'border-color 0.15s ease',
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = '#16a34a'}
+              onBlur={(e) => e.currentTarget.style.borderColor = '#e5e5e5'}
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="text-sm font-medium">Kata Sandi</label>
-            <div className="relative mt-1">
+            <label style={{ fontSize: 13, fontWeight: 500, color: '#404040', display: 'block', marginBottom: 6 }}>
+              Kata Sandi
+            </label>
+            <div style={{ position: 'relative' }}>
               <input
                 type={showPw ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Masukkan kata sandi"
                 required
-                className="w-full border rounded-md px-3 py-2 pr-10 focus:outline-none focus:ring focus:ring-green-300"
+                style={{
+                  width: '100%',
+                  padding: '12px 40px 12px 14px',
+                  borderRadius: '12px',
+                  border: '1.5px solid #e5e5e5',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.15s ease',
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#16a34a'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#e5e5e5'}
               />
               <button
                 type="button"
                 onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-2.5 text-gray-500"
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#a3a3a3',
+                  padding: 4,
+                }}
               >
                 {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            
+            {/* Password Requirements Notes */}
+            {password.length > 0 && !passwordValid && (
+              <div style={{ marginTop: 8, padding: '10px 12px', background: '#fafafa', borderRadius: 8 }}>
+                <p style={{ fontSize: 10, color: '#a3a3a3', marginBottom: 4 }}>
+                  Jika lupa password, gunakan:
+                </p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10, color: '#737373' }}>Min. 8 karakter</span>
+                  <span style={{ fontSize: 10, color: '#737373' }}>• 1 huruf besar</span>
+                  <span style={{ fontSize: 10, color: '#737373' }}>• 1 angka</span>
+                  <span style={{ fontSize: 10, color: '#737373' }}>• 1 simbol</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Forgot password */}
-          <p className="text-right">
-            <Link to="/lupa-sandi" className="text-sm text-green-600 hover:underline">
+          <p style={{ textAlign: 'right', marginTop: -8 }}>
+            <Link to="/lupa-sandi" style={{ 
+              fontSize: 13, 
+              color: '#16a34a', 
+              textDecoration: 'none',
+              fontWeight: 500,
+            }}>
               Lupa kata sandi?
             </Link>
           </p>
 
-          {/* Button */}
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            disabled={loading || !email || password.length < 6}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '12px',
+              fontSize: 15,
+              fontWeight: 600,
+              color: '#fff',
+              background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+              border: 'none',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              boxShadow: '0 4px 12px rgba(22,163,74,0.25)',
+              marginTop: 8,
+            }}
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
                 <span>Memproses...</span>
               </>
             ) : (
@@ -162,10 +348,17 @@ export default function Masuk() {
           </button>
         </form>
 
-        {/* Register */}
-        <p className="text-sm text-center text-gray-500 mt-6">
+        {/* Register Link */}
+        <p style={{ fontSize: 13, textAlign: 'center', color: '#737373', marginTop: 24 }}>
           Belum punya akun?{" "}
-          <Link to="/register" className="text-green-600 font-medium">
+          <Link 
+            to="/register" 
+            style={{ 
+              color: '#16a34a', 
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
             Daftar sekarang
           </Link>
         </p>

@@ -266,7 +266,7 @@ const Donasi = () => {
                 </ul>
 
                 <Link
-                  to="/register"
+                  to={plan.price > 0 ? `/donation/checkout?plan=${plan.id}&type=${isMonthly ? 'monthly' : 'once'}` : '/kontak'}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -362,7 +362,7 @@ const Donasi = () => {
             </div>
 
             <Link
-              to="/register"
+              to={customAmount ? `/donation/checkout?amount=${customAmount}&type=${isMonthly ? 'monthly' : 'once'}` : '#'}
               style={{
                 display: 'flex',
                 alignItems: 'center',

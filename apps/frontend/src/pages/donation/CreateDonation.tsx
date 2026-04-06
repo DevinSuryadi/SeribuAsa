@@ -1,60 +1,112 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import DashboardLayout from "@/components/dashboard/DashboardLayout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Heart, CreditCard, Wallet, Smartphone, ArrowRight, Loader2 } from "lucide-react"
+import { Heart, ArrowRight, Loader2, ArrowLeft, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import { createDonation } from "@/services/donations"
+import { formatIDR } from "@/lib/format"
 
-const quickAmounts = [50000, 100000, 250000, 300000, 500000, 1000000]
-
-const paymentMethods = [
-  { id: "bank_transfer", label: "Transfer Bank", icon: CreditCard },
-  { id: "e_wallet", label: "E-Wallet", icon: Wallet },
-  { id: "qris", label: "QRIS", icon: Smartphone },
-]
+const paymentLabels: Record<string, string> = {
+  qris: "QRIS",
+  bank_transfer: "Transfer Bank",
+  e_wallet: "E-Wallet",
+}
 
 export default function CreateDonation() {
   const navigate = useNavigate()
-  const [amount, setAmount] = useState("")
-  const [customAmount, setCustomAmount] = useState("")
-  const [donationType, setDonationType] = useState<"one_time" | "subscription">("one_time")
-  const [paymentMethod, setPaymentMethod] = useState("bank_transfer")
+  const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(false)
 
-  const handleQuickAmount = (value: number) => {
-    setAmount(value.toString())
-    setCustomAmount("")
-  }
+  const [planName, setPlanName] = useState("")
+  const [amount, setAmount] = useState("")
+  const [donationType, setDonationType] = useState<"one_time" | "subscription">("one_time")
+  const [paymentMethod, setPaymentMethod] = useState("qris")
+  const [donorName, setDonorName] = useState("")
+  const [donorEmail, setDonorEmail] = useState("")
 
-  const handleCustomAmount = (value: string) => {
-    setCustomAmount(value)
-    setAmount(value)
-  }
+  useEffect(() => {
+    // Restore from checkout data
+    const checkoutData = sessionStorage.getItem("donation_checkout_data")
+    if (checkoutData) {
+      try {
+        const data = JSON.parse(checkoutData)
+        if (data.plan) {
+          const planNames: Record<string, string> = {
+            balita: "Adopsi Nutrisi 1 Balita",
+            "1000hpk": "Paket 1000 HPK",
+            corporate: "Corporate Impact Plan",
+          }
+          setPlanName(planNames[data.plan] || "Donasi Custom")
+        }
+        if (data.amount) {
+          setAmount(data.amount.toString())
+        }
+        if (data.type === "monthly") setDonationType("subscription")
+        else if (data.type === "once") setDonationType("one_time")
+        if (data.payment) {
+          const methodMap: Record<string, string> = {
+            qris: "qris",
+            va_bca: "bank_transfer",
+            va_mandiri: "bank_transfer",
+            gopay: "e_wallet",
+            cc: "bank_transfer",
+          }
+          setPaymentMethod(methodMap[data.payment] || "qris")
+        }
+        if (data.name) setDonorName(data.name)
+        if (data.email) setDonorEmail(data.email)
+        sessionStorage.removeItem("donation_checkout_data")
+      } catch {
+        // ignore
+      }
+    }
+
+    // Also accept URL params as fallback
+    const planAmount = searchParams.get("amount")
+    const planType = searchParams.get("type")
+    const planPayment = searchParams.get("payment")
+    const planId = searchParams.get("plan")
+
+    if (planAmount && !amount) setAmount(planAmount)
+    if (planType === "monthly" && donationType !== "subscription") setDonationType("subscription")
+    if (planType === "once" && donationType !== "one_time") setDonationType("one_time")
+    if (planPayment) {
+      const methodMap: Record<string, string> = {
+        qris: "qris",
+        va_bca: "bank_transfer",
+        va_mandiri: "bank_transfer",
+        gopay: "e_wallet",
+        cc: "bank_transfer",
+      }
+      setPaymentMethod(methodMap[planPayment] || "qris")
+    }
+    if (planId && !planName) {
+      const planNames: Record<string, string> = {
+        balita: "Adopsi Nutrisi 1 Balita",
+        "1000hpk": "Paket 1000 HPK",
+        corporate: "Corporate Impact Plan",
+      }
+      setPlanName(planNames[planId] || "Donasi Custom")
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!amount || parseInt(amount) < 10000) {
       toast.error("Jumlah minimal Rp 10.000")
       return
     }
-
     setLoading(true)
-
     try {
       const donation = await createDonation({
         amount: parseInt(amount),
         type: donationType,
         payment_method: paymentMethod,
       })
-
       toast.success("Donasi berhasil dibuat!")
-
       navigate(`/donation/payment/${donation.id}`, {
         state: { amount: parseInt(amount), paymentMethod },
       })
@@ -66,137 +118,70 @@ export default function CreateDonation() {
   }
 
   return (
-    <DashboardLayout title="Donasi Baru" subtitle="Buat donasi untuk membantu anak-anak">
+    <DashboardLayout title="Konfirmasi Donasi" subtitle="Periksa kembali detail donasi Anda sebelum melanjutkan ke pembayaran.">
       <div className="mx-auto max-w-2xl">
+        <Button variant="ghost" size="sm" className="mb-4 gap-1" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4" /> Kembali
+        </Button>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Heart className="h-5 w-5 text-red-500" />
-              Form Donasi
+              Ringkasan Donasi
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Donation Type */}
-              <div>
-                <Label>Jenis Donasi</Label>
-                <div className="grid grid-cols-2 gap-3 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setDonationType("one_time")}
-                    className={`rounded-lg border p-4 text-center transition ${
-                      donationType === "one_time"
-                        ? "border-green-600 bg-green-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <p className="font-medium">Sekali Donasi</p>
-                    <p className="text-sm text-gray-500">Donasi satu kali</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDonationType("subscription")}
-                    className={`rounded-lg border p-4 text-center transition ${
-                      donationType === "subscription"
-                        ? "border-green-600 bg-green-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <p className="font-medium">Donasi Rutin</p>
-                    <p className="text-sm text-gray-500">Setiap bulan</p>
-                  </button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Amount Selection */}
-              <div>
-                <Label>Jumlah Donasi</Label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  {quickAmounts.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => handleQuickAmount(value)}
-                      className={`rounded-lg border p-3 text-sm font-medium transition ${
-                        amount === value.toString()
-                          ? "border-green-600 bg-green-50 text-green-700"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      Rp {(value / 1000).toFixed(0)}k
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3">
-                  <Label htmlFor="custom-amount">Jumlah Custom</Label>
-                  <Input
-                    id="custom-amount"
-                    type="number"
-                    placeholder="Masukkan jumlah donasi"
-                    value={customAmount}
-                    onChange={(e) => handleCustomAmount(e.target.value)}
-                    className="mt-1"
-                    min="10000"
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Payment Method */}
-              <div>
-                <Label>Metode Pembayaran</Label>
-                <div className="grid grid-cols-3 gap-3 mt-2">
-                  {paymentMethods.map((method) => (
-                    <button
-                      key={method.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(method.id)}
-                      className={`flex flex-col items-center gap-2 rounded-lg border p-4 transition ${
-                        paymentMethod === method.id
-                          ? "border-green-600 bg-green-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <method.icon className="h-6 w-6" />
-                      <span className="text-sm font-medium">{method.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Summary */}
-              {amount && (
-                <div className="rounded-lg bg-gray-50 p-4">
-                  <h4 className="font-medium mb-2">Ringkasan Donasi</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Jenis</span>
-                      <span>{donationType === "one_time" ? "Sekali Donasi" : "Donasi Rutin"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Jumlah</span>
-                      <span className="font-semibold">Rp {parseInt(amount).toLocaleString("id-ID")}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Metode</span>
-                      <span className="capitalize">{paymentMethod.replace("_", " ")}</span>
-                    </div>
+              {/* Plan Info */}
+              {planName && (
+                <div className="rounded-lg bg-green-50 border border-green-200 p-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="font-medium text-green-800">{planName}</span>
                   </div>
                 </div>
               )}
 
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={loading || !amount}
-                className="w-full"
-                size="lg"
-              >
+              {/* Donor Info */}
+              {(donorName || donorEmail) && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Donatur</h4>
+                    <div className="space-y-1 text-sm">
+                      {donorName && <div className="flex justify-between"><span className="text-gray-600">Nama</span><span className="font-medium">{donorName}</span></div>}
+                      {donorEmail && <div className="flex justify-between"><span className="text-gray-600">Email</span><span className="font-medium">{donorEmail}</span></div>}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <Separator />
+
+              {/* Donation Details */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Detail Donasi</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Jenis</span>
+                    <span className="font-medium">{donationType === "one_time" ? "Sekali Donasi" : "Donasi Rutin (Bulanan)"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Jumlah</span>
+                    <span className="font-semibold text-lg">{formatIDR(parseInt(amount) || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Metode Pembayaran</span>
+                    <span className="font-medium">{paymentLabels[paymentMethod] || paymentMethod}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Submit */}
+              <Button type="submit" disabled={loading || !amount} className="w-full" size="lg">
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -204,11 +189,15 @@ export default function CreateDonation() {
                   </>
                 ) : (
                   <>
-                    Lanjut ke Pembayaran
+                    Bayar {amount ? formatIDR(parseInt(amount)) : "Sekarang"}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}
               </Button>
+
+              <p className="text-xs text-center text-gray-400">
+                Setelah klik tombol, Anda akan diarahkan ke halaman pembayaran.
+              </p>
             </form>
           </CardContent>
         </Card>

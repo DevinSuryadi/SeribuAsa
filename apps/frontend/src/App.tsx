@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import Index from "./pages/Index";
@@ -6,28 +7,42 @@ import Register from "./pages/auth/Register";
 import Donasi from "./pages/Donasi";
 import Tentang from "./pages/Tentang";
 import Dampak from "./pages/Dampak";
+import Privasi from "./pages/Privasi";
+import Syarat from "./pages/Syarat";
+import Kontak from "./pages/Kontak";
 import LupaSandi from "./pages/auth/LupaSandi";
 import ResetPassword from "./pages/auth/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DonorDashboard from "./pages/dashboard/DonorDashboard";
 import BeneficiaryDashboard from "./pages/dashboard/BeneficiaryDashboard";
 import DonorRiwayat from "./pages/dashboard/DonorRiwayat";
-import DonorDampak from "./pages/dashboard/DonorDampak";
-import KatalogPangan from "./pages/dashboard/KatalogPangan";
-import PenukaranVoucher from "./pages/dashboard/PenukaranVoucher";
 import Profile from "./pages/dashboard/Profile";
-import KelolaProduk from "./pages/dashboard/KelolaProduk";
-import VendorSettlement from "./pages/dashboard/VendorSettlement";
 import VendorDashboard from "./pages/dashboard/VendorDashboard";
-import SurveiFIES from "./pages/dashboard/SurveiFIES";
-import PemantauanGizi from "./pages/dashboard/PemantauanGizi";
-import DompetNutrisi from "./pages/dashboard/DompetNutrisi";
-import DonorLangganan from "./pages/dashboard/DonorLangganan";
-import RekomendasiAI from "./pages/dashboard/RekomendasiAI";
+import DonationCheckout from "./pages/donation/DonationCheckout";
 import CreateDonation from "./pages/donation/CreateDonation";
 import MockPaymentModal from "./pages/donation/MockPaymentModal";
 import DonationSuccess from "./pages/donation/DonationSuccess";
 import { useAuth } from "./contexts/AuthContext";
+
+// Heavy pages → lazy-loaded
+const DonorDampak = lazy(() => import("./pages/dashboard/DonorDampak"));
+const PemantauanGizi = lazy(() => import("./pages/dashboard/PemantauanGizi"));
+const KatalogPangan = lazy(() => import("./pages/dashboard/KatalogPangan"));
+const DonorLangganan = lazy(() => import("./pages/dashboard/DonorLangganan"));
+const KelolaProduk = lazy(() => import("./pages/dashboard/KelolaProduk"));
+const VendorSettlement = lazy(() => import("./pages/dashboard/VendorSettlement"));
+const SurveiFIES = lazy(() => import("./pages/dashboard/SurveiFIES"));
+const PenukaranVoucher = lazy(() => import("./pages/dashboard/PenukaranVoucher"));
+const DompetNutrisi = lazy(() => import("./pages/dashboard/DompetNutrisi"));
+const RekomendasiAI = lazy(() => import("./pages/dashboard/RekomendasiAI"));
+
+function PageLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent" />
+    </div>
+  );
+}
 
 function DashboardRedirect() {
   const { userRole, loading } = useAuth();
@@ -62,27 +77,31 @@ function App() {
         <Route path="/dampak" element={<Dampak />} />
         <Route path="/lupa-sandi" element={<LupaSandi />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/privasi" element={<Privasi />} />
+        <Route path="/syarat" element={<Syarat />} />
+        <Route path="/kontak" element={<Kontak />} />
 
         {/* Authenticated routes */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
         <Route path="/dashboard/donor" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/beneficiary" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><BeneficiaryDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/riwayat" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorRiwayat /></ProtectedRoute>} />
-        <Route path="/dashboard/dampak" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorDampak /></ProtectedRoute>} />
-        <Route path="/dashboard/langganan" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorLangganan /></ProtectedRoute>} />
-        <Route path="/dashboard/katalog" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><KatalogPangan /></ProtectedRoute>} />
-        <Route path="/dashboard/penukaran" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><PenukaranVoucher /></ProtectedRoute>} />
-        <Route path="/dashboard/survei-fies" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><SurveiFIES /></ProtectedRoute>} />
-        <Route path="/dashboard/pemantauan-gizi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><PemantauanGizi /></ProtectedRoute>} />
-        <Route path="/dashboard/dompet" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><DompetNutrisi /></ProtectedRoute>} />
-        <Route path="/dashboard/rekomendasi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><RekomendasiAI /></ProtectedRoute>} />
-        <Route path="/dashboard/kelola-produk" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><KelolaProduk /></ProtectedRoute>} />
-        <Route path="/dashboard/settlement" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorSettlement /></ProtectedRoute>} />
+        <Route path="/dashboard/dampak" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><Suspense fallback={<PageLoader />}><DonorDampak /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/langganan" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><Suspense fallback={<PageLoader />}><DonorLangganan /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/katalog" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><KatalogPangan /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/survei-fies" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><SurveiFIES /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/pemantauan-gizi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><PemantauanGizi /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/dompet-nutrisi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><DompetNutrisi /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/rekomendasi-ai" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><RekomendasiAI /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/penukaran-voucher" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><PenukaranVoucher /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/kelola-produk" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><Suspense fallback={<PageLoader />}><KelolaProduk /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard/settlement" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><Suspense fallback={<PageLoader />}><VendorSettlement /></Suspense></ProtectedRoute>} />
         <Route path="/dashboard/vendor" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Donation flow routes */}
-        <Route path="/donation/create" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><CreateDonation /></ProtectedRoute>} />
+        <Route path="/donation/checkout" element={<DonationCheckout />} />
+        <Route path="/donation/create" element={<ProtectedRoute allowedRoles={["donor", "admin", "beneficiary", "vendor"]}><CreateDonation /></ProtectedRoute>} />
         <Route path="/donation/payment/:donationId" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><MockPaymentModal /></ProtectedRoute>} />
         <Route path="/donation/success" element={<ProtectedRoute><DonationSuccess /></ProtectedRoute>} />
 
