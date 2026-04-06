@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Leaf, LogOut, LayoutDashboard, ChevronDown, User, X, Menu } from 'lucide-react';
+import { LogOut, LayoutDashboard, ChevronDown, User, X, Menu } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import logo from '@/assets/logo.svg';
 
 const navLinks = [
   { label: 'Beranda', href: '/' },
@@ -91,23 +92,48 @@ export function Navbar() {
           padding: '0 clamp(12px, 4vw, 24px)',
         }}
       >
-        {/* Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <Link 
+          to="/" 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            textDecoration: 'none',
+            marginLeft: '-10px' 
+          }}
+        >
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #22c55e, #15803d)',
+              width: 90, 
+              height: 90,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(21,128,61,0.3)',
+              marginRight: -18, // Mendekatkan logo ke tulisan
+              transition: 'transform 0.2s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+          >
+            <img 
+              src={logo} 
+              alt="Logo SeribuAsa" 
+              style={{ 
+                width: '110%', 
+                height: '110%', 
+                objectFit: 'contain' 
+              }} 
+            />
+          </div>
+          <span 
+            style={{ 
+              fontSize: 24, 
+              fontWeight: 700, 
+              color: '#346A43', 
+              letterSpacing: '-0.8px',
+              position: 'relative',
+              zIndex: 1
             }}
           >
-            <Leaf style={{ width: 18, height: 16, color: 'white' }} />
-          </div>
-          <span style={{ fontSize: 18, fontWeight: 700, color: '#111', letterSpacing: '-0.5px' }}>
             SeribuAsa
           </span>
         </Link>

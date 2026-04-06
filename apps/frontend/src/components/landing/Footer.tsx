@@ -1,5 +1,5 @@
-import { memo } from 'react';
 import { Link } from 'react-router-dom';
+import logo from '@/assets/logo.svg'
 
 const footerLinks = [
   {
@@ -33,10 +33,10 @@ export function Footer() {
       style={{
         borderTop: '1px solid rgba(0,0,0,0.08)',
         background: '#fafafa',
-        padding: 'clamp(32px, 6vw, 48px) 0 clamp(24px, 4vw, 32px)',
+        padding: '64px 0 32px',
       }}
     >
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 5vw, 24px)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
         <div
           style={{
             display: 'grid',
@@ -45,20 +45,49 @@ export function Footer() {
           }}
         >
           {/* Brand */}
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             <Link
               to="/"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 0,
                 textDecoration: 'none',
-                marginBottom: 10,
+                margin: '0 0 5px -12px',
               }}
             >
-              <span style={{ fontSize: 17, fontWeight: 600, color: '#111' }}>SeribuAsa</span>
+              {/* Logo */}
+              <img 
+                src={logo} 
+                alt="Logo" 
+                style={{ 
+                  width: 55, 
+                  height: 55, 
+                  objectFit: 'contain',
+                  marginTop: -15, 
+                  marginRight: -8 
+                }} 
+              />
+              {/* Teks */}
+              <span style={{ 
+                fontSize: 17, 
+                fontWeight: 600, 
+                color: '#346A43',
+                marginTop: -14,
+              }}>
+                SeribuAsa
+              </span>
             </Link>
-            <p style={{ fontSize: 'clamp(12px, 3vw, 13px)', color: '#888', lineHeight: 1.6, margin: 0 }}>
+            
+            <p style={{ 
+              fontSize: 13, 
+              color: '#888', 
+              lineHeight: 1.6, 
+              maxWidth: 200, 
+              margin: 0,
+              paddingLeft: 4,
+              marginTop: -10,
+            }}>
               Ekosistem digital untuk ketahanan pangan dan nutrisi Indonesia.
             </p>
           </div>
@@ -66,7 +95,7 @@ export function Footer() {
           {/* Link groups */}
           {footerLinks.map((group) => (
             <div key={group.title}>
-              <h4 style={{ fontSize: 'clamp(12px, 3vw, 13px)', fontWeight: 600, color: '#333', margin: '0 0 12px' }}>
+              <h4 style={{ fontSize: 13, fontWeight: 600, color: '#333', margin: '0 0 12px' }}>
                 {group.title}
               </h4>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -74,7 +103,7 @@ export function Footer() {
                   <li key={link.href}>
                     <Link
                       to={link.href}
-                      style={{ fontSize: 'clamp(12px, 3vw, 13px)', color: '#888', textDecoration: 'none', transition: 'color 0.15s ease' }}
+                      style={{ fontSize: 13, color: '#888', textDecoration: 'none', transition: 'color 0.15s ease' }}
                       onMouseEnter={(e) => (e.currentTarget.style.color = '#111')}
                       onMouseLeave={(e) => (e.currentTarget.style.color = '#888')}
                     >
@@ -89,11 +118,11 @@ export function Footer() {
 
         <div
           style={{
-            marginTop: 'clamp(24px, 5vw, 40px)',
+            marginTop: 40,
             paddingTop: 20,
             borderTop: '1px solid rgba(0,0,0,0.07)',
             textAlign: 'center',
-            fontSize: 'clamp(11px, 2.8vw, 12px)',
+            fontSize: 12,
             color: '#aaa',
           }}
         >
@@ -103,5 +132,3 @@ export function Footer() {
     </footer>
   );
 }
-
-export default memo(Footer);
