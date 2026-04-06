@@ -4,9 +4,7 @@ Donation and Voucher Models
 - Voucher: Voucher definitions
 - VoucherRedemption: Redemption tracking
 """
-from sqlalchemy import Column, String, Date, DateTime, Enum, Numeric, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, Date, DateTime, Enum, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime

@@ -5,6 +5,17 @@ import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
 
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.25-.95 2.31-2.02 3.01l3.27 2.53c1.9-1.75 3-4.33 3-7.43 0-.7-.06-1.37-.18-2.01H12z" />
+      <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.61-2.45l-3.27-2.53c-.9.61-2.05.97-3.34.97-2.57 0-4.76-1.74-5.54-4.08l-3.37 2.6A9.99 9.99 0 0 0 12 22z" />
+      <path fill="#4A90E2" d="M6.46 13.91A5.99 5.99 0 0 1 6.15 12c0-.66.11-1.29.31-1.91l-3.37-2.6A9.99 9.99 0 0 0 2 12c0 1.61.38 3.13 1.09 4.51l3.37-2.6z" />
+      <path fill="#FBBC05" d="M12 6.01c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.95 2.99 14.7 2 12 2a9.99 9.99 0 0 0-8.91 5.49l3.37 2.6c.78-2.34 2.97-4.08 5.54-4.08z" />
+    </svg>
+  )
+}
+
 type Role = "donor" | "beneficiary" | "vendor"
 
 const roles: { id: Role; label: string; icon: React.ElementType; desc: string }[] = [
@@ -26,7 +37,7 @@ function isPasswordValid(password: string): boolean {
 
 export default function Register() {
   const navigate = useNavigate()
-  const { signUp } = useAuth()
+  const { signUp, signInWithGoogle } = useAuth()
   const [role, setRole] = useState<Role | null>(null)
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
@@ -35,6 +46,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [showRequirements, setShowRequirements] = useState(false)
 
   const passwordValid = password.length > 0 && isPasswordValid(password)
@@ -87,6 +99,24 @@ export default function Register() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleGoogleRegister = async () => {
+    if (!role) {
+      toast.error("Pilih peran terlebih dahulu", { description: "Role akan dipakai untuk akun Google baru Anda." })
+      return
+    }
+
+    setGoogleLoading(true)
+    const { error } = await signInWithGoogle(role)
+
+    if (error) {
+      toast.error("Registrasi Google gagal", { description: error })
+      setGoogleLoading(false)
+      return
+    }
+
+    toast.info("Mengalihkan ke Google...")
   }
 
   return (
@@ -246,6 +276,34 @@ export default function Register() {
               "Daftar"
             )}
           </Button>
+
+          <div className="flex items-center gap-3 mt-2">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs text-gray-400">atau</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleRegister}
+            disabled={loading || googleLoading || !role}
+            className="w-full h-10 rounded-lg border border-gray-300 bg-white text-gray-800 font-semibold flex items-center justify-center gap-2 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {googleLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Mengalihkan...</span>
+              </>
+            ) : (
+              <>
+                <GoogleIcon />
+                <span>Daftar dengan Google</span>
+              </>
+            )}
+          </button>
+          {!role && (
+            <p className="text-xs text-gray-500 text-center">Pilih role di atas sebelum daftar dengan Google</p>
+          )}
 
           {/* Sign In Link */}
           <p className="text-center text-sm text-gray-600">

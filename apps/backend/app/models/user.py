@@ -6,8 +6,7 @@ User Profile Models
 - VendorProfile: Vendor-specific data
 - Child: Children of beneficiaries
 """
-from sqlalchemy import Column, String, Text, Date, Enum, ForeignKey, Integer, Numeric
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Text, Date, Enum, ForeignKey, Integer, Numeric, Uuid as UUID
 from sqlalchemy.orm import relationship
 import enum
 from app.models.base import BaseModel

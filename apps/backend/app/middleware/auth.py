@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, List
 import logging
 import os
+from uuid import UUID
 
 from app.services.supabase_auth import supabase_auth
 from app.config import settings
@@ -19,8 +20,8 @@ security = HTTPBearer(auto_error=False)
 class AuthenticatedUser:
     """Authenticated user information"""
     
-    def __init__(self, user_id: str, email: str, role: str, email_verified: bool = False):
-        self.user_id = user_id
+    def __init__(self, user_id: str | UUID, email: str, role: str, email_verified: bool = False):
+        self.user_id = user_id if isinstance(user_id, UUID) else UUID(str(user_id))
         self.email = email
         self.role = role
         self.email_verified = email_verified
