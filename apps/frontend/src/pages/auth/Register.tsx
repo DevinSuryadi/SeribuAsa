@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Leaf, Eye, EyeOff, Heart, Users, Store, Loader2, Check, X } from "lucide-react"
+import { Eye, EyeOff, Heart, Users, Store, Loader2, Check, X } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
+import logo from '@/assets/logo.svg'
 
 function GoogleIcon() {
   return (
@@ -146,15 +147,34 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-6">
+    <div className="min-h-screen flex items-center justify-center px-4 py-6"
+    style={{
+        background:"#F9FBF9",
+      }}>
       <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-6">
         {/* Logo */}
-        <div className="flex flex-col items-center mb-5">
-          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center shadow-md">
-            <Leaf className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mt-3">SeribuAsa</h1>
+        <Link to="/"> 
+        <div className="flex flex-col items-center mb-8">
+          <img 
+            src={logo} 
+            alt="Logo" 
+            style={{ 
+              width: 100, 
+              height: 100, 
+              objectFit: 'contain',
+            }} 
+          />
+          <h1 
+            className="text-xl font-bold" 
+            style={{ 
+              marginTop: -20,
+              color: "#346A43"
+            }}
+          >
+            SeribuAsa
+          </h1>
         </div>
+        </Link>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-3">
