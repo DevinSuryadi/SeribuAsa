@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -12,14 +12,28 @@ import { Label } from '@/components/ui/label';
 import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
+const BACKEND_BASE_URL = 'http://localhost:8000/api/v1';
+
+type BackendProfile = {
+  full_name: string;
+  role?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  date_of_birth?: string | null;
+  gender?: 'male' | 'female' | null;
+};
+
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, userRole, signOut } = useAuth();
+  const { user, userRole, session, signOut } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [profileData, setProfileData] = useState<BackendProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [editFormData, setEditFormData] = useState({
     fullName: user?.fullName || '',
     phone: '',
+    address: '',
     dateOfBirth: '',
     gender: '',
   });
@@ -29,6 +43,112 @@ const Profile = () => {
     confirmPassword: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const tryEnsureProfile = async (preferredFullName?: string) => {
+    if (!user?.id) return false;
+
+    const normalizedFullName = preferredFullName?.trim() || user.fullName || 'Pengguna';
+
+    if (session?.access_token) {
+      const syncBody = preferredFullName?.trim() ? { full_name: preferredFullName.trim() } : {};
+      const syncResponse = await fetch(`${BACKEND_BASE_URL}/auth/google/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(syncBody),
+      });
+
+      if (syncResponse.ok) return true;
+    }
+
+    const fallbackRole =
+      userRole === 'beneficiary' || userRole === 'vendor' || userRole === 'corporate_donor'
+        ? userRole
+        : 'donor';
+
+    const signupResponse = await fetch(`${BACKEND_BASE_URL}/users/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: user.id,
+        full_name: normalizedFullName,
+        role: fallbackRole,
+      }),
+    });
+
+    return signupResponse.ok || signupResponse.status === 409;
+  };
+
+  const formatDateForDisplay = (dateText?: string | null) => {
+    if (!dateText) return 'Belum diatur';
+
+    const [year, month, day] = dateText.split('-').map(Number);
+    if (!year || !month || !day) return dateText;
+
+    return new Date(year, month - 1, day).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadProfile = async () => {
+      if (!user?.id) return;
+
+      setProfileLoading(true);
+      try {
+        let response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`);
+
+        if (!response.ok && response.status === 404) {
+          const synced = await tryEnsureProfile(user.fullName || undefined);
+          if (synced) {
+            response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`);
+          }
+        }
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!isActive) return;
+
+        const nextProfile: BackendProfile = {
+          full_name: data.full_name || user.fullName || 'Pengguna',
+          role: data.role || null,
+          phone: data.phone || null,
+          address: data.address || null,
+          date_of_birth: data.date_of_birth || null,
+          gender: data.gender || null,
+        };
+
+        setProfileData(nextProfile);
+        setEditFormData((prev) => ({
+          ...prev,
+          fullName: nextProfile.full_name,
+          phone: nextProfile.phone || '',
+          address: nextProfile.address || '',
+          dateOfBirth: nextProfile.date_of_birth || '',
+          gender: nextProfile.gender || '',
+        }));
+      } catch (error) {
+        console.warn('[PROFILE] Failed to load profile from backend', error);
+      } finally {
+        if (isActive) setProfileLoading(false);
+      }
+    };
+
+    void loadProfile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.id, user?.fullName, userRole, session?.access_token]);
 
   const handleSignOut = () => {
     signOut();
@@ -41,10 +161,73 @@ const Profile = () => {
       toast.error('Nama tidak boleh kosong');
       return;
     }
+
+    if (editFormData.phone.trim()) {
+      const phoneRegex = /^[0-9+\-\s]{8,20}$/;
+      if (!phoneRegex.test(editFormData.phone.trim())) {
+        toast.error('Nomor HP tidak valid');
+        return;
+      }
+    }
+
+    if (!user?.id) {
+      toast.error('User tidak ditemukan. Silakan login ulang.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // TODO: Call API to update profile
-      await new Promise(r => setTimeout(r, 500));
+      const payload = {
+        full_name: editFormData.fullName.trim(),
+        phone: editFormData.phone.trim() || null,
+        address: editFormData.address.trim() || null,
+        date_of_birth: editFormData.dateOfBirth || null,
+        gender: (editFormData.gender || null) as 'male' | 'female' | null,
+      };
+
+      const requestBody = JSON.stringify(payload);
+      const requestInit = {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+      };
+
+      let response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`, requestInit);
+
+      if (response.status === 404) {
+        const synced = await tryEnsureProfile(payload.full_name);
+        if (synced) {
+          response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`, requestInit);
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Gagal memperbarui profil' }));
+        throw new Error(errorData.detail || 'Gagal memperbarui profil');
+      }
+
+      const updatedProfile = await response.json();
+      const nextProfile: BackendProfile = {
+        full_name: updatedProfile.full_name || payload.full_name,
+        role: updatedProfile.role || profileData?.role || null,
+        phone: updatedProfile.phone || null,
+        address: updatedProfile.address || null,
+        date_of_birth: updatedProfile.date_of_birth || null,
+        gender: updatedProfile.gender || null,
+      };
+
+      setProfileData(nextProfile);
+      setEditFormData((prev) => ({
+        ...prev,
+        fullName: nextProfile.full_name,
+        phone: nextProfile.phone || '',
+        address: nextProfile.address || '',
+        dateOfBirth: nextProfile.date_of_birth || '',
+        gender: nextProfile.gender || '',
+      }));
+
       toast.success('Profil berhasil diperbarui');
       setShowEditModal(false);
     } catch (error: any) {
@@ -82,7 +265,33 @@ const Profile = () => {
     }
   };
 
-  const roleLabel = userRole === 'donor' ? 'Donatur' : userRole === 'beneficiary' ? 'Penerima Manfaat' : userRole === 'vendor' ? 'Vendor' : userRole;
+  const resolvedRole = profileData?.role || userRole;
+  const resolvedName = profileData?.full_name || user?.fullName || 'Pengguna';
+  const resolvedPhone = profileLoading ? 'Memuat...' : (profileData?.phone || 'Belum diatur');
+  const resolvedAddress = profileLoading ? 'Memuat...' : (profileData?.address || 'Belum diatur');
+  const resolvedDateOfBirth = profileLoading ? 'Memuat...' : formatDateForDisplay(profileData?.date_of_birth);
+  const resolvedGender =
+    profileLoading
+      ? 'Memuat...'
+      : profileData?.gender === 'male'
+        ? 'Laki-laki'
+        : profileData?.gender === 'female'
+          ? 'Perempuan'
+          : 'Belum diatur';
+  const roleLabel =
+    resolvedRole === 'donor'
+      ? 'Donatur'
+      : resolvedRole === 'corporate_donor'
+        ? 'Donatur Korporat'
+        : resolvedRole === 'beneficiary'
+          ? 'Penerima Manfaat'
+          : resolvedRole === 'vendor'
+            ? 'Vendor'
+            : resolvedRole === 'admin'
+              ? 'Admin'
+              : resolvedRole === 'government'
+                ? 'Pemerintah'
+                : '-';
 
   return (
     <DashboardLayout title="Profil Saya" subtitle="Kelola informasi pribadi dan pengaturan akun Anda.">
@@ -104,7 +313,7 @@ const Profile = () => {
                 <User className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <div className="text-lg font-semibold text-foreground">{user?.fullName || 'Pengguna'}</div>
+                <div className="text-lg font-semibold text-foreground">{resolvedName}</div>
                 <div className="text-sm text-muted-foreground">{user?.email || '-'}</div>
                 <Badge className="mt-1 capitalize">{roleLabel}</Badge>
               </div>
@@ -124,21 +333,21 @@ const Profile = () => {
                 <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Nomor HP</div>
-                  <div className="text-sm font-medium text-foreground">Belum diatur</div>
+                  <div className="text-sm font-medium text-foreground">{resolvedPhone}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Tanggal Lahir</div>
-                  <div className="text-sm font-medium text-foreground">Belum diatur</div>
+                  <div className="text-sm font-medium text-foreground">{resolvedDateOfBirth}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Jenis Kelamin</div>
-                  <div className="text-sm font-medium text-foreground">Belum diatur</div>
+                  <div className="text-sm font-medium text-foreground">{resolvedGender}</div>
                 </div>
               </div>
             </div>
@@ -156,11 +365,13 @@ const Profile = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{user?.fullName || 'Pengguna'}</span>
+                    <span className="font-medium text-foreground">{resolvedName}</span>
                     <Badge variant="secondary" className="text-[10px]">Utama</Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">Belum diatur</p>
-                  <p className="text-sm text-foreground mt-2 text-muted-foreground italic">Silakan lengkapi profil Anda untuk menambahkan alamat.</p>
+                  <p className="text-sm text-muted-foreground mt-1">{resolvedAddress}</p>
+                  {!profileData?.address && !profileLoading && (
+                    <p className="text-sm text-foreground mt-2 text-muted-foreground italic">Silakan lengkapi profil Anda untuk menambahkan alamat.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -180,7 +391,7 @@ const Profile = () => {
                   <div className="text-sm font-medium text-foreground">Role Akun</div>
                   <div className="text-xs text-muted-foreground capitalize">{roleLabel}</div>
                 </div>
-                <Badge variant="outline" className="capitalize">{userRole}</Badge>
+                <Badge variant="outline" className="capitalize">{resolvedRole || '-'}</Badge>
               </div>
             </div>
             <Separator />
@@ -219,6 +430,16 @@ const Profile = () => {
                   value={editFormData.phone}
                   onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
                   className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="address">Alamat</Label>
+                <textarea
+                  id="address"
+                  value={editFormData.address}
+                  onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                  className="w-full mt-1.5 px-3 py-2 border border-input rounded-md bg-background min-h-[80px]"
+                  placeholder="Masukkan alamat"
                 />
               </div>
               <div>
