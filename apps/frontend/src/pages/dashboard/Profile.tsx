@@ -25,7 +25,7 @@ type BackendProfile = {
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, userRole, signOut } = useAuth();
+  const { user, userRole, session, signOut } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [profileData, setProfileData] = useState<BackendProfile | null>(null);
@@ -43,6 +43,45 @@ const Profile = () => {
     confirmPassword: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const tryEnsureProfile = async (preferredFullName?: string) => {
+    if (!user?.id) return false;
+
+    const normalizedFullName = preferredFullName?.trim() || user.fullName || 'Pengguna';
+
+    if (session?.access_token) {
+      const syncBody = preferredFullName?.trim() ? { full_name: preferredFullName.trim() } : {};
+      const syncResponse = await fetch(`${BACKEND_BASE_URL}/auth/google/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(syncBody),
+      });
+
+      if (syncResponse.ok) return true;
+    }
+
+    const fallbackRole =
+      userRole === 'beneficiary' || userRole === 'vendor' || userRole === 'corporate_donor'
+        ? userRole
+        : 'donor';
+
+    const signupResponse = await fetch(`${BACKEND_BASE_URL}/users/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: user.id,
+        full_name: normalizedFullName,
+        role: fallbackRole,
+      }),
+    });
+
+    return signupResponse.ok || signupResponse.status === 409;
+  };
 
   const formatDateForDisplay = (dateText?: string | null) => {
     if (!dateText) return 'Belum diatur';
@@ -65,7 +104,15 @@ const Profile = () => {
 
       setProfileLoading(true);
       try {
-        const response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`);
+        let response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`);
+
+        if (!response.ok && response.status === 404) {
+          const synced = await tryEnsureProfile(user.fullName || undefined);
+          if (synced) {
+            response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`);
+          }
+        }
+
         if (!response.ok) return;
 
         const data = await response.json();
@@ -101,7 +148,7 @@ const Profile = () => {
     return () => {
       isActive = false;
     };
-  }, [user?.id, user?.fullName]);
+  }, [user?.id, user?.fullName, userRole, session?.access_token]);
 
   const handleSignOut = () => {
     signOut();
@@ -138,13 +185,23 @@ const Profile = () => {
         gender: (editFormData.gender || null) as 'male' | 'female' | null,
       };
 
-      const response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`, {
+      const requestBody = JSON.stringify(payload);
+      const requestInit = {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
-      });
+        body: requestBody,
+      };
+
+      let response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`, requestInit);
+
+      if (response.status === 404) {
+        const synced = await tryEnsureProfile(payload.full_name);
+        if (synced) {
+          response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`, requestInit);
+        }
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Gagal memperbarui profil' }));
