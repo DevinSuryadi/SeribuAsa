@@ -4,7 +4,6 @@ import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
-  Heart,
   Wallet,
   Store,
   Shield,
@@ -21,7 +20,15 @@ import {
   CreditCard,
   Sparkles,
 } from "lucide-react"
+import logo from "@/assets/logo.svg"
 
+const CustomLogoIcon = (props: any) => (
+  <img 
+    src={logo} 
+    alt="Logo" 
+    {...props} 
+  />
+);
 interface DashboardLayoutProps {
   children: React.ReactNode
   title: string
@@ -71,10 +78,10 @@ const roleColor: Record<string, string> = {
 }
 
 const RoleIconMap: Record<string, React.ElementType> = {
-  donor: Heart,
-  beneficiary: Wallet,
-  vendor: Store,
-  admin: Shield,
+  donor: CustomLogoIcon,
+  beneficiary: CustomLogoIcon,
+  vendor: CustomLogoIcon,
+  admin: CustomLogoIcon,
 }
 
 function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
@@ -94,11 +101,9 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-border bg-card">
         <div className="flex h-16 items-center gap-2 border-b border-border px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", colorClass)}>
-              <IconComponent className="h-4 w-4 text-white" />
-            </div>
-            <span className="font-bold text-foreground">SeribuAsa</span>
+          <Link to="/" className="flex items-center gap-0">
+              <IconComponent className="h-12 w-12 text-white" />
+            <span className="font-bold text-foreground text-[#346A43] -ml-1">SeribuAsa</span>
           </Link>
         </div>
         <nav className="flex-1 p-3 space-y-1">

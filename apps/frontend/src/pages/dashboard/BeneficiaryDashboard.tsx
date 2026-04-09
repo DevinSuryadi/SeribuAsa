@@ -197,7 +197,7 @@ export default function BeneficiaryDashboard() {
               <div className="space-y-2">
                 {[
                   { label: 'Belanja Pangan', desc: 'Beli bahan makanan bergizi', icon: ShoppingBasket, href: '/dashboard/katalog', accent: true },
-                  { label: 'Penukaran Voucher', desc: 'Tukar voucher di vendor', icon: Wallet, href: '/dashboard/penukaran', accent: false },
+                  { label: 'Penukaran Voucher', desc: 'Tukar voucher di vendor', icon: Wallet, href: '/dashboard/penukaran-voucher', accent: false },
                   { label: 'Isi Survei FIES', desc: 'Survei ketahanan pangan', icon: ClipboardList, href: '/dashboard/survei-fies', accent: false },
                   { label: 'Cek Gizi Anak', desc: 'Input data tumbuh kembang', icon: Activity, href: '/dashboard/pemantauan-gizi', accent: false },
                 ].map((action) => (

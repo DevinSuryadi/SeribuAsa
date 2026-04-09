@@ -108,7 +108,7 @@ export function Navbar() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginRight: -18, // Mendekatkan logo ke tulisan
+              marginRight: -18, 
               transition: 'transform 0.2s ease',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
