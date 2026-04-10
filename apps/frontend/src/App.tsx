@@ -36,6 +36,7 @@ const SurveiFIES = lazy(() => import("./pages/dashboard/SurveiFIES"));
 const PenukaranVoucher = lazy(() => import("./pages/dashboard/PenukaranVoucher"));
 const DompetNutrisi = lazy(() => import("./pages/dashboard/DompetNutrisi"));
 const RekomendasiAI = lazy(() => import("./pages/dashboard/RekomendasiAI"));
+const PenukaranVoucherVendor = lazy(() => import("./pages/dashboard/PenukaranVoucherVendor"));
 
 function PageLoader() {
   return (
@@ -100,6 +101,7 @@ function App() {
         <Route path="/dashboard/settlement" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><Suspense fallback={<PageLoader />}><VendorSettlement /></Suspense></ProtectedRoute>} />
         <Route path="/dashboard/vendor" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/dashboard/penukaran-voucher-vendor" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><Suspense fallback={<PageLoader />}><PenukaranVoucherVendor /></Suspense></ProtectedRoute>} />
 
         {/* Donation flow routes */}
         <Route path="/donation/checkout" element={<DonationCheckout />} />

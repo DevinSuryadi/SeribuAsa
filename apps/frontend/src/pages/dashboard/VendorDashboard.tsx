@@ -108,7 +108,7 @@ export default function VendorDashboard() {
       <div className="space-y-6">
         <div className="flex justify-end">
           <Button className="gap-2 self-start" asChild>
-            <Link to="/dashboard/penukaran"><QrCode className="h-4 w-4" /> Tukar Voucher</Link>
+            <Link to="/dashboard/penukaran-voucher-vendor"><QrCode className="h-4 w-4" /> Tukar Voucher</Link>
           </Button>
         </div>
 
@@ -166,7 +166,7 @@ export default function VendorDashboard() {
                 <CardDescription>Penukaran voucher oleh penerima manfaat</CardDescription>
               </div>
               <Button variant="ghost" size="sm" className="gap-1 text-xs" asChild>
-                <Link to="/dashboard/penukaran">Semua <ArrowRight className="h-3 w-3" /></Link>
+                <Link to="/dashboard/penukaran-voucher-vendor">Semua <ArrowRight className="h-3 w-3" /></Link>
               </Button>
             </CardHeader>
             <CardContent className="flex-1">
@@ -218,7 +218,7 @@ export default function VendorDashboard() {
             <CardContent className="flex-1">
               <div className="space-y-2">
                 {[
-                  { label: 'Tukar Voucher', desc: 'Scan & verifikasi voucher', icon: QrCode, href: '/dashboard/penukaran', accent: true },
+                  { label: 'Tukar Voucher', desc: 'Scan & verifikasi voucher', icon: QrCode, href: '/dashboard/penukaran-voucher-vendor', accent: true },
                   { label: 'Kelola Produk', desc: 'Tambah & edit produk', icon: Package, href: '/dashboard/kelola-produk', accent: false },
                   { label: 'Settlement', desc: 'Riwayat pencairan dana', icon: BarChart3, href: '/dashboard/settlement', accent: false },
                 ].map((action) => (
