@@ -18,7 +18,8 @@ from app.schemas.donation import (
     ImpactMetrics,
     DonationQueryParams,
     DonationTypeEnum,
-    DonationStatusEnum
+    DonationStatusEnum,
+    DashboardMetrics
 )
 import logging
 
@@ -160,6 +161,21 @@ async def get_impact_metrics(
     )
     
     return ImpactMetrics(**metrics)
+
+
+@router.get("/dashboard-metrics/{donor_id}", response_model=DashboardMetrics)
+async def get_dashboard_metrics(
+    donor_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Get dashboard metrics for donor - for dashboard display"""
+    metrics = DonationService.get_dashboard_metrics(
+        db=db,
+        donor_id=donor_id
+    )
+    
+    return DashboardMetrics(**metrics)
 
 
 @router.post("/{donation_id}/simulate-payment")

@@ -8,6 +8,7 @@ from typing import List, Optional
 from decimal import Decimal
 import logging
 from uuid import UUID
+from datetime import datetime
 
 from app.models.donation import Donation, DonationStatusEnum, Voucher
 from app.schemas.donation import DonationCreate, DonationQueryParams
@@ -185,4 +186,105 @@ class DonationService:
             "total_vouchers_allocated": vouchers_allocated,
             "donation_trend": [],
             "geographic_distribution": []
+        }
+
+    @staticmethod
+    def get_dashboard_metrics(
+        db: Session,
+        donor_id: str
+    ) -> dict:
+        """Get dashboard metrics for donor - for dashboard display"""
+        from datetime import datetime, timedelta
+        from app.models.order import Order, OrderStatusEnum
+        from app.models.product import Category
+        
+        donor_uuid = DonationService._to_uuid(donor_id)
+        now = datetime.now()
+        month_start = datetime(now.year, now.month, 1)
+
+        # Total donated (all success donations)
+        total_donated = db.query(func.sum(Donation.amount)).filter(
+            Donation.donor_id == donor_uuid,
+            Donation.status == DonationStatusEnum.success
+        ).scalar() or Decimal(0)
+        
+        # Active subscriptions
+        active_subscriptions = db.query(func.count(Donation.id)).filter(
+            Donation.donor_id == donor_uuid,
+            Donation.type == "subscription",
+            Donation.status == DonationStatusEnum.success
+        ).scalar() or 0
+        
+        # Children helped (unique recipients)
+        children_helped = db.query(func.count(func.distinct(Donation.recipient_id))).filter(
+            Donation.donor_id == donor_uuid,
+            Donation.recipient_id.isnot(None),
+            Donation.status == DonationStatusEnum.success
+        ).scalar() or 0
+        
+        # Conversion rate
+        total_donations = db.query(func.count(Donation.id)).filter(
+            Donation.donor_id == donor_uuid
+        ).scalar() or 0
+        successful_donations = db.query(func.count(Donation.id)).filter(
+            Donation.donor_id == donor_uuid,
+            Donation.status == DonationStatusEnum.success
+        ).scalar() or 0
+        
+        conversion_rate = (successful_donations / total_donations * 100) if total_donations > 0 else 0
+        
+        # Monthly stats
+        vouchers_redeemed = db.query(func.count(func.distinct(Order.id))).join(
+            Donation,
+            Order.beneficiary_id == Donation.recipient_id
+        ).filter(
+            Donation.donor_id == donor_uuid,
+            Order.created_at >= month_start,
+            Order.status == OrderStatusEnum.completed
+        ).scalar() or 0
+        
+        children_received_nutrition = db.query(func.count(func.distinct(Order.beneficiary_id))).join(
+            Donation,
+            Order.beneficiary_id == Donation.recipient_id
+        ).filter(
+            Donation.donor_id == donor_uuid,
+            Order.created_at >= month_start,
+            Order.status == OrderStatusEnum.completed
+        ).scalar() or 0
+        
+        # Get top category this month
+        top_category_result = db.query(Category.name).join(
+            Product,
+            Category.id == Product.category_id
+        ).join(
+            OrderItem,
+            OrderItem.product_id == Product.id
+        ).join(
+            Order,
+            OrderItem.order_id == Order.id
+        ).join(
+            Donation,
+            Order.beneficiary_id == Donation.recipient_id
+        ).filter(
+            Donation.donor_id == donor_uuid,
+            Order.created_at >= month_start,
+            Order.status == OrderStatusEnum.completed
+        ).group_by(Category.id, Category.name).order_by(func.count(OrderItem.id).desc()).first()
+        
+        top_category = top_category_result[0] if top_category_result else "Pangan Umum"
+        
+        # Nutrition score improvement (mock for now - needs FIES data)
+        nutrition_score_improvement = 0.0
+        
+        return {
+            "total_donated": float(total_donated),
+            "active_subscriptions": active_subscriptions,
+            "children_helped": children_helped,
+            "conversion_rate": round(conversion_rate, 1),
+            "monthly_stats": {
+                "vouchers_redeemed": vouchers_redeemed,
+                "children_received_nutrition": children_received_nutrition,
+                "nutrition_score_improvement": nutrition_score_improvement,
+                "top_category": top_category
+            }
         }

@@ -99,6 +99,28 @@ class ImpactMetrics(BaseModel):
 
 
 # ============================================
+# Dashboard Metrics Schema
+# ============================================
+class MonthlyStat(BaseModel):
+    """Monthly statistics for dashboard"""
+    vouchers_redeemed: int = 0
+    children_received_nutrition: int = 0
+    nutrition_score_improvement: float = 0.0
+    top_category: str = "Pangan Umum"
+
+
+class DashboardMetrics(BaseModel):
+    """Schema for dashboard metrics endpoint"""
+    total_donated: Decimal
+    active_subscriptions: int
+    children_helped: int
+    conversion_rate: float
+    monthly_stats: MonthlyStat
+    
+    model_config = ConfigDict(from_attributes=False)
+
+
+# ============================================
 # Payment Schemas
 # ============================================
 class PaymentRequest(BaseModel):
