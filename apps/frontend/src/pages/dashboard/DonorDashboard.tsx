@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Heart, CreditCard, Users, BarChart3, ArrowRight, TrendingUp, RefreshCw, AlertCircle, Plus } from "lucide-react"
-import { getDonations } from "@/services/donations"
+import { getDonations, getDashboardMetrics } from "@/services/donations"
 import { formatIDR, formatDate } from "@/lib/format"
 import { useStaggerChildren } from "@/hooks/useStaggerChildren"
 import { toast } from "sonner"
@@ -33,6 +33,7 @@ export default function DonorDashboard() {
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const [donations, setDonations] = useState<any[]>([])
+  const [metrics, setMetrics] = useState<any>(null)
   const [dataLoading, setDataLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const gridRef = useStaggerChildren({ stagger: 0.1 })
@@ -43,25 +44,34 @@ export default function DonorDashboard() {
     }
   }, [user, authLoading, navigate])
 
-  const fetchDonations = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
       setDataLoading(true)
       setError(null)
-      const data = await getDonations()
-      setDonations(data.items || [])
+      const [donationsData, metricsData] = await Promise.all([
+        getDonations(),
+        user ? getDashboardMetrics(user.id) : Promise.reject("No user")
+      ])
+      setDonations(donationsData.items || [])
+      setMetrics(metricsData)
     } catch (err: any) {
-      setError(err.message || "Gagal memuat data donasi")
-      toast.error("Gagal memuat data donasi")
+      setError(err.message || "Gagal memuat data")
+      toast.error("Gagal memuat data dashboard")
+      // Fallback with donation data only
+      try {
+        const donationsData = await getDonations()
+        setDonations(donationsData.items || [])
+      } catch {}
     } finally {
       setDataLoading(false)
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     if (user) {
-      fetchDonations()
+      fetchData()
     }
-  }, [user, fetchDonations])
+  }, [user, fetchData])
 
   const totalDonated = useMemo(
     () => donations.filter((d) => d.status === "success").reduce((sum, d) => sum + parseFloat(d.amount || 0), 0),
@@ -93,7 +103,7 @@ export default function DonorDashboard() {
           <AlertTitle>Gagal memuat data</AlertTitle>
           <AlertDescription className="flex items-center gap-2 mt-2">
             <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={fetchDonations}>
+            <Button variant="outline" size="sm" onClick={fetchData}>
               <RefreshCw className="mr-1 h-3 w-3" />
               Coba Lagi
             </Button>
@@ -124,7 +134,12 @@ export default function DonorDashboard() {
         {/* KPI Cards */}
         <div ref={gridRef} className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <KPICard icon={Heart} label="Total Donasi" value={formatIDR(totalDonated)} sub="Bulan ini" accent />
-          <KPICard icon={CreditCard} label="Langganan Aktif" value="1 Paket" sub="Adopsi Nutrisi Balita" />
+          <KPICard 
+            icon={CreditCard} 
+            label="Langganan Aktif" 
+            value={`${metrics?.active_subscriptions || 0} Paket`} 
+            sub={metrics?.active_subscriptions ? "Adopsi Nutrisi Balita" : "Tidak ada"} 
+          />
           <KPICard icon={Users} label="Penerima Didukung" value={`${childrenHelped} Anak`} sub="Menerima bantuan" />
           <KPICard icon={BarChart3} label="Tingkat Penukaran" value={`${redemptionRate}%`} sub="Voucher digunakan" />
         </div>
@@ -191,10 +206,10 @@ export default function DonorDashboard() {
             <CardContent className="flex-1">
               <div className="space-y-4">
                 {[
-                  { label: 'Voucher ditukarkan', value: `${donations.filter((d) => d.status === "success").length} voucher`, icon: CreditCard },
-                  { label: 'Anak mendapat nutrisi', value: `${childrenHelped} anak`, icon: Users },
-                  { label: 'Peningkatan skor pangan', value: '+12%', icon: TrendingUp },
-                  { label: 'Kategori terbanyak', value: 'Telur & Susu', icon: BarChart3 },
+                  { label: 'Voucher ditukarkan', value: `${metrics?.monthly_stats?.vouchers_redeemed || 0} voucher`, icon: CreditCard },
+                  { label: 'Anak mendapat nutrisi', value: `${metrics?.monthly_stats?.children_received_nutrition || 0} anak`, icon: Users },
+                  { label: 'Peningkatan skor pangan', value: `+${metrics?.monthly_stats?.nutrition_score_improvement || 0}%`, icon: TrendingUp },
+                  { label: 'Kategori terbanyak', value: metrics?.monthly_stats?.top_category || 'Pangan Umum', icon: BarChart3 },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-3">
                     <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-secondary">

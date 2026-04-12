@@ -28,3 +28,7 @@ export async function simulatePayment(donationId: string) {
 export async function getImpactMetrics(donorId: string) {
   return apiFetch(`/donations/impact/${donorId}`);
 }
+
+export async function getDashboardMetrics(donorId: string) {
+  return apiFetch(`/donations/dashboard-metrics/${donorId}`);
+}
