@@ -61,6 +61,19 @@ class SettlementCalculateResponse(BaseModel):
 
 
 # ============================================
+# Settlement Mark As Paid
+# ============================================
+class SettlementMarkPaidRequest(BaseModel):
+    bank_transfer_reference: str = Field(..., min_length=1, max_length=100)
+    payout_date: Optional[date] = None
+
+
+class SettlementMarkPaidResponse(SettlementResponse):
+    """Response after marking settlement as paid"""
+    pass
+
+
+# ============================================
 # Query Parameters
 # ============================================
 class SettlementQueryParams(BaseModel):

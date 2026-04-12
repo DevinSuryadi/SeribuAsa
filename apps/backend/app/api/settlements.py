@@ -5,7 +5,7 @@ Handles settlement listing, detail, and calculation
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
 
 from app.database import get_db
 from app.services.settlement_service import SettlementService
@@ -17,6 +17,8 @@ from app.schemas.settlement import (
     SettlementCalculateRequest,
     SettlementCalculateResponse,
     SettlementQueryParams,
+    SettlementMarkPaidRequest,
+    SettlementMarkPaidResponse,
 )
 import logging
 
@@ -110,3 +112,49 @@ async def calculate_settlements(
         vendor_id=data.vendor_id,
     )
     return SettlementCalculateResponse(**result)
+
+
+@router.post("/{settlement_id}/mark-paid", response_model=SettlementMarkPaidResponse)
+async def mark_settlement_paid(
+    settlement_id: str,
+    data: SettlementMarkPaidRequest,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
+):
+    """Mark settlement as paid (admin only)"""
+    is_admin = current_user.role == "admin"
+    settlement = SettlementService.get_settlement_by_id(
+        db, settlement_id, current_user.user_id, is_admin
+    )
+
+    if not settlement:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Settlement not found",
+        )
+
+    if settlement.status != "ready":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Settlement must be in 'ready' status, current status: {settlement.status}",
+        )
+
+    # Update settlement status
+    settlement.status = "paid"
+    settlement.payout_date = data.payout_date or date.today()
+    settlement.bank_transfer_reference = data.bank_transfer_reference
+    settlement.updated_at = datetime.now()
+
+    db.add(settlement)
+    db.commit()
+    db.refresh(settlement)
+
+    logger.info(
+        f"Settlement {settlement_id} marked as paid with reference: {data.bank_transfer_reference}"
+    )
+
+    s_dict = SettlementMarkPaidResponse.model_validate(settlement).model_dump()
+    if settlement.vendor_profile:
+        s_dict["vendor_store_name"] = settlement.vendor_profile.store_name
+
+    return SettlementMarkPaidResponse(**s_dict)
