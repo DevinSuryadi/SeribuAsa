@@ -46,12 +46,15 @@ const DonorDampak = () => {
 
   const redemptionRate = vouchersAllocated > 0 ? Math.round((vouchersAllocated * 0.83)) : 0;
 
-  const categoryData = useMemo(() => [
-    { name: 'Telur & Susu', value: 45 },
-    { name: 'Beras', value: 30 },
-    { name: 'Sayuran', value: 15 },
-    { name: 'Lainnya', value: 10 },
-  ], []);
+  const categoryData = useMemo(() => {
+    // Show empty state if no data
+    if (!geoData || geoData.length === 0) {
+      return [];
+    }
+    // In production, this would come from aggregated order data
+    // For now, return empty and show placeholder
+    return [];
+  }, [geoData]);
 
   if (loading) {
     return (
