@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { CreditCard, Download, CheckCircle, Clock, ArrowRight, Wallet, Calendar, RefreshCw, AlertCircle } from 'lucide-react';
 import { formatIDR, formatDate } from '@/lib/format';
 import { useStaggerChildren } from '@/hooks/useStaggerChildren';
-import { apiFetch } from '@/services/api';
+import { getSettlements, markSettlementPaid } from '@/services/settlements';
 import { toast } from 'sonner';
 
 const VendorSettlement = () => {
@@ -19,12 +19,13 @@ const VendorSettlement = () => {
   const [error, setError] = useState<string | null>(null);
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
+  const [claimLoading, setClaimLoading] = useState(false);
 
   const fetchSettlements = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiFetch('/settlements/?page=1&page_size=20');
+      const data = await getSettlements();
       setSettlements(data.items || []);
     } catch (err: any) {
       setError(err.message);
@@ -59,9 +60,21 @@ const VendorSettlement = () => {
   };
 
   const handleClaimSubmit = async () => {
-    toast.success(`Klaim berhasil diajukan. Pencairan ${formatIDR(selectedSettlement?.net_amount || 0)} akan diproses dalam 1-3 hari kerja.`);
-    setShowClaimModal(false);
-    setSelectedSettlement(null);
+    if (!selectedSettlement) return;
+    
+    try {
+      setClaimLoading(true);
+      const bankRef = `TRF-${selectedSettlement.id.substring(0, 8)}-${Date.now()}`;
+      await markSettlementPaid(selectedSettlement.id, bankRef);
+      toast.success(`Klaim berhasil diajukan. Pencairan ${formatIDR(selectedSettlement?.net_amount || 0)} akan diproses dalam 1-3 hari kerja.`);
+      setShowClaimModal(false);
+      setSelectedSettlement(null);
+      fetchSettlements();
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengajukan klaim');
+    } finally {
+      setClaimLoading(false);
+    }
   };
 
   const statusLabel: Record<string, string> = {
@@ -234,7 +247,9 @@ const VendorSettlement = () => {
               <div className="flex justify-between"><span className="text-muted-foreground">Admin Fee:</span><span className="font-medium">{formatIDR(selectedSettlement?.admin_fee || 0)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Jumlah Bersih:</span><span className="font-bold text-primary">{formatIDR(selectedSettlement?.net_amount || 0)}</span></div>
             </div>
-            <Button className="w-full" onClick={handleClaimSubmit}>Ajukan Klaim</Button>
+            <Button className="w-full" onClick={handleClaimSubmit} disabled={claimLoading}>
+              {claimLoading ? 'Memproses...' : 'Ajukan Klaim'}
+            </Button>
             <Button variant="ghost" className="w-full" onClick={() => setShowClaimModal(false)}>Batal</Button>
           </div>
         </DialogContent>
