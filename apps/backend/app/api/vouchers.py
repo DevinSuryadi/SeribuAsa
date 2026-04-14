@@ -19,9 +19,17 @@ from app.schemas.voucher import (
     VoucherHistoryResponse,
     VoucherTransaction,
     VoucherRedemptionRequest,
-    VoucherQueryParams
+    VoucherQueryParams,
+    VoucherValidationRequest,
+    VoucherValidationResponse,
+    VoucherEligibilityRequest,
+    VoucherEligibilityResponse,
+    VoucherSingleRedemptionRequest,
+    VoucherSingleRedemptionResponse,
+    VoucherTransactionHistoryResponse
 )
 from app.models.donation import Donation, DonationStatusEnum
+from app.models.product import Product
 import logging
 
 logger = logging.getLogger(__name__)
@@ -155,4 +163,225 @@ async def redeem_voucher(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+
+
+# ============================================
+# NEW ENDPOINTS
+# ============================================
+
+@router.post("/validate", response_model=VoucherValidationResponse)
+async def validate_voucher(
+    validation_data: VoucherValidationRequest,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Validate voucher code for use in checkout"""
+    try:
+        # Get beneficiary profile
+        from app.models.user import BeneficiaryProfile
+        beneficiary = db.query(BeneficiaryProfile).filter(
+            BeneficiaryProfile.user_id == current_user.user_id
+        ).first()
+        
+        if not beneficiary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Beneficiary profile not found"
+            )
+        
+        # Validate voucher
+        validation_result = VoucherService.validate_voucher(
+            db=db,
+            beneficiary_id=beneficiary.id,
+            voucher_code=validation_data.code,
+            amount=validation_data.amount
+        )
+        
+        return VoucherValidationResponse(**validation_result)
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error validating voucher: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to validate voucher"
+        )
+
+
+@router.post("/check-eligibility", response_model=VoucherEligibilityResponse)
+async def check_product_eligibility(
+    eligibility_data: VoucherEligibilityRequest,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Check which products in cart are eligible for voucher redemption"""
+    try:
+        # Get beneficiary profile
+        from app.models.user import BeneficiaryProfile
+        beneficiary = db.query(BeneficiaryProfile).filter(
+            BeneficiaryProfile.user_id == current_user.user_id
+        ).first()
+        
+        if not beneficiary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Beneficiary profile not found"
+            )
+        
+        # Check eligibility
+        eligibility_result = VoucherService.check_product_eligibility(
+            db=db,
+            beneficiary_id=beneficiary.id,
+            product_ids=eligibility_data.product_ids
+        )
+        
+        return VoucherEligibilityResponse(**eligibility_result)
+    
+    except Exception as e:
+        logger.error(f"Error checking eligibility: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to check product eligibility"
+        )
+
+
+@router.post("/redeem-single", response_model=VoucherSingleRedemptionResponse)
+async def redeem_single_voucher(
+    redemption_data: VoucherSingleRedemptionRequest,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Redeem a single voucher code with atomic locking"""
+    try:
+        # Get beneficiary profile
+        from app.models.user import BeneficiaryProfile
+        beneficiary = db.query(BeneficiaryProfile).filter(
+            BeneficiaryProfile.user_id == current_user.user_id
+        ).first()
+        
+        if not beneficiary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Beneficiary profile not found"
+            )
+        
+        # Redeem voucher with transaction
+        redemption_result = VoucherService.redeem_voucher_with_transaction(
+            db=db,
+            beneficiary_id=beneficiary.id,
+            voucher_code=redemption_data.code,
+            amount=redemption_data.amount,
+            order_id=redemption_data.order_id
+        )
+        
+        return VoucherSingleRedemptionResponse(**redemption_result)
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error redeeming voucher: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to redeem voucher"
+        )
+
+
+@router.get("/transactions", response_model=list)
+async def get_transaction_history(
+    beneficiary_id: str = Query(..., description="Beneficiary ID to filter by"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    transaction_type: Optional[str] = Query(None, description="Filter by type: allocation, redeemed, expired, adjusted, revoked"),
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Get voucher transaction history with optional type filter"""
+    try:
+        # Get beneficiary profile
+        from app.models.user import BeneficiaryProfile
+        beneficiary = db.query(BeneficiaryProfile).filter(
+            BeneficiaryProfile.user_id == current_user.user_id
+        ).first()
+        
+        if not beneficiary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Beneficiary profile not found"
+            )
+        
+        # Get transaction history
+        from app.models.cart import VoucherTransaction
+        query = db.query(VoucherTransaction).filter(
+            VoucherTransaction.beneficiary_id == beneficiary_id
+        )
+        
+        if transaction_type:
+            query = query.filter(VoucherTransaction.transaction_type == transaction_type)
+        
+        # Pagination
+        total = query.count()
+        transactions = query.order_by(VoucherTransaction.created_at.desc()).offset(
+            (page - 1) * page_size
+        ).limit(page_size).all()
+        
+        return [
+            VoucherTransactionHistoryResponse(
+                id=t.id,
+                voucher_id=t.voucher_id,
+                order_id=t.order_id,
+                transaction_type=t.transaction_type,
+                amount=t.amount,
+                created_at=t.created_at
+            ).model_dump()
+            for t in transactions
+        ]
+    
+    except Exception as e:
+        logger.error(f"Error getting transaction history: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve transaction history"
+        )
+
+
+@router.get("/allowed-categories")
+async def get_allowed_voucher_categories(
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Get list of product categories allowed for voucher redemption"""
+    try:
+        from app.models.cart import VoucherAllowedCategory
+        
+        # Get all allowed categories
+        allowed_categories = db.query(VoucherAllowedCategory).filter(
+            VoucherAllowedCategory.is_active == True
+        ).all()
+        
+        return {
+            "total": len(allowed_categories),
+            "categories": [
+                {
+                    "id": cat.id,
+                    "category_id": cat.category_id,
+                    "category_name": cat.category.name if cat.category else None,
+                    "created_at": cat.created_at
+                }
+                for cat in allowed_categories
+            ]
+        }
+    
+    except Exception as e:
+        logger.error(f"Error getting allowed categories: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve allowed categories"
         )

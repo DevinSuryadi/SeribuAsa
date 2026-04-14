@@ -148,3 +148,71 @@ class VoucherQueryParams(BaseModel):
     status: Optional[VoucherStatusEnum] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+
+
+# ============================================
+# NEW: Voucher Validation Schemas
+# ============================================
+class VoucherValidationRequest(BaseModel):
+    """Request to validate voucher code"""
+    code: str = Field(..., min_length=5, max_length=50)
+    amount: Decimal = Field(..., gt=0)
+
+
+class VoucherValidationResponse(BaseModel):
+    """Response after validating voucher"""
+    id: str
+    code: str
+    balance: Decimal
+    expiry_date: date
+    days_until_expiry: int
+
+
+# ============================================
+# NEW: Voucher Eligibility Schemas
+# ============================================
+class VoucherEligibilityRequest(BaseModel):
+    """Request to check product eligibility for voucher"""
+    product_ids: List[str] = Field(..., min_length=1)
+
+
+class VoucherEligibilityResponse(BaseModel):
+    """Response with eligibility breakdown"""
+    eligible_amount: Decimal
+    ineligible_amount: Decimal
+    total_amount: Decimal
+    eligible_products: List[str]
+    ineligible_products: List[str]
+    voucher_can_cover: Decimal
+
+
+# ============================================
+# NEW: Voucher Single Redemption
+# ============================================
+class VoucherSingleRedemptionRequest(BaseModel):
+    """Request to redeem single voucher"""
+    code: str = Field(..., min_length=5, max_length=50)
+    amount: Decimal = Field(..., gt=0)
+    order_id: str
+
+
+class VoucherSingleRedemptionResponse(BaseModel):
+    """Response after redemption"""
+    voucher_id: str
+    code: str
+    redeemed_amount: Decimal
+    remaining_balance: Decimal
+    status: str
+
+
+# ============================================
+# NEW: Voucher Transaction History
+# ============================================
+class VoucherTransactionHistoryResponse(BaseModel):
+    """Response with transaction history"""
+    id: str
+    voucher_id: str
+    order_id: Optional[str]
+    transaction_type: str
+    amount: Decimal
+    created_at: datetime
