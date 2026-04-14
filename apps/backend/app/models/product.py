@@ -42,6 +42,7 @@ class Category(BaseModel):
     
     # Relationship
     products = relationship("Product", back_populates="category")
+    voucher_allowed_categories = relationship("VoucherAllowedCategory", back_populates="category", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Category {self.name}>"
@@ -75,6 +76,7 @@ class Product(BaseModel):
     category = relationship("Category", back_populates="products")
     vendor_profile = relationship("VendorProfile", back_populates="products")
     order_items = relationship("OrderItem", back_populates="product", cascade="all, delete-orphan")
+    cart_items = relationship("CartItem", back_populates="product", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Product {self.name} - {self.price}>"
@@ -115,6 +117,9 @@ class Order(BaseModel):
     
     # Voucher redemptions
     voucher_redemptions = relationship("VoucherRedemption", back_populates="order", cascade="all, delete-orphan")
+    
+    # Voucher transactions
+    voucher_transactions = relationship("VoucherTransaction", back_populates="order", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Order {self.id} - {self.total_amount} ({self.status})>"

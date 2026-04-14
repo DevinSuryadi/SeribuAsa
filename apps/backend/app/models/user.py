@@ -107,6 +107,9 @@ class BeneficiaryProfile(BaseModel):
     # Orders
     orders = relationship("Order", back_populates="beneficiary_profile", foreign_keys="Order.beneficiary_id", cascade="all, delete-orphan")
     
+    # Cart items
+    cart_items = relationship("CartItem", back_populates="beneficiary_profile", cascade="all, delete-orphan")
+    
     # FIES surveys
     fies_surveys = relationship("FIESSurvey", back_populates="beneficiary_profile", cascade="all, delete-orphan")
     

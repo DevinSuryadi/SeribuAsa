@@ -36,6 +36,13 @@ from app.models.nutrition import (
     NutritionClassificationEnum,
     SettlementStatusEnum
 )
+from app.models.cart import (
+    CartItem,
+    VoucherTransaction,
+    VoucherLock,
+    VoucherAllowedCategory,
+    VoucherTransactionTypeEnum
+)
 
 __all__ = [
     # Base
@@ -64,6 +71,13 @@ __all__ = [
     "OrderItem",
     "OrderStatusEnum",
     "PaymentStatusEnum",
+    
+    # Cart models
+    "CartItem",
+    "VoucherTransaction",
+    "VoucherLock",
+    "VoucherAllowedCategory",
+    "VoucherTransactionTypeEnum",
     
     # Nutrition models
     "NutritionMeasurement",

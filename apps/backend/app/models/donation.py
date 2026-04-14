@@ -95,9 +95,9 @@ class Voucher(BaseModel):
     # Relationships
     beneficiary_profile = relationship("BeneficiaryProfile", back_populates="vouchers")
     donation = relationship("Donation", back_populates="vouchers")
-    
-    # Redemptions
     redemptions = relationship("VoucherRedemption", back_populates="voucher", cascade="all, delete-orphan")
+    transactions = relationship("VoucherTransaction", back_populates="voucher", cascade="all, delete-orphan")
+    lock = relationship("VoucherLock", back_populates="voucher", uselist=False, cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Voucher {self.code} - Balance: {self.balance}>"

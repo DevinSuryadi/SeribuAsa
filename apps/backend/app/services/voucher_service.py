@@ -12,6 +12,8 @@ from uuid import UUID
 
 from app.models.donation import Donation, Voucher, VoucherRedemption, VoucherStatusEnum
 from app.models.user import BeneficiaryProfile
+from app.models.cart import VoucherTransaction, VoucherTransactionTypeEnum, VoucherLock
+from app.models.product import Product, Category
 
 logger = logging.getLogger(__name__)
 
@@ -264,3 +266,259 @@ class VoucherService:
             transactions = transactions[offset:offset + params.page_size]
         
         return transactions
+    
+    # ============================================
+    # NEW METHODS FOR PHASE 1 & 2
+    # ============================================
+    
+    @staticmethod
+    def validate_voucher(
+        db: Session,
+        code: str,
+        beneficiary_id: str,
+        amount: Decimal
+    ) -> Dict[str, Any]:
+        """
+        Validate voucher for redemption.
+        Returns voucher details and validation status.
+        Raises exception if invalid.
+        """
+        beneficiary_uuid = VoucherService._to_uuid(beneficiary_id)
+        
+        # Get voucher
+        voucher = VoucherService.get_voucher_by_code(db, code)
+        if not voucher:
+            raise ValueError("Voucher code not found")
+        
+        # Check ownership
+        if voucher.beneficiary_id != beneficiary_uuid:
+            raise ValueError("Voucher does not belong to you")
+        
+        # Check expiration
+        if voucher.is_expired():
+            raise ValueError("Voucher has expired")
+        
+        # Check status
+        if voucher.status != VoucherStatusEnum.active:
+            raise ValueError(f"Voucher status is {voucher.status.value}, not active")
+        
+        # Check balance
+        if voucher.balance < amount:
+            raise ValueError(f"Insufficient balance. Required: {amount}, Available: {voucher.balance}")
+        
+        # Check if locked (currently in use)
+        lock = db.query(VoucherLock).filter(
+            VoucherLock.voucher_id == voucher.id,
+            VoucherLock.expires_at > datetime.utcnow()
+        ).first()
+        
+        if lock:
+            raise ValueError("Voucher is currently in use. Please try again later")
+        
+        return {
+            "id": str(voucher.id),
+            "code": voucher.code,
+            "balance": float(voucher.balance),
+            "expiry_date": voucher.expiry_date.isoformat(),
+            "days_until_expiry": (voucher.expiry_date - datetime.utcnow().date()).days
+        }
+    
+    @staticmethod
+    def lock_voucher(
+        db: Session,
+        voucher_id: str,
+        duration_minutes: int = 5
+    ) -> bool:
+        """Lock voucher to prevent double-spending during transaction"""
+        voucher_uuid = VoucherService._to_uuid(voucher_id)
+        
+        # Check if already locked
+        existing_lock = db.query(VoucherLock).filter(
+            VoucherLock.voucher_id == voucher_uuid
+        ).first()
+        
+        if existing_lock and existing_lock.expires_at > datetime.utcnow():
+            return False  # Already locked
+        
+        # Create or update lock
+        lock = VoucherLock(
+            voucher_id=voucher_uuid,
+            locked_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(minutes=duration_minutes)
+        )
+        db.add(lock)
+        db.commit()
+        
+        logger.info(f"Voucher {voucher_id} locked for {duration_minutes} minutes")
+        return True
+    
+    @staticmethod
+    def unlock_voucher(
+        db: Session,
+        voucher_id: str
+    ) -> bool:
+        """Unlock voucher after transaction fails"""
+        voucher_uuid = VoucherService._to_uuid(voucher_id)
+        
+        lock = db.query(VoucherLock).filter(
+            VoucherLock.voucher_id == voucher_uuid
+        ).first()
+        
+        if lock:
+            db.delete(lock)
+            db.commit()
+            logger.info(f"Voucher {voucher_id} unlocked")
+            return True
+        
+        return False
+    
+    @staticmethod
+    def check_product_eligibility(
+        db: Session,
+        product_ids: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Check which products are eligible for voucher.
+        Returns eligible and ineligible amounts.
+        """
+        product_uuids = [VoucherService._to_uuid(pid) for pid in product_ids]
+        
+        products = db.query(Product).filter(
+            Product.id.in_(product_uuids)
+        ).all()
+        
+        # Get allowed categories for vouchers
+        allowed_categories = db.query(Category).join(
+            Category.voucher_allowed_categories
+        ).filter(
+            Category.voucher_allowed_categories.any()
+        ).all()
+        
+        allowed_category_ids = [c.id for c in allowed_categories]
+        
+        eligible_total = Decimal(0)
+        ineligible_total = Decimal(0)
+        eligible_products = []
+        ineligible_products = []
+        
+        for product in products:
+            if product.category_id in allowed_category_ids:
+                eligible_total += product.voucher_price
+                eligible_products.append(str(product.id))
+            else:
+                ineligible_total += product.price
+                ineligible_products.append(str(product.id))
+        
+        return {
+            "eligible_amount": float(eligible_total),
+            "ineligible_amount": float(ineligible_total),
+            "total_amount": float(eligible_total + ineligible_total),
+            "eligible_products": eligible_products,
+            "ineligible_products": ineligible_products,
+            "voucher_can_cover": float(eligible_total)
+        }
+    
+    @staticmethod
+    def record_transaction(
+        db: Session,
+        voucher_id: str,
+        transaction_type: VoucherTransactionTypeEnum,
+        amount: Decimal,
+        order_id: Optional[str] = None
+    ) -> VoucherTransaction:
+        """Record voucher transaction in history"""
+        voucher_uuid = VoucherService._to_uuid(voucher_id)
+        order_uuid = VoucherService._to_uuid(order_id) if order_id else None
+        
+        transaction = VoucherTransaction(
+            voucher_id=voucher_uuid,
+            order_id=order_uuid,
+            transaction_type=transaction_type,
+            amount=amount
+        )
+        
+        db.add(transaction)
+        db.commit()
+        db.refresh(transaction)
+        
+        logger.info(f"Recorded transaction {transaction_type.value} for voucher {voucher_id}: {amount}")
+        
+        return transaction
+    
+    @staticmethod
+    def redeem_voucher_with_transaction(
+        db: Session,
+        voucher_code: str,
+        amount: Decimal,
+        order_id: str,
+        beneficiary_id: str
+    ) -> Dict[str, Any]:
+        """
+        Redeem single voucher with transaction logging.
+        More atomic than the old method.
+        """
+        # Validate
+        VoucherService.validate_voucher(db, voucher_code, beneficiary_id, amount)
+        
+        # Get voucher
+        voucher = VoucherService.get_voucher_by_code(db, voucher_code)
+        if not voucher:
+            raise ValueError("Voucher not found")
+        
+        # Lock voucher
+        if not VoucherService.lock_voucher(db, str(voucher.id)):
+            raise ValueError("Could not lock voucher")
+        
+        try:
+            # Deduct balance
+            voucher.balance -= amount  # type: ignore[assignment]
+            
+            if voucher.balance <= 0:
+                voucher.status = VoucherStatusEnum.redeemed
+                voucher.balance = Decimal(0)
+            
+            # Update beneficiary balance
+            beneficiary = db.query(BeneficiaryProfile).filter(
+                BeneficiaryProfile.user_id == voucher.beneficiary_id
+            ).first()
+            
+            if beneficiary:
+                beneficiary.vouchers_balance -= amount  # type: ignore[assignment]
+            
+            # Record transaction
+            VoucherService.record_transaction(
+                db,
+                str(voucher.id),
+                VoucherTransactionTypeEnum.redeemed,
+                amount,
+                order_id
+            )
+            
+            # Create redemption record
+            redemption = VoucherRedemption(
+                voucher_id=voucher.id,
+                order_id=VoucherService._to_uuid(order_id),
+                amount=amount
+            )
+            db.add(redemption)
+            
+            db.commit()
+            
+            # Unlock after success
+            VoucherService.unlock_voucher(db, str(voucher.id))
+            
+            logger.info(f"Successfully redeemed voucher {voucher_code} for {amount}")
+            
+            return {
+                "voucher_id": str(voucher.id),
+                "code": voucher.code,
+                "redeemed_amount": float(amount),
+                "remaining_balance": float(voucher.balance),
+                "status": voucher.status.value
+            }
+        
+        except Exception as e:
+            # Unlock on failure
+            VoucherService.unlock_voucher(db, str(voucher.id))
+            logger.error(f"Error redeeming voucher: {e}")
+            raise
