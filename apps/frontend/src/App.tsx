@@ -36,6 +36,10 @@ const SurveiFIES = lazy(() => import("./pages/dashboard/SurveiFIES"));
 const PenukaranVoucher = lazy(() => import("./pages/dashboard/PenukaranVoucher"));
 const DompetNutrisi = lazy(() => import("./pages/dashboard/DompetNutrisi"));
 const RekomendasiAI = lazy(() => import("./pages/dashboard/RekomendasiAI"));
+const CartManagement = lazy(() => import("./pages/dashboard/cart/CartManagement"));
+const VoucherWallet = lazy(() => import("./pages/dashboard/vouchers/VoucherWallet"));
+const CheckoutPage = lazy(() => import("./pages/checkout/CheckoutPage"));
+const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
 
 function PageLoader() {
   return (
@@ -84,28 +88,225 @@ function App() {
         <Route path="/kontak" element={<Kontak />} />
 
         {/* Authenticated routes */}
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
-        <Route path="/dashboard/donor" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorDashboard /></ProtectedRoute>} />
-        <Route path="/dashboard/beneficiary" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><BeneficiaryDashboard /></ProtectedRoute>} />
-        <Route path="/dashboard/riwayat" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><DonorRiwayat /></ProtectedRoute>} />
-        <Route path="/dashboard/dampak" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><Suspense fallback={<PageLoader />}><DonorDampak /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/langganan" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><Suspense fallback={<PageLoader />}><DonorLangganan /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/katalog" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><KatalogPangan /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/survei-fies" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><SurveiFIES /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/pemantauan-gizi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><PemantauanGizi /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/dompet-nutrisi" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><DompetNutrisi /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/rekomendasi-ai" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><RekomendasiAI /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/penukaran-voucher" element={<ProtectedRoute allowedRoles={["beneficiary", "admin"]}><Suspense fallback={<PageLoader />}><PenukaranVoucher /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/kelola-produk" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><Suspense fallback={<PageLoader />}><KelolaProduk /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/settlement" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><Suspense fallback={<PageLoader />}><VendorSettlement /></Suspense></ProtectedRoute>} />
-        <Route path="/dashboard/vendor" element={<ProtectedRoute allowedRoles={["vendor", "admin"]}><VendorDashboard /></ProtectedRoute>} />
-        <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardRedirect />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/donor"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin"]}>
+              <DonorDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/beneficiary"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <BeneficiaryDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/riwayat"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin"]}>
+              <DonorRiwayat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/dampak"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <DonorDampak />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/langganan"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <DonorLangganan />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/katalog"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <KatalogPangan />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/survei-fies"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <SurveiFIES />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/pemantauan-gizi"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <PemantauanGizi />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/dompet-nutrisi"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <DompetNutrisi />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/rekomendasi-ai"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <RekomendasiAI />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/penukaran-voucher"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <PenukaranVoucher />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/kelola-produk"
+          element={
+            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <KelolaProduk />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/settlement"
+          element={
+            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <VendorSettlement />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/vendor"
+          element={
+            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
+              <VendorDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* New Cart & Voucher Dashboard Routes */}
+        <Route
+          path="/dashboard/cart"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <CartManagement />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/vouchers"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <VoucherWallet />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Checkout Routes */}
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <CheckoutPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkout/success/:orderId"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <CheckoutSuccess />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Donation flow routes */}
         <Route path="/donation/checkout" element={<DonationCheckout />} />
-        <Route path="/donation/create" element={<ProtectedRoute allowedRoles={["donor", "admin", "beneficiary", "vendor"]}><CreateDonation /></ProtectedRoute>} />
-        <Route path="/donation/payment/:donationId" element={<ProtectedRoute allowedRoles={["donor", "admin"]}><MockPaymentModal /></ProtectedRoute>} />
-        <Route path="/donation/success" element={<ProtectedRoute><DonationSuccess /></ProtectedRoute>} />
+        <Route
+          path="/donation/create"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin", "beneficiary", "vendor"]}>
+              <CreateDonation />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/donation/payment/:donationId"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin"]}>
+              <MockPaymentModal />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/donation/success"
+          element={
+            <ProtectedRoute>
+              <DonationSuccess />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
