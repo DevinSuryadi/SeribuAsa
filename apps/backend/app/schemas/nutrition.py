@@ -92,3 +92,9 @@ class ChildResponse(BaseModel):
     gender: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class NutritionLatestMeasurementResponse(BaseModel):
+    child_id: UUID
+    child_name: str
+    measurement: NutritionMeasurementResponse

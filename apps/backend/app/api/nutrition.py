@@ -20,6 +20,7 @@ from app.schemas.nutrition import (
     ZScoreRequest,
     ZScoreResponse,
     WHOReferenceData,
+    NutritionLatestMeasurementResponse,
 )
 from app.models.nutrition import NutritionMeasurement
 from app.models.user import Child
@@ -199,3 +200,52 @@ async def calculate_zscore(data: ZScoreRequest):
             who_reference=WHOReferenceData(**result["who_reference"]),
         ).model_dump(),
     }
+
+
+@router.get("/{beneficiary_id}/latest-measurement")
+async def get_latest_measurement(
+    beneficiary_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Get latest nutrition measurement for beneficiary's children"""
+    # Get all children
+    children = db.query(Child).filter(
+        Child.beneficiary_id == beneficiary_id,
+    ).all()
+
+    if not children:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No children found for this beneficiary",
+        )
+
+    # Get latest measurement per child
+    results = []
+    for child in children:
+        latest = (
+            db.query(NutritionMeasurement)
+            .filter(NutritionMeasurement.child_id == child.id)
+            .order_by(NutritionMeasurement.measurement_date.desc())
+            .first()
+        )
+
+        if latest:
+            results.append(
+                NutritionLatestMeasurementResponse(
+                    child_id=child.id,
+                    child_name=child.full_name,
+                    measurement=NutritionMeasurementResponse.model_validate(latest),
+                ).model_dump()
+            )
+
+    if not results:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No nutrition measurements found for this beneficiary's children",
+        )
+
+    logger.info(
+        f"Latest nutrition measurements fetched for beneficiary {beneficiary_id}: {len(results)} children"
+    )
+    return {"success": True, "data": results}

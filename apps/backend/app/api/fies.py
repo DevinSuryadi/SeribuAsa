@@ -9,12 +9,14 @@ from datetime import date
 from app.database import get_db
 from app.services.fies_calculator import FIESCalculator
 from app.middleware.auth import get_current_user, AuthenticatedUser
+from app.models.nutrition import FIESSurvey
 from app.schemas.fies import (
     FIESSubmit,
     FIESCalculateRequest,
     FIESSurveyHistoryItem,
     FIESSurveyTrend,
     FIESSurveyHistoryResponse,
+    FIESLatestResponse,
 )
 import logging
 
@@ -111,4 +113,31 @@ async def get_fies_history(
             surveys=surveys,
             trend=trend,
         ).model_dump(),
+    }
+
+
+@router.get("/{beneficiary_id}/latest")
+async def get_latest_fies(
+    beneficiary_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Get latest FIES survey for beneficiary"""
+    survey = (
+        db.query(FIESSurvey)
+        .filter(FIESSurvey.beneficiary_id == beneficiary_id)
+        .order_by(FIESSurvey.survey_date.desc())
+        .first()
+    )
+
+    if not survey:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No FIES survey found for this beneficiary",
+        )
+
+    logger.info(f"Latest FIES survey fetched for beneficiary {beneficiary_id}")
+    return {
+        "success": True,
+        "data": FIESLatestResponse.model_validate(survey).model_dump(),
     }

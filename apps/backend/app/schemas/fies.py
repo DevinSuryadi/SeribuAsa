@@ -78,3 +78,16 @@ class FIESSurveyHistoryResponse(BaseModel):
     beneficiary_id: str
     surveys: List[FIESSurveyHistoryItem]
     trend: FIESSurveyTrend
+
+
+class FIESLatestResponse(BaseModel):
+    id: UUID
+    beneficiary_id: UUID
+    score: int
+    classification: str
+    survey_date: datetime
+    survey_month: int
+    survey_year: int
+    responses: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(from_attributes=True)
