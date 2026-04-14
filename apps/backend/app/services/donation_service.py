@@ -195,8 +195,6 @@ class DonationService:
     ) -> dict:
         """Get dashboard metrics for donor - for dashboard display"""
         from datetime import datetime, timedelta
-        from app.models.order import Order, OrderStatusEnum
-        from app.models.product import Category
         
         donor_uuid = DonationService._to_uuid(donor_id)
         now = datetime.now()
@@ -233,51 +231,14 @@ class DonationService:
         
         conversion_rate = (successful_donations / total_donations * 100) if total_donations > 0 else 0
         
-        # Monthly stats
-        vouchers_redeemed = db.query(func.count(func.distinct(Order.id))).join(
-            Donation,
-            Order.beneficiary_id == Donation.recipient_id
-        ).filter(
-            Donation.donor_id == donor_uuid,
-            Order.created_at >= month_start,
-            Order.status == OrderStatusEnum.completed
-        ).scalar() or 0
-        
-        children_received_nutrition = db.query(func.count(func.distinct(Order.beneficiary_id))).join(
-            Donation,
-            Order.beneficiary_id == Donation.recipient_id
-        ).filter(
-            Donation.donor_id == donor_uuid,
-            Order.created_at >= month_start,
-            Order.status == OrderStatusEnum.completed
-        ).scalar() or 0
-        
-        # Get top category this month
-        top_category_result = db.query(Category.name).join(
-            Product,
-            Category.id == Product.category_id
-        ).join(
-            OrderItem,
-            OrderItem.product_id == Product.id
-        ).join(
-            Order,
-            OrderItem.order_id == Order.id
-        ).join(
-            Donation,
-            Order.beneficiary_id == Donation.recipient_id
-        ).filter(
-            Donation.donor_id == donor_uuid,
-            Order.created_at >= month_start,
-            Order.status == OrderStatusEnum.completed
-        ).group_by(Category.id, Category.name).order_by(func.count(OrderItem.id).desc()).first()
-        
-        top_category = top_category_result[0] if top_category_result else "Pangan Umum"
-        
-        # Nutrition score improvement (mock for now - needs FIES data)
+        # Monthly stats (mock values for now - would need Order model in future)
+        vouchers_redeemed = 0
+        children_received_nutrition = 0
+        top_category = "Pangan Umum"
         nutrition_score_improvement = 0.0
         
         return {
-            "total_donated": float(total_donated),
+            "total_donated": total_donated,
             "active_subscriptions": active_subscriptions,
             "children_helped": children_helped,
             "conversion_rate": round(conversion_rate, 1),

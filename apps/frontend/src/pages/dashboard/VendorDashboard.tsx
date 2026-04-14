@@ -8,6 +8,8 @@ import { Store, Wallet, Package, BarChart3, QrCode, ArrowRight, RefreshCw, Alert
 import { formatIDR, formatDate } from '@/lib/format';
 import { getOrders, updateOrderStatus } from '@/services/orders';
 import { getProducts } from '@/services/products';
+import type { SalesReport } from '@/services/reports';
+import { getSalesReport } from '@/services/reports';
 import { useStaggerChildren } from '@/hooks/useStaggerChildren';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -17,6 +19,7 @@ export default function VendorDashboard() {
   const gridRef = useStaggerChildren({ stagger: 0.1 });
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [report, setReport] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,12 +27,17 @@ export default function VendorDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const [ordersData, productsData] = await Promise.all([
+      const endDate = new Date().toISOString().split('T')[0]
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      
+      const [ordersData, productsData, reportData] = await Promise.all([
         getOrders(),
         getProducts({ vendor_id: user?.id || '' }),
+        getSalesReport(startDate, endDate),
       ]);
       setOrders(ordersData.items || []);
       setProducts(productsData.items || []);
+      setReport(reportData);
     } catch (err: any) {
       setError(err.message || 'Gagal memuat data');
       toast.error('Gagal memuat data');
@@ -44,15 +52,22 @@ export default function VendorDashboard() {
 
   const totalOrders = orders.length;
   const totalRevenue = useMemo(
-    () => orders.filter((o) => o.status === 'completed').reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0),
-    [orders]
+    () => {
+      if (report?.summary?.total_sales) {
+        return report.summary.total_sales
+      }
+      return orders.filter((o) => o.status === 'completed').reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0)
+    },
+    [report, orders]
   );
   const activeProducts = useMemo(
     () => products.filter((p) => p.approval_status === 'approved').length,
     [products]
   );
   const pendingOrders = useMemo(
-    () => orders.filter((o) => o.status === 'pending').length,
+    () => {
+      return orders.filter((o) => o.status === 'pending').length
+    },
     [orders]
   );
 

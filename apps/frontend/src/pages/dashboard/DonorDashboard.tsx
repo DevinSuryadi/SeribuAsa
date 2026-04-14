@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Heart, CreditCard, Users, BarChart3, ArrowRight, TrendingUp, RefreshCw, AlertCircle, Plus } from "lucide-react"
 import { getDonations, getDashboardMetrics } from "@/services/donations"
+import type { ImpactReport } from "@/services/reports"
+import { getImpactReport } from "@/services/reports"
 import { formatIDR, formatDate } from "@/lib/format"
 import { useStaggerChildren } from "@/hooks/useStaggerChildren"
 import { toast } from "sonner"
@@ -34,6 +36,7 @@ export default function DonorDashboard() {
   const navigate = useNavigate()
   const [donations, setDonations] = useState<any[]>([])
   const [metrics, setMetrics] = useState<any>(null)
+  const [report, setReport] = useState<ImpactReport | null>(null)
   const [dataLoading, setDataLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const gridRef = useStaggerChildren({ stagger: 0.1 })
@@ -48,12 +51,17 @@ export default function DonorDashboard() {
     try {
       setDataLoading(true)
       setError(null)
-      const [donationsData, metricsData] = await Promise.all([
+      const endDate = new Date().toISOString().split('T')[0]
+      const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      
+      const [donationsData, metricsData, reportData] = await Promise.all([
         getDonations(),
-        user ? getDashboardMetrics(user.id) : Promise.reject("No user")
+        user ? getDashboardMetrics(user.id) : Promise.reject("No user"),
+        user ? getImpactReport(startDate, endDate) : Promise.reject("No user")
       ])
       setDonations(donationsData.items || [])
       setMetrics(metricsData)
+      setReport(reportData)
     } catch (err: any) {
       setError(err.message || "Gagal memuat data")
       toast.error("Gagal memuat data dashboard")
@@ -74,12 +82,28 @@ export default function DonorDashboard() {
   }, [user, fetchData])
 
   const totalDonated = useMemo(
-    () => donations.filter((d) => d.status === "success").reduce((sum, d) => sum + parseFloat(d.amount || 0), 0),
-    [donations]
+    () => {
+      if (report?.summary?.total_donated) {
+        return report.summary.total_donated
+      }
+      return donations.filter((d) => d.status === "success").reduce((sum, d) => sum + parseFloat(d.amount || 0), 0)
+    },
+    [report, donations]
   )
 
-  const childrenHelped = donations.filter((d) => d.recipient_id).length
-  const redemptionRate = donations.length > 0 ? Math.round((donations.filter((d) => d.status === "success").length / donations.length) * 100) : 0
+  const childrenHelped = useMemo(() => {
+    if (report?.summary?.total_children_helped) {
+      return report.summary.total_children_helped
+    }
+    return donations.filter((d) => d.recipient_id).length
+  }, [report, donations])
+
+  const redemptionRate = useMemo(() => {
+    if (donations.length > 0) {
+      return Math.round((donations.filter((d) => d.status === "success").length / donations.length) * 100)
+    }
+    return 0
+  }, [donations])
 
   const statusColor: Record<string, string> = {
     success: 'bg-primary/10 text-primary border-primary/20',

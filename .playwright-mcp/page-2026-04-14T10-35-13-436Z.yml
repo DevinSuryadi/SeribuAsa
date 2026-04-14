@@ -1,0 +1,194 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e157]:
+    - banner [ref=e158]:
+      - generic [ref=e159]:
+        - link "Logo SeribuAsa SeribuAsa" [ref=e160] [cursor=pointer]:
+          - /url: /
+          - img "Logo SeribuAsa" [ref=e162]
+          - generic [ref=e163]: SeribuAsa
+        - button [ref=e164] [cursor=pointer]:
+          - img [ref=e165]
+    - main [ref=e166]:
+      - generic [ref=e167]:
+        - generic:
+          - img
+        - generic [ref=e172]:
+          - generic [ref=e173]: Ekosistem Ketahanan Pangan & Gizi Indonesia
+          - heading "Nutrisi Sehat untuk 1000 Hari Pertama Kehidupan" [level=1] [ref=e174]:
+            - text: Nutrisi Sehat untuk
+            - text: 1000 Hari Pertama Kehidupan
+          - paragraph [ref=e175]: SeribuAsa menghubungkan donatur dengan keluarga rentan melalui sistem e-voucher nutrisi, memastikan setiap bantuan tepat sasaran untuk pangan bergizi.
+          - generic [ref=e176]:
+            - link "Mulai Donasi" [ref=e177] [cursor=pointer]:
+              - /url: /donasi
+              - text: Mulai Donasi
+              - img [ref=e178]
+            - link "Daftar Penerima Manfaat" [ref=e180] [cursor=pointer]:
+              - /url: /daftar?role=beneficiary
+              - img [ref=e181]
+              - text: Daftar Penerima Manfaat
+          - generic [ref=e186]:
+            - generic [ref=e187]:
+              - generic [ref=e188]: 12.500+
+              - generic [ref=e189]: Penerima Manfaat
+            - generic [ref=e190]:
+              - generic [ref=e191]: 3.200+
+              - generic [ref=e192]: Donatur Aktif
+            - generic [ref=e193]:
+              - generic [ref=e194]: "28"
+              - generic [ref=e195]: Provinsi
+            - generic [ref=e196]:
+              - generic [ref=e197]: Rp4,2M
+              - generic [ref=e198]: Dana Tersalurkan
+      - generic [ref=e203]:
+        - generic [ref=e204]:
+          - heading "Cara Kerja SeribuAsa" [level=2] [ref=e205]
+          - paragraph [ref=e206]: Dari donasi hingga nutrisi di meja makan, setiap langkah transparan dan terukur.
+        - generic [ref=e207]:
+          - generic [ref=e208]:
+            - generic [ref=e209]: "1"
+            - img [ref=e211]
+            - heading "Donatur Berdonasi" [level=3] [ref=e213]
+            - paragraph [ref=e214]: Donatur memilih paket donasi nutrisi bulanan atau sekali donasi untuk mendukung keluarga rentan.
+          - generic [ref=e215]:
+            - generic [ref=e216]: "2"
+            - img [ref=e218]
+            - heading "Verifikasi & Alokasi" [level=3] [ref=e221]
+            - paragraph [ref=e222]: Data penerima diverifikasi, skor FIES dihitung, dan voucher dialokasikan secara adil berdasarkan kebutuhan.
+          - generic [ref=e223]:
+            - generic [ref=e224]: "3"
+            - img [ref=e226]
+            - heading "Belanja Pangan Bergizi" [level=3] [ref=e232]
+            - paragraph [ref=e233]: Penerima menggunakan e-voucher untuk membeli bahan pangan bergizi di mitra vendor terverifikasi.
+          - generic [ref=e234]:
+            - generic [ref=e235]: "4"
+            - img [ref=e237]
+            - heading "Pantau Dampak" [level=3] [ref=e240]
+            - paragraph [ref=e241]: Pertumbuhan anak dipantau, skor ketahanan pangan diukur, dan dampak dilaporkan secara transparan.
+      - generic [ref=e246]:
+        - generic [ref=e247]:
+          - heading "Dampak Nyata" [level=2] [ref=e248]
+          - paragraph [ref=e249]: Setiap donasi menciptakan perubahan yang terukur dan transparan.
+        - generic [ref=e250]:
+          - generic [ref=e251]:
+            - generic [ref=e252]: 0+
+            - generic [ref=e253]: Penerima Manfaat Aktif
+            - paragraph [ref=e254]: Keluarga rentan yang mendapat bantuan nutrisi
+          - generic [ref=e255]:
+            - generic [ref=e256]: 0+
+            - generic [ref=e257]: Voucher Tersalurkan
+            - paragraph [ref=e258]: E-voucher nutrisi berhasil ditukarkan
+          - generic [ref=e259]:
+            - generic [ref=e260]: Rp0Jt
+            - generic [ref=e261]: Dana Tersalurkan
+            - paragraph [ref=e262]: Total donasi yang telah disalurkan
+          - generic [ref=e263]:
+            - generic [ref=e264]: 0%
+            - generic [ref=e265]: Tingkat Penukaran
+            - paragraph [ref=e266]: Voucher berhasil digunakan tepat sasaran
+      - generic [ref=e271]:
+        - generic [ref=e272]:
+          - heading "Sejalan dengan Tujuan Pembangunan Berkelanjutan" [level=2] [ref=e273]
+          - paragraph [ref=e274]: SeribuAsa berkontribusi langsung pada pencapaian SDGs Indonesia.
+        - generic [ref=e276]:
+          - img [ref=e278]
+          - 'heading "SDG 2: Zero Hunger" [level=3] [ref=e287]'
+          - paragraph [ref=e288]: Menghapus kelaparan dan memastikan akses pangan bergizi bagi semua.
+      - generic [ref=e293]:
+        - generic [ref=e294]:
+          - heading "Dipercaya Ribuan Pengguna" [level=2] [ref=e295]
+          - paragraph [ref=e296]: Cerita dari ekosistem SeribuAsa.
+        - generic [ref=e297]:
+          - generic [ref=e298]:
+            - generic [ref=e299]:
+              - img [ref=e300]
+              - img [ref=e302]
+              - img [ref=e304]
+              - img [ref=e306]
+              - img [ref=e308]
+            - paragraph [ref=e310]: "\"Dengan NutriGuard, anak saya bisa mendapat telur, susu, dan sayuran segar setiap minggu. Gizinya jauh lebih baik sekarang.\""
+            - generic [ref=e311]:
+              - generic [ref=e312]: Ibu Sari Wulandari
+              - generic [ref=e313]: Penerima Manfaat, Jakarta Timur
+          - generic [ref=e314]:
+            - generic [ref=e315]:
+              - img [ref=e316]
+              - img [ref=e318]
+              - img [ref=e320]
+              - img [ref=e322]
+              - img [ref=e324]
+            - paragraph [ref=e326]: "\"Saya bisa melihat dampak donasi saya secara langsung. Transparan dan terpercaya — itulah yang membuat saya terus berdonasi.\""
+            - generic [ref=e327]:
+              - generic [ref=e328]: Ahmad Fauzi
+              - generic [ref=e329]: Donatur Individu
+          - generic [ref=e330]:
+            - generic [ref=e331]:
+              - img [ref=e332]
+              - img [ref=e334]
+              - img [ref=e336]
+              - img [ref=e338]
+              - img [ref=e340]
+            - paragraph [ref=e342]: "\"Program CSR kami melalui NutriGuard memberikan laporan dampak yang jelas untuk para stakeholder.\""
+            - generic [ref=e343]:
+              - generic [ref=e344]: PT Sejahtera Pangan
+              - generic [ref=e345]: Donatur Korporat
+      - generic [ref=e351]:
+        - heading "Bergabunglah dalam Misi Nutrisi Indonesia" [level=2] [ref=e352]
+        - paragraph [ref=e353]: Jadilah bagian dari ekosistem yang memastikan setiap keluarga mendapat akses pangan bergizi.
+        - generic [ref=e354]:
+          - link "Mulai Donasi" [ref=e355] [cursor=pointer]:
+            - /url: /daftar
+            - text: Mulai Donasi
+            - img [ref=e356]
+          - link "Daftar Vendor" [ref=e358] [cursor=pointer]:
+            - /url: /daftar?role=vendor
+            - img [ref=e359]
+            - text: Daftar Vendor
+          - link "Lihat Dampak" [ref=e363] [cursor=pointer]:
+            - /url: /dampak
+            - img [ref=e364]
+            - text: Lihat Dampak
+    - contentinfo [ref=e366]:
+      - generic [ref=e367]:
+        - generic [ref=e368]:
+          - generic [ref=e369]:
+            - link "Logo SeribuAsa" [ref=e370] [cursor=pointer]:
+              - /url: /
+              - img "Logo" [ref=e371]
+              - generic [ref=e372]: SeribuAsa
+            - paragraph [ref=e373]: Ekosistem digital untuk ketahanan pangan dan nutrisi Indonesia.
+          - generic [ref=e374]:
+            - heading "Platform" [level=4] [ref=e375]
+            - list [ref=e376]:
+              - listitem [ref=e377]:
+                - link "Paket Donasi" [ref=e378] [cursor=pointer]:
+                  - /url: /donasi
+              - listitem [ref=e379]:
+                - link "Daftar Penerima" [ref=e380] [cursor=pointer]:
+                  - /url: /daftar?role=beneficiary
+              - listitem [ref=e381]:
+                - link "Mitra Vendor" [ref=e382] [cursor=pointer]:
+                  - /url: /daftar?role=vendor
+          - generic [ref=e383]:
+            - heading "Perusahaan" [level=4] [ref=e384]
+            - list [ref=e385]:
+              - listitem [ref=e386]:
+                - link "Tentang Kami" [ref=e387] [cursor=pointer]:
+                  - /url: /tentang
+              - listitem [ref=e388]:
+                - link "Dampak" [ref=e389] [cursor=pointer]:
+                  - /url: /dampak
+              - listitem [ref=e390]:
+                - link "Kontak" [ref=e391] [cursor=pointer]:
+                  - /url: /kontak
+          - generic [ref=e392]:
+            - heading "Legal" [level=4] [ref=e393]
+            - list [ref=e394]:
+              - listitem [ref=e395]:
+                - link "Kebijakan Privasi" [ref=e396] [cursor=pointer]:
+                  - /url: /privasi
+              - listitem [ref=e397]:
+                - link "Syarat & Ketentuan" [ref=e398] [cursor=pointer]:
+                  - /url: /syarat
+        - generic [ref=e399]: © 2026 SeribuAsa. Hak cipta dilindungi.

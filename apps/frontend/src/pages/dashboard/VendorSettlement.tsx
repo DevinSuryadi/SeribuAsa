@@ -1,58 +1,113 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { CreditCard, Download, CheckCircle, Clock, ArrowRight, Wallet, Calendar, RefreshCw, AlertCircle } from 'lucide-react';
-import { formatIDR, formatDate } from '@/lib/format';
-import { useStaggerChildren } from '@/hooks/useStaggerChildren';
-import { getSettlements, markSettlementPaid } from '@/services/settlements';
-import { toast } from 'sonner';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  CreditCard,
+  Download,
+  CheckCircle,
+  Clock,
+  ArrowRight,
+  Wallet,
+  Calendar,
+  RefreshCw,
+  AlertCircle,
+  TrendingUp,
+} from "lucide-react";
+import { formatIDR, formatDate } from "@/lib/format";
+import { useStaggerChildren } from "@/hooks/useStaggerChildren";
+import { getSettlements, markSettlementPaid } from "@/services/settlements";
+import type { SettlementReport } from "@/services/reports";
+import { getSettlementReport } from "@/services/reports";
+import { apiFetch } from "@/services/api";
+import { toast } from "sonner";
 
 const VendorSettlement = () => {
   const { user } = useAuth();
   const gridRef = useStaggerChildren({ stagger: 0.1 });
   const [settlements, setSettlements] = useState<any[]>([]);
+  const [report, setReport] = useState<SettlementReport | null>(null);
+  const [vendorProfile, setVendorProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
   const [claimLoading, setClaimLoading] = useState(false);
+  const [startDate, setStartDate] = useState<string>(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 90);
+    return date.toISOString().split("T")[0];
+  });
+  const [endDate, setEndDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
   const fetchSettlements = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getSettlements();
+      const [data, reportData] = await Promise.all([
+        getSettlements(),
+        getSettlementReport(startDate, endDate),
+      ]);
       setSettlements(data.items || []);
+      setReport(reportData);
     } catch (err: any) {
       setError(err.message);
-      toast.error('Gagal memuat data settlement');
+      toast.error("Gagal memuat data settlement");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [startDate, endDate]);
+
+  const fetchVendorProfile = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const data = await apiFetch(`/users/${user.id}`);
+      setVendorProfile(data);
+    } catch (err) {
+      console.error("Failed to fetch vendor profile:", err);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
-    if (user) fetchSettlements();
-  }, [user]);
+    if (user) {
+      fetchSettlements();
+      fetchVendorProfile();
+    }
+  }, [user, fetchSettlements, fetchVendorProfile]);
 
-  const totalEarned = useMemo(
-    () => settlements.filter((s) => s.status === 'paid' || s.status === 'ready').reduce((a, b) => a + parseFloat(b.net_amount || 0), 0),
-    [settlements]
-  );
+  const totalEarned = useMemo(() => {
+    if (report?.summary?.settled_amount) {
+      return report.summary.settled_amount;
+    }
+    return settlements
+      .filter((s) => s.status === "paid" || s.status === "ready")
+      .reduce((a, b) => a + parseFloat(b.net_amount || 0), 0);
+  }, [report, settlements]);
 
-  const pending = useMemo(
-    () => settlements.filter((s) => s.status === 'ready' || s.status === 'pending'),
-    [settlements]
-  );
+  const pending = useMemo(() => {
+    if (report) {
+      return report.summary.pending_count;
+    }
+    return settlements.filter((s) => s.status === "ready" || s.status === "pending").length;
+  }, [report, settlements]);
 
-  const pendingTotal = useMemo(
-    () => pending.reduce((a, b) => a + parseFloat(b.net_amount || 0), 0),
-    [pending]
-  );
+  const pendingTotal = useMemo(() => {
+    if (report?.summary?.pending_amount) {
+      return report.summary.pending_amount;
+    }
+    return settlements
+      .filter((s) => s.status === "ready" || s.status === "pending")
+      .reduce((a, b) => a + parseFloat(b.net_amount || 0), 0);
+  }, [report, settlements]);
 
   const handleClaim = (settlement: any) => {
     setSelectedSettlement(settlement);
@@ -61,46 +116,77 @@ const VendorSettlement = () => {
 
   const handleClaimSubmit = async () => {
     if (!selectedSettlement) return;
-    
+
     try {
       setClaimLoading(true);
       const bankRef = `TRF-${selectedSettlement.id.substring(0, 8)}-${Date.now()}`;
       await markSettlementPaid(selectedSettlement.id, bankRef);
-      toast.success(`Klaim berhasil diajukan. Pencairan ${formatIDR(selectedSettlement?.net_amount || 0)} akan diproses dalam 1-3 hari kerja.`);
+      toast.success(
+        `Klaim berhasil diajukan. Pencairan ${formatIDR(selectedSettlement?.net_amount || 0)} akan diproses dalam 1-3 hari kerja.`
+      );
       setShowClaimModal(false);
       setSelectedSettlement(null);
       fetchSettlements();
     } catch (err: any) {
-      toast.error(err.message || 'Gagal mengajukan klaim');
+      toast.error(err.message || "Gagal mengajukan klaim");
     } finally {
       setClaimLoading(false);
     }
   };
 
   const statusLabel: Record<string, string> = {
-    calculating: 'Menghitung',
-    ready: 'Siap Cair',
-    paid: 'Dicairkan',
-    cancelled: 'Dibatalkan',
+    calculating: "Menghitung",
+    ready: "Siap Cair",
+    paid: "Dicairkan",
+    cancelled: "Dibatalkan",
   };
 
   const statusColor: Record<string, string> = {
-    calculating: 'bg-secondary text-muted-foreground',
-    ready: 'bg-accent/10 text-accent-foreground border-accent/20',
-    paid: 'bg-primary/10 text-primary border-primary/20',
-    cancelled: 'bg-destructive/10 text-destructive border-destructive/20',
+    calculating: "bg-secondary text-muted-foreground",
+    ready: "bg-accent/10 text-accent-foreground border-accent/20",
+    paid: "bg-primary/10 text-primary border-primary/20",
+    cancelled: "bg-destructive/10 text-destructive border-destructive/20",
   };
 
   if (loading) {
     return (
-      <DashboardLayout title="Settlement" subtitle="Riwayat pencairan dana voucher yang telah ditukarkan.">
+      <DashboardLayout
+        title="Settlement"
+        subtitle="Riwayat pencairan dana voucher yang telah ditukarkan."
+      >
         <div className="space-y-4">
           <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i}><CardContent className="pt-6"><div className="animate-pulse"><div className="h-10 w-10 rounded-lg bg-secondary mb-3" /><div className="h-6 w-24 bg-secondary rounded mb-2" /><div className="h-3 w-16 bg-secondary rounded" /></div></CardContent></Card>
+              <Card key={i}>
+                <CardContent className="pt-6">
+                  <div className="animate-pulse">
+                    <div className="h-10 w-10 rounded-lg bg-secondary mb-3" />
+                    <div className="h-6 w-24 bg-secondary rounded mb-2" />
+                    <div className="h-3 w-16 bg-secondary rounded" />
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
-          <Card><CardContent className="pt-6"><div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="flex items-center gap-3 border-b border-border/50 pb-4 last:border-0 animate-pulse"><div className="h-10 w-10 rounded-full bg-secondary" /><div className="flex-1"><div className="h-4 w-32 bg-secondary rounded" /><div className="h-3 w-24 bg-secondary rounded mt-2" /></div><div className="h-8 w-24 bg-secondary rounded" /></div>))}</div></CardContent></Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 border-b border-border/50 pb-4 last:border-0 animate-pulse"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-secondary" />
+                    <div className="flex-1">
+                      <div className="h-4 w-32 bg-secondary rounded" />
+                      <div className="h-3 w-24 bg-secondary rounded mt-2" />
+                    </div>
+                    <div className="h-8 w-24 bg-secondary rounded" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </DashboardLayout>
     );
@@ -108,7 +194,10 @@ const VendorSettlement = () => {
 
   if (error) {
     return (
-      <DashboardLayout title="Settlement" subtitle="Riwayat pencairan dana voucher yang telah ditukarkan.">
+      <DashboardLayout
+        title="Settlement"
+        subtitle="Riwayat pencairan dana voucher yang telah ditukarkan."
+      >
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-center gap-3">
           <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
           <div className="flex-1">
@@ -124,11 +213,37 @@ const VendorSettlement = () => {
   }
 
   return (
-    <DashboardLayout title="Settlement" subtitle="Riwayat pencairan dana voucher yang telah ditukarkan.">
+    <DashboardLayout
+      title="Settlement"
+      subtitle="Riwayat pencairan dana voucher yang telah ditukarkan."
+    >
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex-1" />
-          <Button variant="outline" className="gap-2 self-start" onClick={() => toast.success('Mengunduh laporan...')}>
+          <div className="flex gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-foreground">Dari</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-foreground">Sampai</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            className="gap-2 self-start"
+            onClick={() => toast.success("Mengunduh laporan...")}
+          >
             <Download className="h-4 w-4" /> Unduh Laporan
           </Button>
         </div>
@@ -140,9 +255,13 @@ const VendorSettlement = () => {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 mb-3">
                 <Wallet className="h-5 w-5 text-primary" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-primary tracking-tight truncate">{formatIDR(totalEarned)}</div>
+              <div className="text-xl sm:text-2xl font-bold text-primary tracking-tight truncate">
+                {formatIDR(totalEarned)}
+              </div>
               <p className="text-sm text-muted-foreground mt-1">Total Dicairkan</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">{settlements.filter((s) => s.status === 'paid').length} periode</p>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">
+                {settlements.filter((s) => s.status === "paid").length} periode
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -150,9 +269,11 @@ const VendorSettlement = () => {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 mb-3">
                 <Clock className="h-5 w-5 text-accent" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground tracking-tight truncate">{formatIDR(pendingTotal)}</div>
+              <div className="text-xl sm:text-2xl font-bold text-foreground tracking-tight truncate">
+                {formatIDR(pendingTotal)}
+              </div>
               <p className="text-sm text-muted-foreground mt-1">Menunggu Cair</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">{pending.length} periode</p>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">{pending} periode</p>
             </CardContent>
           </Card>
           <Card>
@@ -160,9 +281,15 @@ const VendorSettlement = () => {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary mb-3">
                 <CreditCard className="h-5 w-5 text-muted-foreground" />
               </div>
-              <div className="text-2xl font-bold text-foreground tracking-tight">BCA</div>
+              <div className="text-2xl font-bold text-foreground tracking-tight">
+                {vendorProfile?.bank_name || "BCA"}
+              </div>
               <p className="text-sm text-muted-foreground mt-1">Rekening Tujuan</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">****4821</p>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">
+                {vendorProfile?.bank_account_number
+                  ? `****${vendorProfile.bank_account_number.slice(-4)}`
+                  : "****4821"}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -177,6 +304,49 @@ const VendorSettlement = () => {
           </Card>
         </div>
 
+        {/* Settlement Trends */}
+        {report && (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary mb-3">
+                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="text-2xl font-bold text-foreground tracking-tight">
+                  {report.trends.month_over_month_growth > 0 ? "+" : ""}
+                  {report.trends.month_over_month_growth.toFixed(1)}%
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">Pertumbuhan MoM</p>
+                <p className="text-xs text-muted-foreground/70 mt-0.5">Bulan ke bulan</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary mb-3">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="text-2xl font-bold text-foreground tracking-tight">
+                  {report.trends.average_settlement_time.toFixed(1)} hari
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">Rata-rata Waktu</p>
+                <p className="text-xs text-muted-foreground/70 mt-0.5">Hingga pencairan</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 mb-3">
+                  <CheckCircle className="h-5 w-5 text-primary" />
+                </div>
+                <div className="text-2xl font-bold text-primary tracking-tight">
+                  {report.trends.settlement_success_rate.toFixed(1)}%
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">Tingkat Sukses</p>
+                <p className="text-xs text-muted-foreground/70 mt-0.5">Settlement berhasil</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Settlement List */}
         <Card>
           <CardHeader>
@@ -188,30 +358,47 @@ const VendorSettlement = () => {
               <div className="text-center py-12">
                 <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
                 <p className="text-muted-foreground">Belum ada settlement</p>
-                <p className="text-sm text-muted-foreground/70 mt-1">Settlement akan muncul setelah ada penukaran voucher</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">
+                  Settlement akan muncul setelah ada penukaran voucher
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {settlements.map((s) => (
-                  <div key={s.id} className="flex items-center gap-3 border-b border-border/50 pb-4 last:border-0 last:pb-0">
-                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${s.status === 'paid' ? 'bg-primary/10' : 'bg-accent/10'}`}>
-                      {s.status === 'paid' ? <CheckCircle className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-accent" />}
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-3 border-b border-border/50 pb-4 last:border-0 last:pb-0"
+                  >
+                    <div
+                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${s.status === "paid" ? "bg-primary/10" : "bg-accent/10"}`}
+                    >
+                      {s.status === "paid" ? (
+                        <CheckCircle className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Clock className="h-5 w-5 text-accent" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-foreground">
-                        Periode {s.period_start ? formatDate(s.period_start) : '-'} s/d {s.period_end ? formatDate(s.period_end) : '-'}
+                        Periode {s.period_start ? formatDate(s.period_start) : "-"} s/d{" "}
+                        {s.period_end ? formatDate(s.period_end) : "-"}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {s.vendor_store_name || 'Vendor'}
+                        {s.vendor_store_name || "Vendor"}
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-sm font-bold text-foreground">{formatIDR(s.net_amount)}</div>
+                      <div className="text-sm font-bold text-foreground">
+                        {formatIDR(s.net_amount)}
+                      </div>
                       <div className="flex items-center gap-2 mt-1 justify-end">
-                        <Badge variant="outline" className={`text-[10px] ${statusColor[s.status] || ''}`}>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${statusColor[s.status] || ""}`}
+                        >
                           {statusLabel[s.status] || s.status}
                         </Badge>
-                        {(s.status === 'ready' || s.status === 'calculating') && (
+                        {(s.status === "ready" || s.status === "calculating") && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -237,20 +424,45 @@ const VendorSettlement = () => {
           <DialogHeader>
             <DialogTitle>Klaim Settlement</DialogTitle>
             <DialogDescription>
-              Ajukan pencairan dana untuk periode {selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : '-'}
+              Ajukan pencairan dana untuk periode{" "}
+              {selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : "-"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-lg bg-secondary/50 p-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Periode:</span><span className="font-medium">{selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : '-'} s/d {selectedSettlement?.period_end ? formatDate(selectedSettlement.period_end) : '-'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Total Redemptions:</span><span className="font-medium">{formatIDR(selectedSettlement?.total_redemptions || 0)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Admin Fee:</span><span className="font-medium">{formatIDR(selectedSettlement?.admin_fee || 0)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Jumlah Bersih:</span><span className="font-bold text-primary">{formatIDR(selectedSettlement?.net_amount || 0)}</span></div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Periode:</span>
+                <span className="font-medium">
+                  {selectedSettlement?.period_start
+                    ? formatDate(selectedSettlement.period_start)
+                    : "-"}{" "}
+                  s/d{" "}
+                  {selectedSettlement?.period_end ? formatDate(selectedSettlement.period_end) : "-"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Redemptions:</span>
+                <span className="font-medium">
+                  {formatIDR(selectedSettlement?.total_redemptions || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Admin Fee:</span>
+                <span className="font-medium">{formatIDR(selectedSettlement?.admin_fee || 0)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Jumlah Bersih:</span>
+                <span className="font-bold text-primary">
+                  {formatIDR(selectedSettlement?.net_amount || 0)}
+                </span>
+              </div>
             </div>
             <Button className="w-full" onClick={handleClaimSubmit} disabled={claimLoading}>
-              {claimLoading ? 'Memproses...' : 'Ajukan Klaim'}
+              {claimLoading ? "Memproses..." : "Ajukan Klaim"}
             </Button>
-            <Button variant="ghost" className="w-full" onClick={() => setShowClaimModal(false)}>Batal</Button>
+            <Button variant="ghost" className="w-full" onClick={() => setShowClaimModal(false)}>
+              Batal
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

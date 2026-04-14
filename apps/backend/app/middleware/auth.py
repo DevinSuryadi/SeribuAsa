@@ -21,7 +21,8 @@ class AuthenticatedUser:
     """Authenticated user information"""
     
     def __init__(self, user_id: str | UUID, email: str, role: str, email_verified: bool = False):
-        self.user_id = user_id if isinstance(user_id, UUID) else UUID(str(user_id))
+        # Always store as string for consistency with database
+        self.user_id = str(user_id) if isinstance(user_id, UUID) else user_id
         self.email = email
         self.role = role
         self.email_verified = email_verified

@@ -33,3 +33,11 @@ export async function calculateZScore(data: {
     body: JSON.stringify(data),
   });
 }
+
+export async function getLatestFIESStatus(beneficiaryId: string) {
+  return apiFetch(`/fies/${beneficiaryId}/latest`);
+}
+
+export async function getLatestNutritionMeasurement(beneficiaryId: string) {
+  return apiFetch(`/nutrition/latest-measurement/${beneficiaryId}`);
+}

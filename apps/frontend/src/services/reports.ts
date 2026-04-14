@@ -127,6 +127,41 @@ export interface DemographicsReport {
 }
 
 // ============================================
+// Settlement Report (Vendor)
+// ============================================
+export interface SettlementSummary {
+  total_revenue: number;
+  total_settlements: number;
+  settled_amount: number;
+  pending_amount: number;
+  pending_count: number;
+  average_settlement_days: number;
+}
+
+export interface DailySettlementItem {
+  date: string;
+  amount: number;
+  status: string;
+}
+
+export interface SettlementTrends {
+  month_over_month_growth: number;
+  average_settlement_time: number;
+  settlement_success_rate: number;
+}
+
+export interface SettlementReport {
+  vendor_id: string;
+  period: {
+    start_date: string;
+    end_date: string;
+  };
+  summary: SettlementSummary;
+  daily_settlements: DailySettlementItem[];
+  trends: SettlementTrends;
+}
+
+// ============================================
 // API Functions
 // ============================================
 
@@ -134,10 +169,7 @@ export interface DemographicsReport {
  * Get impact report for donor dashboard
  * Requires donor authentication
  */
-export async function getImpactReport(
-  startDate?: string,
-  endDate?: string
-): Promise<ImpactReport> {
+export async function getImpactReport(startDate?: string, endDate?: string): Promise<ImpactReport> {
   const params = new URLSearchParams();
   if (startDate) {
     params.append("start_date", startDate);
@@ -145,20 +177,14 @@ export async function getImpactReport(
   if (endDate) {
     params.append("end_date", endDate);
   }
-  const response = await apiFetch(
-    `/reports/impact${params.toString() ? "?" + params.toString() : ""}`
-  );
-  return response.data;
+  return apiFetch(`/reports/impact${params.toString() ? "?" + params.toString() : ""}`);
 }
 
 /**
  * Get sales report for vendor dashboard
  * Requires vendor authentication
  */
-export async function getSalesReport(
-  startDate?: string,
-  endDate?: string
-): Promise<SalesReport> {
+export async function getSalesReport(startDate?: string, endDate?: string): Promise<SalesReport> {
   const params = new URLSearchParams();
   if (startDate) {
     params.append("start_date", startDate);
@@ -166,10 +192,7 @@ export async function getSalesReport(
   if (endDate) {
     params.append("end_date", endDate);
   }
-  const response = await apiFetch(
-    `/reports/sales${params.toString() ? "?" + params.toString() : ""}`
-  );
-  return response.data;
+  return apiFetch(`/reports/sales${params.toString() ? "?" + params.toString() : ""}`);
 }
 
 /**
@@ -187,10 +210,7 @@ export async function getRegionalReport(
   if (endDate) {
     params.append("end_date", endDate);
   }
-  const response = await apiFetch(
-    `/reports/regional${params.toString() ? "?" + params.toString() : ""}`
-  );
-  return response.data;
+  return apiFetch(`/reports/regional${params.toString() ? "?" + params.toString() : ""}`);
 }
 
 /**
@@ -198,6 +218,23 @@ export async function getRegionalReport(
  * Requires government or admin role
  */
 export async function getDemographicsReport(): Promise<DemographicsReport> {
-  const response = await apiFetch("/reports/demographics");
-  return response.data;
+  return apiFetch("/reports/demographics");
+}
+
+/**
+ * Get settlement report for vendor dashboard
+ * Requires vendor authentication
+ */
+export async function getSettlementReport(
+  startDate?: string,
+  endDate?: string
+): Promise<SettlementReport> {
+  const params = new URLSearchParams();
+  if (startDate) {
+    params.append("start_date", startDate);
+  }
+  if (endDate) {
+    params.append("end_date", endDate);
+  }
+  return apiFetch(`/reports/settlements${params.toString() ? "?" + params.toString() : ""}`);
 }

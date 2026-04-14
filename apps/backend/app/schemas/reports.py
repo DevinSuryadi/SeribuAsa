@@ -123,3 +123,35 @@ class DemographicsReportResponse(BaseModel):
     gender_distribution: List[DemographicItem]
     nutrition_status: List[DemographicItem]
     fies_classification: List[DemographicItem]
+
+
+# ============================================
+# Settlement Report (Vendor)
+# ============================================
+class SettlementSummary(BaseModel):
+    total_revenue: Decimal
+    total_settlements: int
+    settled_amount: Decimal
+    pending_amount: Decimal
+    pending_count: int
+    average_settlement_days: float
+
+
+class DailySettlementItem(BaseModel):
+    date: date
+    amount: Decimal
+    status: str
+
+
+class SettlementTrends(BaseModel):
+    month_over_month_growth: float
+    average_settlement_time: float
+    settlement_success_rate: float
+
+
+class SettlementReportResponse(BaseModel):
+    vendor_id: str
+    period: Dict[str, date]
+    summary: SettlementSummary
+    daily_settlements: List[DailySettlementItem]
+    trends: SettlementTrends

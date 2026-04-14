@@ -6,24 +6,28 @@ import { Button } from '@/components/ui/button';
 import { BarChart3, MapPin, TrendingUp, Users, Heart, CreditCard, RefreshCw, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { formatIDR } from '@/lib/format';
-import { getImpactMetrics } from '@/services/donations';
+import type { ImpactReport } from '@/services/reports';
+import { getImpactReport } from '@/services/reports';
 import { toast } from 'sonner';
 
 const COLORS = ['hsl(152, 55%, 33%)', 'hsl(210, 65%, 45%)', 'hsl(30, 95%, 55%)', 'hsl(220, 10%, 46%)'];
 
 const DonorDampak = () => {
   const { user } = useAuth();
-  const [metrics, setMetrics] = useState<any>(null);
+  const [report, setReport] = useState<ImpactReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMetrics = useCallback(async () => {
+  const fetchReport = useCallback(async () => {
     if (!user?.id) return;
     try {
       setLoading(true);
       setError(null);
-      const data = await getImpactMetrics(user.id);
-      setMetrics(data);
+      // Get last 90 days of data
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const data = await getImpactReport(startDate, endDate);
+      setReport(data);
     } catch (err: any) {
       setError(err.message);
       toast.error('Gagal memuat dampak donasi');
@@ -34,15 +38,15 @@ const DonorDampak = () => {
 
   useEffect(() => {
     if (user) {
-      fetchMetrics();
+      fetchReport();
     }
-  }, [user, fetchMetrics]);
+  }, [user, fetchReport]);
 
-  const totalDonated = useMemo(() => parseFloat(metrics?.total_donated || 0), [metrics?.total_donated]);
-  const childrenHelped = useMemo(() => metrics?.total_children_helped || 0, [metrics?.total_children_helped]);
-  const vouchersAllocated = useMemo(() => metrics?.total_vouchers_allocated || 0, [metrics?.total_vouchers_allocated]);
-  const trendData = useMemo(() => metrics?.donation_trend || [], [metrics?.donation_trend]);
-  const geoData = useMemo(() => metrics?.geographic_distribution || [], [metrics?.geographic_distribution]);
+  const totalDonated = useMemo(() => parseFloat(report?.summary?.total_donated?.toString() || '0'), [report?.summary?.total_donated]);
+  const childrenHelped = useMemo(() => report?.summary?.total_children_helped || 0, [report?.summary?.total_children_helped]);
+  const vouchersAllocated = useMemo(() => report?.summary?.total_vouchers_allocated || 0, [report?.summary?.total_vouchers_allocated]);
+  const trendData = useMemo(() => report?.donation_trend || [], [report?.donation_trend]);
+  const geoData = useMemo(() => report?.geographic_distribution || [], [report?.geographic_distribution]);
 
   const redemptionRate = vouchersAllocated > 0 ? Math.round((vouchersAllocated * 0.83)) : 0;
 
@@ -79,7 +83,7 @@ const DonorDampak = () => {
             <p className="text-sm font-medium text-destructive">Gagal memuat data</p>
             <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchMetrics}>
+          <Button variant="outline" size="sm" onClick={fetchReport}>
             <RefreshCw className="mr-1 h-3 w-3" /> Coba Lagi
           </Button>
         </div>

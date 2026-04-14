@@ -1,0 +1,116 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e86]:
+        - img [ref=e88]
+        - generic [ref=e91]: Login sebagai Demo Donatur!
+  - generic [ref=e93]:
+    - banner [ref=e94]:
+      - button "Buka menu" [ref=e95] [cursor=pointer]:
+        - img [ref=e96]
+      - generic [ref=e97]:
+        - img [ref=e99]
+        - generic [ref=e101]: SeribuAsa
+      - generic [ref=e102]:
+        - generic [ref=e103]: donor
+        - button [ref=e104] [cursor=pointer]:
+          - img
+    - main [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - heading "Dashboard Donatur" [level=1] [ref=e108]
+          - paragraph [ref=e109]: Ringkasan donasi dan dampak Anda bulan ini.
+        - generic [ref=e110]:
+          - generic [ref=e112]:
+            - button "Lihat Paket" [ref=e113] [cursor=pointer]:
+              - img
+              - text: Lihat Paket
+            - button "Donasi Baru" [ref=e114] [cursor=pointer]:
+              - img
+              - text: Donasi Baru
+          - generic [ref=e115]:
+            - generic [ref=e117]:
+              - img [ref=e120]
+              - generic [ref=e122]: Rp 5.700.000
+              - paragraph [ref=e123]: Total Donasi
+              - paragraph [ref=e124]: Bulan ini
+            - generic [ref=e126]:
+              - img [ref=e129]
+              - generic [ref=e131]: 13 Paket
+              - paragraph [ref=e132]: Langganan Aktif
+              - paragraph [ref=e133]: Adopsi Nutrisi Balita
+            - generic [ref=e135]:
+              - img [ref=e138]
+              - generic [ref=e143]: 0 Anak
+              - paragraph [ref=e144]: Penerima Didukung
+              - paragraph [ref=e145]: Menerima bantuan
+            - generic [ref=e147]:
+              - img [ref=e150]
+              - generic [ref=e152]: 60%
+              - paragraph [ref=e153]: Tingkat Penukaran
+              - paragraph [ref=e154]: Voucher digunakan
+          - generic [ref=e155]:
+            - generic [ref=e156]:
+              - generic [ref=e157]:
+                - generic [ref=e158]:
+                  - heading "Riwayat Donasi Terbaru" [level=3] [ref=e159]
+                  - paragraph [ref=e160]: Transaksi donasi terakhir Anda
+                - button "Semua" [ref=e161] [cursor=pointer]:
+                  - text: Semua
+                  - img
+              - generic [ref=e163]:
+                - generic [ref=e164]:
+                  - img [ref=e166]
+                  - generic [ref=e168]:
+                    - generic [ref=e169]: Donasi Langganan
+                    - generic [ref=e170]: 7 April 2026
+                  - generic [ref=e171]:
+                    - generic [ref=e172]: Rp 300.000
+                    - generic [ref=e173]: Sukses
+                - generic [ref=e174]:
+                  - img [ref=e176]
+                  - generic [ref=e178]:
+                    - generic [ref=e179]: Donasi Langganan
+                    - generic [ref=e180]: 7 April 2026
+                  - generic [ref=e181]:
+                    - generic [ref=e182]: Rp 500.000
+                    - generic [ref=e183]: Pending
+                - generic [ref=e184]:
+                  - img [ref=e186]
+                  - generic [ref=e188]:
+                    - generic [ref=e189]: Donasi Langganan
+                    - generic [ref=e190]: 6 April 2026
+                  - generic [ref=e191]:
+                    - generic [ref=e192]: Rp 300.000
+                    - generic [ref=e193]: Sukses
+                - generic [ref=e194]:
+                  - img [ref=e196]
+                  - generic [ref=e198]:
+                    - generic [ref=e199]: Donasi Langganan
+                    - generic [ref=e200]: 6 April 2026
+                  - generic [ref=e201]:
+                    - generic [ref=e202]: Rp 300.000
+                    - generic [ref=e203]: Pending
+            - generic [ref=e204]:
+              - generic [ref=e206]:
+                - img [ref=e208]
+                - generic [ref=e211]:
+                  - heading "Dampak Bulan Ini" [level=3] [ref=e212]
+                  - paragraph [ref=e213]: Statistik dampak donasi Anda
+              - generic [ref=e215]:
+                - generic [ref=e216]:
+                  - img [ref=e218]
+                  - generic [ref=e220]: Voucher ditukarkan
+                  - generic [ref=e221]: 0 voucher
+                - generic [ref=e222]:
+                  - img [ref=e224]
+                  - generic [ref=e229]: Anak mendapat nutrisi
+                  - generic [ref=e230]: 0 anak
+                - generic [ref=e231]:
+                  - img [ref=e233]
+                  - generic [ref=e236]: Peningkatan skor pangan
+                  - generic [ref=e237]: +0%
+                - generic [ref=e238]:
+                  - img [ref=e240]
+                  - generic [ref=e242]: Kategori terbanyak
+                  - generic [ref=e243]: Pangan Umum
