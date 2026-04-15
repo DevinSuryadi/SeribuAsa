@@ -42,6 +42,33 @@ class Settings(BaseSettings):
     STORAGE_BUCKET_NAME: str = "nutriguard-uploads"
     MAX_FILE_SIZE_MB: int = 5
     
+    # Settlement & Reporting Configuration
+    ADMIN_FEE_PERCENTAGE: float = 1.0  # 1% admin fee for settlements
+    SETTLEMENT_ENABLED: bool = True
+    PAYOUT_ENABLED: bool = True
+    REPORT_CACHING_TTL_SECONDS: int = 86400  # 24 hours
+    
+    # Scheduler Configuration
+    SCHEDULER_ENABLED: bool = True
+    SCHEDULER_TIMEZONE: str = "UTC"
+    
+    # Settlement Schedule (cron format)
+    SETTLEMENT_SCHEDULE_DAY: int = 0  # 0 = Monday
+    SETTLEMENT_SCHEDULE_HOUR: int = 1
+    SETTLEMENT_SCHEDULE_MINUTE: int = 0
+    
+    # Payout Schedule (cron format)
+    PAYOUT_SCHEDULE_HOUR: int = 6
+    PAYOUT_SCHEDULE_MINUTE: int = 0
+    
+    # Report Generation Schedule (cron format)
+    REPORT_SCHEDULE_HOUR: int = 23
+    REPORT_SCHEDULE_MINUTE: int = 0
+    
+    # Bank Configuration
+    SUPPORTED_BANKS: str = "BCA,MANDIRI,BRI,BNI,CIMB,OCBC,AMBANK"
+    BANK_VALIDATION_ENABLED: bool = True
+    
     # Test mode flag
     TEST_MODE: bool = False
     

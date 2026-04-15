@@ -6,6 +6,8 @@ import logging
 from app.api import auth, donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users, cart
 from app.database import IS_SQLITE, SessionLocal, init_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
+from app.config import settings
+from app.cron.settlement_cron import SettlementScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,25 @@ def startup_event() -> None:
     if IS_SQLITE:
         init_db()
         _seed_demo_profiles()
+    
+    # Initialize scheduler for settlement processing and report generation
+    if settings.SCHEDULER_ENABLED:
+        try:
+            SettlementScheduler.initialize(SessionLocal)
+            logger.info("Settlement scheduler initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize settlement scheduler: {e}")
+            # Don't fail startup if scheduler fails - just log the error
+
+
+@app.on_event("shutdown")
+def shutdown_event() -> None:
+    """Gracefully shutdown scheduler on app shutdown"""
+    try:
+        SettlementScheduler.shutdown()
+        logger.info("Settlement scheduler shutdown successfully")
+    except Exception as e:
+        logger.error(f"Error during scheduler shutdown: {e}")
 
 
 @app.get("/")

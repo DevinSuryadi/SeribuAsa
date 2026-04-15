@@ -24,3 +24,13 @@ aiosqlite==0.19.0
 # Linting & Type checking
 ruff==0.1.14
 mypy==1.8.0
+
+# Scheduling
+APScheduler==3.10.4
+
+# PDF & Report Generation
+reportlab==4.0.9
+
+# Authentication
+google-auth==2.26.2
+supabase==2.3.4
