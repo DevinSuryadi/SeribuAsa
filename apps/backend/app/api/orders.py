@@ -56,8 +56,8 @@ async def list_orders(
         if vendor:
             vendor_id = str(vendor.user_id)
 
+    total = OrderService.count_orders(db, current_user.user_id, current_user.role, params, vendor_id)
     orders = OrderService.get_orders(db, current_user.user_id, current_user.role, params, vendor_id)
-    total = len(orders)
 
     items = []
     for o in orders:

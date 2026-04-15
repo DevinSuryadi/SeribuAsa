@@ -130,6 +130,24 @@ class OrderService:
             raise
 
     @staticmethod
+    def count_orders(db: Session, user_id: str, role: str, params: OrderQueryParams, vendor_id: Optional[str] = None) -> int:
+        """Count total orders matching filters for pagination"""
+        query = db.query(Order).filter(Order.is_active)
+        user_uuid = OrderService._to_uuid(user_id)
+        vendor_uuid = OrderService._to_uuid(vendor_id) if vendor_id else None
+
+        if role == "beneficiary":
+            query = query.filter(Order.beneficiary_id == user_uuid)
+        elif role == "vendor":
+            effective_vendor_id = vendor_uuid or user_uuid
+            query = query.filter(Order.vendor_id == effective_vendor_id)
+
+        if params.status:
+            query = query.filter(Order.status == params.status)
+
+        return query.count()
+
+    @staticmethod
     def get_orders(db: Session, user_id: str, role: str, params: OrderQueryParams, vendor_id: Optional[str] = None) -> List[Order]:
         query = db.query(Order).filter(Order.is_active)
         user_uuid = OrderService._to_uuid(user_id)
