@@ -3,24 +3,15 @@
  * Manages checkout flow state, validation, and API orchestration
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
+import type { CheckoutStep, CartItemData, CheckoutState, OrderSummary } from "@/types/checkout";
+import { getCart, updateCartItem, removeCartItem, clearCart } from "@/services/cart";
 import {
-  CheckoutStep,
-  CartItemData,
-  ValidatedVoucher,
-  AppliedVoucher,
-  EligibilityData,
-  OrderSummary,
-  CheckoutState,
-} from "@/types/checkout";
-import {
-  getCart,
-  getCartSummary,
-  updateCartItem,
-  removeCartItem,
-  clearCart,
-} from "@/services/cart";
-import { validateVoucher, checkProductEligibility, redeemSingleVoucher } from "@/services/vouchers";
+  validateVoucher,
+  checkProductEligibility,
+  redeemSingleVoucher,
+  getVoucherBalance,
+} from "@/services/vouchers";
 import { createOrder } from "@/services/orders";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -33,6 +24,7 @@ export function useCheckoutFlow() {
     validatedVoucher: null,
     eligibilityData: null,
     orderSummary: null,
+    voucherBalance: 0,
     isLoading: false,
     isSubmitting: false,
     error: null,
@@ -103,6 +95,20 @@ export function useCheckoutFlow() {
     },
     [loadCartItems]
   );
+
+  const loadVoucherBalance = useCallback(async () => {
+    if (!user) return;
+    try {
+      const balanceData = await getVoucherBalance(user.id);
+      setState((prev) => ({
+        ...prev,
+        voucherBalance: balanceData.balance || 0,
+      }));
+    } catch (err: any) {
+      // Don't set error state, just log it - balance loading shouldn't block checkout
+      console.error("Failed to load voucher balance:", err);
+    }
+  }, [user]);
 
   // ============================================
   // Voucher Management
@@ -247,7 +253,6 @@ export function useCheckoutFlow() {
 
     try {
       // If voucher applied, redeem it first
-      let voucherRedemptionData = null;
       if (state.appliedVoucher && state.appliedVoucher.voucher_id) {
         try {
           const redemptionResult = await redeemSingleVoucher({
@@ -255,7 +260,8 @@ export function useCheckoutFlow() {
             amount: state.appliedVoucher.applied_amount,
             order_id: `temp-${Date.now()}`, // Temporary, will update after order created
           });
-          voucherRedemptionData = redemptionResult;
+          // redemptionResult is used in the redemption process but not stored
+          void redemptionResult;
         } catch (err: any) {
           throw new Error(`Voucher redemption failed: ${err.message}`);
         }
@@ -281,7 +287,7 @@ export function useCheckoutFlow() {
             price: Number(item.price),
           })),
           voucher_codes: state.appliedVoucher ? [state.appliedVoucher.code] : [],
-          notes: null,
+          notes: undefined,
         };
 
         const orderResult = await createOrder(orderData);
@@ -327,6 +333,7 @@ export function useCheckoutFlow() {
     removeItem,
 
     // Voucher operations
+    loadVoucherBalance,
     validateVoucherCode,
     applyVoucher,
     removeAppliedVoucher,

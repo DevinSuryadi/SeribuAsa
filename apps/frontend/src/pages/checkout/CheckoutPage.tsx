@@ -19,9 +19,10 @@ function CheckoutPage() {
   const { user } = useAuth();
   const checkoutFlow = useCheckoutFlow();
 
-  // Load cart on mount
+  // Load cart and voucher balance on mount
   useEffect(() => {
     checkoutFlow.loadCartItems();
+    checkoutFlow.loadVoucherBalance();
     if (checkoutFlow.cartItems.length > 0) {
       checkoutFlow.checkEligibility();
     }
@@ -142,7 +143,7 @@ function CheckoutPage() {
                     await checkoutFlow.removeItem("");
                     checkoutFlow.loadCartItems();
                   }}
-                  voucherBalance={100000} // TODO: Get from API
+                  voucherBalance={checkoutFlow.voucherBalance}
                 />
               </div>
             )}
@@ -155,7 +156,7 @@ function CheckoutPage() {
                     (sum, item) => sum + Number(item.subtotal),
                     0
                   )}
-                  voucherBalance={100000} // TODO: Get from API
+                  voucherBalance={checkoutFlow.voucherBalance}
                   eligibilityData={checkoutFlow.eligibilityData}
                   appliedVoucher={checkoutFlow.appliedVoucher}
                   isLoading={checkoutFlow.isLoading}

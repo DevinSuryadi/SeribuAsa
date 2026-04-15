@@ -21,6 +21,7 @@ import {
   CreditCard,
   Sparkles,
   ShoppingCart,
+  Receipt,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -43,6 +44,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Ringkasan", href: "/dashboard/beneficiary", icon: LayoutDashboard },
     { label: "Katalog Pangan", href: "/dashboard/katalog", icon: Package },
     { label: "Keranjang", href: "/dashboard/cart", icon: ShoppingCart },
+    { label: "Riwayat Pesanan", href: "/dashboard/orders", icon: Receipt },
     { label: "Dompet Nutrisi", href: "/dashboard/vouchers", icon: Wallet },
     { label: "Penukaran Voucher", href: "/dashboard/penukaran-voucher", icon: CreditCard },
     { label: "Survei FIES", href: "/dashboard/survei-fies", icon: ClipboardList },

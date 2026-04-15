@@ -82,10 +82,9 @@ export function VoucherTransactionList({
   if (transactions.length === 0 && !isLoading) {
     return (
       <EmptyState
-        icon={Calendar}
+        icon={<Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />}
         title="Tidak Ada Riwayat"
         description="Riwayat transaksi voucher Anda akan muncul di sini"
-        color="gray"
       />
     );
   }

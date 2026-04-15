@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Home, ShoppingCart, Loader2 } from "lucide-react";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { getOrder } from "@/services/orders";
 
@@ -185,3 +185,5 @@ export function CheckoutSuccess() {
     </DashboardLayout>
   );
 }
+
+export default CheckoutSuccess;

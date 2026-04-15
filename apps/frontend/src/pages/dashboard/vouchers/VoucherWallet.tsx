@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { VoucherBalance } from "@/components/voucher/VoucherBalance";
 import { VoucherValidator } from "@/components/voucher/VoucherValidator";
 import { VoucherTransactionList } from "@/components/voucher/VoucherTransactionList";
@@ -84,7 +84,7 @@ export function VoucherWallet() {
     try {
       const historyData = await getTransactionHistory({
         beneficiary_id: user.id,
-        transaction_type: filterType,
+        transaction_type: filterType || undefined,
         page: currentPage,
         page_size: 10,
       });
@@ -99,15 +99,17 @@ export function VoucherWallet() {
     try {
       const result = await validateVoucher({ code, amount });
       setValidatedVoucher(result);
+      return result;
     } catch (err: any) {
       toast.error(err.message || "Kode voucher tidak valid");
       setValidatedVoucher(null);
+      throw err;
     } finally {
       setIsValidating(false);
     }
   };
 
-  const handleApplyVoucher = async (voucherId: string) => {
+  const handleApplyVoucher = async (_voucherId: string) => {
     if (!validatedVoucher) return;
 
     // In real implementation, this would be called during checkout
@@ -276,3 +278,5 @@ export function VoucherWallet() {
     </DashboardLayout>
   );
 }
+
+export default VoucherWallet;

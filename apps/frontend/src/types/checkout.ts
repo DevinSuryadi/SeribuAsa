@@ -57,6 +57,7 @@ export interface CheckoutState {
   validatedVoucher: ValidatedVoucher | null;
   eligibilityData: EligibilityData | null;
   orderSummary: OrderSummary | null;
+  voucherBalance: number; // Real balance from API
   isLoading: boolean;
   isSubmitting: boolean;
   error: string | null;

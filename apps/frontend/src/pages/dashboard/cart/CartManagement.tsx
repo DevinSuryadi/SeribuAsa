@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShoppingCart, Loader2 } from "lucide-react";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { CartList } from "@/components/cart/CartList";
 import { CartSummary } from "@/components/cart/CartSummary";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,7 @@ import {
   removeCartItem,
   clearCart,
 } from "@/services/cart";
-import { getVoucherBalance } from "@/services/vouchers";
-import { CartItemData } from "@/types/checkout";
+import type { CartItemData } from "@/types/checkout";
 import { toast } from "sonner";
 
 interface CartSummaryData {
@@ -185,3 +184,5 @@ export function CartManagement() {
     </DashboardLayout>
   );
 }
+
+export default CartManagement;

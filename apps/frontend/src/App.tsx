@@ -38,6 +38,7 @@ const DompetNutrisi = lazy(() => import("./pages/dashboard/DompetNutrisi"));
 const RekomendasiAI = lazy(() => import("./pages/dashboard/RekomendasiAI"));
 const CartManagement = lazy(() => import("./pages/dashboard/cart/CartManagement"));
 const VoucherWallet = lazy(() => import("./pages/dashboard/vouchers/VoucherWallet"));
+const OrderHistoryPage = lazy(() => import("./pages/dashboard/orders/OrderHistoryPage"));
 const CheckoutPage = lazy(() => import("./pages/checkout/CheckoutPage"));
 const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
 
@@ -254,6 +255,16 @@ function App() {
             <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
               <Suspense fallback={<PageLoader />}>
                 <VoucherWallet />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/orders"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <OrderHistoryPage />
               </Suspense>
             </ProtectedRoute>
           }
