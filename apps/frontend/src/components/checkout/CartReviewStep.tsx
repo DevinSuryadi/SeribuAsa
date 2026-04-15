@@ -1,6 +1,6 @@
 import { CartList } from "@/components/cart/CartList";
 import { CartSummary } from "@/components/cart/CartSummary";
-import { CartItemData } from "@/types/checkout";
+import type { CartItemData } from "@/types/checkout";
 import { Link } from "react-router-dom";
 
 interface CartReviewStepProps {
@@ -55,6 +55,7 @@ export function CartReviewStep({
             ineligibleAmount={0}
             voucherBalance={voucherBalance}
             maxVoucherApplicable={maxVoucher}
+            isLoading={isLoading}
           />
         </div>
       </div>

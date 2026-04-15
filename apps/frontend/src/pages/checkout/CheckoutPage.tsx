@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { CheckoutSteps } from "@/components/checkout/CheckoutSteps";
 import { CartReviewStep } from "@/components/checkout/CartReviewStep";
@@ -14,7 +14,7 @@ import { toast } from "sonner";
 /**
  * CheckoutPage - Main checkout page with multi-step flow
  */
-export function CheckoutPage() {
+function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const checkoutFlow = useCheckoutFlow();
@@ -67,16 +67,41 @@ export function CheckoutPage() {
 
     try {
       const orderId = await checkoutFlow.submitOrder();
-      toast.success("Pesanan berhasil dibuat!");
+      toast.success("✓ Pesanan berhasil dibuat!");
       navigate(`/checkout/success/${orderId}`);
     } catch (err: any) {
-      toast.error(err.message || "Gagal membuat pesanan");
+      const errorMessage = err.message || "Gagal membuat pesanan";
+      // Provide contextual error messages
+      if (errorMessage.includes("balance") || errorMessage.includes("saldo")) {
+        toast.error(`Saldo tidak cukup. ${errorMessage}`);
+      } else if (errorMessage.includes("stock") || errorMessage.includes("stok")) {
+        toast.error(`Stok tidak tersedia. ${errorMessage}`);
+      } else if (errorMessage.includes("voucher")) {
+        toast.error(`Error voucher. ${errorMessage}`);
+      } else {
+        toast.error(errorMessage);
+      }
     }
   };
 
   const handleCancel = () => {
     if (window.confirm("Apakah Anda yakin ingin membatalkan checkout?")) {
       navigate("/dashboard/katalog");
+    }
+  };
+
+  const handleApplyVoucher = () => {
+    // Fetch voucher details and call applyVoucher with full info
+    if (checkoutFlow.validatedVoucher) {
+      checkoutFlow.applyVoucher(
+        checkoutFlow.validatedVoucher.id,
+        Math.min(
+          checkoutFlow.validatedVoucher.balance,
+          checkoutFlow.cartItems.reduce((sum, item) => sum + Number(item.subtotal), 0)
+        ),
+        checkoutFlow.validatedVoucher.code,
+        checkoutFlow.validatedVoucher.balance
+      );
     }
   };
 
@@ -107,43 +132,48 @@ export function CheckoutPage() {
           <>
             {/* Step 1: Cart Review */}
             {checkoutFlow.currentStep === 1 && (
-              <CartReviewStep
-                items={checkoutFlow.cartItems}
-                isLoading={checkoutFlow.isLoading}
-                onUpdateQuantity={checkoutFlow.updateQty}
-                onRemoveItem={checkoutFlow.removeItem}
-                onClearCart={async () => {
-                  await checkoutFlow.removeItem("");
-                  checkoutFlow.loadCartItems();
-                }}
-                voucherBalance={100000} // TODO: Get from API
-              />
+              <div className="animate-in fade-in duration-300 ease-out">
+                <CartReviewStep
+                  items={checkoutFlow.cartItems}
+                  isLoading={checkoutFlow.isLoading}
+                  onUpdateQuantity={checkoutFlow.updateQty}
+                  onRemoveItem={checkoutFlow.removeItem}
+                  onClearCart={async () => {
+                    await checkoutFlow.removeItem("");
+                    checkoutFlow.loadCartItems();
+                  }}
+                  voucherBalance={100000} // TODO: Get from API
+                />
+              </div>
             )}
 
             {/* Step 2: Voucher Redemption */}
             {checkoutFlow.currentStep === 2 && (
-              <VoucherRedemptionStep
-                cartTotal={checkoutFlow.cartItems.reduce(
-                  (sum, item) => sum + Number(item.subtotal),
-                  0
-                )}
-                voucherBalance={100000} // TODO: Get from API
-                eligibilityData={checkoutFlow.eligibilityData}
-                appliedVoucher={checkoutFlow.appliedVoucher}
-                isLoading={checkoutFlow.isLoading}
-                onValidate={checkoutFlow.validateVoucherCode}
-                onApply={checkoutFlow.applyVoucher}
-                onRemove={checkoutFlow.removeAppliedVoucher}
-              />
+              <div className="animate-in fade-in duration-300 ease-out">
+                <VoucherRedemptionStep
+                  cartTotal={checkoutFlow.cartItems.reduce(
+                    (sum, item) => sum + Number(item.subtotal),
+                    0
+                  )}
+                  voucherBalance={100000} // TODO: Get from API
+                  eligibilityData={checkoutFlow.eligibilityData}
+                  appliedVoucher={checkoutFlow.appliedVoucher}
+                  isLoading={checkoutFlow.isLoading}
+                  onValidate={checkoutFlow.validateVoucherCode}
+                  onApply={handleApplyVoucher}
+                  onRemove={checkoutFlow.removeAppliedVoucher}
+                />
+              </div>
             )}
 
             {/* Step 3: Order Confirmation */}
             {checkoutFlow.currentStep === 3 && (
-              <OrderConfirmationStep
-                orderSummary={checkoutFlow.getOrderSummary()}
-                isLoading={checkoutFlow.isSubmitting}
-                error={checkoutFlow.error}
-              />
+              <div className="animate-in fade-in duration-300 ease-out">
+                <OrderConfirmationStep
+                  orderSummary={checkoutFlow.getOrderSummary()}
+                  error={checkoutFlow.error}
+                />
+              </div>
             )}
 
             {/* Step 4: Success - Handled by redirect */}
@@ -186,3 +216,5 @@ export function CheckoutPage() {
     </DashboardLayout>
   );
 }
+
+export default CheckoutPage;

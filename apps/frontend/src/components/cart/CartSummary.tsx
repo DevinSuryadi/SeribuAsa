@@ -1,4 +1,5 @@
 import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CartSummaryProps {
   totalAmount: number;
@@ -6,6 +7,7 @@ interface CartSummaryProps {
   ineligibleAmount: number;
   voucherBalance: number;
   maxVoucherApplicable: number;
+  isLoading?: boolean;
 }
 
 /**
@@ -17,9 +19,29 @@ export function CartSummary({
   ineligibleAmount,
   voucherBalance,
   maxVoucherApplicable,
+  isLoading = false,
 }: CartSummaryProps) {
   const remainingToRedeem = Math.max(0, eligibleAmount - maxVoucherApplicable);
-  const canUseFullVoucher = maxVoucherApplicable === voucherBalance;
+
+  if (isLoading) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4 animate-pulse">
+        <Skeleton className="h-6 w-32" />
+        <div className="space-y-3 pb-4 border-b border-gray-200">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-4/5" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+        <div className="pt-4 border-t border-gray-200">
+          <Skeleton className="h-6 w-2/3" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">

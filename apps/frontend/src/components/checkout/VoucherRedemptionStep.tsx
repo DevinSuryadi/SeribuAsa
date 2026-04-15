@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, TrendingUp } from "lucide-react";
 import { VoucherValidator } from "@/components/voucher/VoucherValidator";
-import { AppliedVoucher, EligibilityData } from "@/types/checkout";
+import type { AppliedVoucher, EligibilityData } from "@/types/checkout";
 import { Button } from "@/components/ui/button";
 
 interface VoucherRedemptionStepProps {
@@ -10,8 +10,8 @@ interface VoucherRedemptionStepProps {
   eligibilityData: EligibilityData | null;
   appliedVoucher: AppliedVoucher | null;
   isLoading: boolean;
-  onValidate: (code: string, amount: number) => Promise<void>;
-  onApply: (voucherId: string, appliedAmount: number, code: string, remaining: number) => void;
+  onValidate: (code: string, amount: number) => Promise<any>;
+  onApply: (voucherId: string) => void;
   onRemove: () => void;
 }
 
@@ -33,15 +33,9 @@ export function VoucherRedemptionStep({
 
   const eligibleAmount = eligibilityData?.eligible_amount || cartTotal;
   const ineligibleAmount = eligibilityData?.ineligible_amount || 0;
-  const maxApplicable = Math.min(voucherBalance, eligibleAmount);
 
-  const handleApplyVoucher = async (
-    voucherId: string,
-    appliedAmount: number,
-    code: string,
-    remaining: number
-  ) => {
-    onApply(voucherId, appliedAmount, code, remaining);
+  const handleApplyVoucher = async (voucherId: string) => {
+    onApply(voucherId);
     setShowValidator(false);
   };
 

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { ShoppingCart } from "lucide-react";
+import { useState } from "react";
+import { ShoppingCart, X } from "lucide-react";
 import { CartItem } from "./CartItem";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CartItemData {
   id: string;
@@ -51,10 +52,9 @@ export function CartList({
   if (items.length === 0 && !isLoading) {
     return (
       <EmptyState
-        icon={ShoppingCart}
+        icon={<ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />}
         title="Keranjang Kosong"
         description="Mulai tambahkan produk ke keranjang Anda"
-        color="blue"
       />
     );
   }
@@ -62,26 +62,53 @@ export function CartList({
   return (
     <div className="space-y-4">
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {error}
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-red-900">Error</p>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="flex-shrink-0 text-red-600 hover:text-red-700 transition-colors"
+            aria-label="Dismiss error"
+          >
+            <X size={18} />
+          </button>
         </div>
       )}
 
       {/* Cart Items */}
       <div className="space-y-3">
-        {items.map((item) => (
-          <CartItem
-            key={item.id}
-            id={item.id}
-            productName={item.product_name}
-            quantity={item.quantity}
-            price={Number(item.price)}
-            subtotal={Number(item.subtotal)}
-            onUpdateQuantity={onUpdateQuantity}
-            onRemove={onRemove}
-            isLoading={isLoading}
-          />
-        ))}
+        {isLoading && items.length === 0
+          ? // Show 3 skeleton items while loading
+            Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg animate-pulse"
+              >
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <div className="flex items-center gap-3 ml-4">
+                  <Skeleton className="h-9 w-24" />
+                  <Skeleton className="h-9 w-9" />
+                </div>
+              </div>
+            ))
+          : items.map((item) => (
+              <CartItem
+                key={item.id}
+                id={item.id}
+                productName={item.product_name}
+                quantity={item.quantity}
+                price={Number(item.price)}
+                subtotal={Number(item.subtotal)}
+                onUpdateQuantity={onUpdateQuantity}
+                onRemove={onRemove}
+                isLoading={isLoading}
+              />
+            ))}
       </div>
 
       {/* Clear Cart Button */}
@@ -94,14 +121,6 @@ export function CartList({
           >
             {isClearing ? "Menghapus..." : "Kosongkan Keranjang"}
           </button>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="text-sm text-gray-600 mt-2">Memperbarui keranjang...</p>
         </div>
       )}
     </div>

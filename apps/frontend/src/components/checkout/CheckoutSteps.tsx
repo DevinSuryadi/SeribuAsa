@@ -1,5 +1,5 @@
-import { CheckCircle2, Circle } from "lucide-react";
-import { CheckoutStep } from "@/types/checkout";
+import { CheckCircle2 } from "lucide-react";
+import type { CheckoutStep } from "@/types/checkout";
 
 interface CheckoutStepsProps {
   currentStep: CheckoutStep;
@@ -27,11 +27,11 @@ export function CheckoutSteps({ currentStep, onStepClick }: CheckoutStepsProps) 
             <button
               onClick={() => onStepClick(step.number)}
               disabled={step.number > currentStep}
-              className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all ${
+              className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${
                 step.number < currentStep
                   ? "bg-green-600 text-white cursor-pointer hover:bg-green-700"
                   : step.number === currentStep
-                    ? "bg-blue-600 text-white"
+                    ? "bg-blue-600 text-white scale-110"
                     : "bg-gray-200 text-gray-500 cursor-not-allowed"
               }`}
             >

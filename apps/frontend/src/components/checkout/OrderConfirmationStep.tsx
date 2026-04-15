@@ -1,9 +1,9 @@
-import { AlertCircle, CheckCircle2, ShoppingCart } from "lucide-react";
-import { CartItemData, AppliedVoucher, OrderSummary } from "@/types/checkout";
+import { AlertCircle, CheckCircle2, ShoppingCart, X } from "lucide-react";
+import type { OrderSummary } from "@/types/checkout";
+import { useState } from "react";
 
 interface OrderConfirmationStepProps {
   orderSummary: OrderSummary;
-  isLoading: boolean;
   error: string | null;
 }
 
@@ -13,9 +13,9 @@ interface OrderConfirmationStepProps {
  */
 export function OrderConfirmationStep({
   orderSummary,
-  isLoading,
-  error,
+  error: initialError,
 }: OrderConfirmationStepProps) {
+  const [error, setError] = useState(initialError);
   const vendorCount = Object.keys(orderSummary.grouped_by_vendor).length;
 
   return (
@@ -28,10 +28,17 @@ export function OrderConfirmationStep({
       {error && (
         <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
           <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1">
             <p className="font-medium text-red-900">Error</p>
-            <p className="text-sm text-red-700">{error}</p>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
           </div>
+          <button
+            onClick={() => setError(null)}
+            className="flex-shrink-0 text-red-600 hover:text-red-700 transition-colors"
+            aria-label="Dismiss error"
+          >
+            <X size={18} />
+          </button>
         </div>
       )}
 
