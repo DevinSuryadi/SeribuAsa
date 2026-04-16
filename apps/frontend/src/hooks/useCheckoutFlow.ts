@@ -3,7 +3,7 @@
  * Manages checkout flow state, validation, and API orchestration
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { CheckoutStep, CartItemData, CheckoutState, OrderSummary } from "@/types/checkout";
 import { getCart, updateCartItem, removeCartItem, clearCart } from "@/services/cart";
 import {
@@ -30,6 +30,24 @@ export function useCheckoutFlow() {
     error: null,
     orderId: null,
   });
+
+  // ============================================
+  // Type-Safe Helper Functions
+  // ============================================
+
+  const extractVendorId = useCallback((item: CartItemData): string => {
+    return (item as any).vendor_id || `vendor_${item.product_id}`;
+  }, []);
+
+  const getNextStep = useCallback((current: CheckoutStep): CheckoutStep => {
+    if (current < 4) return (current + 1) as CheckoutStep;
+    return current;
+  }, []);
+
+  const getPreviousStep = useCallback((current: CheckoutStep): CheckoutStep => {
+    if (current > 1) return (current - 1) as CheckoutStep;
+    return current;
+  }, []);
 
   // ============================================
   // Step Navigation
@@ -191,10 +209,10 @@ export function useCheckoutFlow() {
     const voucherDiscount = state.appliedVoucher?.applied_amount || 0;
     const cashAmount = Math.max(0, cartTotal - voucherDiscount);
 
-    // Group by vendor
+    // Group by vendor - use vendor_id from item if available
     const groupedByVendor: { [key: string]: CartItemData[] } = {};
     state.cartItems.forEach((item) => {
-      const vendorId = `vendor_${item.product_id}`;
+      const vendorId = extractVendorId(item);
       if (!groupedByVendor[vendorId]) groupedByVendor[vendorId] = [];
       groupedByVendor[vendorId].push(item);
     });
@@ -252,46 +270,55 @@ export function useCheckoutFlow() {
     setState((prev) => ({ ...prev, isSubmitting: true, error: null }));
 
     try {
-      // If voucher applied, redeem it first
-      if (state.appliedVoucher && state.appliedVoucher.voucher_id) {
-        try {
-          const redemptionResult = await redeemSingleVoucher({
-            code: state.appliedVoucher.code,
-            amount: state.appliedVoucher.applied_amount,
-            order_id: `temp-${Date.now()}`, // Temporary, will update after order created
-          });
-          // redemptionResult is used in the redemption process but not stored
-          void redemptionResult;
-        } catch (err: any) {
-          throw new Error(`Voucher redemption failed: ${err.message}`);
-        }
-      }
-
-      // Group items by vendor and create orders
+      // Group items by vendor - use vendor_id from item if available
       const groupedByVendor: { [key: string]: CartItemData[] } = {};
       state.cartItems.forEach((item) => {
-        // Get vendor from backend - for now, we'll use a placeholder
-        const vendorId = `vendor_${item.product_id}`;
+        const vendorId = extractVendorId(item);
         if (!groupedByVendor[vendorId]) groupedByVendor[vendorId] = [];
         groupedByVendor[vendorId].push(item);
       });
 
-      // Create orders for each vendor
+      // Create orders for each vendor FIRST
       const orderIds: string[] = [];
-      for (const [vendorId, items] of Object.entries(groupedByVendor)) {
-        const orderData = {
-          vendor_id: vendorId.replace("vendor_", ""),
-          items: items.map((item) => ({
-            product_id: item.product_id,
-            quantity: item.quantity,
-            price: Number(item.price),
-          })),
-          voucher_codes: state.appliedVoucher ? [state.appliedVoucher.code] : [],
-          notes: undefined,
-        };
+      const orderCreationErrors: string[] = [];
 
-        const orderResult = await createOrder(orderData);
-        orderIds.push(orderResult.id);
+      for (const [vendorId, items] of Object.entries(groupedByVendor)) {
+        try {
+          const orderData = {
+            vendor_id: vendorId.replace("vendor_", ""),
+            items: items.map((item) => ({
+              product_id: item.product_id,
+              quantity: item.quantity,
+              price: Number(item.price),
+            })),
+            voucher_codes: state.appliedVoucher ? [state.appliedVoucher.code] : [],
+            notes: undefined,
+          };
+
+          const orderResult = await createOrder(orderData);
+          orderIds.push(orderResult.id);
+        } catch (err: any) {
+          orderCreationErrors.push(`${vendorId}: ${err.message}`);
+        }
+      }
+
+      // If any orders failed to create, throw error
+      if (orderCreationErrors.length > 0) {
+        throw new Error(`Order creation failed for: ${orderCreationErrors.join(", ")}`);
+      }
+
+      // THEN redeem voucher with real order IDs (after orders are created)
+      if (state.appliedVoucher && state.appliedVoucher.voucher_id && orderIds.length > 0) {
+        try {
+          // Redeem voucher against the first order (or distribute across orders)
+          await redeemSingleVoucher({
+            code: state.appliedVoucher.code,
+            amount: state.appliedVoucher.applied_amount,
+            order_id: orderIds[0],
+          });
+        } catch (err: any) {
+          console.error("Voucher redemption failed after order creation:", err);
+        }
       }
 
       // Clear cart after successful order
@@ -323,6 +350,11 @@ export function useCheckoutFlow() {
   return {
     // State
     ...state,
+
+    // Helper functions
+    extractVendorId,
+    getNextStep,
+    getPreviousStep,
 
     // Step navigation
     setCurrentStep,

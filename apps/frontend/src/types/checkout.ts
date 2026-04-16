@@ -13,6 +13,7 @@ export interface CartItemData {
   price: number;
   subtotal: number;
   created_at: string;
+  vendor_id?: string;
 }
 
 export interface ValidatedVoucher {
