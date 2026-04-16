@@ -103,6 +103,9 @@ async def get_cart(
             updated_at=beneficiary.updated_at
         )
     
+    except HTTPException:
+        # Re-raise HTTP exceptions without catching them
+        raise
     except Exception as e:
         logger.error(f"Error getting cart: {str(e)}")
         raise HTTPException(
@@ -148,6 +151,9 @@ async def get_cart_summary(
             updated_at=beneficiary.updated_at
         )
     
+    except HTTPException:
+        # Re-raise HTTP exceptions without catching them
+        raise
     except Exception as e:
         logger.error(f"Error getting cart summary: {str(e)}")
         raise HTTPException(

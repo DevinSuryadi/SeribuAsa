@@ -344,6 +344,9 @@ async def get_transaction_history(
             for t in transactions
         ]
     
+    except HTTPException:
+        # Re-raise HTTP exceptions without catching them
+        raise
     except Exception as e:
         logger.error(f"Error getting transaction history: {str(e)}")
         raise HTTPException(
