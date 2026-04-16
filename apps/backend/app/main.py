@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NutriGuard API", version="1.0.0")
 
-# CORS middleware - must be added FIRST before other middleware
+# CORS middleware - ENABLED for frontend communication
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
