@@ -52,6 +52,7 @@ class OrderResponse(BaseModel):
     payment_status: str
     notes: Optional[str] = None
     vendor_store_name: Optional[str] = None
+    items: List[OrderItemResponse] = []
     created_at: datetime
     updated_at: Optional[datetime] = None
 
