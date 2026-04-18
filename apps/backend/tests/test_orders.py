@@ -52,16 +52,16 @@ def test_order_response_schema():
     """Test OrderResponse schema"""
     data = OrderResponse(
         id=uuid4(),
-        beneficiary_id=uuid4(),
+        user_id=uuid4(),
         vendor_id=uuid4(),
-        total_amount=Decimal("100000"),
-        voucher_used=Decimal("50000"),
-        cash_paid=Decimal("50000"),
+        cart_total=Decimal("100000"),
+        voucher_discount=Decimal("50000"),
+        cash_amount=Decimal("50000"),
         status="pending",
         payment_status="pending",
         created_at=datetime.utcnow(),
     )
-    assert data.total_amount == Decimal("100000")
+    assert data.cart_total == Decimal("100000")
     assert data.status == "pending"
 
 
