@@ -202,7 +202,7 @@ async def calculate_zscore(data: ZScoreRequest):
     }
 
 
-@router.get("/{beneficiary_id}/latest-measurement")
+@router.get("/latest-measurement/{beneficiary_id}")
 async def get_latest_measurement(
     beneficiary_id: str,
     db: Session = Depends(get_db),

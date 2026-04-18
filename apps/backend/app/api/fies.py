@@ -116,7 +116,7 @@ async def get_fies_history(
     }
 
 
-@router.get("/{beneficiary_id}/latest")
+@router.get("/latest/{beneficiary_id}")
 async def get_latest_fies(
     beneficiary_id: str,
     db: Session = Depends(get_db),
