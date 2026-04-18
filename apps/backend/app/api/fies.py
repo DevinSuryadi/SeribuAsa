@@ -116,7 +116,7 @@ async def get_fies_history(
     }
 
 
-@router.get("/{beneficiary_id}/latest")
+@router.get("/latest/{beneficiary_id}")
 async def get_latest_fies(
     beneficiary_id: str,
     db: Session = Depends(get_db),
@@ -131,10 +131,12 @@ async def get_latest_fies(
     )
 
     if not survey:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No FIES survey found for this beneficiary",
-        )
+        # Return empty response instead of 404
+        logger.info(f"No FIES survey found for beneficiary {beneficiary_id}")
+        return {
+            "success": True,
+            "data": None,
+        }
 
     logger.info(f"Latest FIES survey fetched for beneficiary {beneficiary_id}")
     return {

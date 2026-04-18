@@ -1,7 +1,8 @@
 import { apiFetch } from "./api";
 
 export async function getChildren() {
-  return apiFetch("/nutrition/children");
+  const response = await apiFetch("/nutrition/children");
+  return Array.isArray(response?.data) ? response.data : [];
 }
 
 export async function addMeasurement(data: {
@@ -19,7 +20,8 @@ export async function addMeasurement(data: {
 }
 
 export async function getMeasurementHistory(childId: string) {
-  return apiFetch(`/nutrition/measurements/${childId}`);
+  const response = await apiFetch(`/nutrition/measurements/${childId}`);
+  return response?.data ?? null;
 }
 
 export async function calculateZScore(data: {
@@ -28,16 +30,36 @@ export async function calculateZScore(data: {
   weight: number;
   height: number;
 }) {
-  return apiFetch("/nutrition/zscore", {
+  const response = await apiFetch("/nutrition/zscore", {
     method: "POST",
     body: JSON.stringify(data),
   });
+  return response?.data ?? null;
 }
 
 export async function getLatestFIESStatus(beneficiaryId: string) {
-  return apiFetch(`/fies/${beneficiaryId}/latest`);
+  const response = await apiFetch(`/fies/latest/${beneficiaryId}`);
+  return response?.data ?? null;
 }
 
 export async function getLatestNutritionMeasurement(beneficiaryId: string) {
-  return apiFetch(`/nutrition/latest-measurement/${beneficiaryId}`);
+  const response = await apiFetch(`/nutrition/latest-measurement/${beneficiaryId}`);
+  const entries = Array.isArray(response?.data) ? response.data : [];
+
+  if (entries.length === 0) return null;
+
+  const latestEntry =
+    entries
+      .filter((entry: any) => entry?.measurement?.measurement_date)
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.measurement.measurement_date).getTime() -
+          new Date(a.measurement.measurement_date).getTime()
+      )[0] ?? entries[0];
+
+  return {
+    child_id: latestEntry?.child_id,
+    child_name: latestEntry?.child_name,
+    ...(latestEntry?.measurement ?? {}),
+  };
 }

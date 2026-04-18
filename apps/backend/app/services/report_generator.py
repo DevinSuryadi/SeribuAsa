@@ -57,33 +57,47 @@ class ReportGenerator:
             .scalar()
         ) or 0
 
-        # Donation trend (monthly) computed in Python to stay compatible across SQLite/PostgreSQL.
-        trend_totals: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
-        trend_counts: dict[str, int] = defaultdict(int)
-        for donation in donations:
-            key = donation.created_at.strftime("%Y-%m")
-            trend_totals[key] += donation.amount
-            trend_counts[key] += 1
-
+        # Donation trend (monthly) with proper date handling
+        trend_data = (
+            db.query(
+                func.date_trunc("month", Donation.created_at).label("month"),
+                func.sum(Donation.amount).label("total"),
+            )
+            .select_from(Donation)
+            .filter(
+                Donation.donor_id == donor_id,
+                Donation.status == DonationStatusEnum.success,
+            )
+            .group_by(func.date_trunc("month", Donation.created_at))
+            .order_by(func.date_trunc("month", Donation.created_at))
+            .all()
+        )
         donation_trend = [
-            {
-                "month": month,
-                "total": float(trend_totals[month]),
-                "donations_count": trend_counts[month],
-            }
-            for month in sorted(trend_totals.keys())
+            {"month": t.month.strftime("%Y-%m") if t.month else "", "total": float(t.total or 0), "donations_count": 0}
+            for t in trend_data
         ]
 
-        # Placeholder distribution until beneficiary address normalization is implemented.
-        geographic_distribution = []
-        if total_donated > 0:
-            geographic_distribution.append(
-                {
-                    "province": "Jakarta",
-                    "children": children_helped,
-                    "amount": float(total_donated),
-                }
+        # Geographic distribution by province (from user address if available)
+        # Simplified: just get donation stats, no need for beneficiary details
+        geo_data = (
+            db.query(
+                func.count(Donation.id).label("donation_count"),
+                func.sum(Donation.amount).label("total_amount"),
             )
+            .select_from(Donation)
+            .filter(
+                Donation.donor_id == donor_id,
+                Donation.status == DonationStatusEnum.success,
+            )
+            .all()
+        )
+        geographic_distribution = [
+            {
+                "province": "Jakarta",  # Placeholder - extract from user_profile.address
+                "children": 0,
+                "amount": float(sum(d.total_amount or 0 for d in geo_data)),
+            }
+        ] if geo_data else []
 
         return {
             "donor_id": str(donor_uuid),
@@ -149,7 +163,8 @@ class ReportGenerator:
                 func.count(Order.id).label("order_count"),
                 func.sum(Order.total_amount).label("total"),
             )
-            .filter(Order.vendor_id == vendor_uuid, Order.is_active)
+            .select_from(Order)
+            .filter(Order.vendor_id == vendor_id, Order.is_active)
             .group_by(func.date(Order.created_at))
             .order_by(func.date(Order.created_at).desc())
             .limit(30)
@@ -202,9 +217,9 @@ class ReportGenerator:
         report_end = end_date or date.today()
         
         # Basic coverage stats
-        total_beneficiaries = db.query(func.count(BeneficiaryProfile.id)).scalar() or 0
-        total_children = db.query(func.count(Child.id)).scalar() or 0
-        total_vendors = db.query(func.count(VendorProfile.id)).scalar() or 0
+        total_beneficiaries = db.query(func.count(BeneficiaryProfile.id)).select_from(BeneficiaryProfile).scalar() or 0
+        total_children = db.query(func.count(Child.id)).select_from(Child).scalar() or 0
+        total_vendors = db.query(func.count(VendorProfile.id)).select_from(VendorProfile).scalar() or 0
         
         # Get latest nutrition measurements for stunting analysis
         latest_measurements = (
@@ -212,6 +227,7 @@ class ReportGenerator:
                 NutritionMeasurement.classification,
                 func.count(NutritionMeasurement.id).label("count"),
             )
+            .select_from(NutritionMeasurement)
             .filter(
                 NutritionMeasurement.measurement_date >= report_start,
                 NutritionMeasurement.measurement_date <= report_end,
@@ -226,13 +242,14 @@ class ReportGenerator:
         total_measurements = sum(measurement_stats.values()) or 1
         stunting_rate = float((stunted_count / total_measurements * 100) if total_measurements > 0 else 0)
         
-        # Get previous period measurements for trend calculation
+         # Get previous period measurements for trend calculation
         previous_start = report_start - timedelta(days=90)
         previous_measurements = (
             db.query(
                 NutritionMeasurement.classification,
                 func.count(NutritionMeasurement.id).label("count"),
             )
+            .select_from(NutritionMeasurement)
             .filter(
                 NutritionMeasurement.measurement_date >= previous_start,
                 NutritionMeasurement.measurement_date < report_start,
@@ -252,6 +269,7 @@ class ReportGenerator:
         # Budget utilization from settlements
         total_settlements = (
             db.query(func.sum(Settlement.total_redemptions))
+            .select_from(Settlement)
             .filter(
                 Settlement.period_end >= report_start,
                 Settlement.period_end <= report_end,
@@ -261,6 +279,7 @@ class ReportGenerator:
         
         total_admin_fees = (
             db.query(func.sum(Settlement.admin_fee))
+            .select_from(Settlement)
             .filter(
                 Settlement.period_end >= report_start,
                 Settlement.period_end <= report_end,
@@ -321,7 +340,7 @@ class ReportGenerator:
     @staticmethod
     def generate_demographics_report(db: Session) -> Dict[str, Any]:
         """Generate demographic breakdown with proper calculations"""
-        total_children = db.query(func.count(Child.id)).scalar() or 1
+        total_children = db.query(func.count(Child.id)).select_from(Child).scalar() or 1
         
         # Age distribution
         age_bins = [(0, 5), (5, 10), (10, 15), (15, 18)]
@@ -329,6 +348,7 @@ class ReportGenerator:
         for min_age, max_age in age_bins:
             count = (
                 db.query(func.count(Child.id))
+                .select_from(Child)
                 .filter(
                     Child.date_of_birth.isnot(None),
                     func.extract("year", func.now()) - func.extract("year", Child.date_of_birth) >= min_age,
@@ -349,6 +369,7 @@ class ReportGenerator:
                 Child.gender,
                 func.count(Child.id).label("count"),
             )
+            .select_from(Child)
             .filter(Child.gender.isnot(None))
             .group_by(Child.gender)
             .all()
@@ -368,14 +389,9 @@ class ReportGenerator:
                 NutritionMeasurement.classification,
                 func.count(NutritionMeasurement.id).label("count"),
             )
+            .select_from(NutritionMeasurement)
             .filter(
                 NutritionMeasurement.classification.isnot(None),
-                NutritionMeasurement.measurement_date == (
-                    db.query(func.max(NutritionMeasurement.measurement_date))
-                    .filter(NutritionMeasurement.child_id == NutritionMeasurement.child_id)
-                    .correlate(NutritionMeasurement)
-                    .scalar_subquery()
-                ),
             )
             .group_by(NutritionMeasurement.classification)
             .all()
@@ -397,14 +413,9 @@ class ReportGenerator:
                 FIESSurvey.classification,
                 func.count(FIESSurvey.id).label("count"),
             )
+            .select_from(FIESSurvey)
             .filter(
                 FIESSurvey.classification.isnot(None),
-                FIESSurvey.survey_date == (
-                    db.query(func.max(FIESSurvey.survey_date))
-                    .filter(FIESSurvey.beneficiary_id == FIESSurvey.beneficiary_id)
-                    .correlate(FIESSurvey)
-                    .scalar_subquery()
-                ),
             )
             .group_by(FIESSurvey.classification)
             .all()

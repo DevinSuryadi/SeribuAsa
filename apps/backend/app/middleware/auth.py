@@ -47,25 +47,8 @@ async def get_current_user(
     In production: Validates JWT token with Supabase
     In development: Returns mock user for testing
     """
-    dev_mode = is_dev_mode()
-
-    if dev_mode:
-        if credentials and _has_supabase_auth_config():
-            try:
-                token_data = await supabase_auth.verify_token(credentials.credentials)
-                user_info = supabase_auth.extract_user_info(token_data)
-                return AuthenticatedUser(
-                    user_id=user_info["user_id"],
-                    email=user_info["email"],
-                    role=user_info["role"],
-                    email_verified=user_info["email_verified"],
-                )
-            except Exception as exc:
-                logger.warning(
-                    "Token verification failed in development mode, falling back to mock auth: %s",
-                    exc,
-                )
-
+    # Development mode - return mock user
+    if is_dev_mode():
         logger.debug("Using mock authentication (development mode)")
         return AuthenticatedUser(
             user_id="00000000-0000-0000-0000-000000000001",
@@ -74,11 +57,10 @@ async def get_current_user(
             email_verified=True
         )
 
-    # Production mode requires credentials.
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
+            detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

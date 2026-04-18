@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -22,6 +22,12 @@ import {
   RefreshCw,
   AlertCircle,
   Loader2,
+  Wheat,
+  Egg,
+  Milk,
+  Carrot,
+  Apple,
+  Package,
 } from "lucide-react";
 import { formatIDR } from "@/lib/format";
 import { getProducts, getCategories } from "@/services/products";
@@ -44,13 +50,13 @@ type Product = {
   vendor_id: string;
 };
 
-const categoryEmojis: Record<string, string> = {
-  Pokok: "🌾",
-  Protein: "🥚",
-  Susu: "🥛",
-  Sayuran: "🥬",
-  Buah: "🍌",
-  Snack: "🍪",
+const categoryIcons: Record<string, ComponentType<{ className?: string }>> = {
+  Pokok: Wheat,
+  Protein: Egg,
+  Susu: Milk,
+  Sayuran: Carrot,
+  Buah: Apple,
+  Snack: Package,
 };
 
 const KatalogPangan = () => {
@@ -224,7 +230,7 @@ const KatalogPangan = () => {
                   : "bg-secondary text-muted-foreground hover:text-foreground"
               }`}
             >
-              {cat !== "Semua" && (categoryEmojis[cat] || "🍽️")} {cat}
+              {cat}
             </button>
           ))}
         </div>
@@ -232,20 +238,22 @@ const KatalogPangan = () => {
         {/* Product Grid */}
         <div ref={gridRef} className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {filtered.map((product) => {
-            const emoji = product.category_name
-              ? categoryEmojis[product.category_name] || "🍽️"
-              : "🍽️";
+            const ProductIcon = product.category_name
+              ? categoryIcons[product.category_name] || Package
+              : Package;
             return (
               <Card
                 key={product.id}
                 className="overflow-hidden flex flex-col transition-all hover:shadow-md group"
               >
                 <button
-                  className="aspect-[4/3] bg-secondary/30 flex items-center justify-center text-5xl relative overflow-hidden"
+                  className="aspect-[4/3] bg-secondary/30 flex items-center justify-center relative overflow-hidden"
                   onClick={() => setSelectedProduct(product)}
                   aria-label={`Lihat detail ${product.name}`}
                 >
-                  <span className="group-hover:scale-110 transition-transform">{emoji}</span>
+                  <span className="group-hover:scale-110 transition-transform rounded-full bg-white/80 p-4">
+                    <ProductIcon className="h-10 w-10 text-primary" />
+                  </span>
                   {product.stock_quantity <= 20 && (
                     <Badge variant="destructive" className="absolute top-2 right-2 text-[10px]">
                       Sisa {product.stock_quantity}
@@ -316,9 +324,12 @@ const KatalogPangan = () => {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="aspect-video bg-secondary/30 rounded-lg flex items-center justify-center text-6xl">
-                    {selectedProduct.category_name
-                      ? categoryEmojis[selectedProduct.category_name] || "🍽️"
-                      : "🍽️"}
+                    {(() => {
+                      const SelectedIcon = selectedProduct.category_name
+                        ? categoryIcons[selectedProduct.category_name] || Package
+                        : Package;
+                      return <SelectedIcon className="h-16 w-16 text-primary" />;
+                    })()}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {selectedProduct.description || "Tidak ada deskripsi"}

@@ -62,11 +62,8 @@ class FIESCalculator:
 
     @staticmethod
     def is_survey_available() -> tuple[bool, str]:
-        """Check if survey is available (tanggal 1-7)"""
-        today = date.today()
-        if 1 <= today.day <= 7:
-            return True, ""
-        return False, f"Survey hanya tersedia tanggal 1-7 setiap bulan. Hari ini tanggal {today.day}."
+        """Survey is always available."""
+        return True, ""
 
     @staticmethod
     def check_already_submitted(db: Session, beneficiary_id: str, month: int, year: int) -> Optional[FIESSurvey]:
@@ -87,11 +84,6 @@ class FIESCalculator:
         """Submit FIES survey with full validation"""
         today = date.today()
         survey_dt = survey_date or today
-
-        # Check availability
-        available, msg = FIESCalculator.is_survey_available()
-        if not available:
-            raise ValueError(msg)
 
         # Check duplicate
         existing = FIESCalculator.check_already_submitted(

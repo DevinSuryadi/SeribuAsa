@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -15,6 +15,8 @@ import {
   Star,
   Loader2,
   RefreshCw,
+  Camera,
+  CameraOff,
 } from "lucide-react";
 import { formatIDR } from "@/lib/format";
 import { getVoucherBalance, redeemVoucher } from "@/services/vouchers";
@@ -33,8 +35,15 @@ const PenukaranVoucher = () => {
   const [redeeming, setRedeeming] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [manualAmount, setManualAmount] = useState(0);
+  const [cameraActive, setCameraActive] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanningRef = useRef(false);
 
   const total = selectedItems.reduce((s, i) => s + i.price * i.qty, 0);
+  const isVendorMode = user?.role === "vendor" || user?.role === "admin";
+  const checkoutTotal = isVendorMode ? manualAmount : total;
   const [transactionId, setTransactionId] = useState("");
 
   useEffect(() => {
@@ -45,7 +54,7 @@ const PenukaranVoucher = () => {
 
       getOrders()
         .then((data) => {
-          const orders = Array.isArray(data) ? data : data?.data || [];
+          const orders = Array.isArray(data) ? data : data?.orders || [];
           if (orders.length > 0) {
             const lastOrder = orders[0];
             const items =
@@ -61,35 +70,114 @@ const PenukaranVoucher = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+    scanningRef.current = false;
+  };
+
+  const startCamera = async () => {
+    if (!("mediaDevices" in navigator) || !navigator.mediaDevices.getUserMedia) {
+      toast.error("Perangkat tidak mendukung kamera");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setCameraActive(true);
+      scanningRef.current = true;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      if (!("BarcodeDetector" in window)) {
+        toast.info("Scanner otomatis tidak tersedia di browser ini. Gunakan input manual.");
+        return;
+      }
+
+      const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+      const loop = async () => {
+        if (!videoRef.current || !scanningRef.current) return;
+        try {
+          const barcodes = await detector.detect(videoRef.current);
+          if (barcodes && barcodes.length > 0) {
+            const rawValue = String(barcodes[0].rawValue || "").trim();
+            const parsedCode = rawValue.startsWith("VOUCHER:")
+              ? rawValue.replace("VOUCHER:", "")
+              : rawValue;
+
+            if (parsedCode) {
+              setCode(parsedCode.toUpperCase());
+              toast.success("QR voucher terdeteksi");
+              stopCamera();
+              return;
+            }
+          }
+        } catch {
+          // Ignore transient decode failures
+        }
+        requestAnimationFrame(loop);
+      };
+
+      requestAnimationFrame(loop);
+    } catch {
+      toast.error("Gagal mengakses kamera");
+      stopCamera();
+    }
+  };
+
   const handleValidate = async () => {
     if (!code.trim()) {
       toast.error("Masukkan kode voucher");
+      return;
+    }
+    if (checkoutTotal <= 0) {
+      toast.error("Total transaksi harus lebih dari 0");
       return;
     }
     setValidating(true);
     setErrorMessage("");
 
     try {
-      if (!balance || balance.total_balance <= 0) {
-        setErrorMessage("Saldo voucher tidak mencukupi atau tidak ada voucher aktif.");
-        setStep("failed");
-        return;
-      }
+      if (!isVendorMode) {
+        if (!balance || balance.total_balance <= 0) {
+          setErrorMessage("Saldo voucher tidak mencukupi atau tidak ada voucher aktif.");
+          setStep("failed");
+          return;
+        }
 
-      const voucherMatch = balance.active_vouchers?.find(
-        (v: any) => v.code.toLowerCase() === code.toLowerCase()
-      );
+        const voucherMatch = balance.active_vouchers?.find(
+          (v: any) => v.code.toLowerCase() === code.toLowerCase()
+        );
 
-      if (!voucherMatch) {
-        setErrorMessage("Kode voucher tidak ditemukan atau sudah kadaluarsa.");
-        setStep("failed");
-        return;
-      }
+        if (!voucherMatch) {
+          setErrorMessage("Kode voucher tidak ditemukan atau sudah kadaluarsa.");
+          setStep("failed");
+          return;
+        }
 
-      if (parseFloat(voucherMatch.balance) < total) {
-        setErrorMessage("Saldo voucher tidak mencukupi untuk transaksi ini.");
-        setStep("failed");
-        return;
+        if (parseFloat(voucherMatch.balance) < checkoutTotal) {
+          setErrorMessage("Saldo voucher tidak mencukupi untuk transaksi ini.");
+          setStep("failed");
+          return;
+        }
       }
 
       setStep("validate");
@@ -107,11 +195,16 @@ const PenukaranVoucher = () => {
 
     try {
       const orderId = `ORD-${Date.now()}`;
-      const result = await redeemVoucher({
-        voucher_codes: [code],
-        amount: total,
-        order_id: orderId,
-      });
+      const result = await redeemVoucher(
+        {
+          voucher_codes: [code],
+          amount: checkoutTotal,
+          order_id: orderId,
+        },
+        {
+          idempotencyKey: `vendor-redeem-${code}-${orderId}-${checkoutTotal}`,
+        }
+      );
 
       if (result.success) {
         setTransactionId(orderId);
@@ -131,6 +224,7 @@ const PenukaranVoucher = () => {
   };
 
   const reset = () => {
+    stopCamera();
     setStep("scan");
     setCode("");
     setErrorMessage("");
@@ -162,16 +256,78 @@ const PenukaranVoucher = () => {
               <CardDescription>Scan QR atau masukkan kode voucher penerima</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-lg bg-secondary/50 p-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Saldo Anda:</span>
-                  <span className="font-bold text-primary">{formatIDR(totalBalance)}</span>
+              {!isVendorMode && (
+                <div className="rounded-lg bg-secondary/50 p-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Saldo Anda:</span>
+                    <span className="font-bold text-primary">{formatIDR(totalBalance)}</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-muted-foreground">Voucher Aktif:</span>
+                    <span className="font-medium">{balance?.active_vouchers?.length || 0}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-muted-foreground">Voucher Aktif:</span>
-                  <span className="font-medium">{balance?.active_vouchers?.length || 0}</span>
+              )}
+
+              {isVendorMode && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                  Mode vendor: scan QR voucher dari penerima, lalu konfirmasi nominal transaksi.
                 </div>
-              </div>
+              )}
+
+              {isVendorMode ? (
+                <div>
+                  <Label>Total Transaksi (IDR)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={checkoutTotal || ""}
+                    onChange={(e) => setManualAmount(Number(e.target.value || 0))}
+                    placeholder="0"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-lg bg-secondary/30 p-3 text-sm flex items-center justify-between">
+                  <span className="text-muted-foreground">Total Belanja:</span>
+                  <span className="font-semibold text-foreground">{formatIDR(checkoutTotal)}</span>
+                </div>
+              )}
+
+              {isVendorMode && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    {!cameraActive ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={startCamera}
+                      >
+                        <Camera className="h-4 w-4" /> Mulai Scanner
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={stopCamera}
+                      >
+                        <CameraOff className="h-4 w-4" /> Hentikan Kamera
+                      </Button>
+                    )}
+                  </div>
+
+                  {cameraActive && (
+                    <video
+                      ref={videoRef}
+                      className="w-full rounded-lg border border-gray-200 bg-black/80"
+                      muted
+                      playsInline
+                    />
+                  )}
+                </div>
+              )}
+
               <div>
                 <Label>Kode Voucher</Label>
                 <Input
@@ -219,12 +375,14 @@ const PenukaranVoucher = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Belanja:</span>
-                  <span className="font-semibold text-foreground">{formatIDR(total)}</span>
+                  <span className="font-semibold text-foreground">{formatIDR(checkoutTotal)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sisa Saldo:</span>
-                  <span className="font-medium">{formatIDR(totalBalance - total)}</span>
-                </div>
+                {!isVendorMode && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Sisa Saldo:</span>
+                    <span className="font-medium">{formatIDR(totalBalance - checkoutTotal)}</span>
+                  </div>
+                )}
               </div>
               <Button className="w-full" onClick={() => setStep("items")}>
                 Lanjut Pilih Item
@@ -284,12 +442,14 @@ const PenukaranVoucher = () => {
               <div className="rounded-lg bg-secondary/50 p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total:</span>
-                  <span className="font-bold text-primary">{formatIDR(total)}</span>
+                  <span className="font-bold text-primary">{formatIDR(checkoutTotal)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sisa Saldo:</span>
-                  <span className="font-medium">{formatIDR(totalBalance - total)}</span>
-                </div>
+                {!isVendorMode && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Sisa Saldo:</span>
+                    <span className="font-medium">{formatIDR(totalBalance - checkoutTotal)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">ID Transaksi:</span>
                   <span className="font-mono text-xs">{transactionId}</span>

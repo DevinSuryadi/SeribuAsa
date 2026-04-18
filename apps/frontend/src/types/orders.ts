@@ -31,6 +31,7 @@ export interface Order {
   cash_amount: number;
   created_at: string;
   updated_at: string;
+  vendor_store_name?: string;
   notes?: string;
   applied_voucher?: {
     code: string;

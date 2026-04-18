@@ -26,11 +26,16 @@ class CartItemResponse(BaseModel):
     """Schema for cart item response"""
     id: str
     product_id: str
+    vendor_id: Optional[str] = None
     product_name: str
     quantity: int
     price: Decimal
     subtotal: Decimal
-    created_at: datetime
+    voucher_price: Decimal = Decimal(0)
+    category_id: Optional[str] = None
+    is_eligible: bool = False
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,7 +50,7 @@ class CartResponse(BaseModel):
     total_items: int
     total_amount: Decimal
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -64,7 +69,7 @@ class CartSummaryResponse(BaseModel):
     voucher_balance: Decimal
     max_voucher_applicable: Decimal
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -6,8 +6,8 @@ interface ValidatedVoucher {
   id: string;
   code: string;
   balance: number;
-  expiryDate: string;
-  daysUntilExpiry: number;
+  expiry_date: string;
+  days_until_expiry: number;
 }
 
 interface VoucherValidatorProps {
@@ -118,15 +118,15 @@ export function VoucherValidator({
               <div className="flex justify-between">
                 <span>Berlaku sampai:</span>
                 <span className="font-medium">
-                  {new Date(validated.expiryDate).toLocaleDateString("id-ID")}
+                  {new Date(validated.expiry_date).toLocaleDateString("id-ID")}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Hari tersisa:</span>
                 <span
-                  className={`font-medium ${validated.daysUntilExpiry <= 7 ? "text-orange-600" : "text-green-600"}`}
+                  className={`font-medium ${validated.days_until_expiry <= 7 ? "text-orange-600" : "text-green-600"}`}
                 >
-                  {validated.daysUntilExpiry} hari
+                  {validated.days_until_expiry} hari
                 </span>
               </div>
             </div>

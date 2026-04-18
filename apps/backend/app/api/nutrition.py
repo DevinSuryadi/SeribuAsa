@@ -202,7 +202,7 @@ async def calculate_zscore(data: ZScoreRequest):
     }
 
 
-@router.get("/{beneficiary_id}/latest-measurement")
+@router.get("/latest-measurement/{beneficiary_id}")
 async def get_latest_measurement(
     beneficiary_id: str,
     db: Session = Depends(get_db),
@@ -213,12 +213,6 @@ async def get_latest_measurement(
     children = db.query(Child).filter(
         Child.beneficiary_id == beneficiary_id,
     ).all()
-
-    if not children:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No children found for this beneficiary",
-        )
 
     # Get latest measurement per child
     results = []
@@ -238,12 +232,6 @@ async def get_latest_measurement(
                     measurement=NutritionMeasurementResponse.model_validate(latest),
                 ).model_dump()
             )
-
-    if not results:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No nutrition measurements found for this beneficiary's children",
-        )
 
     logger.info(
         f"Latest nutrition measurements fetched for beneficiary {beneficiary_id}: {len(results)} children"

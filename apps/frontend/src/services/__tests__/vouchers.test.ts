@@ -294,14 +294,20 @@ describe("Voucher Service Integration Tests", () => {
         order_id: "order_1",
       });
 
-      expect(apiFetch).toHaveBeenCalledWith("/vouchers/redeem", {
-        method: "POST",
-        body: JSON.stringify({
-          voucher_codes: ["VOUCHER001"],
-          amount: 50000,
-          order_id: "order_1",
-        }),
-      });
+      expect(apiFetch).toHaveBeenCalledWith(
+        "/vouchers/redeem",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "Idempotency-Key": expect.any(String),
+          }),
+          body: JSON.stringify({
+            voucher_codes: ["VOUCHER001"],
+            amount: 50000,
+            order_id: "order_1",
+          }),
+        })
+      );
 
       expect(result.success).toBe(true);
       expect(result.redeemed_amount).toBe(50000);
@@ -412,16 +418,22 @@ describe("Voucher Service Integration Tests", () => {
 
   describe("getTransactionHistory", () => {
     it("should retrieve transaction history successfully", async () => {
-      const mockTransactions = [
-        {
-          id: "txn_1",
-          voucher_id: "voucher_1",
-          order_id: "order_1",
-          transaction_type: "redeemed",
-          amount: 50000,
-          created_at: "2024-01-05T00:00:00Z",
-        },
-      ];
+      const mockTransactions = {
+        items: [
+          {
+            id: "txn_1",
+            voucher_id: "voucher_1",
+            order_id: "order_1",
+            transaction_type: "redeemed",
+            amount: 50000,
+            created_at: "2024-01-05T00:00:00Z",
+          },
+        ],
+        total: 1,
+        page: 1,
+        page_size: 10,
+        total_pages: 1,
+      };
 
       vi.mocked(apiFetch).mockResolvedValueOnce(mockTransactions);
 
@@ -430,21 +442,27 @@ describe("Voucher Service Integration Tests", () => {
         transaction_type: "redeemed",
       });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].transaction_type).toBe("redeemed");
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].transaction_type).toBe("redeemed");
     });
 
     it("should filter by transaction type", async () => {
-      const mockTransactions = [
-        {
-          id: "txn_1",
-          voucher_id: "voucher_1",
-          order_id: null,
-          transaction_type: "allocation",
-          amount: 100000,
-          created_at: "2024-01-01T00:00:00Z",
-        },
-      ];
+      const mockTransactions = {
+        items: [
+          {
+            id: "txn_1",
+            voucher_id: "voucher_1",
+            order_id: null,
+            transaction_type: "allocation",
+            amount: 100000,
+            created_at: "2024-01-01T00:00:00Z",
+          },
+        ],
+        total: 1,
+        page: 1,
+        page_size: 10,
+        total_pages: 1,
+      };
 
       vi.mocked(apiFetch).mockResolvedValueOnce(mockTransactions);
 
@@ -453,18 +471,17 @@ describe("Voucher Service Integration Tests", () => {
         transaction_type: "allocation",
       });
 
-      expect(result[0].transaction_type).toBe("allocation");
+      expect(result.items[0].transaction_type).toBe("allocation");
     });
 
     it("should support pagination", async () => {
-      const mockTransactions: Array<{
-        id: string;
-        voucher_id: string;
-        order_id?: string;
-        transaction_type: string;
-        amount: number;
-        created_at: string;
-      }> = [];
+      const mockTransactions = {
+        items: [],
+        total: 0,
+        page: 2,
+        page_size: 5,
+        total_pages: 0,
+      };
 
       vi.mocked(apiFetch).mockResolvedValueOnce(mockTransactions);
 
@@ -474,17 +491,25 @@ describe("Voucher Service Integration Tests", () => {
         page_size: 5,
       });
 
-      expect(Array.isArray(result)).toBe(true);
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(result.page).toBe(2);
+      expect(result.page_size).toBe(5);
     });
 
     it("should handle empty transaction history", async () => {
-      vi.mocked(apiFetch).mockResolvedValueOnce([]);
+      vi.mocked(apiFetch).mockResolvedValueOnce({
+        items: [],
+        total: 0,
+        page: 1,
+        page_size: 10,
+        total_pages: 0,
+      });
 
       const result = await voucherService.getTransactionHistory({
         beneficiary_id: "ben_1",
       });
 
-      expect(result).toHaveLength(0);
+      expect(result.items).toHaveLength(0);
     });
   });
 
@@ -556,14 +581,20 @@ describe("Voucher Service Integration Tests", () => {
         order_id: "order_1",
       });
 
-      expect(apiFetch).toHaveBeenCalledWith("/vouchers/redeem-single", {
-        method: "POST",
-        body: JSON.stringify({
-          code: "VOUCHER001",
-          amount: 50000,
-          order_id: "order_1",
-        }),
-      });
+      expect(apiFetch).toHaveBeenCalledWith(
+        "/vouchers/redeem-single",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "Idempotency-Key": expect.any(String),
+          }),
+          body: JSON.stringify({
+            code: "VOUCHER001",
+            amount: 50000,
+            order_id: "order_1",
+          }),
+        })
+      );
 
       expect(result.success).toBe(true);
     });

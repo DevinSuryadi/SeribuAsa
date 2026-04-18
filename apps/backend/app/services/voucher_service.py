@@ -275,7 +275,7 @@ class VoucherService:
     def validate_voucher(
         db: Session,
         code: str,
-        beneficiary_id: str,
+        beneficiary_id: Optional[str],
         amount: Decimal
     ) -> Dict[str, Any]:
         """
@@ -283,7 +283,7 @@ class VoucherService:
         Returns voucher details and validation status.
         Raises exception if invalid.
         """
-        beneficiary_uuid = VoucherService._to_uuid(beneficiary_id)
+        beneficiary_uuid = VoucherService._to_uuid(beneficiary_id) if beneficiary_id else None
         
         # Get voucher
         voucher = VoucherService.get_voucher_by_code(db, code)
@@ -291,7 +291,7 @@ class VoucherService:
             raise ValueError("Voucher code not found")
         
         # Check ownership
-        if voucher.beneficiary_id != beneficiary_uuid:
+        if beneficiary_uuid and voucher.beneficiary_id != beneficiary_uuid:
             raise ValueError("Voucher does not belong to you")
         
         # Check expiration
@@ -451,7 +451,7 @@ class VoucherService:
         voucher_code: str,
         amount: Decimal,
         order_id: str,
-        beneficiary_id: str
+        beneficiary_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Redeem single voucher with transaction logging.
