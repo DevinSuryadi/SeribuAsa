@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Dict, Any, Optional, List
 import logging
 from collections import defaultdict
+from uuid import UUID
 
 from app.models.donation import Donation, DonationStatusEnum, Voucher
 from app.models.product import Order, OrderItem, Product
@@ -20,6 +21,12 @@ logger = logging.getLogger(__name__)
 
 class ReportGenerator:
     @staticmethod
+    def _to_uuid(value: str | UUID) -> UUID:
+        if isinstance(value, UUID):
+            return value
+        return UUID(str(value))
+
+    @staticmethod
     def generate_impact_report(
         db: Session,
         donor_id: str,
@@ -27,8 +34,10 @@ class ReportGenerator:
         end_date: Optional[date] = None,
     ) -> Dict[str, Any]:
         """Generate impact report for donor with eager loading to avoid N+1 queries"""
+        donor_uuid = ReportGenerator._to_uuid(donor_id)
+
         query = db.query(Donation).filter(
-            Donation.donor_id == donor_id,
+            Donation.donor_id == donor_uuid,
             Donation.status == DonationStatusEnum.success,
         )
 
@@ -44,58 +53,40 @@ class ReportGenerator:
         vouchers_allocated = (
             db.query(func.count(Voucher.id))
             .join(Donation, Voucher.donation_id == Donation.id)
-            .filter(Donation.donor_id == donor_id)
+            .filter(Donation.donor_id == donor_uuid)
             .scalar()
         ) or 0
 
-        # Donation trend (monthly) with proper date handling
-        trend_data = (
-            db.query(
-                func.to_date(func.concat(extract("year", Donation.created_at), "-", extract("month", Donation.created_at), "-01"), "YYYY-MM-DD").label("month"),
-                func.sum(Donation.amount).label("total"),
-            )
-            .filter(
-                Donation.donor_id == donor_id,
-                Donation.status == DonationStatusEnum.success,
-            )
-            .group_by(
-                extract("year", Donation.created_at),
-                extract("month", Donation.created_at),
-            )
-            .order_by(extract("year", Donation.created_at), extract("month", Donation.created_at))
-            .all()
-        )
+        # Donation trend (monthly) computed in Python to stay compatible across SQLite/PostgreSQL.
+        trend_totals: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
+        trend_counts: dict[str, int] = defaultdict(int)
+        for donation in donations:
+            key = donation.created_at.strftime("%Y-%m")
+            trend_totals[key] += donation.amount
+            trend_counts[key] += 1
+
         donation_trend = [
-            {"month": str(t.month.strftime("%Y-%m")), "total": float(t.total or 0), "donations_count": 0}
-            for t in trend_data
+            {
+                "month": month,
+                "total": float(trend_totals[month]),
+                "donations_count": trend_counts[month],
+            }
+            for month in sorted(trend_totals.keys())
         ]
 
-        # Geographic distribution by province (from user address if available)
-        geo_data = (
-            db.query(
-                func.count(Donation.id).label("donation_count"),
-                func.sum(Donation.amount).label("total_amount"),
+        # Placeholder distribution until beneficiary address normalization is implemented.
+        geographic_distribution = []
+        if total_donated > 0:
+            geographic_distribution.append(
+                {
+                    "province": "Jakarta",
+                    "children": children_helped,
+                    "amount": float(total_donated),
+                }
             )
-            .join(Donation, Donation.recipient_id == BeneficiaryProfile.user_id)
-            .filter(
-                Donation.donor_id == donor_id,
-                Donation.status == DonationStatusEnum.success,
-            )
-            .group_by()
-            .order_by(func.sum(Donation.amount).desc())
-            .limit(10)
-            .all()
-        )
-        geographic_distribution = [
-            {
-                "province": "Jakarta",  # Placeholder - extract from user_profile.address
-                "children": 0,
-                "amount": float(sum(d.total_amount or 0 for d in geo_data)),
-            }
-        ] if geo_data else []
 
         return {
-            "donor_id": donor_id,
+            "donor_id": str(donor_uuid),
             "period": {
                 "start_date": start_date or (date.today() - timedelta(days=90)),
                 "end_date": end_date or date.today(),
@@ -118,8 +109,10 @@ class ReportGenerator:
         end_date: Optional[date] = None,
     ) -> Dict[str, Any]:
         """Generate sales report for vendor with eager loading"""
+        vendor_uuid = ReportGenerator._to_uuid(vendor_id)
+
         query = db.query(Order).filter(
-            Order.vendor_id == vendor_id,
+            Order.vendor_id == vendor_uuid,
             Order.is_active,
         )
 
@@ -142,7 +135,7 @@ class ReportGenerator:
             )
             .join(OrderItem, Product.id == OrderItem.product_id)
             .join(Order, OrderItem.order_id == Order.id)
-            .filter(Order.vendor_id == vendor_id)
+            .filter(Order.vendor_id == vendor_uuid)
             .group_by(Product.name)
             .order_by(func.sum(OrderItem.subtotal).desc())
             .limit(10)
@@ -156,7 +149,7 @@ class ReportGenerator:
                 func.count(Order.id).label("order_count"),
                 func.sum(Order.total_amount).label("total"),
             )
-            .filter(Order.vendor_id == vendor_id, Order.is_active)
+            .filter(Order.vendor_id == vendor_uuid, Order.is_active)
             .group_by(func.date(Order.created_at))
             .order_by(func.date(Order.created_at).desc())
             .limit(30)
@@ -172,7 +165,7 @@ class ReportGenerator:
         ]
 
         return {
-            "vendor_id": vendor_id,
+            "vendor_id": str(vendor_uuid),
             "period": {
                 "start_date": start_date or (date.today() - timedelta(days=30)),
                 "end_date": end_date or date.today(),
@@ -442,7 +435,8 @@ class ReportGenerator:
         end_date: Optional[date] = None,
     ) -> Dict[str, Any]:
         """Generate settlement report for vendor"""
-        query = db.query(Settlement).filter(Settlement.vendor_id == vendor_id)
+        vendor_uuid = ReportGenerator._to_uuid(vendor_id)
+        query = db.query(Settlement).filter(Settlement.vendor_id == vendor_uuid)
 
         if start_date:
             query = query.filter(Settlement.period_end >= start_date)
@@ -490,7 +484,7 @@ class ReportGenerator:
         )
 
         return {
-            "vendor_id": vendor_id,
+            "vendor_id": str(vendor_uuid),
             "period": {
                 "start_date": start_date or (date.today() - timedelta(days=90)),
                 "end_date": end_date or date.today(),

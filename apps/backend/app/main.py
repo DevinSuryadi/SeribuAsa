@@ -105,14 +105,17 @@ def startup_event() -> None:
         init_db()
         _seed_demo_profiles()
     
-    # Initialize scheduler for settlement processing and report generation
-    if settings.SCHEDULER_ENABLED:
+    # Initialize scheduler for settlement processing and report generation.
+    # Skip scheduler in SQLite fallback mode to keep local dev stable.
+    if settings.SCHEDULER_ENABLED and not IS_SQLITE:
         try:
             SettlementScheduler.initialize(SessionLocal)
             logger.info("Settlement scheduler initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize settlement scheduler: {e}")
             # Don't fail startup if scheduler fails - just log the error
+    elif IS_SQLITE:
+        logger.info("Scheduler skipped in SQLite fallback mode")
 
 
 @app.on_event("shutdown")

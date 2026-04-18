@@ -18,7 +18,7 @@ python-dotenv==1.0.0
 pytest==7.4.4
 pytest-asyncio==0.23.3
 pytest-cov==4.1.0
-httpx==0.26.0
+httpx
 aiosqlite==0.19.0  
 
 # Linting & Type checking
@@ -33,4 +33,4 @@ reportlab==4.0.9
 
 # Authentication
 google-auth==2.26.2
-supabase==2.3.4
+supabase
