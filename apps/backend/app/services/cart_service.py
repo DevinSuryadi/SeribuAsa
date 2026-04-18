@@ -224,11 +224,10 @@ class CartService:
         
         if not items:
             return {
-                "item_count": 0,
-                "subtotal": 0.0,
-                "eligible_for_voucher": 0.0,
-                "ineligible_items": 0.0,
-                "total": 0.0,
+                "total_items": 0,
+                "total_amount": Decimal(0),
+                "eligible_amount": Decimal(0),
+                "ineligible_amount": Decimal(0),
                 "items": []
             }
         
@@ -240,6 +239,7 @@ class CartService:
         for item in items:
             product = db.query(Product).filter(Product.id == item.product_id).first()
             if not product:
+                logger.warning(f"Product {item.product_id} not found for cart item {item.id}")
                 continue
             
             item_subtotal = product.price * item.quantity
@@ -260,20 +260,20 @@ class CartService:
                 "product_name": product.name,
                 "category_id": str(product.category_id) if product.category_id else None,
                 "quantity": item.quantity,
-                "price": float(product.price),
-                "voucher_price": float(product.voucher_price),
-                "subtotal": float(item_subtotal),
-                "is_eligible": product.voucher_price > 0
+                "price": product.price,
+                "voucher_price": product.voucher_price,
+                "subtotal": item_subtotal,
+                "is_eligible": product.voucher_price > 0,
+                "created_at": item.created_at,
+                "updated_at": item.updated_at
             })
         
         return {
-            "item_count": len(items),
+            "total_items": len(cart_items),
             "items": cart_items,
-            "subtotal": float(subtotal),
-            "eligible_for_voucher": float(eligible_total),
-            "ineligible_items": float(ineligible_total),
-            "total": float(subtotal),
-            "voucher_can_cover_max": float(min(eligible_total, eligible_total))  # max voucher can cover
+            "total_amount": subtotal,
+            "eligible_amount": eligible_total,
+            "ineligible_amount": ineligible_total
         }
     
     @staticmethod

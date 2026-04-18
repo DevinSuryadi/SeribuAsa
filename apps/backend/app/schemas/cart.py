@@ -30,7 +30,11 @@ class CartItemResponse(BaseModel):
     quantity: int
     price: Decimal
     subtotal: Decimal
-    created_at: datetime
+    voucher_price: Decimal = Decimal(0)
+    category_id: Optional[str] = None
+    is_eligible: bool = False
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

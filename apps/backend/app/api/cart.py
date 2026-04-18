@@ -138,6 +138,8 @@ async def get_cart_summary(
             beneficiary_id=beneficiary.id
         )
         
+        logger.info(f"Cart summary for beneficiary {beneficiary.id}: {len(summary['items'])} items, total={summary['total_amount']}")
+        
         return CartSummaryResponse(
             beneficiary_id=beneficiary.id,
             items=[CartItemResponse.model_validate(item) for item in summary["items"]],
@@ -155,7 +157,7 @@ async def get_cart_summary(
         # Re-raise HTTP exceptions without catching them
         raise
     except Exception as e:
-        logger.error(f"Error getting cart summary: {str(e)}")
+        logger.error(f"Error getting cart summary: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve cart summary"
