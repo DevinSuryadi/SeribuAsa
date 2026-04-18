@@ -2,7 +2,7 @@
 Order Schemas
 Pydantic schemas for order management
 """
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
@@ -43,11 +43,11 @@ class OrderCreate(BaseModel):
 
 class OrderResponse(BaseModel):
     id: UUID
-    beneficiary_id: UUID
+    user_id: UUID = Field(alias="beneficiary_id")
     vendor_id: UUID
-    total_amount: Decimal
-    voucher_used: Decimal
-    cash_paid: Decimal
+    cart_total: Decimal = Field(alias="total_amount")
+    voucher_discount: Decimal = Field(alias="voucher_used")
+    cash_amount: Decimal = Field(alias="cash_paid")
     status: str
     payment_status: str
     notes: Optional[str] = None
@@ -56,7 +56,7 @@ class OrderResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class OrderDetailResponse(OrderResponse):
