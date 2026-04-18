@@ -35,7 +35,7 @@ export async function calculateZScore(data: {
 }
 
 export async function getLatestFIESStatus(beneficiaryId: string) {
-  return apiFetch(`/fies/${beneficiaryId}/latest`);
+  return apiFetch(`/fies/latest/${beneficiaryId}`);
 }
 
 export async function getLatestNutritionMeasurement(beneficiaryId: string) {
