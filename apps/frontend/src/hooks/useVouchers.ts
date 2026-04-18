@@ -88,7 +88,7 @@ export function useVouchers() {
     setError(null);
     try {
       const data = await vouchersService.getTransactionHistory(filters);
-      setTransactions(Array.isArray(data) ? data : []);
+      setTransactions(Array.isArray((data as any)?.items) ? (data as any).items : []);
       return data;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch transaction history";

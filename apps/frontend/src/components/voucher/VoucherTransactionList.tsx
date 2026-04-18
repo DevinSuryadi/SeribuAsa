@@ -72,6 +72,8 @@ export function VoucherTransactionList({
         return "text-gray-600 bg-gray-50";
       case "revoked":
         return "text-red-600 bg-red-50";
+      case "adjusted":
+        return "text-amber-700 bg-amber-50";
       default:
         return "text-gray-600 bg-gray-50";
     }

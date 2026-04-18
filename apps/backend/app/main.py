@@ -13,34 +13,19 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NutriGuard API", version="1.0.0")
 
-# CORS middleware - ENABLED for frontend communication
+# CORS middleware - permissive for local/dev E2E.
+# - allow_origins: explicit origins from env
+# - allow_origin_regex: localhost/127.0.0.1/LAN dev hosts on any port
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "Accept",
-        "Origin",
-        "Access-Control-Request-Method",
-        "Access-Control-Request-Headers",
-    ],
-    expose_headers=[
-        "Content-Type",
-        "Access-Control-Allow-Origin",
-        "Access-Control-Allow-Credentials",
-    ],
+    allow_headers=["*"],
+    expose_headers=["*"],
     max_age=3600,
 )
 

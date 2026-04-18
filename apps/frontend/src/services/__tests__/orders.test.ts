@@ -51,19 +51,25 @@ describe("Order Service Integration Tests", () => {
         ],
       });
 
-      expect(apiFetch).toHaveBeenCalledWith("/orders/", {
-        method: "POST",
-        body: JSON.stringify({
-          vendor_id: "vendor_1",
-          items: [
-            {
-              product_id: "prod_1",
-              quantity: 2,
-              price: 50000,
-            },
-          ],
-        }),
-      });
+      expect(apiFetch).toHaveBeenCalledWith(
+        "/orders/",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "Idempotency-Key": expect.any(String),
+          }),
+          body: JSON.stringify({
+            vendor_id: "vendor_1",
+            items: [
+              {
+                product_id: "prod_1",
+                quantity: 2,
+                price: 50000,
+              },
+            ],
+          }),
+        })
+      );
 
       expect(result.id).toBe("order_1");
       expect(result.status).toBe("pending");

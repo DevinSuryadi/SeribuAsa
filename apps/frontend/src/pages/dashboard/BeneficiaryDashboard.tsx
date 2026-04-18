@@ -74,6 +74,14 @@ export default function BeneficiaryDashboard() {
   const totalBalance = useMemo(() => balance?.total_balance || 0, [balance]);
   const activeVouchers = useMemo(() => balance?.active_vouchers?.length || 0, [balance]);
   const expiringSoon = useMemo(() => balance?.expiring_soon?.count || 0, [balance]);
+  const hasFiesThisMonth = useMemo(() => {
+    if (!fiesStatus?.survey_date) return false;
+    const surveyDate = new Date(fiesStatus.survey_date);
+    const now = new Date();
+    return (
+      surveyDate.getFullYear() === now.getFullYear() && surveyDate.getMonth() === now.getMonth()
+    );
+  }, [fiesStatus]);
 
   if (authLoading || dataLoading) {
     return (
@@ -114,14 +122,20 @@ export default function BeneficiaryDashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-medium text-foreground text-sm">
-              Survei FIES Bulan Ini Belum Diisi
+              {hasFiesThisMonth
+                ? "Survei FIES Bulan Ini Sudah Diisi"
+                : "Survei FIES Bulan Ini Belum Diisi"}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Isi survei untuk mempertahankan kelayakan voucher.
+              {hasFiesThisMonth
+                ? "Terima kasih, data ketahanan pangan Anda sudah tercatat."
+                : "Isi survei untuk mempertahankan kelayakan voucher."}
             </p>
           </div>
           <Button size="sm" className="flex-shrink-0" asChild>
-            <Link to="/dashboard/survei-fies">Isi Survei</Link>
+            <Link to="/dashboard/survei-fies">
+              {hasFiesThisMonth ? "Lihat Survei" : "Isi Survei"}
+            </Link>
           </Button>
         </div>
 
@@ -164,7 +178,7 @@ export default function BeneficiaryDashboard() {
               <p className="text-xs text-muted-foreground/70 mt-0.5">
                 {fiesStatus?.survey_date
                   ? `Diperbarui: ${formatDate(fiesStatus.survey_date)}`
-                  : "Wajib bulan ini"}
+                  : "Belum ada survei"}
               </p>
             </CardContent>
           </Card>
@@ -180,7 +194,10 @@ export default function BeneficiaryDashboard() {
               </div>
               <p className="text-sm text-muted-foreground mt-1">Status Gizi Anak</p>
               <p className="text-xs text-muted-foreground/70 mt-0.5">
-                Z-score: {nutritionData?.z_score_weight_height?.toFixed(1) || "-0.8"}
+                Z-score:{" "}
+                {typeof nutritionData?.z_score_weight_height === "number"
+                  ? nutritionData.z_score_weight_height.toFixed(1)
+                  : "-"}
               </p>
             </CardContent>
           </Card>

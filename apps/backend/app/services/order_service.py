@@ -59,7 +59,7 @@ class OrderService:
                 for code in data.voucher_codes:
                     voucher = db.query(Voucher).filter(
                         Voucher.code == code,
-                        Voucher.beneficiary_id == beneficiary_id,
+                        Voucher.beneficiary_id == beneficiary_uuid,
                         Voucher.status == VoucherStatusEnum.active,
                         Voucher.balance > 0
                     ).first()

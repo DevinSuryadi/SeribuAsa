@@ -1,442 +1,734 @@
 """
-Seed Database with Test Data
-Generates realistic test data for:
-- Donations (12 months, various provinces)
-- Orders (30 days, daily distribution)
-- FIES surveys (for beneficiaries)
-- Nutrition measurements (for children)
-"""
-from datetime import datetime, timedelta, date
-from decimal import Decimal
-from uuid import uuid4
-import random
-import sys
-from sqlalchemy.orm import Session
+E2E Seed Script for NutriGuard
 
-# Add app to path
-sys.path.insert(0, '/d/ppl1/Project-PPL1/apps/backend')
+Goals:
+- Provide deterministic, idempotent data for end-to-end testing flows.
+- Support quick local SQLite seeding and Supabase/PostgreSQL dev seeding.
+
+Flows covered:
+- Catalog browsing (categories, approved vendors, approved products)
+- Beneficiary dashboard (voucher balance/history, FIES latest, nutrition latest)
+- Cart and checkout preconditions (cart items, stock, voucher-eligible categories)
+- Transactions (orders, voucher redemptions, voucher transactions)
+"""
+
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+from typing import Iterable
+from uuid import UUID
+
+from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, engine
 from app.models.base import BaseModel
-from app.models.user import (
-    UserProfile, 
-    DonorProfile, 
-    BeneficiaryProfile, 
-    VendorProfile, 
-    Child,
-    GenderEnum
+from app.models.cart import (
+    CartItem,
+    VoucherAllowedCategory,
+    VoucherTransaction,
+    VoucherTransactionTypeEnum,
 )
-from app.models.donation import Donation, DonationStatusEnum, DonationTypeEnum
-from app.models.product import Product, Order, OrderItem, Category
-from app.models.nutrition import NutritionMeasurement, FIESSurvey
-from app.services.zscore_calculator import ZScoreCalculator
+from app.models.donation import (
+    Donation,
+    DonationStatusEnum,
+    DonationTypeEnum,
+    Voucher,
+    VoucherRedemption,
+    VoucherStatusEnum,
+)
+from app.models.nutrition import FIESSurvey, NutritionMeasurement
+from app.models.product import Order, OrderItem, Product, Category
+from app.models.user import (
+    BeneficiaryProfile,
+    Child,
+    DonorProfile,
+    GenderEnum,
+    UserProfile,
+    VendorProfile,
+)
 
 
-# ============================================
-# Constants
-# ============================================
-PROVINCES = [
-    "Jawa Barat", "Jawa Timur", "Jawa Tengah", "DKI Jakarta",
-    "Sumatra Utara", "Sumatra Selatan", "Riau", "Lampung",
-    "Kalimantan Selatan", "Kalimantan Timur", "Sulawesi Selatan",
-    "Bali", "Nusa Tenggara Timur", "Aceh", "Bengkulu"
-]
+# ------------------------------
+# Deterministic fixture IDs
+# ------------------------------
+DONOR_USER_ID = UUID("10000000-0000-0000-0000-000000000001")
+BENEFICIARY_USER_ID = UUID("20000000-0000-0000-0000-000000000001")
+VENDOR_A_USER_ID = UUID("30000000-0000-0000-0000-000000000001")
+VENDOR_B_USER_ID = UUID("30000000-0000-0000-0000-000000000002")
 
-FIES_RESPONSES_SAMPLES = [
-    {"q1": 0, "q2": 0, "q3": 0, "q4": 0, "q5": 0, "q6": 0, "q7": 0, "q8": 0},  # Score 0 - food_secure
-    {"q1": 1, "q2": 1, "q3": 0, "q4": 0, "q5": 0, "q6": 0, "q7": 0, "q8": 0},  # Score 2 - food_secure
-    {"q1": 1, "q2": 1, "q3": 1, "q4": 1, "q5": 1, "q6": 0, "q7": 0, "q8": 0},  # Score 5 - moderate
-    {"q1": 1, "q2": 1, "q3": 1, "q4": 1, "q5": 1, "q6": 1, "q7": 1, "q8": 0},  # Score 7 - severe
-    {"q1": 1, "q2": 1, "q3": 1, "q4": 1, "q5": 1, "q6": 1, "q7": 1, "q8": 1},  # Score 8 - severe
-]
+CHILD_A_ID = UUID("40000000-0000-0000-0000-000000000001")
+CHILD_B_ID = UUID("40000000-0000-0000-0000-000000000002")
 
-PRODUCT_NAMES = [
-    "Beras Premium", "Telur Ayam", "Bayam", "Wortel", "Brokoli",
-    "Minyak Goreng", "Garam", "Gula", "Terigu", "Susu",
-    "Daging Sapi", "Ikan Lele", "Kacang Hijau", "Singkong", "Jagung"
-]
+DONATION_A_ID = UUID("50000000-0000-0000-0000-000000000001")
+DONATION_B_ID = UUID("50000000-0000-0000-0000-000000000002")
+
+VOUCHER_A_ID = UUID("60000000-0000-0000-0000-000000000001")
+VOUCHER_B_ID = UUID("60000000-0000-0000-0000-000000000002")
+
+ORDER_A_ID = UUID("70000000-0000-0000-0000-000000000001")
+ORDER_B_ID = UUID("70000000-0000-0000-0000-000000000002")
 
 
-# ============================================
-# Database Initialization
-# ============================================
-def init_database():
-    """Create all tables"""
-    print("Creating database tables...")
-    BaseModel.metadata.create_all(bind=engine)
-    print("[OK] Database tables created")
+def _slugify(name: str) -> str:
+    return name.strip().lower().replace(" ", "-")
 
 
-# ============================================
-# Seed Functions
-# ============================================
-def create_users(db: Session, count: int = 5):
-    """Create donor, beneficiary, and vendor users"""
-    print(f"\nCreating {count} donors, {count} beneficiaries, {count} vendors...")
-    
-    donors = []
-    beneficiaries = []
-    vendors = []
-    
-    # Create Donors
-    for i in range(count):
-        user_id = uuid4()
-        user = UserProfile(
-            user_id=user_id,
-            full_name=f"Donor {i+1}",
-            phone=f"08123456{i:03d}",
-            gender=GenderEnum.male if i % 2 == 0 else GenderEnum.female
-        )
-        donor = DonorProfile(user_id=user_id, total_donated=Decimal("0"))
-        db.add(user)
-        db.add(donor)
-        donors.append((user, donor))
-    
-    # Create Beneficiaries with Children
-    for i in range(count):
-        user_id = uuid4()
-        user = UserProfile(
-            user_id=user_id,
-            full_name=f"Beneficiary {i+1}",
-            phone=f"08234567{i:03d}",
-            gender=GenderEnum.male if i % 2 == 0 else GenderEnum.female
-        )
-        beneficiary = BeneficiaryProfile(user_id=user_id, family_size=random.randint(2, 6))
-        
-        db.add(user)
-        db.add(beneficiary)
-        
-        # Add children (1-3 per beneficiary)
-        num_children = random.randint(1, 3)
-        for j in range(num_children):
-            child = Child(
-                beneficiary_id=user_id,
-                full_name=f"Child {i+1}-{j+1}",
-                date_of_birth=date.today() - timedelta(days=random.randint(60, 1800)),
-                gender=GenderEnum.male if j % 2 == 0 else GenderEnum.female
-            )
-            db.add(child)
-        
-        beneficiaries.append((user, beneficiary))
-    
-    # Create Vendors
-    for i in range(count):
-        user_id = uuid4()
-        user = UserProfile(
-            user_id=user_id,
-            full_name=f"Vendor {i+1}",
-            phone=f"08345678{i:03d}",
-            gender=GenderEnum.male if i % 2 == 0 else GenderEnum.female
-        )
-        vendor = VendorProfile(
-            user_id=user_id,
-            store_name=f"Toko {i+1}",
-            store_address=f"Jalan Vendor {i+1}, Indonesia",
-            store_phone=f"08345678{i:03d}",
-            bank_name=random.choice(["BCA", "Mandiri", "BRI", "CIMB"]),
-            bank_account_number=f"123456789{i:04d}",
-            bank_account_holder=f"Vendor {i+1}"
-        )
-        
-        db.add(user)
-        db.add(vendor)
-        vendors.append((user, vendor))
-    
-    db.commit()
-    print(f"[OK] Created {len(donors)} donors, {len(beneficiaries)} beneficiaries, {len(vendors)} vendors")
-    return donors, beneficiaries, vendors
+def _upsert_model(
+    db: Session,
+    model,
+    where: dict,
+    values: dict,
+):
+    instance = db.query(model).filter_by(**where).first()
+    if instance:
+        for key, value in values.items():
+            setattr(instance, key, value)
+        return instance
+
+    payload = {**where, **values}
+    instance = model(**payload)
+    db.add(instance)
+    return instance
 
 
-def create_products(db: Session, vendors):
-    """Create products for each vendor"""
-    print("\nCreating products...")
-    
-    # Create categories
-    categories = []
-    category_names = ["Beras", "Sayuran", "Daging & Ikan", "Bumbu & Minyak", "Susu & Telur"]
-    for cat_name in category_names:
-        category = Category(name=cat_name, slug=cat_name.lower())
-        db.add(category)
-        categories.append(category)
-    
-    db.commit()
-    
-    # Create products for each vendor
-    for vendor_user, vendor_profile in vendors:
-        for j in range(5):  # 5 products per vendor
-            product = Product(
-                vendor_id=vendor_profile.user_id,
-                category_id=random.choice(categories).id,
-                name=random.choice(PRODUCT_NAMES),
-                description=f"Quality product #{j+1}",
-                price=Decimal(random.randint(5000, 100000)),
-                voucher_price=Decimal(random.randint(3000, 80000)),
-                stock_quantity=random.randint(10, 100),
-                approval_status="approved"
-            )
-            db.add(product)
-    
-    db.commit()
-    print(f"[OK] Created products for {len(vendors)} vendors")
-    return categories
+def _reset_data(db: Session) -> None:
+    """Reset only domain data while keeping schema intact."""
+    db.query(VoucherTransaction).delete(synchronize_session=False)
+    db.query(VoucherRedemption).delete(synchronize_session=False)
+    db.query(OrderItem).delete(synchronize_session=False)
+    db.query(Order).delete(synchronize_session=False)
+    db.query(CartItem).delete(synchronize_session=False)
+    db.query(VoucherAllowedCategory).delete(synchronize_session=False)
+    db.query(Voucher).delete(synchronize_session=False)
+    db.query(Donation).delete(synchronize_session=False)
+    db.query(NutritionMeasurement).delete(synchronize_session=False)
+    db.query(FIESSurvey).delete(synchronize_session=False)
+    db.query(Product).delete(synchronize_session=False)
+    db.query(Category).delete(synchronize_session=False)
+    db.query(Child).delete(synchronize_session=False)
+    db.query(VendorProfile).delete(synchronize_session=False)
+    db.query(BeneficiaryProfile).delete(synchronize_session=False)
+    db.query(DonorProfile).delete(synchronize_session=False)
+    db.query(UserProfile).delete(synchronize_session=False)
 
 
-def create_donations(db: Session, donors, beneficiaries, count_per_donor: int = 12):
-    """Create donations spanning 12 months with various provinces"""
-    print(f"\nCreating {len(donors) * count_per_donor} donations...")
-    
-    today = datetime.now()
-    donations_created = 0
-    
-    for donor_user, donor_profile in donors:
-        # Create 12 donations for each donor (one per month, past 12 months)
-        for month_offset in range(count_per_donor):
-            donation_date = today - timedelta(days=30 * month_offset)
-            
-            # Random beneficiary and amount
-            beneficiary_user, beneficiary_profile = random.choice(beneficiaries)
-            amount = Decimal(random.randint(50000, 500000))
-            
-            donation = Donation(
-                donor_id=donor_profile.user_id,
-                recipient_id=beneficiary_profile.user_id,
-                amount=amount,
-                type=DonationTypeEnum.one_time,
-                status=DonationStatusEnum.success,
-                created_at=donation_date
-            )
-            
-            db.add(donation)
-            donations_created += 1
-    
-    db.commit()
-    print(f"[OK] Created {donations_created} donations")
+@dataclass(frozen=True)
+class SeedContext:
+    donor_id: UUID
+    beneficiary_id: UUID
+    vendor_a_id: UUID
+    vendor_b_id: UUID
+    child_a_id: UUID
+    child_b_id: UUID
 
 
-def create_orders(db: Session, beneficiaries, vendors, products_by_vendor: dict):
-    """Create orders spanning last 30 days with daily distribution"""
-    print("\nCreating orders for last 30 days...")
-    
+def seed_users(db: Session) -> SeedContext:
+    _upsert_model(
+        db,
+        UserProfile,
+        where={"user_id": DONOR_USER_ID},
+        values={
+            "full_name": "Donor E2E",
+            "phone": "081200000001",
+            "gender": GenderEnum.female,
+            "address": "Jakarta",
+        },
+    )
+    _upsert_model(
+        db,
+        DonorProfile,
+        where={"user_id": DONOR_USER_ID},
+        values={
+            "total_donated": Decimal("2500000.00"),
+            "children_sponsored": 1,
+            "subscription_status": "active",
+        },
+    )
+
+    _upsert_model(
+        db,
+        UserProfile,
+        where={"user_id": BENEFICIARY_USER_ID},
+        values={
+            "full_name": "Penerima E2E",
+            "phone": "082200000001",
+            "gender": GenderEnum.female,
+            "address": "Bandung",
+        },
+    )
+    _upsert_model(
+        db,
+        BeneficiaryProfile,
+        where={"user_id": BENEFICIARY_USER_ID},
+        values={
+            "family_size": 4,
+            "vouchers_balance": Decimal("450000.00"),
+            "fies_score": 3,
+            "fies_classification": "moderate",
+        },
+    )
+
+    _upsert_model(
+        db,
+        UserProfile,
+        where={"user_id": VENDOR_A_USER_ID},
+        values={
+            "full_name": "Vendor A E2E",
+            "phone": "083300000001",
+            "gender": GenderEnum.male,
+            "address": "Bandung",
+        },
+    )
+    _upsert_model(
+        db,
+        VendorProfile,
+        where={"user_id": VENDOR_A_USER_ID},
+        values={
+            "store_name": "Warung Sehat A",
+            "store_address": "Jl. Sehat No. 10 Bandung",
+            "store_phone": "083300000001",
+            "bank_name": "BCA",
+            "bank_account_number": "1111111111",
+            "bank_account_holder": "Vendor A E2E",
+            "settlement_status": "active",
+            "approval_status": "approved",
+        },
+    )
+
+    _upsert_model(
+        db,
+        UserProfile,
+        where={"user_id": VENDOR_B_USER_ID},
+        values={
+            "full_name": "Vendor B E2E",
+            "phone": "083300000002",
+            "gender": GenderEnum.female,
+            "address": "Bandung",
+        },
+    )
+    _upsert_model(
+        db,
+        VendorProfile,
+        where={"user_id": VENDOR_B_USER_ID},
+        values={
+            "store_name": "Toko Gizi B",
+            "store_address": "Jl. Gizi No. 21 Bandung",
+            "store_phone": "083300000002",
+            "bank_name": "Mandiri",
+            "bank_account_number": "2222222222",
+            "bank_account_holder": "Vendor B E2E",
+            "settlement_status": "active",
+            "approval_status": "approved",
+        },
+    )
+
     today = date.today()
-    orders_created = 0
-    
-    # Create 1-3 orders per day for last 30 days
-    for day_offset in range(30):
-        order_date = today - timedelta(days=day_offset)
-        num_orders_today = random.randint(1, 3)
-        
-        for _ in range(num_orders_today):
-            beneficiary_user, beneficiary_profile = random.choice(beneficiaries)
-            vendor_user, vendor_profile = random.choice(vendors)
-            
-            # Get products for this vendor
-            vendor_products = (
-                db.query(Product)
-                .filter(Product.vendor_id == vendor_profile.user_id)
-                .all()
-            )
-            
-            if not vendor_products:
-                continue
-            
-            # Create order
-            total_amount = Decimal("0")
-            order = Order(
-                beneficiary_id=beneficiary_profile.user_id,
-                vendor_id=vendor_profile.user_id,
-                total_amount=total_amount,
-                status="completed",
-                payment_status="paid",
-                created_at=datetime.combine(order_date, datetime.min.time())
-            )
-            
-            db.add(order)
-            db.flush()  # Get order ID
-            
-            # Add 1-3 items to order
-            num_items = random.randint(1, 3)
-            for _ in range(num_items):
-                product = random.choice(vendor_products)
-                quantity = random.randint(1, 5)
-                price = product.price
-                subtotal = price * quantity
-                total_amount += subtotal
-                
-                item = OrderItem(
+    _upsert_model(
+        db,
+        Child,
+        where={"id": CHILD_A_ID},
+        values={
+            "beneficiary_id": BENEFICIARY_USER_ID,
+            "full_name": "Anak A",
+            "date_of_birth": today - timedelta(days=365 * 2),
+            "gender": GenderEnum.female,
+        },
+    )
+    _upsert_model(
+        db,
+        Child,
+        where={"id": CHILD_B_ID},
+        values={
+            "beneficiary_id": BENEFICIARY_USER_ID,
+            "full_name": "Anak B",
+            "date_of_birth": today - timedelta(days=365 * 3),
+            "gender": GenderEnum.male,
+        },
+    )
+
+    return SeedContext(
+        donor_id=DONOR_USER_ID,
+        beneficiary_id=BENEFICIARY_USER_ID,
+        vendor_a_id=VENDOR_A_USER_ID,
+        vendor_b_id=VENDOR_B_USER_ID,
+        child_a_id=CHILD_A_ID,
+        child_b_id=CHILD_B_ID,
+    )
+
+
+def seed_categories_and_catalog(db: Session, ctx: SeedContext, mode: str) -> list[Product]:
+    categories_seed = [
+        ("Beras", "Beras dan sumber karbohidrat"),
+        ("Protein", "Telur, ikan, ayam, daging"),
+        ("Sayuran", "Sayuran segar"),
+        ("Buah", "Buah segar"),
+        ("Susu", "Susu dan produk dairy"),
+        ("Bumbu", "Bumbu dan pelengkap"),
+    ]
+
+    categories: dict[str, Category] = {}
+    for idx, (name, desc) in enumerate(categories_seed, start=1):
+        category = _upsert_model(
+            db,
+            Category,
+            where={"slug": _slugify(name)},
+            values={
+                "name": name,
+                "description": desc,
+                "display_order": idx,
+                "is_active": True,
+            },
+        )
+        categories[name] = category
+
+    db.flush()
+
+    # Voucher eligibility: all except Bumbu
+    for cat_name, category in categories.items():
+        _upsert_model(
+            db,
+            VoucherAllowedCategory,
+            where={"category_id": category.id},
+            values={"is_allowed": 0 if cat_name == "Bumbu" else 1},
+        )
+
+    product_rows = [
+        # Vendor A
+        (ctx.vendor_a_id, "Beras", "Beras Premium 5kg", Decimal("75000"), Decimal("70000"), 120, "pack"),
+        (ctx.vendor_a_id, "Protein", "Telur Ayam 1kg", Decimal("32000"), Decimal("30000"), 90, "kg"),
+        (ctx.vendor_a_id, "Sayuran", "Bayam Segar", Decimal("10000"), Decimal("9000"), 80, "ikat"),
+        (ctx.vendor_a_id, "Buah", "Pisang Ambon", Decimal("22000"), Decimal("20000"), 60, "sisir"),
+        (ctx.vendor_a_id, "Susu", "Susu UHT 1L", Decimal("19000"), Decimal("17000"), 70, "liter"),
+        (ctx.vendor_a_id, "Bumbu", "Minyak Goreng 1L", Decimal("18000"), Decimal("0"), 100, "liter"),
+        # Vendor B
+        (ctx.vendor_b_id, "Beras", "Beras Medium 5kg", Decimal("68000"), Decimal("64000"), 100, "pack"),
+        (ctx.vendor_b_id, "Protein", "Ikan Kembung 1kg", Decimal("45000"), Decimal("42000"), 55, "kg"),
+        (ctx.vendor_b_id, "Sayuran", "Wortel Segar", Decimal("12000"), Decimal("10000"), 65, "kg"),
+        (ctx.vendor_b_id, "Buah", "Jeruk Manis", Decimal("28000"), Decimal("25000"), 45, "kg"),
+        (ctx.vendor_b_id, "Susu", "Susu Bubuk 400gr", Decimal("52000"), Decimal("48000"), 40, "pack"),
+        (ctx.vendor_b_id, "Bumbu", "Gula Pasir 1kg", Decimal("17000"), Decimal("0"), 90, "kg"),
+    ]
+
+    if mode == "full-demo":
+        product_rows.extend(
+            [
+                (ctx.vendor_a_id, "Protein", "Ayam Potong 1kg", Decimal("42000"), Decimal("39000"), 35, "kg"),
+                (ctx.vendor_a_id, "Sayuran", "Brokoli", Decimal("18000"), Decimal("15000"), 40, "kg"),
+                (ctx.vendor_b_id, "Buah", "Apel Fuji", Decimal("38000"), Decimal("34000"), 30, "kg"),
+                (ctx.vendor_b_id, "Susu", "Yogurt Plain", Decimal("16000"), Decimal("14000"), 25, "pcs"),
+            ]
+        )
+
+    products: list[Product] = []
+    for vendor_id, category_name, name, price, voucher_price, stock, unit in product_rows:
+        product = _upsert_model(
+            db,
+            Product,
+            where={"vendor_id": vendor_id, "name": name},
+            values={
+                "category_id": categories[category_name].id,
+                "description": f"Produk e2e untuk {category_name}",
+                "price": price,
+                "voucher_price": voucher_price,
+                "stock_quantity": stock,
+                "unit": unit,
+                "images": [f"https://dummy.nutriguard.local/{_slugify(name)}.jpg"],
+                "approval_status": "approved",
+                "is_active": True,
+            },
+        )
+        products.append(product)
+
+    return products
+
+
+def seed_fies_and_nutrition(db: Session, ctx: SeedContext, mode: str) -> None:
+    now = datetime.utcnow()
+
+    monthly_scores = [3, 2, 4]
+    if mode == "full-demo":
+        monthly_scores.extend([1, 5, 2])
+
+    for idx, score in enumerate(monthly_scores):
+        survey_date = now - timedelta(days=30 * idx)
+        responses = {f"q{i}": 1 if i <= score else 0 for i in range(1, 9)}
+        classification = "food_secure" if score <= 2 else "moderate" if score <= 5 else "severe"
+        _upsert_model(
+            db,
+            FIESSurvey,
+            where={
+                "beneficiary_id": ctx.beneficiary_id,
+                "survey_month": survey_date.month,
+                "survey_year": survey_date.year,
+            },
+            values={
+                "responses": responses,
+                "score": score,
+                "classification": classification,
+                "survey_date": survey_date,
+            },
+        )
+
+    nutrition_rows = [
+        (ctx.child_a_id, 5, Decimal("11.90"), Decimal("86.00"), Decimal("-0.30"), Decimal("-0.20"), Decimal("-0.10"), "normal"),
+        (ctx.child_a_id, 35, Decimal("11.40"), Decimal("84.50"), Decimal("-0.45"), Decimal("-0.30"), Decimal("-0.20"), "normal"),
+        (ctx.child_b_id, 7, Decimal("13.20"), Decimal("91.00"), Decimal("0.10"), Decimal("0.05"), Decimal("0.08"), "normal"),
+    ]
+
+    if mode == "full-demo":
+        nutrition_rows.extend(
+            [
+                (ctx.child_b_id, 28, Decimal("12.80"), Decimal("89.80"), Decimal("-0.15"), Decimal("-0.10"), Decimal("-0.12"), "normal"),
+                (ctx.child_a_id, 60, Decimal("10.90"), Decimal("82.30"), Decimal("-1.20"), Decimal("-1.10"), Decimal("-1.15"), "moderate_malnourished"),
+            ]
+        )
+
+    for child_id, days_ago, weight, height, z_w, z_h, z_wh, classification in nutrition_rows:
+        measurement_date = date.today() - timedelta(days=days_ago)
+        _upsert_model(
+            db,
+            NutritionMeasurement,
+            where={"child_id": child_id, "measurement_date": measurement_date},
+            values={
+                "weight": weight,
+                "height": height,
+                "muac": Decimal("14.5"),
+                "z_score_weight": z_w,
+                "z_score_height": z_h,
+                "z_score_weight_height": z_wh,
+                "classification": classification,
+            },
+        )
+
+
+def seed_donations_vouchers_orders_and_transactions(
+    db: Session,
+    ctx: SeedContext,
+    products: list[Product],
+    mode: str,
+) -> None:
+    now = datetime.utcnow()
+
+    donation_a = _upsert_model(
+        db,
+        Donation,
+        where={"id": DONATION_A_ID},
+        values={
+            "donor_id": ctx.donor_id,
+            "recipient_id": ctx.beneficiary_id,
+            "amount": Decimal("350000.00"),
+            "type": DonationTypeEnum.one_time,
+            "status": DonationStatusEnum.success,
+            "payment_method": "midtrans",
+            "midtrans_transaction_id": "MID-E2E-001",
+            "created_at": now - timedelta(days=20),
+            "is_active": True,
+        },
+    )
+
+    donation_b = _upsert_model(
+        db,
+        Donation,
+        where={"id": DONATION_B_ID},
+        values={
+            "donor_id": ctx.donor_id,
+            "recipient_id": ctx.beneficiary_id,
+            "amount": Decimal("500000.00"),
+            "type": DonationTypeEnum.subscription,
+            "status": DonationStatusEnum.success,
+            "payment_method": "qris",
+            "midtrans_transaction_id": "MID-E2E-002",
+            "subscription_config": {
+                "interval": "monthly",
+                "next_billing_date": (now + timedelta(days=30)).isoformat(),
+            },
+            "created_at": now - timedelta(days=10),
+            "is_active": True,
+        },
+    )
+
+    _upsert_model(
+        db,
+        Voucher,
+        where={"id": VOUCHER_A_ID},
+        values={
+            "code": "E2E-VOUCHER-A",
+            "beneficiary_id": ctx.beneficiary_id,
+            "donation_id": donation_a.id,
+            "balance": Decimal("150000.00"),
+            "allocated_date": now - timedelta(days=20),
+            "expiry_date": date.today() + timedelta(days=40),
+            "status": VoucherStatusEnum.active,
+            "is_active": True,
+        },
+    )
+    _upsert_model(
+        db,
+        Voucher,
+        where={"id": VOUCHER_B_ID},
+        values={
+            "code": "E2E-VOUCHER-B",
+            "beneficiary_id": ctx.beneficiary_id,
+            "donation_id": donation_b.id,
+            "balance": Decimal("300000.00"),
+            "allocated_date": now - timedelta(days=10),
+            "expiry_date": date.today() + timedelta(days=60),
+            "status": VoucherStatusEnum.active,
+            "is_active": True,
+        },
+    )
+
+    db.flush()
+
+    vendor_a_products = [p for p in products if p.vendor_id == ctx.vendor_a_id][:3]
+    vendor_b_products = [p for p in products if p.vendor_id == ctx.vendor_b_id][:2]
+
+    if not vendor_a_products or not vendor_b_products:
+        raise ValueError("Insufficient product catalog seeded for order generation")
+
+    order_a = _upsert_model(
+        db,
+        Order,
+        where={"id": ORDER_A_ID},
+        values={
+            "beneficiary_id": ctx.beneficiary_id,
+            "vendor_id": ctx.vendor_a_id,
+            "total_amount": Decimal("129000.00"),
+            "voucher_used": Decimal("90000.00"),
+            "cash_paid": Decimal("39000.00"),
+            "status": "completed",
+            "payment_status": "paid",
+            "notes": "Order e2e 1",
+            "created_at": now - timedelta(days=3),
+            "is_active": True,
+        },
+    )
+    order_b = _upsert_model(
+        db,
+        Order,
+        where={"id": ORDER_B_ID},
+        values={
+            "beneficiary_id": ctx.beneficiary_id,
+            "vendor_id": ctx.vendor_b_id,
+            "total_amount": Decimal("88000.00"),
+            "voucher_used": Decimal("50000.00"),
+            "cash_paid": Decimal("38000.00"),
+            "status": "processing",
+            "payment_status": "partial",
+            "notes": "Order e2e 2",
+            "created_at": now - timedelta(days=1),
+            "is_active": True,
+        },
+    )
+
+    db.flush()
+
+    # Rebuild order items idempotently
+    db.query(OrderItem).filter(OrderItem.order_id.in_([order_a.id, order_b.id])).delete(synchronize_session=False)
+
+    def _add_items(order: Order, item_products: Iterable[Product], quantities: list[int]) -> Decimal:
+        total = Decimal("0")
+        for product, qty in zip(item_products, quantities):
+            subtotal = Decimal(product.price) * qty
+            total += subtotal
+            db.add(
+                OrderItem(
                     order_id=order.id,
                     product_id=product.id,
-                    quantity=quantity,
-                    price=price,
-                    subtotal=subtotal
+                    quantity=qty,
+                    price=product.price,
+                    subtotal=subtotal,
                 )
-                db.add(item)
-            
-            # Update order total
-            order.total_amount = total_amount
-            orders_created += 1
-    
-    db.commit()
-    print(f"[OK] Created {orders_created} orders")
-
-
-def create_fies_surveys(db: Session, beneficiaries):
-    """Create FIES surveys for beneficiaries (12 months)"""
-    print("\nCreating FIES surveys...")
-    
-    today = datetime.now()
-    surveys_created = 0
-    
-    for beneficiary_user, beneficiary_profile in beneficiaries:
-        # Create 12 surveys for each beneficiary (one per month, past 12 months)
-        for month_offset in range(12):
-            survey_date = today - timedelta(days=30 * month_offset)
-            
-            # Random responses
-            responses = random.choice(FIES_RESPONSES_SAMPLES)
-            score = sum(responses.values())
-            
-            # Classify
-            if score <= 2:
-                classification = "food_secure"
-            elif score <= 5:
-                classification = "moderate"
-            else:
-                classification = "severe"
-            
-            survey = FIESSurvey(
-                beneficiary_id=beneficiary_profile.user_id,
-                responses=responses,
-                score=score,
-                classification=classification,
-                survey_date=survey_date,
-                survey_month=survey_date.month,
-                survey_year=survey_date.year
             )
-            
-            db.add(survey)
-            surveys_created += 1
-    
-    db.commit()
-    print(f"[OK] Created {surveys_created} FIES surveys")
+        return total
 
+    total_a = _add_items(order_a, vendor_a_products[:2], [1, 2])
+    total_b = _add_items(order_b, vendor_b_products[:2], [1, 1])
 
-def create_nutrition_measurements(db: Session, beneficiaries):
-    """Create nutrition measurements for children (past 30 days)"""
-    print("\nCreating nutrition measurements...")
-    
-    today = date.today()
-    measurements_created = 0
-    
-    for beneficiary_user, beneficiary_profile in beneficiaries:
-        # Get children for this beneficiary
-        children = (
-            db.query(Child)
-            .filter(Child.beneficiary_id == beneficiary_profile.user_id)
-            .all()
+    order_a.total_amount = total_a
+    order_a.voucher_used = min(total_a, Decimal("90000.00"))
+    order_a.cash_paid = max(Decimal("0"), total_a - order_a.voucher_used)
+
+    order_b.total_amount = total_b
+    order_b.voucher_used = min(total_b, Decimal("50000.00"))
+    order_b.cash_paid = max(Decimal("0"), total_b - order_b.voucher_used)
+
+    # Voucher redemptions
+    db.query(VoucherRedemption).filter(VoucherRedemption.order_id.in_([order_a.id, order_b.id])).delete(synchronize_session=False)
+    db.add(
+        VoucherRedemption(
+            voucher_id=VOUCHER_A_ID,
+            order_id=order_a.id,
+            amount=order_a.voucher_used,
         )
-        
-        for child in children:
-            # Create 1-3 measurements per child in past 30 days
-            num_measurements = random.randint(1, 3)
-            for _ in range(num_measurements):
-                measurement_date = today - timedelta(days=random.randint(0, 30))
-                
-                # Realistic measurements for children
-                weight = Decimal(random.uniform(5, 25))
-                height = Decimal(random.uniform(50, 120))
-                
-                # Calculate Z-scores
-                age_months = max(0, (today.year - child.date_of_birth.year) * 12 + 
-                                (today.month - child.date_of_birth.month))
-                age_months = min(60, age_months)
-                
-                gender = child.gender.value if child.gender else "male"
-                zscore_data = ZScoreCalculator.calculate(
-                    age_months=age_months,
-                    gender=gender,
-                    weight=float(weight),
-                    height=float(height)
-                )
-                
-                # Determine classification
-                weight_class = zscore_data["weight_classification"]
-                height_class = zscore_data["height_classification"]
-                if weight_class == "severe_malnourished" or height_class == "severe_malnourished":
-                    classification = "severe_malnourished"
-                elif weight_class == "moderate_malnourished" or height_class == "moderate_malnourished":
-                    classification = "moderate_malnourished"
-                else:
-                    classification = "normal"
-                
-                measurement = NutritionMeasurement(
-                    child_id=child.id,
-                    measurement_date=measurement_date,
-                    weight=weight,
-                    height=height,
-                    z_score_weight=Decimal(str(zscore_data["z_score_weight"])),
-                    z_score_height=Decimal(str(zscore_data["z_score_height"])),
-                    z_score_weight_height=Decimal(str(zscore_data.get("z_score_weight_height", 0))),
-                    classification=classification
-                )
-                
-                db.add(measurement)
-                measurements_created += 1
-    
-    db.commit()
-    print(f"[OK] Created {measurements_created} nutrition measurements")
+    )
+    db.add(
+        VoucherRedemption(
+            voucher_id=VOUCHER_B_ID,
+            order_id=order_b.id,
+            amount=order_b.voucher_used,
+        )
+    )
+
+    # Voucher transactions (clear & rebuild for deterministic history)
+    db.query(VoucherTransaction).filter(
+        VoucherTransaction.voucher_id.in_([VOUCHER_A_ID, VOUCHER_B_ID])
+    ).delete(synchronize_session=False)
+
+    db.add(
+        VoucherTransaction(
+            voucher_id=VOUCHER_A_ID,
+            order_id=None,
+            transaction_type=VoucherTransactionTypeEnum.allocated,
+            amount=Decimal("350000.00"),
+            created_at=now - timedelta(days=20),
+            is_active=True,
+        )
+    )
+    db.add(
+        VoucherTransaction(
+            voucher_id=VOUCHER_A_ID,
+            order_id=order_a.id,
+            transaction_type=VoucherTransactionTypeEnum.redeemed,
+            amount=order_a.voucher_used,
+            created_at=now - timedelta(days=3),
+            is_active=True,
+        )
+    )
+    db.add(
+        VoucherTransaction(
+            voucher_id=VOUCHER_B_ID,
+            order_id=None,
+            transaction_type=VoucherTransactionTypeEnum.allocated,
+            amount=Decimal("500000.00"),
+            created_at=now - timedelta(days=10),
+            is_active=True,
+        )
+    )
+    db.add(
+        VoucherTransaction(
+            voucher_id=VOUCHER_B_ID,
+            order_id=order_b.id,
+            transaction_type=VoucherTransactionTypeEnum.redeemed,
+            amount=order_b.voucher_used,
+            created_at=now - timedelta(days=1),
+            is_active=True,
+        )
+    )
+
+    if mode == "full-demo":
+        db.add(
+            VoucherTransaction(
+                voucher_id=VOUCHER_B_ID,
+                order_id=None,
+                transaction_type=VoucherTransactionTypeEnum.adjusted,
+                amount=Decimal("15000.00"),
+                created_at=now - timedelta(hours=10),
+                is_active=True,
+            )
+        )
+
+    # Cart seeded for current beneficiary
+    db.query(CartItem).filter(CartItem.beneficiary_id == ctx.beneficiary_id).delete(synchronize_session=False)
+    for product in [vendor_a_products[0], vendor_a_products[1], vendor_b_products[0]]:
+        db.add(
+            CartItem(
+                beneficiary_id=ctx.beneficiary_id,
+                product_id=product.id,
+                quantity=2 if Decimal(product.voucher_price) > 0 else 1,
+                is_active=True,
+            )
+        )
+
+    # Sync aggregate balance at beneficiary profile level
+    beneficiary = db.query(BeneficiaryProfile).filter(BeneficiaryProfile.user_id == ctx.beneficiary_id).first()
+    if beneficiary:
+        vouchers = db.query(Voucher).filter(
+            Voucher.beneficiary_id == ctx.beneficiary_id,
+            Voucher.status == VoucherStatusEnum.active,
+            Voucher.is_active,
+        ).all()
+        beneficiary.vouchers_balance = sum((Decimal(v.balance) for v in vouchers), Decimal("0"))
 
 
-# ============================================
-# Main Seed Function
-# ============================================
-def seed_database():
-    """Main function to seed the entire database"""
-    print("=" * 60)
-    print(" SEEDING DATABASE WITH TEST DATA")
-    print("=" * 60)
-    
+def seed_database(mode: str, reset: bool) -> None:
+    print("=" * 64)
+    print(" NutriGuard E2E Seeder")
+    print("=" * 64)
+    print(f"Mode   : {mode}")
+    print(f"Reset  : {'yes' if reset else 'no'}")
+    print(f"Engine : {engine.url}")
+
+    BaseModel.metadata.create_all(bind=engine)
+
     db = SessionLocal()
     try:
-        # Initialize database
-        init_database()
-        
-        # Create users (5 of each type)
-        donors, beneficiaries, vendors = create_users(db, count=5)
-        
-        # Create products
-        categories = create_products(db, vendors)
-        
-        # Create donations (12 per donor)
-        create_donations(db, donors, beneficiaries, count_per_donor=12)
-        
-        # Create orders (daily for 30 days)
-        create_orders(db, beneficiaries, vendors, {})
-        
-        # Create FIES surveys (12 per beneficiary)
-        create_fies_surveys(db, beneficiaries)
-        
-        # Create nutrition measurements (1-3 per child in past 30 days)
-        create_nutrition_measurements(db, beneficiaries)
-        
-        print("\n" + "=" * 60)
-        print("[OK] DATABASE SEEDING COMPLETE!")
-        print("=" * 60)
-        print("\nTest data created:")
-        print(f"  - {len(donors)} donors with {len(donors) * 12} donations")
-        print(f"  - {len(beneficiaries)} beneficiaries with children")
-        print(f"  - {len(vendors)} vendors with products")
-        print(f"  - Orders for past 30 days (daily distribution)")
-        print(f"  - FIES surveys for 12 months")
-        print(f"  - Nutrition measurements for children")
-        
-    except Exception as e:
+        if reset:
+            print("- Resetting domain data...")
+            _reset_data(db)
+            db.commit()
+
+        print("- Seeding users and role profiles...")
+        ctx = seed_users(db)
+        db.commit()
+
+        print("- Seeding categories, voucher-allowed categories, and product catalog...")
+        products = seed_categories_and_catalog(db, ctx, mode)
+        db.commit()
+
+        print("- Seeding FIES and nutrition records...")
+        seed_fies_and_nutrition(db, ctx, mode)
+        db.commit()
+
+        print("- Seeding donations, vouchers, transactions, orders, and cart...")
+        seed_donations_vouchers_orders_and_transactions(db, ctx, products, mode)
+        db.commit()
+
+        print("\n[OK] Seeding complete.")
+        print("\nE2E Test IDs:")
+        print(f"  donor_user_id       : {DONOR_USER_ID}")
+        print(f"  beneficiary_user_id : {BENEFICIARY_USER_ID}")
+        print(f"  vendor_a_user_id    : {VENDOR_A_USER_ID}")
+        print(f"  vendor_b_user_id    : {VENDOR_B_USER_ID}")
+        print(f"  voucher_code_a      : E2E-VOUCHER-A")
+        print(f"  voucher_code_b      : E2E-VOUCHER-B")
+
+        print("\nQuick verification targets:")
+        print("  - GET /api/v1/products")
+        print("  - GET /api/v1/cart")
+        print("  - GET /api/v1/cart/summary")
+        print("  - GET /api/v1/orders")
+        print("  - GET /api/v1/vouchers/balance/{beneficiary_id}")
+        print("  - GET /api/v1/vouchers/transactions")
+        print("  - GET /api/v1/fies/latest/{beneficiary_id}")
+        print("  - GET /api/v1/nutrition/latest-measurement/{beneficiary_id}")
+    except Exception as exc:
         db.rollback()
-        print(f"\n[ERROR] Error during seeding: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"\n[ERROR] Seeding failed: {exc}")
+        raise
     finally:
         db.close()
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Seed NutriGuard database with deterministic E2E data")
+    parser.add_argument(
+        "--mode",
+        choices=["minimal-e2e", "full-demo"],
+        default="minimal-e2e",
+        help="Seed mode: minimal-e2e (fast) or full-demo (richer data)",
+    )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Delete domain data before seeding",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    seed_database()
+    args = parse_args()
+    seed_database(mode=args.mode, reset=args.reset)

@@ -3,7 +3,7 @@
  * Manages checkout flow state, validation, and API orchestration
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import type { CheckoutStep, CartItemData, CheckoutState, OrderSummary } from "@/types/checkout";
 import { getCart, updateCartItem, removeCartItem, clearCart } from "@/services/cart";
 import {
@@ -36,7 +36,7 @@ export function useCheckoutFlow() {
   // ============================================
 
   const extractVendorId = useCallback((item: CartItemData): string => {
-    return (item as any).vendor_id || `vendor_${item.product_id}`;
+    return (item as any).vendor_id || "";
   }, []);
 
   const getNextStep = useCallback((current: CheckoutStep): CheckoutStep => {
@@ -113,6 +113,21 @@ export function useCheckoutFlow() {
     },
     [loadCartItems]
   );
+
+  const clearAllItems = useCallback(async () => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
+      await clearCart();
+      await loadCartItems();
+    } catch (err: any) {
+      setState((prev) => ({
+        ...prev,
+        error: err.message || "Failed to clear cart",
+        isLoading: false,
+      }));
+      throw err;
+    }
+  }, [loadCartItems]);
 
   const loadVoucherBalance = useCallback(async () => {
     if (!user) return;
@@ -213,6 +228,7 @@ export function useCheckoutFlow() {
     const groupedByVendor: { [key: string]: CartItemData[] } = {};
     state.cartItems.forEach((item) => {
       const vendorId = extractVendorId(item);
+      if (!vendorId) return;
       if (!groupedByVendor[vendorId]) groupedByVendor[vendorId] = [];
       groupedByVendor[vendorId].push(item);
     });
@@ -274,9 +290,16 @@ export function useCheckoutFlow() {
       const groupedByVendor: { [key: string]: CartItemData[] } = {};
       state.cartItems.forEach((item) => {
         const vendorId = extractVendorId(item);
+        if (!vendorId) return;
         if (!groupedByVendor[vendorId]) groupedByVendor[vendorId] = [];
         groupedByVendor[vendorId].push(item);
       });
+
+      if (Object.keys(groupedByVendor).length === 0) {
+        throw new Error(
+          "Vendor tidak ditemukan pada item keranjang. Silakan refresh dan coba lagi."
+        );
+      }
 
       // Create orders for each vendor FIRST
       const orderIds: string[] = [];
@@ -285,7 +308,7 @@ export function useCheckoutFlow() {
       for (const [vendorId, items] of Object.entries(groupedByVendor)) {
         try {
           const orderData = {
-            vendor_id: vendorId.replace("vendor_", ""),
+            vendor_id: vendorId,
             items: items.map((item) => ({
               product_id: item.product_id,
               quantity: item.quantity,
@@ -295,7 +318,13 @@ export function useCheckoutFlow() {
             notes: undefined,
           };
 
-          const orderResult = await createOrder(orderData);
+          const orderIdempotencyKey = `checkout-${vendorId}-${orderData.items
+            .map((i) => `${i.product_id}:${i.quantity}:${i.price}`)
+            .join("|")}-${orderData.voucher_codes.join(",")}`;
+
+          const orderResult = await createOrder(orderData, {
+            idempotencyKey: orderIdempotencyKey,
+          });
           orderIds.push(orderResult.id);
         } catch (err: any) {
           orderCreationErrors.push(`${vendorId}: ${err.message}`);
@@ -311,11 +340,16 @@ export function useCheckoutFlow() {
       if (state.appliedVoucher && state.appliedVoucher.voucher_id && orderIds.length > 0) {
         try {
           // Redeem voucher against the first order (or distribute across orders)
-          await redeemSingleVoucher({
-            code: state.appliedVoucher.code,
-            amount: state.appliedVoucher.applied_amount,
-            order_id: orderIds[0],
-          });
+          await redeemSingleVoucher(
+            {
+              code: state.appliedVoucher.code,
+              amount: state.appliedVoucher.applied_amount,
+              order_id: orderIds[0],
+            },
+            {
+              idempotencyKey: `redeem-${state.appliedVoucher.code}-${orderIds[0]}-${state.appliedVoucher.applied_amount}`,
+            }
+          );
         } catch (err: any) {
           console.error("Voucher redemption failed after order creation:", err);
         }
@@ -363,6 +397,7 @@ export function useCheckoutFlow() {
     loadCartItems,
     updateQty,
     removeItem,
+    clearAllItems,
 
     // Voucher operations
     loadVoucherBalance,

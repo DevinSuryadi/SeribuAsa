@@ -17,13 +17,13 @@ When `DEV_MODE=true`, the backend accepts requests without a valid JWT and uses 
 
 ## Donations
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/donations/` | Yes | Create a donation |
-| GET | `/donations/` | Yes | List all donations (paginated) |
-| GET | `/donations/{id}` | Yes | Get donation by ID |
-| GET | `/donations/impact/{donor_id}` | Yes | Get donor impact metrics |
-| POST | `/donations/{id}/simulate-payment` | Yes | Simulate payment (demo) |
+| Method | Path                               | Auth | Description                    |
+| ------ | ---------------------------------- | ---- | ------------------------------ |
+| POST   | `/donations/`                      | Yes  | Create a donation              |
+| GET    | `/donations/`                      | Yes  | List all donations (paginated) |
+| GET    | `/donations/{id}`                  | Yes  | Get donation by ID             |
+| GET    | `/donations/impact/{donor_id}`     | Yes  | Get donor impact metrics       |
+| POST   | `/donations/{id}/simulate-payment` | Yes  | Simulate payment (demo)        |
 
 ### Create Donation
 
@@ -56,12 +56,12 @@ Response:
 
 ## Vouchers
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/vouchers/allocate` | Yes | Allocate vouchers after donation |
-| GET | `/vouchers/balance/{beneficiary_id}` | Yes | Get voucher balance |
-| GET | `/vouchers/history` | Yes | Get voucher transaction history |
-| POST | `/vouchers/redeem` | Yes | Redeem vouchers for order |
+| Method | Path                                 | Auth | Description                                          |
+| ------ | ------------------------------------ | ---- | ---------------------------------------------------- |
+| POST   | `/vouchers/allocate`                 | Yes  | Allocate vouchers after donation                     |
+| GET    | `/vouchers/balance/{beneficiary_id}` | Yes  | Get voucher balance                                  |
+| GET    | `/vouchers/history`                  | Yes  | Get voucher transaction history                      |
+| POST   | `/vouchers/redeem`                   | Yes  | Redeem vouchers for order (vendor/admin, idempotent) |
 
 ### Redeem Voucher
 
@@ -74,19 +74,25 @@ POST /api/v1/vouchers/redeem
 }
 ```
 
+Required header:
+
+```
+Idempotency-Key: <unique-key-per-submit>
+```
+
 ---
 
 ## Products
 
-| Method | Path | Auth | Role | Description |
-|--------|------|------|------|-------------|
-| GET | `/products/categories` | Optional | Any | List categories |
-| POST | `/products/categories` | Yes | admin | Create category |
-| GET | `/products/` | Optional | Any | List products (paginated) |
-| GET | `/products/{id}` | Optional | Any | Get product detail |
-| POST | `/products/` | Yes | vendor | Create product |
-| PUT | `/products/{id}` | Yes | vendor | Update product |
-| DELETE | `/products/{id}` | Yes | vendor | Soft delete product |
+| Method | Path                   | Auth     | Role   | Description               |
+| ------ | ---------------------- | -------- | ------ | ------------------------- |
+| GET    | `/products/categories` | Optional | Any    | List categories           |
+| POST   | `/products/categories` | Yes      | admin  | Create category           |
+| GET    | `/products/`           | Optional | Any    | List products (paginated) |
+| GET    | `/products/{id}`       | Optional | Any    | Get product detail        |
+| POST   | `/products/`           | Yes      | vendor | Create product            |
+| PUT    | `/products/{id}`       | Yes      | vendor | Update product            |
+| DELETE | `/products/{id}`       | Yes      | vendor | Soft delete product       |
 
 ### List Products (with filters)
 
@@ -98,12 +104,12 @@ GET /api/v1/products/?page=1&page_size=20&category_id=...&search=...&in_stock_on
 
 ## Orders
 
-| Method | Path | Auth | Role | Description |
-|--------|------|------|------|-------------|
-| POST | `/orders/` | Yes | beneficiary | Create order with voucher redemption |
-| GET | `/orders/` | Yes | beneficiary/vendor | List orders (role-filtered) |
-| GET | `/orders/{id}` | Yes | beneficiary/vendor | Get order detail with items |
-| PUT | `/orders/{id}/status` | Yes | vendor | Update order status |
+| Method | Path                  | Auth | Role               | Description                                       |
+| ------ | --------------------- | ---- | ------------------ | ------------------------------------------------- |
+| POST   | `/orders/`            | Yes  | beneficiary        | Create order with voucher redemption (idempotent) |
+| GET    | `/orders/`            | Yes  | beneficiary/vendor | List orders (role-filtered)                       |
+| GET    | `/orders/{id}`        | Yes  | beneficiary/vendor | Get order detail with items                       |
+| PUT    | `/orders/{id}/status` | Yes  | vendor             | Update order status                               |
 
 ### Create Order
 
@@ -119,15 +125,21 @@ POST /api/v1/orders/
 }
 ```
 
+Required header:
+
+```
+Idempotency-Key: <unique-key-per-submit>
+```
+
 ---
 
 ## FIES (Food Insecurity)
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/fies/submit` | Yes | Submit FIES survey (tanggal 1-7 only) |
-| POST | `/fies/calculate` | No | Calculate FIES score from responses |
-| GET | `/fies/history/{beneficiary_id}` | Yes | Get survey history with trend |
+| Method | Path                             | Auth | Description                         |
+| ------ | -------------------------------- | ---- | ----------------------------------- |
+| POST   | `/fies/submit`                   | Yes  | Submit FIES survey (1x per bulan)   |
+| POST   | `/fies/calculate`                | No   | Calculate FIES score from responses |
+| GET    | `/fies/history/{beneficiary_id}` | Yes  | Get survey history with trend       |
 
 ### Submit Survey
 
@@ -142,41 +154,41 @@ POST /api/v1/fies/submit
 
 ## Nutrition
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/nutrition/children` | Yes | List beneficiary's children |
-| POST | `/nutrition/measurements` | Yes | Add child growth measurement |
-| GET | `/nutrition/measurements/{child_id}` | Yes | Get measurement history |
-| POST | `/nutrition/zscore` | No | Calculate WHO Z-Score |
+| Method | Path                                 | Auth | Description                  |
+| ------ | ------------------------------------ | ---- | ---------------------------- |
+| GET    | `/nutrition/children`                | Yes  | List beneficiary's children  |
+| POST   | `/nutrition/measurements`            | Yes  | Add child growth measurement |
+| GET    | `/nutrition/measurements/{child_id}` | Yes  | Get measurement history      |
+| POST   | `/nutrition/zscore`                  | No   | Calculate WHO Z-Score        |
 
 ---
 
 ## Recommendations
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/recommendations/` | Yes | Get AI-powered nutrition recommendations |
+| Method | Path                | Auth | Description                              |
+| ------ | ------------------- | ---- | ---------------------------------------- |
+| GET    | `/recommendations/` | Yes  | Get AI-powered nutrition recommendations |
 
 ---
 
 ## Settlements
 
-| Method | Path | Auth | Role | Description |
-|--------|------|------|------|-------------|
-| GET | `/settlements/` | Yes | vendor/admin | List settlements |
-| GET | `/settlements/{id}` | Yes | vendor/admin | Get settlement detail |
-| POST | `/settlements/calculate` | Yes | admin | Trigger settlement calculation |
+| Method | Path                     | Auth | Role         | Description                    |
+| ------ | ------------------------ | ---- | ------------ | ------------------------------ |
+| GET    | `/settlements/`          | Yes  | vendor/admin | List settlements               |
+| GET    | `/settlements/{id}`      | Yes  | vendor/admin | Get settlement detail          |
+| POST   | `/settlements/calculate` | Yes  | admin        | Trigger settlement calculation |
 
 ---
 
 ## Reports
 
-| Method | Path | Auth | Role | Description |
-|--------|------|------|------|-------------|
-| GET | `/reports/impact` | Yes | donor | Donor impact report |
-| GET | `/reports/sales` | Yes | vendor | Vendor sales report |
-| GET | `/reports/regional` | Yes | gov/admin | Regional analytics |
-| GET | `/reports/demographics` | Yes | gov/admin | Demographics report |
+| Method | Path                    | Auth | Role      | Description         |
+| ------ | ----------------------- | ---- | --------- | ------------------- |
+| GET    | `/reports/impact`       | Yes  | donor     | Donor impact report |
+| GET    | `/reports/sales`        | Yes  | vendor    | Vendor sales report |
+| GET    | `/reports/regional`     | Yes  | gov/admin | Regional analytics  |
+| GET    | `/reports/demographics` | Yes  | gov/admin | Demographics report |
 
 ---
 
@@ -191,6 +203,7 @@ All errors follow this format:
 ```
 
 Common HTTP status codes:
+
 - `200` — Success
 - `201` — Created
 - `400` — Bad Request (validation error)

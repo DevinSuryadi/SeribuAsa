@@ -12,6 +12,7 @@ import {
   removeCartItem,
   clearCart,
 } from "@/services/cart";
+import { ApiError } from "@/services/api";
 import type { CartItemData } from "@/types/checkout";
 import { toast } from "sonner";
 
@@ -47,7 +48,13 @@ export function CartManagement() {
       setCartItems(cartData.items || []);
       setSummary(summaryData);
     } catch (err: any) {
-      const errorMsg = err.message || "Gagal memuat keranjang";
+      let errorMsg = err.message || "Gagal memuat keranjang";
+
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        errorMsg =
+          "Akses keranjang hanya untuk akun beneficiary. Silakan login dengan akun beneficiary.";
+      }
+
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {

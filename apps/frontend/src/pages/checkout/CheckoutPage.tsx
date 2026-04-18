@@ -140,8 +140,7 @@ function CheckoutPage() {
                   onUpdateQuantity={checkoutFlow.updateQty}
                   onRemoveItem={checkoutFlow.removeItem}
                   onClearCart={async () => {
-                    await checkoutFlow.removeItem("");
-                    checkoutFlow.loadCartItems();
+                    await checkoutFlow.clearAllItems();
                   }}
                   voucherBalance={checkoutFlow.voucherBalance}
                 />

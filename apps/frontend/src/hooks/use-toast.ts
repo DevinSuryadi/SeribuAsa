@@ -38,7 +38,6 @@ function dispatch(action: any) {
       });
     }, TOAST_REMOVE_DELAY);
     // ---------------------------
-
   } else if (action.type === "DISMISS_TOAST") {
     memoryState = {
       ...memoryState,
@@ -55,7 +54,20 @@ function dispatch(action: any) {
   listeners.forEach((l) => l(memoryState));
 }
 
-export const toast = ({ ...props }: Omit<ToasterToast, "id">) => {
+type ToastInput = Omit<ToasterToast, "id">;
+
+type ToastFn = ((props: ToastInput) => { id: string; dismiss: () => void }) & {
+  success: (
+    message: React.ReactNode,
+    description?: React.ReactNode
+  ) => { id: string; dismiss: () => void };
+  error: (
+    message: React.ReactNode,
+    description?: React.ReactNode
+  ) => { id: string; dismiss: () => void };
+};
+
+const toastBase = ({ ...props }: ToastInput) => {
   const id = genId();
 
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
@@ -71,6 +83,22 @@ export const toast = ({ ...props }: Omit<ToasterToast, "id">) => {
 
   return { id, dismiss };
 };
+
+export const toast = toastBase as ToastFn;
+
+toast.success = (message, description) =>
+  toastBase({
+    title: message,
+    description,
+    variant: "default",
+  });
+
+toast.error = (message, description) =>
+  toastBase({
+    title: message,
+    description,
+    variant: "destructive",
+  });
 
 export function useToast() {
   const [state, setState] = React.useState<State>(memoryState);

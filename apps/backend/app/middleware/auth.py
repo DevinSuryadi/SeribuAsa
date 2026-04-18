@@ -43,13 +43,20 @@ async def get_current_user(
     In development: Returns mock user for testing
     """
     # Development mode - return mock user
-    if is_dev_mode() or not credentials:
+    if is_dev_mode():
         logger.debug("Using mock authentication (development mode)")
         return AuthenticatedUser(
             user_id="00000000-0000-0000-0000-000000000001",
             email="donor@nutriguard.id",
             role="donor",
             email_verified=True
+        )
+
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     
     # Production mode - validate Supabase JWT
