@@ -4,7 +4,6 @@ Handles shopping cart operations for beneficiaries
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
 from decimal import Decimal
 import logging
 

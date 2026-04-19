@@ -2,9 +2,7 @@
 Alert System Smoke Tests
 Tests for Phase 2 alert system (stubs for daily cron and critical Z-Score alerts)
 """
-import pytest
-from datetime import datetime, date, timedelta
-from unittest.mock import MagicMock, patch
+from datetime import datetime, timedelta
 
 
 # ============================================

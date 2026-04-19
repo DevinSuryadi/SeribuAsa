@@ -114,6 +114,45 @@ async def calculate_settlements(
     return SettlementCalculateResponse(**result)
 
 
+@router.post("/{settlement_id}/request-payout", response_model=SettlementMarkPaidResponse)
+async def request_settlement_payout(
+    settlement_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Request payout for a settlement (vendor requests payout)"""
+    is_admin = current_user.role == "admin"
+    settlement = SettlementService.get_settlement_by_id(
+        db, settlement_id, current_user.user_id, is_admin
+    )
+
+    if not settlement:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Settlement not found",
+        )
+
+    if settlement.status not in ["ready"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot request payout for settlement with status: {settlement.status}",
+        )
+
+    settlement.status = "processing"
+    settlement.updated_at = datetime.now()
+    db.add(settlement)
+    db.commit()
+    db.refresh(settlement)
+
+    logger.info(f"Settlement {settlement_id} payout requested by vendor")
+
+    s_dict = SettlementMarkPaidResponse.model_validate(settlement).model_dump()
+    if settlement.vendor_profile:
+        s_dict["vendor_store_name"] = settlement.vendor_profile.store_name
+
+    return SettlementMarkPaidResponse(**s_dict)
+
+
 @router.post("/{settlement_id}/mark-paid", response_model=SettlementMarkPaidResponse)
 async def mark_settlement_paid(
     settlement_id: str,

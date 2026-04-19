@@ -693,8 +693,8 @@ def seed_database(mode: str, reset: bool) -> None:
         print(f"  beneficiary_user_id : {BENEFICIARY_USER_ID}")
         print(f"  vendor_a_user_id    : {VENDOR_A_USER_ID}")
         print(f"  vendor_b_user_id    : {VENDOR_B_USER_ID}")
-        print(f"  voucher_code_a      : E2E-VOUCHER-A")
-        print(f"  voucher_code_b      : E2E-VOUCHER-B")
+        print("  voucher_code_a      : E2E-VOUCHER-A")
+        print("  voucher_code_b      : E2E-VOUCHER-B")
 
         print("\nQuick verification targets:")
         print("  - GET /api/v1/products")

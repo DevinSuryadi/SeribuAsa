@@ -150,6 +150,48 @@ class Settlement(BaseModel):
 
 
 # ============================================
+# Withdrawal - Vendor wallet withdrawal requests
+# ============================================
+class WithdrawalStatusEnum(str, enum.Enum):
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"
+    cancelled = "cancelled"
+
+
+class Withdrawal(BaseModel):
+    __tablename__ = "withdrawals"
+    
+    # Foreign key
+    vendor_id = Column(UUID(as_uuid=True), ForeignKey("vendor_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # Amount
+    amount = Column(Numeric(15, 2), nullable=False)
+    
+    # Bank account (snapshot at time of withdrawal)
+    bank_name = Column(String(100))
+    bank_account_number = Column(String(50))
+    bank_account_holder = Column(String(255))
+    
+    # Status
+    status = Column(String(50), nullable=False, default=WithdrawalStatusEnum.pending, index=True)
+    
+    # Transfer reference
+    transfer_reference = Column(String(255))
+    completed_at = Column(DateTime)
+    
+    # Notes
+    notes = Column(String(500))
+    
+    # Relationship
+    vendor_profile = relationship("VendorProfile", back_populates="withdrawals")
+    
+    def __repr__(self):
+        return f"<Withdrawal {self.vendor_id} - {self.amount}>"
+
+
+# ============================================
 # AuditLog - System audit trail
 # ============================================
 class AuditLog(BaseModel):

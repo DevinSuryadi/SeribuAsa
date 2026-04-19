@@ -2,7 +2,7 @@
 Order Schemas
 Pydantic schemas for order management
 """
-from pydantic import BaseModel, Field, ConfigDict, field_serializer
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from uuid import UUID

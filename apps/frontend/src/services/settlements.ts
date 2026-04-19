@@ -50,9 +50,7 @@ export async function getSettlements(
   return apiFetch(`/settlements/?${params.toString()}`);
 }
 
-export async function getSettlementDetail(
-  settlementId: string
-): Promise<SettlementDetail> {
+export async function getSettlementDetail(settlementId: string): Promise<SettlementDetail> {
   return apiFetch(`/settlements/${settlementId}`);
 }
 
@@ -70,6 +68,12 @@ export async function markSettlementPaid(
   return apiFetch(`/settlements/${settlementId}/mark-paid`, {
     method: "POST",
     body: JSON.stringify(data),
+  });
+}
+
+export async function requestSettlementPayout(settlementId: string): Promise<Settlement> {
+  return apiFetch(`/settlements/${settlementId}/request-payout`, {
+    method: "POST",
   });
 }
 

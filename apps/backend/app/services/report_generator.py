@@ -3,12 +3,11 @@ Report Generator Service
 Generates analytics reports for donors, vendors, and government
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
-from datetime import date, timedelta, datetime
+from sqlalchemy import func
+from datetime import date, timedelta
 from decimal import Decimal
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 import logging
-from collections import defaultdict
 
 from app.models.donation import Donation, DonationStatusEnum, Voucher
 from app.models.product import Order, OrderItem, Product

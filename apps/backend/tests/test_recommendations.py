@@ -2,7 +2,6 @@
 Recommendations Integration Tests
 Tests for AI-powered nutrition recommendations
 """
-import pytest
 
 
 # ============================================

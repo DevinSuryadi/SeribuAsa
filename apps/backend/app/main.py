@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 import logging
 
-from app.api import auth, donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users, cart
+from app.api import auth, donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users, cart, vendor_wallet, admin
 from app.database import IS_SQLITE, SessionLocal, init_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
 from app.config import settings
@@ -42,6 +42,8 @@ app.include_router(nutrition.router, prefix="/api/v1")
 app.include_router(recommendations.router, prefix="/api/v1")
 app.include_router(settlements.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
+app.include_router(vendor_wallet.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1")
 
 
 def _seed_demo_profiles() -> None:
@@ -143,6 +145,8 @@ def api_v1_root():
             "recommendations": "/api/v1/recommendations",
             "settlements": "/api/v1/settlements",
             "reports": "/api/v1/reports",
+            "vendor-wallet": "/api/v1/vendor-wallet",
+            "admin": "/api/v1/admin",
             "docs": "/docs"
         }
     }

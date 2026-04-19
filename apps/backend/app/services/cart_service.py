@@ -11,7 +11,6 @@ from uuid import UUID
 
 from app.models.cart import CartItem
 from app.models.product import Product
-from app.models.user import BeneficiaryProfile
 
 logger = logging.getLogger(__name__)
 

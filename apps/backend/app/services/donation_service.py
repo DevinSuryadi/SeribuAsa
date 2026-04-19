@@ -194,7 +194,6 @@ class DonationService:
         donor_id: str
     ) -> dict:
         """Get dashboard metrics for donor - for dashboard display"""
-        from datetime import datetime, timedelta
         
         donor_uuid = DonationService._to_uuid(donor_id)
         now = datetime.now()

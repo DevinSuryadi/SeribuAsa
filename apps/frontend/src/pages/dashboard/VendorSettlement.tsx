@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { formatIDR, formatDate } from "@/lib/format";
 import { useStaggerChildren } from "@/hooks/useStaggerChildren";
-import { getSettlements, markSettlementPaid } from "@/services/settlements";
+import { getSettlements, requestSettlementPayout } from "@/services/settlements";
 import type { SettlementReport } from "@/services/reports";
 import { getSettlementReport } from "@/services/reports";
 import { apiFetch } from "@/services/api";
@@ -119,10 +119,9 @@ const VendorSettlement = () => {
 
     try {
       setClaimLoading(true);
-      const bankRef = `TRF-${selectedSettlement.id.substring(0, 8)}-${Date.now()}`;
-      await markSettlementPaid(selectedSettlement.id, bankRef);
+      await requestSettlementPayout(selectedSettlement.id);
       toast.success(
-        `Klaim berhasil diajukan. Pencairan ${formatIDR(selectedSettlement?.net_amount || 0)} akan diproses dalam 1-3 hari kerja.`
+        `Permintaan pencairan berhasil diajukan. Pencairan ${formatIDR(selectedSettlement?.net_amount || 0)} akan diproses dalam 1-3 hari kerja.`
       );
       setShowClaimModal(false);
       setSelectedSettlement(null);
@@ -137,6 +136,7 @@ const VendorSettlement = () => {
   const statusLabel: Record<string, string> = {
     calculating: "Menghitung",
     ready: "Siap Cair",
+    processing: "Diproses",
     paid: "Dicairkan",
     cancelled: "Dibatalkan",
   };
@@ -144,6 +144,7 @@ const VendorSettlement = () => {
   const statusColor: Record<string, string> = {
     calculating: "bg-secondary text-muted-foreground",
     ready: "bg-accent/10 text-accent-foreground border-accent/20",
+    processing: "bg-amber-100 text-amber-700 border-amber-200",
     paid: "bg-primary/10 text-primary border-primary/20",
     cancelled: "bg-destructive/10 text-destructive border-destructive/20",
   };
@@ -398,7 +399,7 @@ const VendorSettlement = () => {
                         >
                           {statusLabel[s.status] || s.status}
                         </Badge>
-                        {(s.status === "ready" || s.status === "calculating") && (
+                        {s.status === "ready" && (
                           <Button
                             size="sm"
                             variant="outline"

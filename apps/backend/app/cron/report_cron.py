@@ -3,7 +3,6 @@ Report Caching and Generation Cron Jobs
 Pre-generates and caches frequently accessed reports
 """
 import logging
-from datetime import date
 from apscheduler.schedulers.background import BackgroundScheduler
 
 logger = logging.getLogger(__name__)
