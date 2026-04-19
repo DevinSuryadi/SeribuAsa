@@ -104,10 +104,21 @@ const KelolaProduk = () => {
   };
 
   const handleSave = async () => {
-    if (!formName || !formPrice || !formVoucherPrice) {
+    if (!formName || !formPrice || formVoucherPrice === "") {
       toast.error("Lengkapi semua field wajib");
       return;
     }
+
+    if (parseFloat(formVoucherPrice) < 0) {
+      toast.error("Harga voucher tidak boleh negatif");
+      return;
+    }
+
+    if (parseFloat(formVoucherPrice) > parseFloat(formPrice)) {
+      toast.error("Harga voucher tidak boleh melebihi harga produk");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const data = {
