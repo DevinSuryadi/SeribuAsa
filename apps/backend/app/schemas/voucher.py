@@ -2,7 +2,7 @@
 Voucher Schemas
 Pydantic schemas for voucher-related requests and responses
 """
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from decimal import Decimal
@@ -50,6 +50,13 @@ class VoucherResponse(VoucherBase):
     updated_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
+    
+    @field_validator("id", "beneficiary_id", "donation_id", mode="before")
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if v is None:
+            return v
+        return str(v)
 
 
 class VoucherWithBalance(VoucherResponse):
@@ -88,6 +95,13 @@ class VoucherRedemptionResponse(BaseModel):
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
+    
+    @field_validator("id", "voucher_id", "order_id", mode="before")
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if v is None:
+            return v
+        return str(v)
 
 
 class VoucherRedemptionRequest(BaseModel):
