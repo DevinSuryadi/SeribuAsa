@@ -233,8 +233,7 @@ const DompetNutrisi = () => {
               </Button>
               <Button
                 size="sm"
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 font-semibold text-xs gap-1.5"
+                className="bg-white/10 border border-white/40 text-white hover:bg-white/20 font-semibold text-xs gap-1.5"
                 onClick={() => navigate("/dashboard/penukaran-voucher")}
               >
                 <Ticket className="h-3.5 w-3.5" /> Tukar

@@ -133,6 +133,21 @@ async def create_subscription(
     return SubscriptionResponse.model_validate(subscription)
 
 
+# ============================================
+# Subscription Plans (Public) - MUST be before /{subscription_id}
+# ============================================
+@router.get("/plans", response_model=List[SubscriptionPlanResponse])
+async def list_subscription_plans(
+    db: Session = Depends(get_db)
+):
+    """Get all active subscription plans"""
+    plans = db.query(SubscriptionPlan).filter(
+        SubscriptionPlan.is_active == "true"
+    ).all()
+    
+    return [SubscriptionPlanResponse.model_validate(p) for p in plans]
+
+
 @router.get("/{subscription_id}", response_model=SubscriptionDetailResponse)
 async def get_subscription(
     subscription_id: str,
@@ -427,18 +442,3 @@ async def get_billing_history(
         items=[BillingHistoryResponse.model_validate(h) for h in history],
         total=len(history)
     )
-
-
-# ============================================
-# Subscription Plans (Public)
-# ============================================
-@router.get("/plans", response_model=List[SubscriptionPlanResponse])
-async def list_subscription_plans(
-    db: Session = Depends(get_db)
-):
-    """Get all active subscription plans"""
-    plans = db.query(SubscriptionPlan).filter(
-        SubscriptionPlan.is_active == "true"
-    ).all()
-    
-    return [SubscriptionPlanResponse.model_validate(p) for p in plans]

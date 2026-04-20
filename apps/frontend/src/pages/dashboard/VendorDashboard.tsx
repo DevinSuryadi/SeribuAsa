@@ -152,7 +152,7 @@ export default function VendorDashboard() {
 
   return (
     <DashboardLayout
-      title={`Toko ${user?.fullName || "Vendor"} 🏖️`}
+      title={`Toko ${user?.fullName || "Vendor"} `}
       subtitle="Kelola produk, pesanan, dan saldo toko Anda."
     >
       <div className="space-y-6">
