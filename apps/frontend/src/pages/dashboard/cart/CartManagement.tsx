@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart, Loader2 } from "lucide-react";
+import { ShoppingCart, Loader2, ArrowRight, ShoppingBag } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { CartList } from "@/components/cart/CartList";
 import { CartSummary } from "@/components/cart/CartSummary";
@@ -24,10 +24,7 @@ interface CartSummaryData {
   max_voucher_applicable: number;
 }
 
-/**
- * CartManagement - Shopping cart dashboard page
- * Allows beneficiaries to view and manage cart items
- */
+
 export function CartManagement() {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState<CartItemData[]>([]);
@@ -49,12 +46,9 @@ export function CartManagement() {
       setSummary(summaryData);
     } catch (err: any) {
       let errorMsg = err.message || "Gagal memuat keranjang";
-
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-        errorMsg =
-          "Akses keranjang hanya untuk akun beneficiary. Silakan login dengan akun beneficiary.";
+        errorMsg = "Akses keranjang hanya untuk akun beneficiary. Silakan login dengan akun beneficiary.";
       }
-
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -90,7 +84,6 @@ export function CartManagement() {
 
   const handleClearCart = async () => {
     if (!window.confirm("Apakah Anda yakin ingin mengosongkan keranjang?")) return;
-
     setIsUpdating(true);
     try {
       await clearCart();
@@ -113,12 +106,12 @@ export function CartManagement() {
 
   return (
     <DashboardLayout title="Keranjang Belanja" subtitle="Kelola item belanja Anda sebelum checkout">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-700 text-sm">{error}</p>
-            <Button size="sm" variant="outline" onClick={loadCartData} className="mt-2">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 flex items-center justify-between">
+            <p className="text-sm text-red-700">{error}</p>
+            <Button size="sm" variant="outline" onClick={loadCartData} className="border-red-300 text-red-700 ml-4">
               Coba Lagi
             </Button>
           </div>
@@ -126,23 +119,26 @@ export function CartManagement() {
 
         {/* Loading State */}
         {isLoading ? (
-          <div className="text-center py-12">
-            <Loader2 size={32} className="animate-spin mx-auto text-blue-600 mb-4" />
-            <p className="text-gray-600">Memuat keranjang...</p>
+          <div className="rounded-2xl border border-border bg-card flex flex-col items-center justify-center py-16">
+            <Loader2 size={32} className="animate-spin text-green-600 mb-4" />
+            <p className="text-sm text-muted-foreground">Memuat keranjang...</p>
           </div>
         ) : cartItems.length === 0 ? (
           /* Empty State */
-          <div className="text-center py-12">
-            <div className="inline-block p-4 bg-gray-100 rounded-full mb-4">
-              <ShoppingCart size={32} className="text-gray-600" />
+          <div className="rounded-2xl border border-dashed border-border bg-card text-center py-16 px-8">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mx-auto mb-4">
+              <ShoppingCart size={28} className="text-muted-foreground" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Keranjang Kosong</h2>
-            <p className="text-gray-600 mb-6">
-              Tambahkan produk ke keranjang Anda untuk memulai berbelanja
+            <h2 className="text-xl font-bold text-foreground mb-2">Keranjang Anda Kosong</h2>
+            <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
+              Tambahkan produk bergizi dari katalog kami dan bayar menggunakan voucher nutrisi Anda.
             </p>
-            <div className="space-x-3">
-              <Button onClick={() => navigate("/dashboard/katalog")}>Lanjutkan Belanja</Button>
-              <Button variant="outline" onClick={() => navigate("/dashboard/beneficiary")}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Button onClick={() => navigate("/dashboard/katalog")} className="gap-2">
+                <ShoppingBag className="h-4 w-4" />
+                Mulai Belanja
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/dashboard")}>
                 Kembali ke Dashboard
               </Button>
             </div>
@@ -150,7 +146,7 @@ export function CartManagement() {
         ) : (
           /* Main Content */
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Cart Items - 2/3 width */}
               <div className="lg:col-span-2">
                 <CartList
@@ -163,7 +159,7 @@ export function CartManagement() {
               </div>
 
               {/* Summary - 1/3 width */}
-              <div>
+              <div className="space-y-4">
                 {summary && (
                   <CartSummary
                     totalAmount={summary.total_amount}
@@ -177,12 +173,22 @@ export function CartManagement() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 justify-end pt-6 border-t border-gray-200">
-              <Button variant="outline" onClick={() => navigate("/dashboard/katalog")}>
-                Tambah Lebih Banyak
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-border">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/dashboard/katalog")}
+                className="w-full sm:w-auto gap-2"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Tambah Produk Lagi
               </Button>
-              <Button onClick={handleGoToCheckout} disabled={isUpdating}>
-                Lanjutkan ke Checkout →
+              <Button
+                onClick={handleGoToCheckout}
+                disabled={isUpdating}
+                className="w-full sm:w-auto gap-2 bg-green-600 hover:bg-green-700"
+              >
+                Lanjutkan ke Checkout
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </>

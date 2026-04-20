@@ -87,7 +87,7 @@ export function CTASection() {
           >
             {/* Primary */}
             <Link
-              to="/daftar"
+              to="/donasi"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -119,7 +119,7 @@ export function CTASection() {
 
             {/* Outline */}
             <Link
-              to="/daftar?role=vendor"
+              to="/register?role=vendor"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',

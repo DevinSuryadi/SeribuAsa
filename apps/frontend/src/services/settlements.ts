@@ -59,7 +59,7 @@ export async function markSettlementPaid(
   bankTransferReference: string,
   payoutDate?: string
 ): Promise<Settlement> {
-  const data: any = {
+  const data: Record<string, string> = {
     bank_transfer_reference: bankTransferReference,
   };
   if (payoutDate) {
@@ -82,7 +82,7 @@ export async function calculateSettlements(
   periodEnd: string,
   vendorId?: string
 ): Promise<{ settlements_created: number; total_amount: number }> {
-  const data: any = {
+  const data: Record<string, string> = {
     period_start: periodStart,
     period_end: periodEnd,
   };
@@ -93,4 +93,38 @@ export async function calculateSettlements(
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+/**
+ * Export settlements as CSV
+ * @param format - 'csv' (pdf not yet supported)
+ * @param startDate - Optional start date filter
+ * @param endDate - Optional end date filter
+ * @returns Blob of the CSV file
+ */
+export async function exportSettlements(
+  format: "csv" | "pdf" = "csv",
+  startDate?: string,
+  endDate?: string
+): Promise<Blob> {
+  const params = new URLSearchParams();
+  params.append("format", format);
+  if (startDate) params.append("start_date", startDate);
+  if (endDate) params.append("end_date", endDate);
+
+  const response = await fetch(
+    `${import.meta.env.VITE_API_BASE_URL}/settlements/export?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Gagal mengekspor settlement");
+  }
+
+  return response.blob();
 }

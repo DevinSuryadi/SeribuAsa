@@ -63,3 +63,43 @@ export async function getLatestNutritionMeasurement(beneficiaryId: string) {
     ...(latestEntry?.measurement ?? {}),
   };
 }
+
+export async function updateMeasurement(
+  measurementId: string,
+  data: {
+    child_id: string;
+    measurement_date: string;
+    weight: number;
+    height: number;
+    muac?: number;
+    notes?: string;
+  }
+) {
+  return apiFetch(`/nutrition/measurements/${measurementId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteMeasurement(measurementId: string) {
+  return apiFetch(`/nutrition/measurements/${measurementId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function addChild(data: {
+  full_name: string;
+  date_of_birth: string; // YYYY-MM-DD
+  gender: "male" | "female";
+}) {
+  // Build query params since backend expects query params not JSON body
+  const params = new URLSearchParams();
+  params.append("full_name", data.full_name);
+  params.append("date_of_birth", data.date_of_birth);
+  params.append("gender", data.gender);
+
+  const response = await apiFetch(`/nutrition/children?${params.toString()}`, {
+    method: "POST",
+  });
+  return response;
+}

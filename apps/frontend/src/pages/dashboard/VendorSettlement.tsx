@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,34 +13,42 @@ import {
 import {
   CreditCard,
   Download,
-  CheckCircle,
-  Clock,
   ArrowRight,
   Wallet,
   Calendar,
-  RefreshCw,
-  AlertCircle,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
 import { formatIDR, formatDate } from "@/lib/format";
-import { useStaggerChildren } from "@/hooks/useStaggerChildren";
-import { getSettlements, requestSettlementPayout } from "@/services/settlements";
+import { requestSettlementPayout, exportSettlements } from "@/services/settlements";
+import type { Settlement } from "@/services/settlements";
+import { triggerDownload } from "@/services/downloads";
 import type { SettlementReport } from "@/services/reports";
 import { getSettlementReport } from "@/services/reports";
 import { apiFetch } from "@/services/api";
 import { toast } from "sonner";
+import { useVendorSettlement } from "@/hooks/useVendorSettlement";
+import { ErrorState } from "@/components/dashboard/ErrorState";
+import { CardSkeletonGrid } from "@/components/dashboard/LoadingSkeleton";
+import { KpiCard, KpiCardGrid } from "@/components/dashboard/KpiCard";
+import { settlementStatusConfig } from "@/lib/status-config";
+
+interface VendorProfile {
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_account_holder?: string;
+}
 
 const VendorSettlement = () => {
   const { user } = useAuth();
-  const gridRef = useStaggerChildren({ stagger: 0.1 });
-  const [settlements, setSettlements] = useState<any[]>([]);
+  const { data: settlements, loading, error, refetch } = useVendorSettlement();
+
   const [report, setReport] = useState<SettlementReport | null>(null);
-  const [vendorProfile, setVendorProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
   const [showClaimModal, setShowClaimModal] = useState(false);
-  const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
+  const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(null);
   const [claimLoading, setClaimLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [startDate, setStartDate] = useState<string>(() => {
     const date = new Date();
     date.setDate(date.getDate() - 90);
@@ -49,145 +56,102 @@ const VendorSettlement = () => {
   });
   const [endDate, setEndDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
-  const fetchSettlements = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [data, reportData] = await Promise.all([
-        getSettlements(),
-        getSettlementReport(startDate, endDate),
-      ]);
-      setSettlements(data.items || []);
-      setReport(reportData);
-    } catch (err: any) {
-      setError(err.message);
-      toast.error("Gagal memuat data settlement");
-    } finally {
-      setLoading(false);
-    }
-  }, [startDate, endDate]);
+  // Fetch settlement report separately (for analytics)
+  useEffect(() => {
+    if (!user) return;
+    const controller = new AbortController();
+    getSettlementReport(startDate, endDate)
+      .then(setReport)
+      .catch(() => {}); // non-critical, dashboard still works without it
+    return () => controller.abort();
+  }, [startDate, endDate, user]);
 
+  // Fetch vendor profile (for bank info)
   const fetchVendorProfile = useCallback(async () => {
     if (!user?.id) return;
     try {
       const data = await apiFetch(`/users/${user.id}`);
-      setVendorProfile(data);
-    } catch (err) {
-      console.error("Failed to fetch vendor profile:", err);
+      setVendorProfile(data as VendorProfile);
+    } catch {
+      // Non-critical, fallback to placeholder
     }
   }, [user?.id]);
 
   useEffect(() => {
-    if (user) {
-      fetchSettlements();
-      fetchVendorProfile();
-    }
-  }, [user, fetchSettlements, fetchVendorProfile]);
+    fetchVendorProfile();
+  }, [fetchVendorProfile]);
 
   const totalEarned = useMemo(() => {
-    if (report?.summary?.settled_amount) {
-      return report.summary.settled_amount;
-    }
+    if (report?.summary?.settled_amount) return report.summary.settled_amount;
     return settlements
       .filter((s) => s.status === "paid" || s.status === "ready")
-      .reduce((a, b) => a + parseFloat(b.net_amount || 0), 0);
+      .reduce((a, b) => a + (b.net_amount || 0), 0);
   }, [report, settlements]);
 
-  const pending = useMemo(() => {
-    if (report) {
-      return report.summary.pending_count;
-    }
+  const pendingCount = useMemo(() => {
+    if (report) return report.summary.pending_count;
     return settlements.filter((s) => s.status === "ready" || s.status === "pending").length;
   }, [report, settlements]);
 
   const pendingTotal = useMemo(() => {
-    if (report?.summary?.pending_amount) {
-      return report.summary.pending_amount;
-    }
+    if (report?.summary?.pending_amount) return report.summary.pending_amount;
     return settlements
       .filter((s) => s.status === "ready" || s.status === "pending")
-      .reduce((a, b) => a + parseFloat(b.net_amount || 0), 0);
+      .reduce((a, b) => a + (b.net_amount || 0), 0);
   }, [report, settlements]);
 
-  const handleClaim = (settlement: any) => {
+  const handleClaim = (settlement: Settlement) => {
     setSelectedSettlement(settlement);
     setShowClaimModal(true);
   };
 
   const handleClaimSubmit = async () => {
     if (!selectedSettlement) return;
-
     try {
       setClaimLoading(true);
       await requestSettlementPayout(selectedSettlement.id);
       toast.success(
-        `Permintaan pencairan berhasil diajukan. Pencairan ${formatIDR(selectedSettlement?.net_amount || 0)} akan diproses dalam 1-3 hari kerja.`
+        `Pencairan ${formatIDR(selectedSettlement.net_amount || 0)} diproses dalam 1-3 hari kerja.`
       );
       setShowClaimModal(false);
       setSelectedSettlement(null);
-      fetchSettlements();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mengajukan klaim");
+      refetch();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengajukan klaim";
+      toast.error(msg);
     } finally {
       setClaimLoading(false);
     }
   };
 
-  const statusLabel: Record<string, string> = {
-    calculating: "Menghitung",
-    ready: "Siap Cair",
-    processing: "Diproses",
-    paid: "Dicairkan",
-    cancelled: "Dibatalkan",
-  };
+  const handleExport = async () => {
+    if (settlements.length === 0) {
+      toast.info("Tidak ada data untuk diekspor");
+      return;
+    }
 
-  const statusColor: Record<string, string> = {
-    calculating: "bg-secondary text-muted-foreground",
-    ready: "bg-accent/10 text-accent-foreground border-accent/20",
-    processing: "bg-amber-100 text-amber-700 border-amber-200",
-    paid: "bg-primary/10 text-primary border-primary/20",
-    cancelled: "bg-destructive/10 text-destructive border-destructive/20",
+    setExportLoading(true);
+    try {
+      const blob = await exportSettlements("csv", startDate, endDate);
+      const dateStr = new Date().toISOString().split("T")[0];
+      triggerDownload(blob, `laporan-settlement-${dateStr}.csv`);
+      toast.success("Laporan berhasil diunduh");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengekspor laporan";
+      toast.error(msg);
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   if (loading) {
     return (
       <DashboardLayout
-        title="Settlement"
+        title="Riwayat Settlement"
         subtitle="Riwayat pencairan dana voucher yang telah ditukarkan."
       >
         <div className="space-y-4">
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="pt-6">
-                  <div className="animate-pulse">
-                    <div className="h-10 w-10 rounded-lg bg-secondary mb-3" />
-                    <div className="h-6 w-24 bg-secondary rounded mb-2" />
-                    <div className="h-3 w-16 bg-secondary rounded" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 border-b border-border/50 pb-4 last:border-0 animate-pulse"
-                  >
-                    <div className="h-10 w-10 rounded-full bg-secondary" />
-                    <div className="flex-1">
-                      <div className="h-4 w-32 bg-secondary rounded" />
-                      <div className="h-3 w-24 bg-secondary rounded mt-2" />
-                    </div>
-                    <div className="h-8 w-24 bg-secondary rounded" />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <CardSkeletonGrid count={4} columns={4} />
         </div>
       </DashboardLayout>
     );
@@ -196,270 +160,269 @@ const VendorSettlement = () => {
   if (error) {
     return (
       <DashboardLayout
-        title="Settlement"
+        title="Riwayat Settlement"
         subtitle="Riwayat pencairan dana voucher yang telah ditukarkan."
       >
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-destructive">Gagal memuat data</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={fetchSettlements}>
-            <RefreshCw className="mr-1 h-3 w-3" /> Coba Lagi
-          </Button>
-        </div>
+        <ErrorState message={error} onRetry={refetch} />
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout
-      title="Settlement"
+      title="Riwayat Settlement"
       subtitle="Riwayat pencairan dana voucher yang telah ditukarkan."
     >
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-foreground">Dari</label>
+      <div className="space-y-5">
+        {/* KPI Cards */}
+        <KpiCardGrid columns={4}>
+          <KpiCard
+            icon={Wallet}
+            label="Total Dicairkan"
+            value={formatIDR(totalEarned)}
+            subtitle={`${settlements.filter((s) => s.status === "paid").length} periode`}
+            variant="green"
+          />
+          <KpiCard
+            icon={Calendar}
+            label="Menunggu Cair"
+            value={formatIDR(pendingTotal)}
+            subtitle={`${pendingCount} periode`}
+            variant="amber"
+          />
+          <KpiCard
+            icon={CreditCard}
+            label="Rekening Tujuan"
+            value={vendorProfile?.bank_name || "Belum diatur"}
+            subtitle={
+              vendorProfile?.bank_account_number
+                ? `****${vendorProfile.bank_account_number.slice(-4)}`
+                : "Silakan lengkapi di profil"
+            }
+            variant={vendorProfile?.bank_account_number ? "indigo" : "red"}
+          />
+          <KpiCard
+            icon={Calendar}
+            label="Jadwal Cair"
+            value="Tgl 5"
+            subtitle="Setiap bulan"
+            variant="purple"
+          />
+        </KpiCardGrid>
+
+        {/* Trend Cards (if report available) */}
+        {report && (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+            {[
+              {
+                label: "Pertumbuhan MoM",
+                value: `${report.trends.month_over_month_growth > 0 ? "+" : ""}${report.trends.month_over_month_growth.toFixed(1)}%`,
+                icon: TrendingUp,
+                positive: report.trends.month_over_month_growth >= 0,
+              },
+              {
+                label: "Rata-rata Waktu Cair",
+                value: `${report.trends.average_settlement_time.toFixed(1)} hari`,
+                icon: Calendar,
+                positive: true,
+              },
+              {
+                label: "Tingkat Sukses",
+                value: `${report.trends.settlement_success_rate.toFixed(1)}%`,
+                icon: TrendingUp,
+                positive: true,
+              },
+            ].map((t) => {
+              const Icon = t.icon;
+              return (
+                <div
+                  key={t.label}
+                  className={`rounded-xl border p-4 flex items-center gap-3 ${t.positive ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}
+                >
+                  <div
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg border bg-white ${t.positive ? "border-green-200" : "border-red-200"}`}
+                  >
+                    <Icon className={`h-4 w-4 ${t.positive ? "text-green-600" : "text-red-600"}`} />
+                  </div>
+                  <div>
+                    <div
+                      className={`text-lg font-extrabold ${t.positive ? "text-green-700" : "text-red-700"}`}
+                    >
+                      {t.value}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t.label}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Date Filter + Download */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex gap-3">
+            <div>
+              <label className="text-xs font-semibold text-foreground mb-1 block">Dari</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="rounded-xl border border-input bg-card px-3 py-2 text-sm"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-foreground">Sampai</label>
+            <div>
+              <label className="text-xs font-semibold text-foreground mb-1 block">Sampai</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="rounded-xl border border-input bg-card px-3 py-2 text-sm"
               />
             </div>
           </div>
           <Button
             variant="outline"
-            className="gap-2 self-start"
-            onClick={() => toast.success("Mengunduh laporan...")}
+            className="gap-2"
+            onClick={handleExport}
+            disabled={exportLoading || settlements.length === 0}
           >
-            <Download className="h-4 w-4" /> Unduh Laporan
+            {exportLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Unduh Laporan
           </Button>
         </div>
 
-        {/* KPI */}
-        <div ref={gridRef} className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="pt-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 mb-3">
-                <Wallet className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-primary tracking-tight truncate">
-                {formatIDR(totalEarned)}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Total Dicairkan</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">
-                {settlements.filter((s) => s.status === "paid").length} periode
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 mb-3">
-                <Clock className="h-5 w-5 text-accent" />
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-foreground tracking-tight truncate">
-                {formatIDR(pendingTotal)}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Menunggu Cair</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">{pending} periode</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary mb-3">
-                <CreditCard className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div className="text-2xl font-bold text-foreground tracking-tight">
-                {vendorProfile?.bank_name || "BCA"}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Rekening Tujuan</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">
-                {vendorProfile?.bank_account_number
-                  ? `****${vendorProfile.bank_account_number.slice(-4)}`
-                  : "****4821"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary mb-3">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div className="text-2xl font-bold text-foreground tracking-tight">Tgl 5</div>
-              <p className="text-sm text-muted-foreground mt-1">Jadwal Cair</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">Setiap bulan</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Settlement Trends */}
-        {report && (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary mb-3">
-                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="text-2xl font-bold text-foreground tracking-tight">
-                  {report.trends.month_over_month_growth > 0 ? "+" : ""}
-                  {report.trends.month_over_month_growth.toFixed(1)}%
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Pertumbuhan MoM</p>
-                <p className="text-xs text-muted-foreground/70 mt-0.5">Bulan ke bulan</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary mb-3">
-                  <Clock className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="text-2xl font-bold text-foreground tracking-tight">
-                  {report.trends.average_settlement_time.toFixed(1)} hari
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Rata-rata Waktu</p>
-                <p className="text-xs text-muted-foreground/70 mt-0.5">Hingga pencairan</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 mb-3">
-                  <CheckCircle className="h-5 w-5 text-primary" />
-                </div>
-                <div className="text-2xl font-bold text-primary tracking-tight">
-                  {report.trends.settlement_success_rate.toFixed(1)}%
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Tingkat Sukses</p>
-                <p className="text-xs text-muted-foreground/70 mt-0.5">Settlement berhasil</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {/* Settlement List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Riwayat Settlement</CardTitle>
-            <CardDescription>Pencairan dana dari penukaran voucher</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-3">Riwayat Settlement</h2>
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
             {settlements.length === 0 ? (
               <div className="text-center py-12">
-                <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                <p className="text-muted-foreground">Belum ada settlement</p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
-                  Settlement akan muncul setelah ada penukaran voucher
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary mx-auto mb-4">
+                  <CreditCard className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="font-semibold text-foreground mb-1">Belum ada settlement</p>
+                <p className="text-sm text-muted-foreground">
+                  Settlement muncul setelah ada penukaran voucher
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {settlements.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center gap-3 border-b border-border/50 pb-4 last:border-0 last:pb-0"
-                  >
+              <div className="divide-y divide-border/50">
+                {settlements.map((s) => {
+                  const sc =
+                    settlementStatusConfig[s.status as keyof typeof settlementStatusConfig] ||
+                    settlementStatusConfig.calculating;
+                  const SCIcon = sc.icon;
+                  return (
                     <div
-                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${s.status === "paid" ? "bg-primary/10" : "bg-accent/10"}`}
+                      key={s.id}
+                      className="flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/30 transition-colors"
                     >
-                      {s.status === "paid" ? (
-                        <CheckCircle className="h-5 w-5 text-primary" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-accent" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-foreground">
-                        Periode {s.period_start ? formatDate(s.period_start) : "-"} s/d{" "}
-                        {s.period_end ? formatDate(s.period_end) : "-"}
+                      <div
+                        className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
+                          s.status === "paid"
+                            ? "bg-blue-50"
+                            : s.status === "ready"
+                              ? "bg-green-50"
+                              : "bg-amber-50"
+                        }`}
+                      >
+                        <SCIcon
+                          className={`h-4 w-4 ${
+                            s.status === "paid"
+                              ? "text-blue-600"
+                              : s.status === "ready"
+                                ? "text-green-600"
+                                : "text-amber-600"
+                          }`}
+                        />
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {s.vendor_store_name || "Vendor"}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-foreground">
+                          {s.period_start ? formatDate(s.period_start) : "—"} —{" "}
+                          {s.period_end ? formatDate(s.period_end) : "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {s.vendor_store_name || "Toko Anda"}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-sm font-bold text-foreground">
-                        {formatIDR(s.net_amount)}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 justify-end">
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-sm font-bold text-foreground">
+                          {formatIDR(s.net_amount || 0)}
+                        </div>
                         <Badge
                           variant="outline"
-                          className={`text-[10px] ${statusColor[s.status] || ""}`}
+                          className={`text-[9px] border gap-0.5 ${sc.className}`}
                         >
-                          {statusLabel[s.status] || s.status}
+                          <SCIcon className="h-2.5 w-2.5" /> {sc.label}
                         </Badge>
-                        {s.status === "ready" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 text-xs gap-1"
-                            onClick={() => handleClaim(s)}
-                          >
-                            <ArrowRight className="h-3 w-3" /> Klaim
-                          </Button>
-                        )}
                       </div>
+                      {s.status === "ready" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs gap-1 flex-shrink-0 border-green-200 text-green-700 hover:bg-green-50"
+                          onClick={() => handleClaim(s)}
+                        >
+                          <ArrowRight className="h-3 w-3" /> Klaim
+                        </Button>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Claim Modal */}
       <Dialog open={showClaimModal} onOpenChange={setShowClaimModal}>
-        <DialogContent>
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
             <DialogTitle>Klaim Settlement</DialogTitle>
             <DialogDescription>
               Ajukan pencairan dana untuk periode{" "}
-              {selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : "-"}
+              {selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : "—"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-lg bg-secondary/50 p-4 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Periode:</span>
-                <span className="font-medium">
-                  {selectedSettlement?.period_start
-                    ? formatDate(selectedSettlement.period_start)
-                    : "-"}{" "}
-                  s/d{" "}
-                  {selectedSettlement?.period_end ? formatDate(selectedSettlement.period_end) : "-"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Redemptions:</span>
-                <span className="font-medium">
-                  {formatIDR(selectedSettlement?.total_redemptions || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Admin Fee:</span>
-                <span className="font-medium">{formatIDR(selectedSettlement?.admin_fee || 0)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Jumlah Bersih:</span>
-                <span className="font-bold text-primary">
+            <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-2.5 text-sm">
+              {[
+                {
+                  label: "Periode",
+                  value: `${selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : "—"} s/d ${selectedSettlement?.period_end ? formatDate(selectedSettlement.period_end) : "—"}`,
+                },
+                {
+                  label: "Total Redemptions",
+                  value: formatIDR(selectedSettlement?.total_redemptions || 0),
+                },
+                {
+                  label: "Admin Fee",
+                  value: formatIDR(selectedSettlement?.admin_fee || 0),
+                },
+              ].map((r) => (
+                <div key={r.label} className="flex justify-between">
+                  <span className="text-muted-foreground">{r.label}:</span>
+                  <span className="font-medium">{r.value}</span>
+                </div>
+              ))}
+              <div className="flex justify-between border-t border-border pt-2.5">
+                <span className="font-semibold text-foreground">Jumlah Bersih:</span>
+                <span className="font-bold text-green-600">
                   {formatIDR(selectedSettlement?.net_amount || 0)}
                 </span>
               </div>
             </div>
-            <Button className="w-full" onClick={handleClaimSubmit} disabled={claimLoading}>
-              {claimLoading ? "Memproses..." : "Ajukan Klaim"}
+            <Button
+              className="w-full h-11 bg-green-600 hover:bg-green-700"
+              onClick={handleClaimSubmit}
+              disabled={claimLoading}
+            >
+              {claimLoading ? "Memproses..." : "Ajukan Klaim Sekarang"}
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => setShowClaimModal(false)}>
               Batal

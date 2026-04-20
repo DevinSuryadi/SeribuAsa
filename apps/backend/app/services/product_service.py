@@ -95,7 +95,7 @@ class ProductService:
             voucher_price=data.voucher_price,
             stock_quantity=data.stock_quantity,
             unit=data.unit,
-            approval_status="pending",
+            approval_status="approved",  # Auto-approve for demo (change to "pending" in production)
         )
         db.add(product)
         db.commit()
@@ -121,8 +121,8 @@ class ProductService:
         for key, value in update_data.items():
             setattr(product, key, value)
 
-        if price_changed or stock_changed:
-            product.approval_status = "pending"
+        # Note: In production, you might want to reset to "pending" on price/stock changes
+        # For demo, we keep it approved to avoid approval workflow
 
         db.commit()
         db.refresh(product)

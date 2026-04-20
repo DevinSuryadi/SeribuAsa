@@ -128,7 +128,7 @@ export function VoucherWallet() {
     }
   };
 
-  const handleApplyVoucher = async (_voucherId: string) => {
+  const handleApplyVoucher = async () => {
     if (!validatedVoucher) return;
 
     // In real implementation, this would be called during checkout

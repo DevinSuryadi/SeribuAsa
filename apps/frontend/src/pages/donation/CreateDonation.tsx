@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Heart, ArrowRight, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { createDonation } from "@/services/donations"
+import { createDonation, simulatePayment } from "@/services/donations"
 import { formatIDR } from "@/lib/format"
 import { PLAN_NAMES, PAYMENT_LABELS, PAYMENT_METHOD_MAP, DONATION_CHECKOUT_STORAGE_KEY } from "@/lib/donation-constants"
 import { DonationHero } from "@/components/donation/DonationHero"
@@ -69,18 +69,35 @@ export default function CreateDonation() {
     }
     setLoading(true)
     try {
+      // Step 1: Buat donasi (tanpa recipient_id — sistem auto-assign)
       const donation = await createDonation({
         amount: parseInt(amount),
         type: donationType,
         payment_method: paymentMethod,
       })
-      toast.success("Donasi berhasil dibuat!")
-      navigate(`/donation/payment/${donation.id}`, {
-        state: { amount: parseInt(amount), paymentMethod },
+
+      // Step 2: Langsung simulate payment (MVP mode — tanpa payment gateway)
+      // Backend akan: auto-assign penerima FIES tertinggi + generate voucher otomatis
+      toast.loading("Memproses pembayaran...", { id: "payment" })
+      const paymentResult: any = await simulatePayment(donation.id)
+      toast.dismiss("payment")
+
+      toast.success("Donasi berhasil! Voucher dikirim ke penerima 🎉")
+
+      // Step 3: Redirect ke halaman sukses dengan data impact
+      navigate("/donation/success", {
+        state: {
+          donationId: donation.id,
+          amount: parseInt(amount),
+          transactionId: paymentResult?.transaction_id || paymentResult?.data?.transaction_id,
+          voucherCreated: paymentResult?.voucher_created ?? paymentResult?.data?.voucher_created ?? true,
+          impact: paymentResult?.impact || paymentResult?.data?.impact,
+        },
       })
     } catch (err) {
+      toast.dismiss("payment")
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      toast.error("Gagal membuat donasi", { description: errorMessage })
+      toast.error("Gagal memproses donasi", { description: errorMessage })
     } finally {
       setLoading(false)
     }

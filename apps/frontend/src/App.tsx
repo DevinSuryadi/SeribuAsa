@@ -339,6 +339,12 @@ function App() {
           }
         />
 
+        {/* Redirect legacy /dashboard/vouchers → /dashboard/dompet-nutrisi */}
+        <Route
+          path="/dashboard/vouchers"
+          element={<Navigate to="/dashboard/dompet-nutrisi" replace />}
+        />
+
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

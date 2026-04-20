@@ -38,6 +38,13 @@ from app.models.nutrition import (
     Withdrawal,
     WithdrawalStatusEnum
 )
+from app.models.subscription import (
+    Subscription,
+    SubscriptionPlan,
+    BillingHistory,
+    SubscriptionStatusEnum,
+    BillingStatusEnum
+)
 from app.models.cart import (
     CartItem,
     VoucherTransaction,
@@ -90,4 +97,11 @@ __all__ = [
     "SettlementStatusEnum",
     "Withdrawal",
     "WithdrawalStatusEnum",
+    
+    # Subscription models
+    "Subscription",
+    "SubscriptionPlan",
+    "BillingHistory",
+    "SubscriptionStatusEnum",
+    "BillingStatusEnum",
 ]

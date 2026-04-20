@@ -22,6 +22,7 @@ import {
   Sparkles,
   ShoppingCart,
   Receipt,
+  QrCode,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -45,8 +46,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Katalog Pangan", href: "/dashboard/katalog", icon: Package },
     { label: "Keranjang", href: "/dashboard/cart", icon: ShoppingCart },
     { label: "Riwayat Pesanan", href: "/dashboard/orders", icon: Receipt },
-    { label: "Dompet Nutrisi", href: "/dashboard/vouchers", icon: Wallet },
-    { label: "Penukaran Voucher", href: "/dashboard/penukaran-voucher", icon: CreditCard },
+    { label: "Dompet Nutrisi", href: "/dashboard/dompet-nutrisi", icon: Wallet },
     { label: "Survei FIES", href: "/dashboard/survei-fies", icon: ClipboardList },
     { label: "Pemantauan Gizi", href: "/dashboard/pemantauan-gizi", icon: Activity },
     { label: "Rekomendasi AI", href: "/dashboard/rekomendasi-ai", icon: Sparkles },
@@ -55,7 +55,12 @@ const navByRole: Record<string, NavItem[]> = {
   vendor: [
     { label: "Ringkasan", href: "/dashboard/vendor", icon: LayoutDashboard },
     { label: "Kelola Produk", href: "/dashboard/kelola-produk", icon: Package },
+    { label: "Scan Voucher", href: "/dashboard/penukaran-voucher", icon: QrCode },
     { label: "Settlement", href: "/dashboard/settlement", icon: CreditCard },
+    { label: "Profil", href: "/dashboard/profile", icon: Settings },
+  ],
+  admin: [
+    { label: "Dashboard Admin", href: "/dashboard/admin", icon: LayoutDashboard },
     { label: "Profil", href: "/dashboard/profile", icon: Settings },
   ],
 };

@@ -63,7 +63,7 @@ class ReportGenerator:
             .all()
         )
         donation_trend = [
-            {"month": t.month.strftime("%Y-%m") if t.month else "", "total": float(t.total or 0), "donations_count": 0}
+            {"month": t.month.strftime("%Y-%m") if t.month else "", "amount": float(t.total or 0), "donations_count": 0}
             for t in trend_data
         ]
 
@@ -81,13 +81,14 @@ class ReportGenerator:
             )
             .all()
         )
+        geo_total_amount = float(geo_data[0].total_amount or 0) if geo_data else 0.0
         geographic_distribution = [
             {
                 "province": "Jakarta",  # Placeholder - extract from user_profile.address
                 "children": 0,
-                "amount": float(sum(d.total_amount or 0 for d in geo_data)),
+                "amount": geo_total_amount,
             }
-        ] if geo_data else []
+        ] if geo_data and geo_total_amount > 0 else []
 
         return {
             "donor_id": donor_id,

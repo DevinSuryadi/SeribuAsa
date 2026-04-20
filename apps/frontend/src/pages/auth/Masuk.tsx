@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Eye, EyeOff, Loader2, Heart, Users, Store } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 import logo from '@/assets/logo.svg'
@@ -10,7 +10,7 @@ export default function Masuk() {
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { signIn, signInAsDemo } = useAuth()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,11 +43,7 @@ export default function Masuk() {
     navigate("/dashboard")
   }
 
-  const handleDemoLogin = (role: "donor" | "beneficiary" | "vendor") => {
-    signInAsDemo(role)
-    toast.success(`Login sebagai Demo ${role === "donor" ? "Donatur" : role === "beneficiary" ? "Penerima" : "Vendor"}!`)
-    navigate("/dashboard")
-  }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
@@ -76,43 +72,7 @@ export default function Masuk() {
         <h2 className="text-2xl font-semibold text-center mb-1">Masuk ke Akun</h2>
         <p className="text-sm text-gray-500 text-center mb-6">Masukkan email dan kata sandi Anda</p>
 
-        {/* Demo Account Buttons */}
-        <div className="mb-6">
-          <p className="text-sm font-medium text-center text-gray-600 mb-3">Login Cepat (Demo)</p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("donor")}
-              className="flex flex-col items-center gap-1 border border-green-200 rounded-lg p-3 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 transition"
-            >
-              <Heart size={18} />
-              Donatur
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("beneficiary")}
-              className="flex flex-col items-center gap-1 border border-blue-200 rounded-lg p-3 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
-            >
-              <Users size={18} />
-              Penerima
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("vendor")}
-              className="flex flex-col items-center gap-1 border border-purple-200 rounded-lg p-3 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 transition"
-            >
-              <Store size={18} />
-              Vendor
-            </button>
-          </div>
-        </div>
 
-        {/* Divider */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex-1 h-px bg-gray-200"></div>
-          <span className="text-sm text-gray-400">atau</span>
-          <div className="flex-1 h-px bg-gray-200"></div>
-        </div>
 
         {/* Form */}
         <form className="space-y-4" onSubmit={handleSubmit}>

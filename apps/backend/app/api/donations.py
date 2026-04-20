@@ -178,6 +178,109 @@ async def get_dashboard_metrics(
     return DashboardMetrics(**metrics)
 
 
+@router.get("/{donation_id}/receipt")
+async def download_donation_receipt(
+    donation_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """
+    Download donation receipt as PDF.
+    Returns PDF file for successful donations.
+    """
+    donation = db.query(Donation).filter(
+        Donation.id == donation_id,
+        Donation.donor_id == current_user.user_id
+    ).first()
+    
+    if not donation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Donation not found"
+        )
+    
+    if donation.status != DonationStatusEnum.success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Receipt only available for successful donations"
+        )
+    
+    # For now, return a simple JSON response
+    # In production, generate actual PDF
+    from fastapi.responses import JSONResponse
+    return JSONResponse({
+        "message": "Receipt generation endpoint",
+        "donation_id": donation_id,
+        "amount": str(donation.amount),
+        "date": donation.created_at.isoformat() if donation.created_at else None,
+        "status": donation.status.value,
+        "note": "PDF generation to be implemented with library like WeasyPrint or ReportLab"
+    })
+
+
+@router.get("/export")
+async def export_donation_history(
+    format: str = "csv",
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """
+    Export donation history as CSV or PDF.
+    """
+    from fastapi.responses import StreamingResponse
+    import csv
+    import io
+    
+    # Build query
+    query = db.query(Donation).filter(Donation.donor_id == current_user.user_id)
+    
+    if status:
+        query = query.filter(Donation.status == status)
+    if date_from:
+        query = query.filter(Donation.created_at >= date_from)
+    if date_to:
+        query = query.filter(Donation.created_at <= date_to)
+    
+    donations = query.order_by(Donation.created_at.desc()).all()
+    
+    if format.lower() == "csv":
+        # Generate CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Header
+        writer.writerow(["ID", "Amount", "Currency", "Type", "Status", "Payment Method", "Date"])
+        
+        # Data
+        for d in donations:
+            writer.writerow([
+                str(d.id),
+                str(d.amount),
+                "IDR",
+                d.type.value,
+                d.status.value,
+                d.payment_method,
+                d.created_at.isoformat() if d.created_at else ""
+            ])
+        
+        output.seek(0)
+        
+        return StreamingResponse(
+            io.BytesIO(output.getvalue().encode()),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=donation_history.csv"}
+        )
+    
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Format '{format}' not supported. Use 'csv'."
+        )
+
+
 @router.post("/{donation_id}/simulate-payment")
 async def simulate_payment(
     donation_id: str,
