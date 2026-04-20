@@ -162,11 +162,11 @@ function OrderHistoryPage() {
                 Mulai Berbelanja
               </Button>
               <Button
-                onClick={() => navigate("/dashboard/dompet")}
+                onClick={() => navigate("/dashboard/dompet-nutrisi")}
                 variant="outline"
                 className="min-h-11"
               >
-                Lihat Dompet Voucher
+                Lihat Dompet Nutrisi
               </Button>
             </div>
           </div>

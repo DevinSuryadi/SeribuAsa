@@ -1,5 +1,3 @@
-import { format } from "date-fns";
-import { id as idLocale } from "date-fns/locale";
 import { CalendarDays, ChevronRight, Package, RotateCcw, Store } from "lucide-react";
 import type { Order, OrderStatus } from "@/types/orders";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,6 +41,12 @@ export function OrderHistoryTable({
   reorderingOrderId,
 }: OrderHistoryTableProps) {
   const formatCurrency = (value: number) => `Rp ${value.toLocaleString("id-ID")}`;
+  const formatDate = (date: Date) =>
+    new Intl.DateTimeFormat("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(date);
 
   if (isLoading) {
     return (
@@ -116,7 +120,7 @@ export function OrderHistoryTable({
                 <CalendarDays size={14} className="text-gray-400" />
                 <span>
                   {isDateValid
-                    ? format(createdAt, "dd MMM yyyy", { locale: idLocale })
+                    ? formatDate(createdAt)
                     : "Tanggal tidak tersedia"}
                 </span>
               </div>
