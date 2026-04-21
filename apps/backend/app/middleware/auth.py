@@ -11,6 +11,8 @@ from uuid import UUID
 
 from app.services.supabase_auth import supabase_auth
 from app.config import settings
+from app.database import SessionLocal
+from app.models.user import UserProfile
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ async def get_current_user(
         )
 
     if not credentials:
+        logger.warning("[AUTH] Request without credentials - returning 401")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
@@ -61,13 +64,47 @@ async def get_current_user(
     
     # Production mode - validate Supabase JWT
     try:
+        logger.info(f"[AUTH] Verifying JWT token...")
         token_data = await supabase_auth.verify_token(credentials.credentials)
         user_info = supabase_auth.extract_user_info(token_data)
+        
+        # Look up actual role from database based on which profile exists
+        # (UserProfile doesn't have a role field - role is determined by which profile exists)
+        db = SessionLocal()
+        try:
+            user_profile = db.query(UserProfile).filter(
+                UserProfile.user_id == user_info["user_id"]
+            ).first()
+            
+            if user_profile:
+                # Check which profile exists to determine role
+                if user_profile.beneficiary_profile:
+                    actual_role = "beneficiary"
+                elif user_profile.vendor_profile:
+                    actual_role = "vendor"
+                elif user_profile.donor_profile:
+                    actual_role = "donor"
+                else:
+                    # Fallback to JWT role if no specific profile found
+                    actual_role = user_info["role"]
+                    
+                logger.info(f"[AUTH] Role from database: {actual_role}")
+            else:
+                # Fallback to JWT role if no profile found
+                actual_role = user_info["role"]
+                logger.warning(f"[AUTH] No user profile found for {user_info['user_id']}, using JWT role: {actual_role}")
+        except Exception as e:
+            logger.error(f"[AUTH] Error looking up user profile: {e}")
+            actual_role = user_info["role"]
+        finally:
+            db.close()
+        
+        logger.info(f"[AUTH] JWT verified - user_id: {user_info['user_id']}, email: {user_info['email']}, role: {actual_role}")
         
         return AuthenticatedUser(
             user_id=user_info["user_id"],
             email=user_info["email"],
-            role=user_info["role"],
+            role=actual_role,
             email_verified=user_info["email_verified"]
         )
         
