@@ -8,11 +8,14 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Dict, Any, Optional
 import logging
+<<<<<<< Updated upstream
 <<<<<<< HEAD
 from collections import defaultdict
 from uuid import UUID
 =======
 >>>>>>> 70ac7e42cd8c9a8d5a6c1ce9db826b5506e6c495
+=======
+>>>>>>> Stashed changes
 
 from app.models.donation import Donation, DonationStatusEnum, Voucher
 from app.models.product import Order, OrderItem, Product
