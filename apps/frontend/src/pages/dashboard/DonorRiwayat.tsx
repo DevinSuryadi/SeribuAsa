@@ -1,93 +1,140 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Download, FileText, Search, Heart, RefreshCw, AlertCircle } from 'lucide-react';
-import { formatIDR, formatDate } from '@/lib/format';
-import { getDonations } from '@/services/donations';
-import { toast } from 'sonner';
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Download,
+  FileText,
+  Search,
+  Heart,
+  TrendingUp,
+  CheckCircle,
+  Plus,
+  Loader2,
+} from "lucide-react";
+import { formatIDR, formatDate } from "@/lib/format";
+import { getDonations } from "@/services/donations";
+import {
+  downloadDonationReceipt,
+  exportDonationHistory,
+  triggerDownload,
+} from "@/services/downloads";
+import type { Donation, DonationStatus } from "@/types/donation";
+import { toast } from "sonner";
+import { ErrorState } from "@/components/dashboard/ErrorState";
+import { CardSkeletonGrid, ListItemSkeleton } from "@/components/dashboard/LoadingSkeleton";
+import { KpiCard, KpiCardGrid } from "@/components/dashboard/KpiCard";
+import { donationStatusConfig } from "@/lib/status-config";
 
-const statusColor: Record<string, string> = {
-  success: 'bg-primary/10 text-primary border-primary/20',
-  pending: 'bg-orange-100 text-orange-700 border-orange-200',
-  failed: 'bg-destructive/10 text-destructive border-destructive/20',
-};
+type FilterKey = "all" | DonationStatus;
 
-const statusLabel: Record<string, string> = {
-  success: 'Sukses',
-  pending: 'Pending',
-  failed: 'Gagal',
-};
+const filterTabs: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "Semua" },
+  { key: "success", label: "Sukses" },
+  { key: "pending", label: "Pending" },
+  { key: "failed", label: "Gagal" },
+];
 
 const DonorRiwayat = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [donations, setDonations] = useState<any[]>([]);
+  const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<FilterKey>("all");
+  const [downloadingReceipt, setDownloadingReceipt] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const fetchDonations = useCallback(async () => {
+    const controller = new AbortController();
     try {
       setLoading(true);
       setError(null);
       const data = await getDonations();
-      setDonations(data.items || []);
-    } catch (err: any) {
-      setError(err.message || 'Gagal memuat riwayat donasi');
-      toast.error('Gagal memuat riwayat donasi');
+      setDonations(data || []);
+    } catch (err: unknown) {
+      if ((err as Error)?.name === "AbortError") return;
+      const msg = err instanceof Error ? err.message : "Gagal memuat riwayat donasi";
+      setError(msg);
+      toast.error("Gagal memuat riwayat donasi");
     } finally {
       setLoading(false);
     }
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    if (user) {
-      fetchDonations();
-    }
+    if (user) fetchDonations();
   }, [user, fetchDonations]);
 
-  const filtered = useMemo(() => donations.filter((d: any) => {
-    if (statusFilter !== 'all' && d.status !== statusFilter) return false;
-    if (search) {
-      const typeLabel = d.type === 'subscription' ? 'Donasi Langganan' : 'Donasi Satu Kali';
-      return typeLabel.toLowerCase().includes(search.toLowerCase());
+  // Handle download receipt
+  const handleDownloadReceipt = async (donationId: string) => {
+    setDownloadingReceipt(donationId);
+    try {
+      const blob = await downloadDonationReceipt(donationId);
+      triggerDownload(blob, `kwitansi-donasi-${donationId.slice(0, 8)}.pdf`);
+      toast.success("Kwitansi berhasil diunduh");
+    } catch (err: any) {
+      toast.error("Gagal mengunduh kwitansi", { description: err.message });
+    } finally {
+      setDownloadingReceipt(null);
     }
-    return true;
-  }), [donations, search, statusFilter]);
+  };
+
+  // Handle export history
+  const handleExportHistory = async () => {
+    setExporting(true);
+    try {
+      const blob = await exportDonationHistory("csv", {
+        status: statusFilter !== "all" ? statusFilter : undefined,
+      });
+      const dateStr = new Date().toISOString().split("T")[0];
+      triggerDownload(blob, `riwayat-donasi-${dateStr}.csv`);
+      toast.success("Riwayat berhasil diekspor");
+    } catch (err: any) {
+      toast.error("Gagal mengekspor riwayat", { description: err.message });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const filtered = useMemo(
+    () =>
+      donations.filter((d) => {
+        if (statusFilter !== "all" && d.status !== statusFilter) return false;
+        if (search) {
+          const typeLabel = d.type === "subscription" ? "Donasi Langganan" : "Donasi Satu Kali";
+          return typeLabel.toLowerCase().includes(search.toLowerCase());
+        }
+        return true;
+      }),
+    [donations, search, statusFilter]
+  );
 
   const totalDonated = useMemo(
-    () => filtered.filter((d: any) => d.status === 'success').reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0),
+    () =>
+      filtered.filter((d) => d.status === "success").reduce((sum, d) => sum + (d.amount || 0), 0),
     [filtered]
+  );
+
+  const totalCount = donations.length;
+  const successCount = useMemo(
+    () => donations.filter((d) => d.status === "success").length,
+    [donations]
   );
 
   if (loading) {
     return (
       <DashboardLayout title="Riwayat Donasi" subtitle="Semua transaksi donasi Anda.">
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between border-b border-border/50 pb-4 last:border-0 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-secondary" />
-                      <div>
-                        <div className="h-4 w-32 bg-secondary rounded" />
-                        <div className="h-3 w-24 bg-secondary rounded mt-2" />
-                      </div>
-                    </div>
-                    <div className="h-8 w-24 bg-secondary rounded" />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="space-y-4">
+          <CardSkeletonGrid count={3} columns={3} />
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <ListItemSkeleton count={5} />
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -96,104 +143,160 @@ const DonorRiwayat = () => {
   if (error) {
     return (
       <DashboardLayout title="Riwayat Donasi" subtitle="Semua transaksi donasi Anda.">
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-destructive">Gagal memuat data</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={fetchDonations}>
-            <RefreshCw className="mr-1 h-3 w-3" /> Coba Lagi
-          </Button>
-        </div>
+        <ErrorState message={error} onRetry={fetchDonations} />
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout title="Riwayat Donasi" subtitle="Semua transaksi donasi Anda.">
-      <div className="space-y-6">
-        {/* Summary Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Total donasi berhasil</p>
-            <p className="text-2xl font-bold text-primary">{formatIDR(totalDonated)}</p>
-          </div>
-          <Button variant="outline" className="gap-2" onClick={() => toast.success('Mengunduh riwayat...')}>
-            <Download className="h-4 w-4" /> Unduh
-          </Button>
-        </div>
+      <div className="space-y-5">
+        {/* Stats Row */}
+        <KpiCardGrid columns={3}>
+          <KpiCard
+            icon={Heart}
+            label="Total Berhasil"
+            value={formatIDR(totalDonated)}
+            variant="rose"
+          />
+          <KpiCard
+            icon={TrendingUp}
+            label="Total Transaksi"
+            value={`${totalCount}x`}
+            variant="blue"
+          />
+          <KpiCard icon={CheckCircle} label="Sukses" value={`${successCount}x`} variant="green" />
+        </KpiCardGrid>
 
-        {/* Search & Filter */}
-        <div className="flex flex-col gap-3 sm:flex-row">
+        {/* Search & Filter Bar */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Cari donasi..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input
+              placeholder="Cari donasi..."
+              className="pl-9 rounded-xl"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-          <div className="flex gap-1.5">
-            {['all', 'success', 'pending', 'failed'].map((s) => (
+          <div className="flex gap-1.5 flex-wrap">
+            {filterTabs.map((tab) => (
               <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  statusFilter === s ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  statusFilter === tab.key
+                    ? "bg-rose-600 text-white"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {s === 'all' ? 'Semua' : statusLabel[s]}
+                {tab.label}
               </button>
             ))}
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 flex-shrink-0"
+            onClick={handleExportHistory}
+            disabled={exporting || donations.length === 0}
+          >
+            {exporting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            Unduh
+          </Button>
         </div>
 
         {/* Transaction List */}
-        <Card>
-          <CardContent className="pt-6">
-            {filtered.length === 0 ? (
-              <div className="text-center py-12">
-                <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">Tidak ada donasi ditemukan</p>
-                <Button variant="link" onClick={() => navigate('/donation/create')} className="mt-2">
-                  Buat donasi pertama Anda
-                </Button>
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          {filtered.length === 0 ? (
+            <div className="text-center py-14">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 mx-auto mb-4">
+                <Heart className="h-6 w-6 text-rose-400" />
               </div>
-            ) : (
-              <div className="space-y-4">
-                {filtered.map((d: any) => {
-                  const typeLabel = d.type === 'subscription' ? 'Donasi Langganan' : 'Donasi Satu Kali';
-                  return (
-                    <div
-                      key={d.id}
-                      className="flex items-center justify-between border-b border-border/50 pb-4 last:border-0 -mx-2 px-2 rounded-lg transition-colors hover:bg-secondary/30"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                          <FileText className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-foreground">{typeLabel}</div>
-                          <div className="text-xs text-muted-foreground">{formatDate(d.created_at)} • {d.payment_method?.replace('_', ' ')}</div>
-                        </div>
-                      </div>
-                      <div className="text-right flex items-center gap-3">
-                        <div>
-                          <div className="font-semibold text-foreground">{formatIDR(d.amount)}</div>
-                          <Badge variant="outline" className={`text-[10px] ${statusColor[d.status]}`}>
-                            {statusLabel[d.status] || d.status}
-                          </Badge>
-                        </div>
-                        {d.status === 'success' && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.success('Mengunduh kwitansi...')}>
-                            <Download className="h-3 w-3" />
-                          </Button>
+              <p className="font-semibold text-foreground mb-1">Tidak ada donasi ditemukan</p>
+              <p className="text-sm text-muted-foreground mb-5">
+                {search || statusFilter !== "all"
+                  ? "Coba ubah filter atau kata kunci"
+                  : "Mulai berdonasi untuk mendukung nutrisi anak"}
+              </p>
+              <Button
+                size="sm"
+                onClick={() => navigate("/donation/create")}
+                className="bg-rose-600 hover:bg-rose-700 gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" /> Buat Donasi
+              </Button>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {filtered.map((d) => {
+                const typeLabel =
+                  d.type === "subscription" ? "Donasi Langganan" : "Donasi Satu Kali";
+                const sc = donationStatusConfig[d.status] || {
+                  ...donationStatusConfig.pending,
+                  label: d.status,
+                  icon: FileText,
+                };
+                const StatusIcon = sc.icon;
+                return (
+                  <div
+                    key={d.id}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors group"
+                  >
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-50">
+                      <Heart className="h-4 w-4 text-rose-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-foreground">{typeLabel}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDate(d.created_at)}
+                        {d.payment_method && (
+                          <span className="ml-1.5 opacity-60">
+                            · {d.payment_method.replace("_", " ")}
+                          </span>
                         )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    <div className="text-right flex items-center gap-3 flex-shrink-0">
+                      <div>
+                        <div className="text-sm font-bold text-foreground">
+                          {formatIDR(d.amount)}
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={`text-[9px] border gap-0.5 ${sc.className}`}
+                        >
+                          <StatusIcon className="h-2.5 w-2.5" />
+                          {sc.label}
+                        </Badge>
+                      </div>
+                      {d.status === "success" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleDownloadReceipt(d.id)}
+                          disabled={downloadingReceipt === d.id}
+                          aria-label={`Unduh kwitansi untuk donasi ${d.id.slice(0, 8)}`}
+                        >
+                          {downloadingReceipt === d.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

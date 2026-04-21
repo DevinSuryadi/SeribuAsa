@@ -2,7 +2,6 @@
 Nutrition Integration Tests
 Tests for nutrition measurements, Z-Score calculation, and health data
 """
-import pytest
 from datetime import date
 
 

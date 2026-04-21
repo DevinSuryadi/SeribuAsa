@@ -1,0 +1,4 @@
+[rtk] /!\ No hook installed — run `rtk init -g` for automatic token savings
+Running: pytest --tb=short -q 
+Pytest: No tests collected
+[full output: ~/AppData\Local\rtk\tee\1776487721_pytest.log]

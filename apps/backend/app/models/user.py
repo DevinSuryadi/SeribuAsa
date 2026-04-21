@@ -72,6 +72,9 @@ class DonorProfile(BaseModel):
     # Donations
     donations = relationship("Donation", back_populates="donor_profile", cascade="all, delete-orphan")
     
+    # Subscriptions
+    subscriptions = relationship("Subscription", back_populates="donor_profile", cascade="all, delete-orphan")
+    
     def __repr__(self):
         return f"<DonorProfile {self.user_profile.full_name}>"
 
@@ -139,6 +142,12 @@ class VendorProfile(BaseModel):
     # Settlement status
     settlement_status = Column(String(50), default="active")
     approval_status = Column(String(50), default="pending")
+    
+    # E-wallet balance
+    wallet_balance = Column(Numeric(15, 2), default=0)
+    
+    # Withdrawals
+    withdrawals = relationship("Withdrawal", back_populates="vendor_profile", cascade="all, delete-orphan")
     
     # Relationship
     user_profile = relationship("UserProfile", back_populates="vendor_profile")

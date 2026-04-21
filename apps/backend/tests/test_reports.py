@@ -3,10 +3,8 @@ Report Tests
 Comprehensive test suite for report generation and export functionality
 """
 import pytest
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
-from uuid import UUID
-from unittest.mock import MagicMock, patch
 
 from app.schemas.reports import (
     ImpactReportResponse,
@@ -20,7 +18,6 @@ from app.schemas.reports import (
 from app.utils.cache import ReportCache
 from app.utils.csv_generator import CSVGenerator, generate_csv_export
 from app.utils.pdf_generator import PDFGenerator
-from app.utils.bank_validator import BankValidator
 
 
 # ============================================

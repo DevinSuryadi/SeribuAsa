@@ -11,7 +11,8 @@ from app.models import (  # noqa: F401
     UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, Child,
     Donation, Voucher, VoucherRedemption,
     Category, Product, Order, OrderItem,
-    NutritionMeasurement, FIESSurvey, Settlement, AuditLog
+    NutritionMeasurement, FIESSurvey, Settlement, AuditLog,
+    Withdrawal
 )
 
 # this is the Alembic Config object, which provides

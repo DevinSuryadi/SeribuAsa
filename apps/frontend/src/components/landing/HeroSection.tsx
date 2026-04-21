@@ -233,7 +233,7 @@ export function HeroSection() {
             </Link>
 
             <Link
-              to="/daftar?role=beneficiary"
+              to="/register?role=beneficiary"
               className="hero-cta"
               style={{
                 display: 'inline-flex',

@@ -6,6 +6,7 @@ This will be replaced with MidtransService for production.
 from sqlalchemy.orm import Session
 from app.models.donation import Donation, DonationStatusEnum, Voucher, VoucherStatusEnum
 from app.models.user import BeneficiaryProfile, DonorProfile
+from app.models.nutrition import FIESSurvey, FIESClassificationEnum
 from datetime import datetime, timedelta
 from decimal import Decimal
 import uuid
@@ -56,9 +57,18 @@ class MockPaymentService:
         donation.status = DonationStatusEnum.success
         donation.midtrans_transaction_id = f"MOCK-{uuid.uuid4().hex[:12].upper()}"
         
-        # Create voucher for beneficiary (if assigned)
+        # Create voucher for beneficiary (auto-allocate if not assigned)
         voucher_created = False
-        if donation.recipient_id:
+        assigned_beneficiary_id = donation.recipient_id
+        
+        if not assigned_beneficiary_id:
+            # Auto-allocate to best beneficiary candidate
+            assigned_beneficiary_id = MockPaymentService._find_best_beneficiary(db)
+            if assigned_beneficiary_id:
+                donation.recipient_id = assigned_beneficiary_id
+                logger.info(f"Auto-allocated donation {donation_id} to beneficiary {assigned_beneficiary_id}")
+        
+        if assigned_beneficiary_id:
             MockPaymentService._create_voucher(db, donation)
             voucher_created = True
         
@@ -123,6 +133,64 @@ class MockPaymentService:
         
         if donor:
             donor.total_donated += amount
+    
+    @staticmethod
+    def _find_best_beneficiary(db: Session) -> str | None:
+        """
+        Find the best beneficiary candidate for auto-allocation.
+        
+        Priority:
+        1. FIES Score (severe > moderate > food secure)
+        2. Most recent FIES survey
+        3. Beneficiaries with fewer vouchers get priority
+        
+        Returns:
+            beneficiary_id (str) or None if no suitable beneficiary found
+        """
+        from sqlalchemy import func
+        
+        # Get all active beneficiaries with their latest FIES survey
+        beneficiaries = db.query(
+            BeneficiaryProfile,
+            func.coalesce(FIESSurvey.total_score, 0).label('fies_score'),
+            func.coalesce(BeneficiaryProfile.vouchers_balance, Decimal(0)).label('voucher_balance')
+        ).outerjoin(
+            FIESSurvey,
+            FIESSurvey.beneficiary_id == BeneficiaryProfile.user_id
+        ).filter(
+            BeneficiaryProfile.approval_status == "approved"
+        ).order_by(
+            # Priority: higher FIES score (more food insecure) first, then lower voucher balance
+            FIESSurvey.total_score.desc().nulls_last(),
+            BeneficiaryProfile.vouchers_balance.asc()
+        ).all()
+        
+        if not beneficiaries:
+            logger.warning("No approved beneficiaries found for auto-allocation")
+            return None
+        
+        # Select the best candidate (first in the sorted list)
+        best_candidate = beneficiaries[0][0]
+        beneficiary_id = str(best_candidate.user_id)
+        
+        fies_score = beneficiaries[0][1] if beneficiaries[0][1] else 0
+        voucher_balance = beneficiaries[0][2] if beneficiaries[0][2] else Decimal(0)
+        
+        # Log the selection criteria
+        if fies_score >= 6:
+            priority_level = "SEVERE (Prioritas Tinggi)"
+        elif fies_score >= 3:
+            priority_level = "MODERATE"
+        else:
+            priority_level = "Food Secure"
+            
+        logger.info(
+            f"Auto-allocation: Selected beneficiary {beneficiary_id} "
+            f"(FIES Score: {fies_score}, {priority_level}, "
+            f"Current Balance: Rp {voucher_balance})"
+        )
+        
+        return beneficiary_id
     
     @staticmethod
     def _calculate_impact(donation: Donation) -> dict:

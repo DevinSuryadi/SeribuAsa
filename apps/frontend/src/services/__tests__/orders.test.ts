@@ -31,11 +31,13 @@ describe("Order Service Integration Tests", () => {
             subtotal: 100000,
           },
         ],
-        total_amount: 100000,
-        discount_amount: 0,
-        final_amount: 100000,
+        cart_total: 100000,
+        voucher_discount: 0,
+        cash_amount: 100000,
         status: "pending",
+        user_id: "ben_1",
         created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       vi.mocked(apiFetch).mockResolvedValueOnce(mockOrder);
@@ -73,7 +75,7 @@ describe("Order Service Integration Tests", () => {
 
       expect(result.id).toBe("order_1");
       expect(result.status).toBe("pending");
-      expect(result.total_amount).toBe(100000);
+      expect(result.cart_total).toBe(100000);
     });
 
     it("should create order with single voucher redemption", async () => {
@@ -89,12 +91,14 @@ describe("Order Service Integration Tests", () => {
             subtotal: 100000,
           },
         ],
-        total_amount: 100000,
-        discount_amount: 50000,
-        final_amount: 50000,
+        cart_total: 100000,
+        voucher_discount: 50000,
+        cash_amount: 50000,
         status: "pending",
-        voucher_codes: ["VOUCHER001"],
+        user_id: "ben_1",
+        applied_voucher: { code: "VOUCHER001", applied_amount: 50000 },
         created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       vi.mocked(apiFetch).mockResolvedValueOnce(mockOrder);
@@ -111,9 +115,9 @@ describe("Order Service Integration Tests", () => {
         voucher_codes: ["VOUCHER001"],
       });
 
-      expect(result.discount_amount).toBe(50000);
-      expect(result.final_amount).toBe(50000);
-      expect(result.voucher_codes).toContain("VOUCHER001");
+      expect(result.voucher_discount).toBe(50000);
+      expect(result.cash_amount).toBe(50000);
+      expect(result.applied_voucher?.code).toBe("VOUCHER001");
     });
 
     it("should create order with multiple vouchers", async () => {
@@ -129,12 +133,14 @@ describe("Order Service Integration Tests", () => {
             subtotal: 100000,
           },
         ],
-        total_amount: 100000,
-        discount_amount: 80000,
-        final_amount: 20000,
+        cart_total: 100000,
+        voucher_discount: 80000,
+        cash_amount: 20000,
         status: "pending",
-        voucher_codes: ["VOUCHER001", "VOUCHER002"],
+        user_id: "ben_1",
+        applied_voucher: { code: "VOUCHER001", applied_amount: 80000 },
         created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       vi.mocked(apiFetch).mockResolvedValueOnce(mockOrder);
@@ -151,8 +157,7 @@ describe("Order Service Integration Tests", () => {
         voucher_codes: ["VOUCHER001", "VOUCHER002"],
       });
 
-      expect(result.voucher_codes).toHaveLength(2);
-      expect(result.discount_amount).toBe(80000);
+      expect(result.voucher_discount).toBe(80000);
     });
 
     it("should create order with notes", async () => {
@@ -161,12 +166,14 @@ describe("Order Service Integration Tests", () => {
         vendor_id: "vendor_1",
         beneficiary_id: "ben_1",
         items: [],
-        total_amount: 0,
-        discount_amount: 0,
-        final_amount: 0,
+        cart_total: 0,
+        voucher_discount: 0,
+        cash_amount: 0,
         status: "pending",
+        user_id: "ben_1",
         notes: "Please pack carefully",
         created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       vi.mocked(apiFetch).mockResolvedValueOnce(mockOrder);
@@ -270,17 +277,17 @@ describe("Order Service Integration Tests", () => {
   describe("getOrders", () => {
     it("should retrieve all orders successfully", async () => {
       const mockResponse = {
-        items: [
+        orders: [
           {
             id: "order_1",
-            status: "pending",
-            total_amount: 100000,
+            status: "pending" as const,
+            user_id: "u1", vendor_id: "v1", items: [], cart_total: 100000, voucher_discount: 0, cash_amount: 100000, updated_at: "2024-01-01",
             created_at: "2024-01-01T00:00:00Z",
           },
           {
             id: "order_2",
-            status: "completed",
-            total_amount: 75000,
+            status: "completed" as const,
+            user_id: "u1", vendor_id: "v1", items: [], cart_total: 75000, voucher_discount: 0, cash_amount: 75000, updated_at: "2024-01-02",
             created_at: "2024-01-02T00:00:00Z",
           },
         ],
@@ -295,17 +302,17 @@ describe("Order Service Integration Tests", () => {
       const result = await orderService.getOrders();
 
       expect(apiFetch).toHaveBeenCalledWith("/orders/");
-      expect(result.items).toHaveLength(2);
+      expect(result.orders).toHaveLength(2);
       expect(result.total).toBe(2);
     });
 
     it("should filter orders by status", async () => {
       const mockResponse = {
-        items: [
+        orders: [
           {
             id: "order_1",
-            status: "pending",
-            total_amount: 100000,
+            status: "pending" as const,
+            user_id: "u1", vendor_id: "v1", items: [], cart_total: 100000, voucher_discount: 0, cash_amount: 100000, updated_at: "2024-01-01T00:00:00Z",
             created_at: "2024-01-01T00:00:00Z",
           },
         ],
@@ -322,12 +329,12 @@ describe("Order Service Integration Tests", () => {
       });
 
       expect(apiFetch).toHaveBeenCalledWith("/orders/?status=pending");
-      expect(result.items).toHaveLength(1);
+      expect(result.orders).toHaveLength(1);
     });
 
     it("should support pagination", async () => {
       const mockResponse = {
-        items: [],
+        orders: [],
         total: 50,
         page: 2,
         page_size: 20,
@@ -348,11 +355,11 @@ describe("Order Service Integration Tests", () => {
 
     it("should handle combination of filters and pagination", async () => {
       const mockResponse = {
-        items: [
+        orders: [
           {
             id: "order_3",
-            status: "completed",
-            total_amount: 50000,
+            user_id: "u1", vendor_id: "v1", items: [], cart_total: 50000, voucher_discount: 0, cash_amount: 50000, updated_at: "2024-01-03T00:00:00Z",
+            status: "completed" as const,
             created_at: "2024-01-03T00:00:00Z",
           },
         ],
@@ -370,13 +377,13 @@ describe("Order Service Integration Tests", () => {
         status: "completed",
       });
 
-      expect(result.items).toHaveLength(1);
+      expect(result.orders).toHaveLength(1);
       expect(result.total_pages).toBe(2);
     });
 
     it("should return empty list when no orders", async () => {
       const mockResponse = {
-        items: [],
+        orders: [],
         total: 0,
         page: 1,
         page_size: 20,
@@ -387,7 +394,7 @@ describe("Order Service Integration Tests", () => {
 
       const result = await orderService.getOrders();
 
-      expect(result.items).toHaveLength(0);
+      expect(result.orders).toHaveLength(0);
       expect(result.total).toBe(0);
     });
 
@@ -460,9 +467,9 @@ describe("Order Service Integration Tests", () => {
 
       const result = await orderService.getOrder("order_1");
 
-      expect(result.discount_amount).toBe(50000);
-      expect(result.final_amount).toBe(50000);
-      expect(result.voucher_codes).toContain("VOUCHER001");
+      expect(result.voucher_discount).toBe(50000);
+      expect(result.cash_amount).toBe(50000);
+      expect(result.applied_voucher?.code).toBe("VOUCHER001");
     });
 
     it("should handle order not found", async () => {
@@ -487,7 +494,10 @@ describe("Order Service Integration Tests", () => {
         vendor_id: "vendor_1",
         beneficiary_id: "ben_1",
         items: [],
-        total_amount: 100000,
+        user_id: "ben_1",
+        cart_total: 100000,
+        voucher_discount: 0,
+        cash_amount: 100000,
         status: "completed",
         updated_at: "2024-01-02T00:00:00Z",
       };
@@ -510,7 +520,10 @@ describe("Order Service Integration Tests", () => {
         vendor_id: "vendor_1",
         beneficiary_id: "ben_1",
         items: [],
-        total_amount: 100000,
+        user_id: "ben_1",
+        cart_total: 100000,
+        voucher_discount: 0,
+        cash_amount: 100000,
         status: "cancelled",
         updated_at: "2024-01-02T00:00:00Z",
       };
@@ -582,7 +595,7 @@ describe("Order Service Integration Tests", () => {
 
     it("should make correct API call to GET /orders/", async () => {
       vi.mocked(apiFetch).mockResolvedValueOnce({
-        items: [],
+        orders: [],
         total: 0,
         page: 1,
         page_size: 20,

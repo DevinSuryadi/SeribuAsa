@@ -4,7 +4,7 @@ Cart Models
 - VoucherTransaction: Transaction history for vouchers
 - VoucherLock: Prevent double-spending during redemption
 """
-from sqlalchemy import Column, String, Integer, Numeric, ForeignKey, Index, Uuid as UUID, DateTime, Enum
+from sqlalchemy import Column, Integer, Numeric, ForeignKey, Index, Uuid as UUID, DateTime, Enum
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime

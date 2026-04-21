@@ -6,7 +6,6 @@ import logging
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +165,6 @@ class SettlementScheduler:
         """Generate daily reports and cache them (called by cron)"""
         from app.services.report_generator import ReportGenerator
         from app.utils.cache import get_report_cache
-        from app.models.user import VendorProfile
         
         try:
             db = SettlementScheduler.db_session_factory()

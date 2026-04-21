@@ -32,7 +32,6 @@ from app.schemas.voucher import (
     VoucherTransactionHistoryResponse
 )
 from app.models.donation import Donation, DonationStatusEnum
-from app.models.product import Product
 from app.models.donation import Voucher
 from app.models.user import BeneficiaryProfile
 import logging

@@ -1,309 +1,211 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut, Lock } from 'lucide-react';
-import { toast } from 'sonner';
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut, Lock, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { formatDate } from "@/lib/format";
+import type { UserRole } from "@/types";
 
-const BACKEND_BASE_URL = 'http://localhost:8000/api/v1';
+interface EditFormData {
+  fullName: string;
+  phone: string;
+  address: string;
+  dateOfBirth: string;
+  gender: string;
+}
 
-type BackendProfile = {
-  full_name: string;
-  role?: string | null;
-  phone?: string | null;
-  address?: string | null;
-  date_of_birth?: string | null;
-  gender?: 'male' | 'female' | null;
+interface PasswordFormData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+const ROLE_LABELS: Record<UserRole | string, string> = {
+  donor: "Donatur",
+  corporate_donor: "Donatur Korporat",
+  beneficiary: "Penerima Manfaat",
+  vendor: "Vendor",
+  admin: "Admin",
+  government: "Pemerintah",
+};
+
+const GENDER_LABELS: Record<string, string> = {
+  male: "Laki-laki",
+  female: "Perempuan",
 };
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, userRole, session, signOut } = useAuth();
+  const { user, userRole, signOut } = useAuth();
+  const { data: profileData, loading: profileLoading, isSubmitting, updateProfile } = useProfile();
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [profileData, setProfileData] = useState<BackendProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    fullName: user?.fullName || '',
-    phone: '',
-    address: '',
-    dateOfBirth: '',
-    gender: '',
+
+  const [editFormData, setEditFormData] = useState<EditFormData>({
+    fullName: user?.fullName || "",
+    phone: "",
+    address: "",
+    dateOfBirth: "",
+    gender: "",
   });
-  const [passwordFormData, setPasswordFormData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+
+  const [passwordFormData, setPasswordFormData] = useState<PasswordFormData>({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const tryEnsureProfile = async (preferredFullName?: string) => {
-    if (!user?.id) return false;
-
-    const normalizedFullName = preferredFullName?.trim() || user.fullName || 'Pengguna';
-
-    if (session?.access_token) {
-      const syncBody = preferredFullName?.trim() ? { full_name: preferredFullName.trim() } : {};
-      const syncResponse = await fetch(`${BACKEND_BASE_URL}/auth/google/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(syncBody),
-      });
-
-      if (syncResponse.ok) return true;
-    }
-
-    const fallbackRole =
-      userRole === 'beneficiary' || userRole === 'vendor' || userRole === 'corporate_donor'
-        ? userRole
-        : 'donor';
-
-    const signupResponse = await fetch(`${BACKEND_BASE_URL}/users/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: user.id,
-        full_name: normalizedFullName,
-        role: fallbackRole,
-      }),
-    });
-
-    return signupResponse.ok || signupResponse.status === 409;
-  };
-
-  const formatDateForDisplay = (dateText?: string | null) => {
-    if (!dateText) return 'Belum diatur';
-
-    const [year, month, day] = dateText.split('-').map(Number);
-    if (!year || !month || !day) return dateText;
-
-    return new Date(year, month - 1, day).toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
-
+  // Update form data when profile loads
   useEffect(() => {
-    let isActive = true;
-
-    const loadProfile = async () => {
-      if (!user?.id) return;
-
-      setProfileLoading(true);
-      try {
-        let response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`);
-
-        if (!response.ok && response.status === 404) {
-          const synced = await tryEnsureProfile(user.fullName || undefined);
-          if (synced) {
-            response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`);
-          }
-        }
-
-        if (!response.ok) return;
-
-        const data = await response.json();
-        if (!isActive) return;
-
-        const nextProfile: BackendProfile = {
-          full_name: data.full_name || user.fullName || 'Pengguna',
-          role: data.role || null,
-          phone: data.phone || null,
-          address: data.address || null,
-          date_of_birth: data.date_of_birth || null,
-          gender: data.gender || null,
-        };
-
-        setProfileData(nextProfile);
-        setEditFormData((prev) => ({
-          ...prev,
-          fullName: nextProfile.full_name,
-          phone: nextProfile.phone || '',
-          address: nextProfile.address || '',
-          dateOfBirth: nextProfile.date_of_birth || '',
-          gender: nextProfile.gender || '',
-        }));
-      } catch (error) {
-        console.warn('[PROFILE] Failed to load profile from backend', error);
-      } finally {
-        if (isActive) setProfileLoading(false);
-      }
-    };
-
-    void loadProfile();
-
-    return () => {
-      isActive = false;
-    };
-  }, [user?.id, user?.fullName, userRole, session?.access_token]);
+    if (profileData) {
+      setEditFormData({
+        fullName: profileData.full_name || user?.fullName || "",
+        phone: profileData.phone || "",
+        address: profileData.address || "",
+        dateOfBirth: profileData.date_of_birth || "",
+        gender: profileData.gender || "",
+      });
+    }
+  }, [profileData, user?.fullName]);
 
   const handleSignOut = () => {
     signOut();
-    toast.success('Berhasil keluar');
-    navigate('/');
+    toast.success("Berhasil keluar");
+    navigate("/");
   };
 
-  const handleEditProfile = async () => {
+  const validateEditForm = (): boolean => {
     if (!editFormData.fullName.trim()) {
-      toast.error('Nama tidak boleh kosong');
-      return;
+      toast.error("Nama tidak boleh kosong");
+      return false;
     }
 
     if (editFormData.phone.trim()) {
       const phoneRegex = /^[0-9+\-\s]{8,20}$/;
       if (!phoneRegex.test(editFormData.phone.trim())) {
-        toast.error('Nomor HP tidak valid');
-        return;
+        toast.error("Nomor HP tidak valid");
+        return false;
       }
     }
 
-    if (!user?.id) {
-      toast.error('User tidak ditemukan. Silakan login ulang.');
-      return;
-    }
+    return true;
+  };
 
-    setIsSubmitting(true);
-    try {
-      const payload = {
-        full_name: editFormData.fullName.trim(),
-        phone: editFormData.phone.trim() || null,
-        address: editFormData.address.trim() || null,
-        date_of_birth: editFormData.dateOfBirth || null,
-        gender: (editFormData.gender || null) as 'male' | 'female' | null,
-      };
+  const handleEditProfile = async () => {
+    if (!validateEditForm()) return;
 
-      const requestBody = JSON.stringify(payload);
-      const requestInit = {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: requestBody,
-      };
+    const success = await updateProfile({
+      full_name: editFormData.fullName.trim(),
+      phone: editFormData.phone.trim() || null,
+      address: editFormData.address.trim() || null,
+      date_of_birth: editFormData.dateOfBirth || null,
+      gender: (editFormData.gender || null) as "male" | "female" | null,
+    });
 
-      let response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`, requestInit);
-
-      if (response.status === 404) {
-        const synced = await tryEnsureProfile(payload.full_name);
-        if (synced) {
-          response = await fetch(`${BACKEND_BASE_URL}/users/${user.id}`, requestInit);
-        }
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Gagal memperbarui profil' }));
-        throw new Error(errorData.detail || 'Gagal memperbarui profil');
-      }
-
-      const updatedProfile = await response.json();
-      const nextProfile: BackendProfile = {
-        full_name: updatedProfile.full_name || payload.full_name,
-        role: updatedProfile.role || profileData?.role || null,
-        phone: updatedProfile.phone || null,
-        address: updatedProfile.address || null,
-        date_of_birth: updatedProfile.date_of_birth || null,
-        gender: updatedProfile.gender || null,
-      };
-
-      setProfileData(nextProfile);
-      setEditFormData((prev) => ({
-        ...prev,
-        fullName: nextProfile.full_name,
-        phone: nextProfile.phone || '',
-        address: nextProfile.address || '',
-        dateOfBirth: nextProfile.date_of_birth || '',
-        gender: nextProfile.gender || '',
-      }));
-
-      toast.success('Profil berhasil diperbarui');
+    if (success) {
       setShowEditModal(false);
-    } catch (error: any) {
-      toast.error('Gagal memperbarui profil', { description: error.message });
-    } finally {
-      setIsSubmitting(false);
     }
+  };
+
+  const validatePasswordForm = (): boolean => {
+    if (!passwordFormData.currentPassword || !passwordFormData.newPassword) {
+      toast.error("Semua field harus diisi");
+      return false;
+    }
+    if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+      toast.error("Kata sandi baru tidak cocok");
+      return false;
+    }
+    if (passwordFormData.newPassword.length < 8) {
+      toast.error("Kata sandi minimal 8 karakter");
+      return false;
+    }
+    return true;
   };
 
   const handleChangePassword = async () => {
-    if (!passwordFormData.currentPassword || !passwordFormData.newPassword) {
-      toast.error('Semua field harus diisi');
-      return;
-    }
-    if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
-      toast.error('Kata sandi baru tidak cocok');
-      return;
-    }
-    if (passwordFormData.newPassword.length < 8) {
-      toast.error('Kata sandi minimal 8 karakter');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    try {
-      // TODO: Call API to change password
-      await new Promise(r => setTimeout(r, 500));
-      toast.success('Kata sandi berhasil diubah');
-      setShowPasswordModal(false);
-      setPasswordFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (error: any) {
-      toast.error('Gagal mengubah kata sandi', { description: error.message });
-    } finally {
-      setIsSubmitting(false);
-    }
+    if (!validatePasswordForm()) return;
+
+    // TODO: Implement password change API
+    toast.info("Fitur ubah kata sandi akan segera tersedia");
+    setShowPasswordModal(false);
+    setPasswordFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
   };
 
   const resolvedRole = profileData?.role || userRole;
-  const resolvedName = profileData?.full_name || user?.fullName || 'Pengguna';
-  const resolvedPhone = profileLoading ? 'Memuat...' : (profileData?.phone || 'Belum diatur');
-  const resolvedAddress = profileLoading ? 'Memuat...' : (profileData?.address || 'Belum diatur');
-  const resolvedDateOfBirth = profileLoading ? 'Memuat...' : formatDateForDisplay(profileData?.date_of_birth);
-  const resolvedGender =
-    profileLoading
-      ? 'Memuat...'
-      : profileData?.gender === 'male'
-        ? 'Laki-laki'
-        : profileData?.gender === 'female'
-          ? 'Perempuan'
-          : 'Belum diatur';
-  const roleLabel =
-    resolvedRole === 'donor'
-      ? 'Donatur'
-      : resolvedRole === 'corporate_donor'
-        ? 'Donatur Korporat'
-        : resolvedRole === 'beneficiary'
-          ? 'Penerima Manfaat'
-          : resolvedRole === 'vendor'
-            ? 'Vendor'
-            : resolvedRole === 'admin'
-              ? 'Admin'
-              : resolvedRole === 'government'
-                ? 'Pemerintah'
-                : '-';
+  const resolvedName = profileData?.full_name || user?.fullName || "Pengguna";
+
+  const displayValues = useMemo(
+    () => ({
+      phone: profileLoading ? "Memuat..." : profileData?.phone || "Belum diatur",
+      address: profileLoading ? "Memuat..." : profileData?.address || "Belum diatur",
+      dateOfBirth: profileLoading
+        ? "Memuat..."
+        : profileData?.date_of_birth
+          ? formatDate(profileData.date_of_birth)
+          : "Belum diatur",
+      gender: profileLoading
+        ? "Memuat..."
+        : profileData?.gender
+          ? GENDER_LABELS[profileData.gender]
+          : "Belum diatur",
+      role: ROLE_LABELS[resolvedRole || ""] || "-",
+    }),
+    [profileLoading, profileData, resolvedRole]
+  );
+
+  if (profileLoading) {
+    return (
+      <DashboardLayout
+        title="Profil Saya"
+        subtitle="Kelola informasi pribadi dan pengaturan akun Anda."
+      >
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-sm text-muted-foreground">Memuat profil...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
-    <DashboardLayout title="Profil Saya" subtitle="Kelola informasi pribadi dan pengaturan akun Anda.">
+    <DashboardLayout
+      title="Profil Saya"
+      subtitle="Kelola informasi pribadi dan pengaturan akun Anda."
+    >
       <div className="space-y-6 max-w-4xl mx-auto">
         {/* Profile Info */}
-         <Card>
+        <Card>
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 gap-4">
             <div>
               <CardTitle className="text-lg">Informasi Pribadi</CardTitle>
               <CardDescription>Kelola data profil Anda</CardDescription>
             </div>
-            <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto" onClick={() => setShowEditModal(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 w-full sm:w-auto"
+              onClick={() => setShowEditModal(true)}
+            >
               <Edit className="h-4 w-4" /> Edit
             </Button>
           </CardHeader>
@@ -314,8 +216,8 @@ const Profile = () => {
               </div>
               <div>
                 <div className="text-lg font-semibold text-foreground">{resolvedName}</div>
-                <div className="text-sm text-muted-foreground">{user?.email || '-'}</div>
-                <Badge className="mt-1 capitalize">{roleLabel}</Badge>
+                <div className="text-sm text-muted-foreground">{user?.email || "-"}</div>
+                <Badge className="mt-1 capitalize">{displayValues.role}</Badge>
               </div>
             </div>
 
@@ -326,28 +228,30 @@ const Profile = () => {
                 <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Email</div>
-                  <div className="text-sm font-medium text-foreground">{user?.email || '-'}</div>
+                  <div className="text-sm font-medium text-foreground">{user?.email || "-"}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Nomor HP</div>
-                  <div className="text-sm font-medium text-foreground">{resolvedPhone}</div>
+                  <div className="text-sm font-medium text-foreground">{displayValues.phone}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Tanggal Lahir</div>
-                  <div className="text-sm font-medium text-foreground">{resolvedDateOfBirth}</div>
+                  <div className="text-sm font-medium text-foreground">
+                    {displayValues.dateOfBirth}
+                  </div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-xs text-muted-foreground">Jenis Kelamin</div>
-                  <div className="text-sm font-medium text-foreground">{resolvedGender}</div>
+                  <div className="text-sm font-medium text-foreground">{displayValues.gender}</div>
                 </div>
               </div>
             </div>
@@ -357,7 +261,9 @@ const Profile = () => {
         {/* Address */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> Alamat</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" /> Alamat
+            </CardTitle>
             <CardDescription>Alamat terdaftar Anda</CardDescription>
           </CardHeader>
           <CardContent>
@@ -366,11 +272,15 @@ const Profile = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-foreground">{resolvedName}</span>
-                    <Badge variant="secondary" className="text-[10px]">Utama</Badge>
+                    <Badge variant="secondary" className="text-[10px]">
+                      Utama
+                    </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{resolvedAddress}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{displayValues.address}</p>
                   {!profileData?.address && !profileLoading && (
-                    <p className="text-sm text-foreground mt-2 text-muted-foreground italic">Silakan lengkapi profil Anda untuk menambahkan alamat.</p>
+                    <p className="text-sm text-foreground mt-2 text-muted-foreground italic">
+                      Silakan lengkapi profil Anda untuk menambahkan alamat.
+                    </p>
                   )}
                 </div>
               </div>
@@ -384,18 +294,26 @@ const Profile = () => {
             <CardTitle>Pengaturan Akun</CardTitle>
             <CardDescription>Kelola pengaturan akun Anda</CardDescription>
           </CardHeader>
-           <CardContent className="space-y-4">
+          <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between py-2">
                 <div>
                   <div className="text-sm font-medium text-foreground">Role Akun</div>
-                  <div className="text-xs text-muted-foreground capitalize">{roleLabel}</div>
+                  <div className="text-xs text-muted-foreground capitalize">
+                    {displayValues.role}
+                  </div>
                 </div>
-                <Badge variant="outline" className="capitalize">{resolvedRole || '-'}</Badge>
+                <Badge variant="outline" className="capitalize">
+                  {resolvedRole || "-"}
+                </Badge>
               </div>
             </div>
             <Separator />
-            <Button variant="outline" className="w-full gap-2" onClick={() => setShowPasswordModal(true)}>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => setShowPasswordModal(true)}
+            >
               <Lock className="h-4 w-4" /> Ubah Kata Sandi
             </Button>
             <Button variant="destructive" className="w-full gap-2" onClick={handleSignOut}>
@@ -417,7 +335,7 @@ const Profile = () => {
                 <Input
                   id="fullName"
                   value={editFormData.fullName}
-                  onChange={(e) => setEditFormData({...editFormData, fullName: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
                   className="mt-1.5"
                 />
               </div>
@@ -428,7 +346,7 @@ const Profile = () => {
                   type="tel"
                   placeholder="08xx xxxx xxxx"
                   value={editFormData.phone}
-                  onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
                   className="mt-1.5"
                 />
               </div>
@@ -437,7 +355,7 @@ const Profile = () => {
                 <textarea
                   id="address"
                   value={editFormData.address}
-                  onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
                   className="w-full mt-1.5 px-3 py-2 border border-input rounded-md bg-background min-h-[80px]"
                   placeholder="Masukkan alamat"
                 />
@@ -448,7 +366,9 @@ const Profile = () => {
                   id="dob"
                   type="date"
                   value={editFormData.dateOfBirth}
-                  onChange={(e) => setEditFormData({...editFormData, dateOfBirth: e.target.value})}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, dateOfBirth: e.target.value })
+                  }
                   className="mt-1.5"
                 />
               </div>
@@ -457,7 +377,7 @@ const Profile = () => {
                 <select
                   id="gender"
                   value={editFormData.gender}
-                  onChange={(e) => setEditFormData({...editFormData, gender: e.target.value})}
+                  onChange={(e) => setEditFormData({ ...editFormData, gender: e.target.value })}
                   className="w-full mt-1.5 px-3 py-2 border border-input rounded-md bg-background"
                 >
                   <option value="">Pilih Jenis Kelamin</option>
@@ -467,9 +387,11 @@ const Profile = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEditModal(false)}>Batal</Button>
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>
+                Batal
+              </Button>
               <Button onClick={handleEditProfile} disabled={isSubmitting}>
-                {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+                {isSubmitting ? "Menyimpan..." : "Simpan"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -489,7 +411,9 @@ const Profile = () => {
                   id="currentPassword"
                   type="password"
                   value={passwordFormData.currentPassword}
-                  onChange={(e) => setPasswordFormData({...passwordFormData, currentPassword: e.target.value})}
+                  onChange={(e) =>
+                    setPasswordFormData({ ...passwordFormData, currentPassword: e.target.value })
+                  }
                   className="mt-1.5"
                 />
               </div>
@@ -500,7 +424,9 @@ const Profile = () => {
                   type="password"
                   placeholder="Minimal 8 karakter"
                   value={passwordFormData.newPassword}
-                  onChange={(e) => setPasswordFormData({...passwordFormData, newPassword: e.target.value})}
+                  onChange={(e) =>
+                    setPasswordFormData({ ...passwordFormData, newPassword: e.target.value })
+                  }
                   className="mt-1.5"
                 />
               </div>
@@ -510,15 +436,19 @@ const Profile = () => {
                   id="confirmPassword"
                   type="password"
                   value={passwordFormData.confirmPassword}
-                  onChange={(e) => setPasswordFormData({...passwordFormData, confirmPassword: e.target.value})}
+                  onChange={(e) =>
+                    setPasswordFormData({ ...passwordFormData, confirmPassword: e.target.value })
+                  }
                   className="mt-1.5"
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowPasswordModal(false)}>Batal</Button>
+              <Button variant="outline" onClick={() => setShowPasswordModal(false)}>
+                Batal
+              </Button>
               <Button onClick={handleChangePassword} disabled={isSubmitting}>
-                {isSubmitting ? 'Mengubah...' : 'Ubah Kata Sandi'}
+                {isSubmitting ? "Mengubah..." : "Ubah Kata Sandi"}
               </Button>
             </DialogFooter>
           </DialogContent>

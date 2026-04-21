@@ -60,7 +60,7 @@ class ProductCreate(BaseModel):
     description: Optional[str] = None
     category_id: Optional[UUID] = None
     price: Decimal = Field(..., gt=0)
-    voucher_price: Decimal = Field(..., gt=0)
+    voucher_price: Decimal = Field(..., ge=0)
     stock_quantity: int = Field(default=0, ge=0)
     unit: str = Field(default="pcs", max_length=50)
 
@@ -74,7 +74,7 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     category_id: Optional[UUID] = None
     price: Optional[Decimal] = Field(None, gt=0)
-    voucher_price: Optional[Decimal] = Field(None, gt=0)
+    voucher_price: Optional[Decimal] = Field(None, ge=0)
     stock_quantity: Optional[int] = Field(None, ge=0)
     unit: Optional[str] = Field(None, max_length=50)
 

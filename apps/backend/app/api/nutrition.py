@@ -57,6 +57,60 @@ async def list_children(
     return {"success": True, "data": result}
 
 
+@router.post("/children", response_model=ChildResponse, status_code=status.HTTP_201_CREATED)
+async def add_child(
+    full_name: str,
+    date_of_birth: str,  # YYYY-MM-DD format
+    gender: str,  # "male" or "female"
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Add a new child for beneficiary (nutrition tracking)"""
+    try:
+        from datetime import datetime
+        dob = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format. Use YYYY-MM-DD",
+        )
+    
+    from app.models.user import GenderEnum
+    try:
+        gender_enum = GenderEnum(gender.lower())
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gender must be 'male' or 'female'",
+        )
+    
+    child = Child(
+        beneficiary_id=current_user.user_id,
+        full_name=full_name,
+        date_of_birth=dob,
+        gender=gender_enum,
+    )
+    
+    db.add(child)
+    db.commit()
+    db.refresh(child)
+    
+    # Calculate age
+    today = date.today()
+    age_months = max(0, (today.year - child.date_of_birth.year) * 12 + (today.month - child.date_of_birth.month))
+    age_months = min(60, age_months)
+    
+    logger.info(f"Child added: {child.id} for beneficiary {current_user.user_id}")
+    
+    return ChildResponse(
+        id=child.id,
+        full_name=child.full_name,
+        date_of_birth=child.date_of_birth,
+        age_months=age_months,
+        gender=child.gender.value if child.gender else None,
+    )
+
+
 @router.post("/measurements", response_model=NutritionMeasurementResponse, status_code=status.HTTP_201_CREATED)
 async def add_measurement(
     data: NutritionMeasurementCreate,

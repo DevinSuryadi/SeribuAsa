@@ -114,6 +114,45 @@ async def calculate_settlements(
     return SettlementCalculateResponse(**result)
 
 
+@router.post("/{settlement_id}/request-payout", response_model=SettlementMarkPaidResponse)
+async def request_settlement_payout(
+    settlement_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Request payout for a settlement (vendor requests payout)"""
+    is_admin = current_user.role == "admin"
+    settlement = SettlementService.get_settlement_by_id(
+        db, settlement_id, current_user.user_id, is_admin
+    )
+
+    if not settlement:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Settlement not found",
+        )
+
+    if settlement.status not in ["ready"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot request payout for settlement with status: {settlement.status}",
+        )
+
+    settlement.status = "processing"
+    settlement.updated_at = datetime.now()
+    db.add(settlement)
+    db.commit()
+    db.refresh(settlement)
+
+    logger.info(f"Settlement {settlement_id} payout requested by vendor")
+
+    s_dict = SettlementMarkPaidResponse.model_validate(settlement).model_dump()
+    if settlement.vendor_profile:
+        s_dict["vendor_store_name"] = settlement.vendor_profile.store_name
+
+    return SettlementMarkPaidResponse(**s_dict)
+
+
 @router.post("/{settlement_id}/mark-paid", response_model=SettlementMarkPaidResponse)
 async def mark_settlement_paid(
     settlement_id: str,
@@ -158,3 +197,69 @@ async def mark_settlement_paid(
         s_dict["vendor_store_name"] = settlement.vendor_profile.store_name
 
     return SettlementMarkPaidResponse(**s_dict)
+
+
+@router.get("/export")
+async def export_settlements(
+    format: str = Query("csv", regex="^(csv|pdf)$"),
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Export settlements as CSV or PDF"""
+    from fastapi.responses import StreamingResponse
+    import csv
+    import io
+    
+    # Get settlements for current user
+    is_admin = current_user.role == "admin"
+    params = SettlementQueryParams(
+        page=1,
+        page_size=1000,  # Get all for export
+        start_date=start_date,
+        end_date=end_date,
+    )
+    
+    settlements = SettlementService.get_settlements(
+        db, current_user.user_id, is_admin, params
+    )
+    
+    if format.lower() == "csv":
+        # Generate CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Header
+        writer.writerow([
+            "ID", "Period Start", "Period End", "Total Orders", "Total Amount",
+            "Admin Fee", "Net Amount", "Status", "Created At"
+        ])
+        
+        # Data
+        for s in settlements:
+            writer.writerow([
+                str(s.id),
+                s.period_start.isoformat() if s.period_start else "",
+                s.period_end.isoformat() if s.period_end else "",
+                s.total_orders,
+                str(s.total_amount),
+                str(s.admin_fee),
+                str(s.net_amount),
+                s.status,
+                s.created_at.isoformat() if s.created_at else "",
+            ])
+        
+        output.seek(0)
+        
+        return StreamingResponse(
+            io.BytesIO(output.getvalue().encode()),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=settlements.csv"}
+        )
+    
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PDF format not yet implemented. Use 'csv'."
+        )

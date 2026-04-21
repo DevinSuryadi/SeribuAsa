@@ -3,8 +3,8 @@ CSV Export Utility
 Generate CSV exports for reports and settlements
 """
 import csv
-from io import StringIO, BytesIO
-from typing import List, Dict, Any, Optional
+from io import StringIO
+from typing import List, Dict, Any
 from decimal import Decimal
 from datetime import date, datetime
 import logging

@@ -10,6 +10,7 @@ from uuid import UUID
 
 from app.models.product import Order, OrderItem, OrderStatusEnum, Product
 from app.models.donation import Voucher, VoucherRedemption, VoucherStatusEnum
+from app.models.user import VendorProfile
 from app.schemas.order import OrderCreate, OrderStatusUpdate, OrderQueryParams
 
 logger = logging.getLogger(__name__)
@@ -195,6 +196,19 @@ class OrderService:
 
         if data.status == "completed":
             order.status = OrderStatusEnum.completed
+            
+            # Add order amount to vendor wallet (net amount after admin fee)
+            vendor = db.query(VendorProfile).filter(VendorProfile.user_id == vendor_uuid).first()
+            if vendor:
+                # Calculate net amount (assuming 1% admin fee)
+                admin_fee_percentage = Decimal("0.01")
+                admin_fee = order.cash_amount * admin_fee_percentage
+                net_amount = order.cash_amount - admin_fee
+                
+                vendor.wallet_balance += net_amount
+                db.add(vendor)
+                logger.info(f"Added {net_amount} to vendor {vendor_id} wallet. New balance: {vendor.wallet_balance}")
+                
         elif data.status == "cancelled":
             order.status = OrderStatusEnum.cancelled
             # Restore stock

@@ -33,7 +33,7 @@ export default function MockPaymentModal() {
       // Add small delay for demo UX
       await new Promise((resolve) => setTimeout(resolve, 1500))
       
-      const result = await simulatePayment(donationId!)
+      const result: any = await simulatePayment(donationId!)
       setSuccess(true)
 
       setTimeout(() => {

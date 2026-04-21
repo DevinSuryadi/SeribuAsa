@@ -1,117 +1,123 @@
-import { useNavigate, useLocation } from "react-router-dom"
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
+import { CheckCircle2, ArrowRight, Home, AlertCircle, Share2, Copy } from "lucide-react";
+import { toast } from "sonner";
+import { DonationHero } from "@/components/donation/DonationHero";
 
-import { CheckCircle2, ArrowRight, Home, AlertCircle } from "lucide-react"
-import { toast } from "sonner"
-import { DonationHero } from "@/components/donation/DonationHero"
-
-import { DonationSuccessSkeleton } from "@/components/donation/DonationSuccessSkeleton"
-import { getDonation } from "@/services/donations"
-import { formatIDR } from "@/lib/format"
+import { DonationSuccessSkeleton } from "@/components/donation/DonationSuccessSkeleton";
+import { getDonation } from "@/services/donations";
+import { formatIDR } from "@/lib/format";
 
 interface ImpactData {
-  children_helped: number
-  days_of_support: number
-  message: string
+  children_helped: number;
+  days_of_support: number;
+  message: string;
 }
 
 export default function DonationSuccess() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [donationData, setDonationData] = useState<Record<string, any> | null>(null)
-  const [impact, setImpact] = useState<ImpactData | null>(null)
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [donationData, setDonationData] = useState<Record<string, any> | null>(null);
+  const [impact, setImpact] = useState<ImpactData | null>(null);
 
-  const { amount: stateAmount, transactionId: stateTransactionId, impact: stateImpact } = location.state || {}
+  const {
+    amount: stateAmount,
+    transactionId: stateTransactionId,
+    impact: stateImpact,
+  } = location.state || {};
 
   // Extract donationId from URL or state
-  const searchParams = new URLSearchParams(location.search)
-  const donationIdFromUrl = searchParams.get('id')
-  const donationIdFromState = location.state?.donationId
+  const searchParams = new URLSearchParams(location.search);
+  const donationIdFromUrl = searchParams.get("id");
+  const donationIdFromState = location.state?.donationId;
 
   useEffect(() => {
     const loadDonationData = async () => {
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
 
-        const donationId = donationIdFromUrl || donationIdFromState
-        
+        const donationId = donationIdFromUrl || donationIdFromState;
+
         if (!donationId && !stateAmount) {
-          setError('Donation ID tidak ditemukan. Silakan coba lagi.')
-          setLoading(false)
-          return
+          setError("Donation ID tidak ditemukan. Silakan coba lagi.");
+          setLoading(false);
+          return;
         }
 
         // Try to fetch from API if we have a donation ID
         if (donationId) {
           try {
-            const data = await getDonation(donationId)
-            setDonationData(data)
-            
+            const data = await getDonation(donationId);
+            setDonationData(data);
+
             // Calculate impact based on amount
-            const calculatedImpact = calculateImpact(data.amount)
-            setImpact(calculatedImpact)
+            const calculatedImpact = calculateImpact(data.amount);
+            setImpact(calculatedImpact);
           } catch (apiError) {
-            console.error('Failed to fetch donation data from API:', apiError)
+            console.error("Failed to fetch donation data from API:", apiError);
             // Fallback to state data
             if (stateAmount && stateImpact) {
               setDonationData({
                 id: donationId,
                 amount: stateAmount,
                 transaction_id: stateTransactionId,
-              })
-              setImpact(stateImpact)
+              });
+              setImpact(stateImpact);
             } else {
-              throw apiError
+              throw apiError;
             }
           }
         } else if (stateAmount) {
           // Use state data if no API call possible
-          const calculatedImpact = calculateImpact(stateAmount)
+          const calculatedImpact = calculateImpact(stateAmount);
           setDonationData({
             amount: stateAmount,
-             transaction_id: stateTransactionId,
-           })
-           setImpact(stateImpact || calculatedImpact)
-         }
-       } catch (err) {
-         const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-         console.error('Error loading donation data:', err)
-         setError('Gagal memuat data donasi. Silakan coba lagi.')
-         toast.error('Gagal memuat data donasi', { description: errorMessage })
-       } finally {
-         setLoading(false)
+            transaction_id: stateTransactionId,
+          });
+          setImpact(stateImpact || calculatedImpact);
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        console.error("Error loading donation data:", err);
+        setError("Gagal memuat data donasi. Silakan coba lagi.");
+        toast.error("Gagal memuat data donasi", { description: errorMessage });
+      } finally {
+        setLoading(false);
       }
-    }
+    };
 
-    loadDonationData()
+    loadDonationData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [donationIdFromUrl, donationIdFromState])
+  }, [donationIdFromUrl, donationIdFromState]);
 
   // Calculate impact based on amount: Every Rp 500k = 1 child + 1000 days HPK
   const calculateImpact = (amount: number): ImpactData => {
     // Every Rp 500,000 = 1 unit (1 child + 1000 days HPK support)
-    const units = Math.floor(amount / 500000)
-    const childrenHelped = units
-    const daysOfSupport = units * 1000
-    
-    let message = 'Terima kasih atas kontribusi Anda!'
+    const units = Math.floor(amount / 500000);
+    const childrenHelped = units;
+    const daysOfSupport = units * 1000;
+
+    let message = "Terima kasih atas kontribusi Anda!";
     if (childrenHelped > 0) {
-      const dayText = daysOfSupport === 1000 ? `1000 hari pertama kehidupan` : `${daysOfSupport} hari pertama kehidupan`
-      message = `Donasi Anda akan membantu ${childrenHelped} anak dan mendukung nutrisi ${dayText} (1000 HPK).`
+      const dayText =
+        daysOfSupport === 1000
+          ? `1000 hari pertama kehidupan`
+          : `${daysOfSupport} hari pertama kehidupan`;
+      message = `Donasi Anda akan membantu ${childrenHelped} anak dan mendukung nutrisi ${dayText} (1000 HPK).`;
     }
 
     return {
       children_helped: childrenHelped,
       days_of_support: daysOfSupport,
       message,
-    }
-  }
+    };
+  };
 
   // Show loading state
   if (loading) {
@@ -119,7 +125,7 @@ export default function DonationSuccess() {
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
         <DonationSuccessSkeleton />
       </div>
-    )
+    );
   }
 
   // Show error state
@@ -141,22 +147,18 @@ export default function DonationSuccess() {
               >
                 Coba Lagi
               </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => navigate("/")}
-              >
+              <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
                 Kembali ke Beranda
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
-  const displayAmount = donationData?.amount || stateAmount || 0
-  const displayTransactionId = donationData?.transaction_id || stateTransactionId || 'N/A'
+  const displayAmount = donationData?.amount || stateAmount || 0;
+  const displayTransactionId = donationData?.transaction_id || stateTransactionId || "N/A";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-6">
@@ -192,11 +194,55 @@ export default function DonationSuccess() {
                   <p className="text-xs text-blue-600">Hari Dukungan</p>
                 </div>
               </div>
-              <p className="text-xs text-blue-700 text-center font-medium">
-                {impact.message}
-              </p>
+              <p className="text-xs text-blue-700 text-center font-medium">{impact.message}</p>
             </div>
           )}
+
+          {/* Share Section */}
+          <div className="pt-4 border-t border-gray-100">
+            <p className="text-xs text-gray-500 text-center mb-3">Bagikan kebaikan Anda</p>
+            <div className="flex gap-2 justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 h-9 text-xs"
+                onClick={async () => {
+                  const shareText = `Saya baru saja berdonasi ${formatIDR(displayAmount)} melalui SeribuAsa untuk membantu ${impact?.children_helped || 0} anak mendapatkan nutrisi. Yuk, ikut berdonasi!`;
+
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: "Donasi SeribuAsa",
+                        text: shareText,
+                        url: window.location.origin,
+                      });
+                    } catch {
+                      // User cancelled or error
+                    }
+                  } else {
+                    await navigator.clipboard.writeText(shareText);
+                    toast.success("Teks disalin ke clipboard!", { duration: 2000 });
+                  }
+                }}
+              >
+                <Share2 className="mr-1.5 h-3.5 w-3.5" />
+                Bagikan
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 h-9 text-xs"
+                onClick={async () => {
+                  const shareText = `Saya baru saja berdonasi ${formatIDR(displayAmount)} melalui SeribuAsa untuk membantu ${impact?.children_helped || 0} anak mendapatkan nutrisi. Yuk, ikut berdonasi! ${window.location.origin}`;
+                  await navigator.clipboard.writeText(shareText);
+                  toast.success("Teks disalin ke clipboard!", { duration: 2000 });
+                }}
+              >
+                <Copy className="mr-1.5 h-3.5 w-3.5" />
+                Salin
+              </Button>
+            </div>
+          </div>
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 pt-2">
@@ -207,11 +253,7 @@ export default function DonationSuccess() {
               Lihat Dashboard
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button
-              variant="outline"
-              className="w-full h-10 text-sm"
-              onClick={() => navigate("/")}
-            >
+            <Button variant="outline" className="w-full h-10 text-sm" onClick={() => navigate("/")}>
               <Home className="mr-2 h-4 w-4" />
               Kembali ke Beranda
             </Button>
@@ -219,5 +261,5 @@ export default function DonationSuccess() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

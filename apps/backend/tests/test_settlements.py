@@ -6,7 +6,6 @@ import pytest
 from datetime import date, timedelta
 from decimal import Decimal
 from uuid import UUID
-from unittest.mock import MagicMock, patch
 
 from app.schemas.settlement import (
     SettlementResponse,
@@ -15,8 +14,7 @@ from app.schemas.settlement import (
     SettlementCalculateResponse,
     SettlementMarkPaidRequest,
 )
-from app.models.nutrition import Settlement, SettlementStatusEnum
-from app.services.settlement_service import SettlementService
+from app.models.nutrition import Settlement
 from app.utils.bank_validator import BankValidator
 
 

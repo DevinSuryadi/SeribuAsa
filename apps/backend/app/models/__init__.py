@@ -34,7 +34,16 @@ from app.models.nutrition import (
     Settlement,
     AuditLog,
     NutritionClassificationEnum,
-    SettlementStatusEnum
+    SettlementStatusEnum,
+    Withdrawal,
+    WithdrawalStatusEnum
+)
+from app.models.subscription import (
+    Subscription,
+    SubscriptionPlan,
+    BillingHistory,
+    SubscriptionStatusEnum,
+    BillingStatusEnum
 )
 from app.models.cart import (
     CartItem,
@@ -86,4 +95,13 @@ __all__ = [
     "AuditLog",
     "NutritionClassificationEnum",
     "SettlementStatusEnum",
+    "Withdrawal",
+    "WithdrawalStatusEnum",
+    
+    # Subscription models
+    "Subscription",
+    "SubscriptionPlan",
+    "BillingHistory",
+    "SubscriptionStatusEnum",
+    "BillingStatusEnum",
 ]

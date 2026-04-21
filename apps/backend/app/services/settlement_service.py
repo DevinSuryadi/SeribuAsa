@@ -125,6 +125,11 @@ class SettlementService:
                 status=SettlementStatusEnum.ready,
             )
             db.add(settlement)
+            
+            # Update vendor wallet balance
+            vendor.wallet_balance += net_amount
+            db.add(vendor)
+            
             settlements_created += 1
             total_amount += net_amount
 

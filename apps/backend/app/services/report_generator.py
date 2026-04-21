@@ -3,13 +3,16 @@ Report Generator Service
 Generates analytics reports for donors, vendors, and government
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
-from datetime import date, timedelta, datetime
+from sqlalchemy import func
+from datetime import date, timedelta
 from decimal import Decimal
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 import logging
+<<<<<<< HEAD
 from collections import defaultdict
 from uuid import UUID
+=======
+>>>>>>> 70ac7e42cd8c9a8d5a6c1ce9db826b5506e6c495
 
 from app.models.donation import Donation, DonationStatusEnum, Voucher
 from app.models.product import Order, OrderItem, Product
@@ -73,7 +76,7 @@ class ReportGenerator:
             .all()
         )
         donation_trend = [
-            {"month": t.month.strftime("%Y-%m") if t.month else "", "total": float(t.total or 0), "donations_count": 0}
+            {"month": t.month.strftime("%Y-%m") if t.month else "", "amount": float(t.total or 0), "donations_count": 0}
             for t in trend_data
         ]
 
@@ -91,13 +94,14 @@ class ReportGenerator:
             )
             .all()
         )
+        geo_total_amount = float(geo_data[0].total_amount or 0) if geo_data else 0.0
         geographic_distribution = [
             {
                 "province": "Jakarta",  # Placeholder - extract from user_profile.address
                 "children": 0,
-                "amount": float(sum(d.total_amount or 0 for d in geo_data)),
+                "amount": geo_total_amount,
             }
-        ] if geo_data else []
+        ] if geo_data and geo_total_amount > 0 else []
 
         return {
             "donor_id": str(donor_uuid),

@@ -18,6 +18,7 @@ import BeneficiaryDashboard from "./pages/dashboard/BeneficiaryDashboard";
 import DonorRiwayat from "./pages/dashboard/DonorRiwayat";
 import Profile from "./pages/dashboard/Profile";
 import VendorDashboard from "./pages/dashboard/VendorDashboard";
+import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import DonationCheckout from "./pages/donation/DonationCheckout";
 import CreateDonation from "./pages/donation/CreateDonation";
 import MockPaymentModal from "./pages/donation/MockPaymentModal";
@@ -231,6 +232,14 @@ function App() {
           }
         />
         <Route
+          path="/dashboard/admin"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/dashboard/profile"
           element={
             <ProtectedRoute>
@@ -328,6 +337,12 @@ function App() {
               <DonationSuccess />
             </ProtectedRoute>
           }
+        />
+
+        {/* Redirect legacy /dashboard/vouchers → /dashboard/dompet-nutrisi */}
+        <Route
+          path="/dashboard/vouchers"
+          element={<Navigate to="/dashboard/dompet-nutrisi" replace />}
         />
 
         {/* Catch all */}

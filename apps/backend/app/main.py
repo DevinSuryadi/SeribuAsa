@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 import logging
 
-from app.api import auth, donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users, cart
+from app.api import auth, donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users, cart, vendor_wallet, admin, subscriptions
 from app.database import IS_SQLITE, SessionLocal, init_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
 from app.config import settings
@@ -13,15 +13,29 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NutriGuard API", version="1.0.0")
 
-# CORS middleware - permissive for local/dev E2E.
-# - allow_origins: explicit origins from env
-# - allow_origin_regex: localhost/127.0.0.1/LAN dev hosts on any port
-cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+# CORS CONFIGURATION - DEVELOPMENT MODE
+# Allow any origin to access the API (insecure - dev only!)
+# Using specific origins list that includes all possible dev origins
+
+DEV_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:3000",
+    "http://0.0.0.0:5173",
+    "http://0.0.0.0:5174",
+    "http://0.0.0.0:5175",
+    "http://0.0.0.0:3000",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$",
+    allow_origins=DEV_ORIGINS,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
@@ -42,6 +56,9 @@ app.include_router(nutrition.router, prefix="/api/v1")
 app.include_router(recommendations.router, prefix="/api/v1")
 app.include_router(settlements.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
+app.include_router(vendor_wallet.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1")
+app.include_router(subscriptions.router, prefix="/api/v1")
 
 
 def _seed_demo_profiles() -> None:
@@ -146,6 +163,8 @@ def api_v1_root():
             "recommendations": "/api/v1/recommendations",
             "settlements": "/api/v1/settlements",
             "reports": "/api/v1/reports",
+            "vendor-wallet": "/api/v1/vendor-wallet",
+            "admin": "/api/v1/admin",
             "docs": "/docs"
         }
     }
