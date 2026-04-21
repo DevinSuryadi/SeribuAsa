@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from decimal import Decimal
 import logging
+import os
 
 from app.database import get_db
 from app.services.cart_service import CartService
@@ -19,7 +20,7 @@ from app.schemas.cart import (
     StockValidationRequest,
     StockValidationResponse
 )
-from app.models.user import BeneficiaryProfile
+from app.models.user import BeneficiaryProfile, UserProfile
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,44 @@ def _get_beneficiary_profile(db: Session, current_user: AuthenticatedUser) -> Be
     ).first()
 
     if not beneficiary:
+        dev_mode = os.getenv("DEV_MODE", "true").lower() == "true"
+        if dev_mode:
+            try:
+                user_profile = db.query(UserProfile).filter(
+                    UserProfile.user_id == current_user.user_id
+                ).first()
+
+                if not user_profile:
+                    fallback_name = (current_user.email or "beneficiary").split("@", 1)[0].strip() or "beneficiary"
+                    user_profile = UserProfile(
+                        user_id=current_user.user_id,
+                        full_name=fallback_name,
+                    )
+                    db.add(user_profile)
+                    db.flush()
+
+                beneficiary = BeneficiaryProfile(
+                    user_id=current_user.user_id,
+                    family_size=1,
+                    vouchers_balance=0,
+                )
+                db.add(beneficiary)
+                db.commit()
+                db.refresh(beneficiary)
+
+                logger.info(
+                    "Auto-created beneficiary profile for dev user %s",
+                    current_user.user_id,
+                )
+                return beneficiary
+            except Exception as exc:
+                db.rollback()
+                logger.error("Failed to auto-create beneficiary profile: %s", str(exc), exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to initialize beneficiary profile"
+                ) from exc
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Beneficiary profile not found"

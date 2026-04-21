@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import date
 from decimal import Decimal
+from uuid import UUID
 
 from app.database import get_db
 from app.services.zscore_calculator import ZScoreCalculator
@@ -31,14 +32,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/nutrition", tags=["nutrition"])
 
 
+def _to_uuid(value: str | UUID) -> UUID:
+    """Normalize incoming ID values to UUID for UUID-backed columns."""
+    if isinstance(value, UUID):
+        return value
+    return UUID(str(value))
+
+
 @router.get("/children")
 async def list_children(
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """List children for authenticated beneficiary"""
+    beneficiary_uuid = _to_uuid(current_user.user_id)
     children = db.query(Child).filter(
-        Child.beneficiary_id == current_user.user_id,
+        Child.beneficiary_id == beneficiary_uuid,
     ).order_by(Child.date_of_birth.desc()).all()
 
     result = []
@@ -84,8 +93,9 @@ async def add_child(
             detail="Gender must be 'male' or 'female'",
         )
     
+    beneficiary_uuid = _to_uuid(current_user.user_id)
     child = Child(
-        beneficiary_id=current_user.user_id,
+        beneficiary_id=beneficiary_uuid,
         full_name=full_name,
         date_of_birth=dob,
         gender=gender_enum,
@@ -118,10 +128,11 @@ async def add_measurement(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Add child growth measurement (beneficiary only, own children)"""
+    beneficiary_uuid = _to_uuid(current_user.user_id)
     # Verify child belongs to beneficiary
     child = db.query(Child).filter(
         Child.id == data.child_id,
-        Child.beneficiary_id == current_user.user_id,
+        Child.beneficiary_id == beneficiary_uuid,
     ).first()
 
     if not child:
@@ -178,10 +189,12 @@ async def get_measurement_history(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Get growth measurement history for child"""
+    beneficiary_uuid = _to_uuid(current_user.user_id)
+    child_uuid = _to_uuid(child_id)
     # Verify child belongs to beneficiary
     child = db.query(Child).filter(
-        Child.id == child_id,
-        Child.beneficiary_id == current_user.user_id,
+        Child.id == child_uuid,
+        Child.beneficiary_id == beneficiary_uuid,
     ).first()
 
     if not child:
@@ -192,7 +205,7 @@ async def get_measurement_history(
 
     measurements = (
         db.query(NutritionMeasurement)
-        .filter(NutritionMeasurement.child_id == child_id)
+        .filter(NutritionMeasurement.child_id == child_uuid)
         .order_by(NutritionMeasurement.measurement_date.desc())
         .all()
     )
@@ -263,9 +276,10 @@ async def get_latest_measurement(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Get latest nutrition measurement for beneficiary's children"""
+    beneficiary_uuid = _to_uuid(beneficiary_id)
     # Get all children
     children = db.query(Child).filter(
-        Child.beneficiary_id == beneficiary_id,
+        Child.beneficiary_id == beneficiary_uuid,
     ).all()
 
     # Get latest measurement per child
@@ -288,6 +302,6 @@ async def get_latest_measurement(
             )
 
     logger.info(
-        f"Latest nutrition measurements fetched for beneficiary {beneficiary_id}: {len(results)} children"
+        f"Latest nutrition measurements fetched for beneficiary {beneficiary_uuid}: {len(results)} children"
     )
     return {"success": True, "data": results}

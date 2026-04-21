@@ -5,6 +5,7 @@ Handles FIES survey submission, calculation, and history
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import date
+from uuid import UUID
 
 from app.database import get_db
 from app.services.fies_calculator import FIESCalculator
@@ -25,6 +26,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/fies", tags=["fies"])
 
 
+def _to_uuid(value: str | UUID) -> UUID:
+    """Normalize incoming ID values to UUID for UUID-backed columns."""
+    if isinstance(value, UUID):
+        return value
+    return UUID(str(value))
+
+
 @router.post("/submit", status_code=status.HTTP_201_CREATED)
 async def submit_fies(
     data: FIESSubmit,
@@ -33,9 +41,10 @@ async def submit_fies(
 ):
     """Submit FIES survey (beneficiary only, available tanggal 1-7)"""
     try:
+        beneficiary_uuid = _to_uuid(current_user.user_id)
         survey = FIESCalculator.submit_survey(
             db=db,
-            beneficiary_id=current_user.user_id,
+            beneficiary_id=beneficiary_uuid,
             responses=data.responses,
             survey_date=data.survey_date,
         )
@@ -86,7 +95,8 @@ async def get_fies_history(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Get FIES survey history for beneficiary"""
-    history = FIESCalculator.get_history(db, beneficiary_id)
+    beneficiary_uuid = _to_uuid(beneficiary_id)
+    history = FIESCalculator.get_history(db, beneficiary_uuid)
 
     surveys = [
         FIESSurveyHistoryItem(
@@ -109,7 +119,7 @@ async def get_fies_history(
     return {
         "success": True,
         "data": FIESSurveyHistoryResponse(
-            beneficiary_id=beneficiary_id,
+            beneficiary_id=str(beneficiary_uuid),
             surveys=surveys,
             trend=trend,
         ).model_dump(),
@@ -123,22 +133,23 @@ async def get_latest_fies(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Get latest FIES survey for beneficiary"""
+    beneficiary_uuid = _to_uuid(beneficiary_id)
     survey = (
         db.query(FIESSurvey)
-        .filter(FIESSurvey.beneficiary_id == beneficiary_id)
+        .filter(FIESSurvey.beneficiary_id == beneficiary_uuid)
         .order_by(FIESSurvey.survey_date.desc())
         .first()
     )
 
     if not survey:
         # Return empty response instead of 404
-        logger.info(f"No FIES survey found for beneficiary {beneficiary_id}")
+        logger.info(f"No FIES survey found for beneficiary {beneficiary_uuid}")
         return {
             "success": True,
             "data": None,
         }
 
-    logger.info(f"Latest FIES survey fetched for beneficiary {beneficiary_id}")
+    logger.info(f"Latest FIES survey fetched for beneficiary {beneficiary_uuid}")
     return {
         "success": True,
         "data": FIESLatestResponse.model_validate(survey).model_dump(),

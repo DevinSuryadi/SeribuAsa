@@ -7,15 +7,8 @@ from sqlalchemy import func
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Dict, Any, Optional
-import logging
-<<<<<<< Updated upstream
-<<<<<<< HEAD
-from collections import defaultdict
 from uuid import UUID
-=======
->>>>>>> 70ac7e42cd8c9a8d5a6c1ce9db826b5506e6c495
-=======
->>>>>>> Stashed changes
+import logging
 
 from app.models.donation import Donation, DonationStatusEnum, Voucher
 from app.models.product import Order, OrderItem, Product
@@ -28,6 +21,7 @@ logger = logging.getLogger(__name__)
 class ReportGenerator:
     @staticmethod
     def _to_uuid(value: str | UUID) -> UUID:
+        """Normalize incoming ID values to UUID for UUID-backed columns."""
         if isinstance(value, UUID):
             return value
         return UUID(str(value))
@@ -41,7 +35,6 @@ class ReportGenerator:
     ) -> Dict[str, Any]:
         """Generate impact report for donor with eager loading to avoid N+1 queries"""
         donor_uuid = ReportGenerator._to_uuid(donor_id)
-
         query = db.query(Donation).filter(
             Donation.donor_id == donor_uuid,
             Donation.status == DonationStatusEnum.success,
@@ -63,25 +56,37 @@ class ReportGenerator:
             .scalar()
         ) or 0
 
-        # Donation trend (monthly) with proper date handling
+        # Donation trend (monthly) with dialect-specific date grouping.
+        month_expr = func.date_trunc("month", Donation.created_at)
+        if db.bind is not None and db.bind.dialect.name == "sqlite":
+            month_expr = func.strftime("%Y-%m", Donation.created_at)
+
         trend_data = (
             db.query(
-                func.date_trunc("month", Donation.created_at).label("month"),
+                month_expr.label("month"),
                 func.sum(Donation.amount).label("total"),
             )
             .select_from(Donation)
             .filter(
-                Donation.donor_id == donor_id,
+                Donation.donor_id == donor_uuid,
                 Donation.status == DonationStatusEnum.success,
             )
-            .group_by(func.date_trunc("month", Donation.created_at))
-            .order_by(func.date_trunc("month", Donation.created_at))
+            .group_by(month_expr)
+            .order_by(month_expr)
             .all()
         )
-        donation_trend = [
-            {"month": t.month.strftime("%Y-%m") if t.month else "", "amount": float(t.total or 0), "donations_count": 0}
-            for t in trend_data
-        ]
+        donation_trend = []
+        for t in trend_data:
+            if hasattr(t.month, "strftime"):
+                month_label = t.month.strftime("%Y-%m")
+            else:
+                month_label = str(t.month or "")
+
+            donation_trend.append({
+                "month": month_label,
+                "amount": float(t.total or 0),
+                "donations_count": 0,
+            })
 
         # Geographic distribution by province (from user address if available)
         # Simplified: just get donation stats, no need for beneficiary details
@@ -92,7 +97,7 @@ class ReportGenerator:
             )
             .select_from(Donation)
             .filter(
-                Donation.donor_id == donor_id,
+                Donation.donor_id == donor_uuid,
                 Donation.status == DonationStatusEnum.success,
             )
             .all()
@@ -131,7 +136,6 @@ class ReportGenerator:
     ) -> Dict[str, Any]:
         """Generate sales report for vendor with eager loading"""
         vendor_uuid = ReportGenerator._to_uuid(vendor_id)
-
         query = db.query(Order).filter(
             Order.vendor_id == vendor_uuid,
             Order.is_active,
@@ -171,7 +175,7 @@ class ReportGenerator:
                 func.sum(Order.total_amount).label("total"),
             )
             .select_from(Order)
-            .filter(Order.vendor_id == vendor_id, Order.is_active)
+            .filter(Order.vendor_id == vendor_uuid, Order.is_active)
             .group_by(func.date(Order.created_at))
             .order_by(func.date(Order.created_at).desc())
             .limit(30)

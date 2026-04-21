@@ -3,6 +3,7 @@ Database Configuration and Session Management
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
+from sqlalchemy.pool import StaticPool
 from app.config import settings
 
 # Get database URL from settings (handles test mode automatically)
@@ -15,10 +16,14 @@ IS_SQLITE = DATABASE_URL.startswith("sqlite")
 # Configuration differs for SQLite vs PostgreSQL
 if IS_SQLITE:
     # SQLite configuration for testing
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args={"check_same_thread": False}  # Needed for SQLite
-    )
+    sqlite_engine_kwargs = {
+        "connect_args": {"check_same_thread": False},  # Needed for SQLite
+    }
+    if DATABASE_URL == "sqlite:///:memory:":
+        # Keep a single shared in-memory connection across threads.
+        sqlite_engine_kwargs["poolclass"] = StaticPool
+
+    engine = create_engine(DATABASE_URL, **sqlite_engine_kwargs)
 else:
     # PostgreSQL configuration for production
     engine = create_engine(
