@@ -190,22 +190,19 @@ export default function Login() {
               src={logo}
               alt="SeribuAsa Logo"
               style={{
-                width: 64,
-                height: 64,
+                width: 90,
+                height: 90,
                 objectFit: "contain",
-                marginBottom: 8,
+                marginBottom: -15,
                 filter: "drop-shadow(0 4px 8px rgba(22,163,74,0.2))",
               }}
             />
             <h1
               style={{
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: 800,
                 margin: 0,
-                background: "linear-gradient(135deg, #16a34a, #15803d)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                letterSpacing: "-0.5px",
+                color: "#346A43",
               }}
             >
               SeribuAsa

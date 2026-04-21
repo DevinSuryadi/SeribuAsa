@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Heart, Users, Store } from "lucide-react";
+import { Eye, EyeOff, Heart, Users, Store, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -31,10 +31,10 @@ function GoogleIcon() {
 
 type Role = "donor" | "beneficiary" | "vendor";
 
-const roles: { id: Role; label: string; icon: React.ElementType; desc: string }[] = [
-  { id: "donor", label: "Donatur", icon: Heart, desc: "Bantu nutrisi" },
-  { id: "beneficiary", label: "Penerima", icon: Users, desc: "Terima dukungan" },
-  { id: "vendor", label: "Vendor", icon: Store, desc: "Jual pangan" },
+const roles: { id: Role; label: string; icon: React.ElementType; desc: string; info: string }[] = [
+  { id: "donor", label: "Donatur", icon: Heart, desc: "Bantu nutrisi", info: "Penyumbang Dana & Dukungan. Individu, korporasi, atau lembaga yang menyumbangkan dana untuk program nutrisi. Donasi Anda dikelola transparan melalui sistem e-voucher yang tepat sasaran untuk keluarga rentan." },
+  { id: "beneficiary", label: "Penerima", icon: Users, desc: "Terima dukungan", info: "Keluarga Rentan & Anak Usia Dini. Keluarga dengan anak usia 1000 hari pertama yang membutuhkan dukungan nutrisi. Prioritas bantuan ditentukan berdasarkan skor FIES (Food Insecurity Experience Scale) untuk memastikan yang paling rentan mendapat bantuan terlebih dahulu." },
+  { id: "vendor", label: "Vendor", icon: Store, desc: "Jual pangan", info: "Penyedia Bahan Pangan Bergizi. Toko kelontong, tukang sayur, atau UMKM pangan terverifikasi yang menerima e-voucher sebagai alat pembayaran. Vendor menjual bahan pangan bergizi sesuai katalog yang telah disetujui sistem." },
 ];
 
 const passwordRequirements = [
@@ -53,6 +53,8 @@ export default function Register() {
   const [searchParams] = useSearchParams();
   const { signUp, signInWithGoogle } = useAuth();
   const [role, setRole] = useState<Role | null>(null);
+  const [infoOpen, setInfoOpen] = useState<Role | null>(null);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
 
   // Read role from URL query parameter on mount
   useEffect(() => {
@@ -226,10 +228,10 @@ export default function Register() {
               src={logo}
               alt="SeribuAsa Logo"
               style={{
-                width: 50,
-                height: 50,
+                width: 90,
+                height: 90,
                 objectFit: "contain",
-                marginBottom: 4,
+                marginBottom: -15,
                 filter: "drop-shadow(0 4px 8px rgba(22,163,74,0.2))",
               }}
             />
@@ -238,9 +240,7 @@ export default function Register() {
                 fontSize: 20,
                 fontWeight: 800,
                 margin: 0,
-                background: "linear-gradient(135deg, #16a34a, #15803d)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                color: "#346A43",
                 letterSpacing: "-0.5px",
               }}
             >
@@ -272,31 +272,100 @@ export default function Register() {
                 const Icon = r.icon;
                 const isSelected = role === r.id;
                 return (
-                  <button
+                  <div
                     key={r.id}
-                    type="button"
-                    onClick={() => setRole(r.id)}
-                    style={{
-                      padding: "8px 4px",
-                      borderRadius: "12px",
-                      border: isSelected ? "2px solid #16a34a" : "1.5px solid #eee",
-                      background: isSelected ? "#f0fdf4" : "#fff",
-                      transition: "all 0.2s ease",
-                      cursor: "pointer",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                    }}
+                    style={{ position: "relative" }}
                   >
-                    <Icon
-                      size={18}
-                      style={{ color: isSelected ? "#16a34a" : "#999", marginBottom: "4px" }}
-                    />
-                    <p style={{ fontSize: "11px", fontWeight: 700, color: "#111", margin: 0 }}>
-                      {r.label}
-                    </p>
-                    <p style={{ fontSize: "9px", color: "#666", margin: 0 }}>{r.desc}</p>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole(r.id)}
+                      style={{
+                        padding: "8px 4px",
+                        borderRadius: "12px",
+                        border: isSelected ? "2px solid #16a34a" : "1.5px solid #eee",
+                        background: isSelected ? "#f0fdf4" : "#fff",
+                        transition: "all 0.2s ease",
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        width: "100%",
+                        position: "relative"
+                      }}
+                    >
+                      <div style={{ marginBottom: "4px" }}>
+                        <Icon
+                          size={18}
+                          style={{ color: isSelected ? "#16a34a" : "#999" }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "4px",
+                          right: "4px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: "50%",
+                          border: "1px solid #e5e7eb",
+                          background: "#fff",
+                          padding: "2px 6px",
+                          fontSize: "10px",
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.16em",
+                          color: "#6b7280"
+                        }}
+                        onMouseEnter={(e) => {
+                          setInfoOpen(r.id);
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setPopupPosition({
+                            x: rect.left - 144 + (rect.width / 2),
+                            y: rect.top - 10
+                          });
+                        }}
+                        onMouseLeave={() => setInfoOpen(null)}
+                      >
+                        i
+                      </div>
+                      <p style={{ fontSize: "11px", fontWeight: 700, color: "#111", margin: 0 }}>
+                        {r.label}
+                      </p>
+                      <p style={{ fontSize: "9px", color: "#666", margin: 0 }}>{r.desc}</p>
+                    </button>
+
+                    {infoOpen === r.id && (
+                      <div style={{
+                        position: "fixed",
+                        left: `${popupPosition.x}px`,
+                        top: `${popupPosition.y}px`,
+                        width: "288px",
+                        borderRadius: "26px",
+                        border: "1px solid #dcfce7",
+                        background: "#fff",
+                        padding: "16px",
+                        boxShadow: "0 18px 40px rgba(15,23,42,0.12)",
+                        zIndex: 10000,
+                        pointerEvents: "none"
+                      }}>
+                        <div style={{ marginBottom: "12px", borderBottom: "1px solid #dcfce7", paddingBottom: "12px" }}>
+                          <p style={{ fontSize: "14px", fontWeight: 600, color: "#0f172a", margin: 0 }}>{r.label}</p>
+                          <p style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.18em", color: "#16a34a", margin: 0 }}>{r.desc}</p>
+                        </div>
+                        <div style={{
+                          borderRadius: "16px",
+                          background: "rgba(220, 252, 231, 0.9)",
+                          padding: "12px",
+                          fontSize: "13px",
+                          lineHeight: "1.5",
+                          color: "#334155"
+                        }}>
+                          {r.info}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
