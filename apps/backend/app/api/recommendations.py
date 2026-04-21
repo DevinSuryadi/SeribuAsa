@@ -37,7 +37,7 @@ async def get_recommendations(
     return {
         "success": True,
         "data": RecommendationResponse(
-            beneficiary_id=result["beneficiary_id"],
+            beneficiary_id=str(result["beneficiary_id"]),
             generated_at=result["generated_at"],
             recommendations=recommendations,
             next_review_date=result["next_review_date"],

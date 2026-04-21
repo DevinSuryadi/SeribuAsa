@@ -5,6 +5,7 @@ Business logic for FIES survey scoring and classification
 from sqlalchemy.orm import Session
 from datetime import datetime, date
 from typing import Optional, Dict, List
+from uuid import UUID
 import logging
 
 from app.models.nutrition import FIESSurvey
@@ -38,6 +39,13 @@ CLASSIFICATION_RECOMMENDATIONS = {
 
 class FIESCalculator:
     @staticmethod
+    def _to_uuid(value: str | UUID) -> UUID:
+        """Normalize incoming ID values to UUID for UUID-backed columns."""
+        if isinstance(value, UUID):
+            return value
+        return UUID(str(value))
+
+    @staticmethod
     def calculate_score(responses: Dict[str, int]) -> int:
         """Calculate FIES score from responses (sum of all values)"""
         return sum(responses.values())
@@ -66,10 +74,11 @@ class FIESCalculator:
         return True, ""
 
     @staticmethod
-    def check_already_submitted(db: Session, beneficiary_id: str, month: int, year: int) -> Optional[FIESSurvey]:
+    def check_already_submitted(db: Session, beneficiary_id: str | UUID, month: int, year: int) -> Optional[FIESSurvey]:
         """Check if beneficiary already submitted survey this month"""
+        beneficiary_uuid = FIESCalculator._to_uuid(beneficiary_id)
         return db.query(FIESSurvey).filter(
-            FIESSurvey.beneficiary_id == beneficiary_id,
+            FIESSurvey.beneficiary_id == beneficiary_uuid,
             FIESSurvey.survey_month == month,
             FIESSurvey.survey_year == year,
         ).first()
@@ -77,17 +86,18 @@ class FIESCalculator:
     @staticmethod
     def submit_survey(
         db: Session,
-        beneficiary_id: str,
+        beneficiary_id: str | UUID,
         responses: Dict[str, int],
         survey_date: Optional[date] = None,
     ) -> FIESSurvey:
         """Submit FIES survey with full validation"""
         today = date.today()
         survey_dt = survey_date or today
+        beneficiary_uuid = FIESCalculator._to_uuid(beneficiary_id)
 
         # Check duplicate
         existing = FIESCalculator.check_already_submitted(
-            db, beneficiary_id, today.month, today.year
+            db, beneficiary_uuid, today.month, today.year
         )
         if existing:
             raise ValueError("Sudah mengisi survei bulan ini")
@@ -98,7 +108,7 @@ class FIESCalculator:
 
         # Save
         survey = FIESSurvey(
-            beneficiary_id=beneficiary_id,
+            beneficiary_id=beneficiary_uuid,
             responses=responses,
             score=score,
             classification=classification,
@@ -110,7 +120,7 @@ class FIESCalculator:
 
         # Update beneficiary profile
         beneficiary = db.query(BeneficiaryProfile).filter(
-            BeneficiaryProfile.user_id == beneficiary_id
+            BeneficiaryProfile.user_id == beneficiary_uuid
         ).first()
         if beneficiary:
             beneficiary.fies_score = score
@@ -122,11 +132,12 @@ class FIESCalculator:
         return survey
 
     @staticmethod
-    def get_history(db: Session, beneficiary_id: str) -> dict:
+    def get_history(db: Session, beneficiary_id: str | UUID) -> dict:
         """Get FIES survey history with trend analysis"""
+        beneficiary_uuid = FIESCalculator._to_uuid(beneficiary_id)
         surveys = (
             db.query(FIESSurvey)
-            .filter(FIESSurvey.beneficiary_id == beneficiary_id)
+            .filter(FIESSurvey.beneficiary_id == beneficiary_uuid)
             .order_by(FIESSurvey.survey_date.desc())
             .all()
         )
@@ -143,7 +154,7 @@ class FIESCalculator:
             trend["previous_classification"] = None
 
         return {
-            "beneficiary_id": beneficiary_id,
+            "beneficiary_id": str(beneficiary_uuid),
             "surveys": surveys,
             "trend": trend,
         }

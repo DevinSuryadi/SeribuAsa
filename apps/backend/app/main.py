@@ -13,11 +13,10 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NutriGuard API", version="1.0.0")
 
-# CORS CONFIGURATION - DEVELOPMENT MODE
-# Allow any origin to access the API (insecure - dev only!)
-# Using specific origins list that includes all possible dev origins
-
-DEV_ORIGINS = [
+# CORS configuration for local development.
+# Merge .env-configured origins with common frontend dev origins.
+configured_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+DEV_ORIGINS = list(dict.fromkeys(configured_origins + [
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
@@ -30,12 +29,12 @@ DEV_ORIGINS = [
     "http://0.0.0.0:5174",
     "http://0.0.0.0:5175",
     "http://0.0.0.0:3000",
-]
+]))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=DEV_ORIGINS,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|0\.0\.0\.0):(\d+)",
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+):(\d+)",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],

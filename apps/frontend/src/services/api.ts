@@ -6,6 +6,18 @@ let accessTokenCache: string | null = null;
 let sessionInitPromise: Promise<void> | null = null;
 let isRefreshingToken = false;
 
+type StoredAuthUser = {
+  id?: string;
+  email?: string;
+  role?: string;
+};
+
+const isKnownDevRole = (value: unknown): value is string => {
+  if (typeof value !== "string") return false;
+  const role = value.trim().toLowerCase();
+  return ["donor", "beneficiary", "vendor", "admin", "government", "corporate_donor"].includes(role);
+};
+
 const isAuthLockError = (error: unknown) => {
   const msg = error instanceof Error ? error.message : String(error);
   return (
@@ -94,6 +106,44 @@ async function apiFetchWithRetry(
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
+
+  // Attach development identity headers when available.
+  let devIdentity: StoredAuthUser = {};
+  try {
+    const rawStoredAuth = localStorage.getItem("nutriguard-auth");
+    if (rawStoredAuth) {
+      const storedAuth: StoredAuthUser = JSON.parse(rawStoredAuth);
+      devIdentity = {
+        id: storedAuth?.id,
+        email: storedAuth?.email,
+        role: isKnownDevRole(storedAuth?.role) ? storedAuth.role.trim().toLowerCase() : undefined,
+      };
+    }
+  } catch {
+    // Ignore malformed local auth cache.
+  }
+
+  if (!devIdentity.id) {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const metadataRole = session.user.user_metadata?.role;
+        devIdentity = {
+          id: session.user.id,
+          email: session.user.email || undefined,
+          role: isKnownDevRole(metadataRole) ? metadataRole.trim().toLowerCase() : undefined,
+        };
+      }
+    } catch {
+      // Ignore session lookup errors for dev identity fallback.
+    }
+  }
+
+  if (devIdentity.id) headers["X-Dev-User-Id"] = devIdentity.id;
+  if (devIdentity.email) headers["X-Dev-User-Email"] = devIdentity.email;
+  if (devIdentity.role) headers["X-Dev-User-Role"] = devIdentity.role;
 
   // Attach Supabase JWT as Bearer token if available.
   await initSessionToken();

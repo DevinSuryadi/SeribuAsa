@@ -12,6 +12,14 @@ logger = logging.getLogger(__name__)
 
 class SupabaseAuthService:
     """Service for Supabase authentication operations"""
+
+    @staticmethod
+    def _validate_config() -> None:
+        # Ensure required Supabase auth settings are configured.
+        if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
+            raise ValueError(
+                "Supabase auth is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY or enable DEV_MODE=true for local mock auth."
+            )
     
     @staticmethod
     async def verify_token(access_token: str) -> dict:
@@ -27,6 +35,8 @@ class SupabaseAuthService:
         Raises:
             ValueError: If token is invalid or expired
         """
+        SupabaseAuthService._validate_config()
+
         url = f"{settings.SUPABASE_URL}/auth/v1/user"
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -42,7 +52,7 @@ class SupabaseAuthService:
                     logger.info(f"Token verified for user: {user_data.get('email')}")
                     return user_data
                 else:
-                    error_data = response.json()
+                    error_data = response.json() if response.content else {}
                     logger.error(f"Token verification failed: {error_data}")
                     raise ValueError(f"Invalid token: {error_data.get('error', 'Unknown error')}")
                     

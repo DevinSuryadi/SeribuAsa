@@ -79,6 +79,16 @@ function isProfileRole(value: unknown): value is GoogleSignInRole {
   return typeof value === "string" && PROFILE_ROLES.has(value)
 }
 
+function resolveProfileRoleForSession(currentSession: Session): GoogleSignInRole {
+  const metadataRole = currentSession.user.user_metadata?.role
+  if (isProfileRole(metadataRole)) return metadataRole
+
+  const inferredRole = resolveRoleFromEmail(currentSession.user.email)
+  if (isProfileRole(inferredRole)) return inferredRole
+
+  return "donor"
+}
+
 function resolveFullNameFromMetadata(metadata: SupabaseUserMetadata | undefined, email?: string | null): string | null {
   const directName = metadata?.full_name || metadata?.name
   if (typeof directName === "string" && directName.trim()) {
@@ -151,8 +161,7 @@ async function syncGoogleProfile(currentSession: Session): Promise<{ role: UserR
 async function ensureBackendProfileForSession(currentSession: Session): Promise<void> {
   if (isGoogleSession(currentSession)) return
 
-  const metadataRole = currentSession.user.user_metadata?.role
-  if (!isProfileRole(metadataRole)) return
+  const roleToCreate = resolveProfileRoleForSession(currentSession)
 
   const existingResponse = await fetch(`${BACKEND_BASE_URL}/users/${currentSession.user.id}`, {
     method: "GET",
@@ -177,7 +186,7 @@ async function ensureBackendProfileForSession(currentSession: Session): Promise<
     body: JSON.stringify({
       user_id: currentSession.user.id,
       full_name: fullName,
-      role: metadataRole,
+      role: roleToCreate,
       phone,
       address,
     }),
@@ -236,7 +245,12 @@ async function getUserProfile(userId: string): Promise<{ fullName: string }> {
     })
     
     if (!response.ok) {
-      // Fallback to Supabase profiles table if backend fetch fails
+      // Missing profile should not trigger extra fallback calls.
+      if (response.status === 404) {
+        return { fullName: "User" }
+      }
+
+      // Fallback to Supabase profiles table if backend is failing unexpectedly.
       const { data, error } = await supabase
         .from("profiles")
         .select("full_name")
