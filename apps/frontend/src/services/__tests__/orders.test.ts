@@ -277,17 +277,29 @@ describe("Order Service Integration Tests", () => {
   describe("getOrders", () => {
     it("should retrieve all orders successfully", async () => {
       const mockResponse = {
-        orders: [
+        items: [
           {
             id: "order_1",
             status: "pending" as const,
-            user_id: "u1", vendor_id: "v1", items: [], cart_total: 100000, voucher_discount: 0, cash_amount: 100000, updated_at: "2024-01-01",
+            user_id: "u1",
+            vendor_id: "v1",
+            items: [],
+            cart_total: 100000,
+            voucher_discount: 0,
+            cash_amount: 100000,
+            updated_at: "2024-01-01",
             created_at: "2024-01-01T00:00:00Z",
           },
           {
             id: "order_2",
             status: "completed" as const,
-            user_id: "u1", vendor_id: "v1", items: [], cart_total: 75000, voucher_discount: 0, cash_amount: 75000, updated_at: "2024-01-02",
+            user_id: "u1",
+            vendor_id: "v1",
+            items: [],
+            cart_total: 75000,
+            voucher_discount: 0,
+            cash_amount: 75000,
+            updated_at: "2024-01-02",
             created_at: "2024-01-02T00:00:00Z",
           },
         ],
@@ -308,11 +320,17 @@ describe("Order Service Integration Tests", () => {
 
     it("should filter orders by status", async () => {
       const mockResponse = {
-        orders: [
+        items: [
           {
             id: "order_1",
             status: "pending" as const,
-            user_id: "u1", vendor_id: "v1", items: [], cart_total: 100000, voucher_discount: 0, cash_amount: 100000, updated_at: "2024-01-01T00:00:00Z",
+            user_id: "u1",
+            vendor_id: "v1",
+            items: [],
+            cart_total: 100000,
+            voucher_discount: 0,
+            cash_amount: 100000,
+            updated_at: "2024-01-01T00:00:00Z",
             created_at: "2024-01-01T00:00:00Z",
           },
         ],
@@ -334,7 +352,7 @@ describe("Order Service Integration Tests", () => {
 
     it("should support pagination", async () => {
       const mockResponse = {
-        orders: [],
+        items: [],
         total: 50,
         page: 2,
         page_size: 20,
@@ -355,10 +373,16 @@ describe("Order Service Integration Tests", () => {
 
     it("should handle combination of filters and pagination", async () => {
       const mockResponse = {
-        orders: [
+        items: [
           {
             id: "order_3",
-            user_id: "u1", vendor_id: "v1", items: [], cart_total: 50000, voucher_discount: 0, cash_amount: 50000, updated_at: "2024-01-03T00:00:00Z",
+            user_id: "u1",
+            vendor_id: "v1",
+            items: [],
+            cart_total: 50000,
+            voucher_discount: 0,
+            cash_amount: 50000,
+            updated_at: "2024-01-03T00:00:00Z",
             status: "completed" as const,
             created_at: "2024-01-03T00:00:00Z",
           },
@@ -383,7 +407,7 @@ describe("Order Service Integration Tests", () => {
 
     it("should return empty list when no orders", async () => {
       const mockResponse = {
-        orders: [],
+        items: [],
         total: 0,
         page: 1,
         page_size: 20,
@@ -423,7 +447,7 @@ describe("Order Service Integration Tests", () => {
           },
         ],
         total_amount: 100000,
-        discount_amount: 0,
+        voucher_discount: 0,
         final_amount: 100000,
         status: "pending",
         created_at: "2024-01-01T00:00:00Z",
@@ -454,11 +478,14 @@ describe("Order Service Integration Tests", () => {
             product_name: "Rice 5kg",
           },
         ],
-        total_amount: 100000,
-        discount_amount: 50000,
-        final_amount: 50000,
+        cart_total: 100000,
+        voucher_discount: 50000,
+        cash_amount: 50000,
         status: "pending",
-        voucher_codes: ["VOUCHER001"],
+        applied_voucher: {
+          code: "VOUCHER001",
+          applied_amount: 50000,
+        },
         created_at: "2024-01-01T00:00:00Z",
         updated_at: "2024-01-01T00:00:00Z",
       };
@@ -595,7 +622,7 @@ describe("Order Service Integration Tests", () => {
 
     it("should make correct API call to GET /orders/", async () => {
       vi.mocked(apiFetch).mockResolvedValueOnce({
-        orders: [],
+        items: [],
         total: 0,
         page: 1,
         page_size: 20,

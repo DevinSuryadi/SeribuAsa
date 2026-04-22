@@ -105,6 +105,16 @@ def startup_event() -> None:
     if IS_SQLITE:
         init_db()
         _seed_demo_profiles()
+        
+        # Seed subscription plans
+        try:
+            db = SessionLocal()
+            from app.seeds.subscription_plans import seed_subscription_plans
+            seed_subscription_plans(db)
+            db.close()
+            logger.info("Subscription plans seeded successfully")
+        except Exception as e:
+            logger.error(f"Failed to seed subscription plans: {e}")
     
     # Initialize scheduler for settlement processing and report generation
     if settings.SCHEDULER_ENABLED:

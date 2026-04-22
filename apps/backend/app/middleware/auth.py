@@ -203,7 +203,7 @@ async def get_current_user(
     
     # Production mode - validate Supabase JWT
     try:
-        logger.info(f"[AUTH] Verifying JWT token...")
+        logger.info("[AUTH] Verifying JWT token...")
         token_data = await supabase_auth.verify_token(credentials.credentials)
         user_info = supabase_auth.extract_user_info(token_data)
         

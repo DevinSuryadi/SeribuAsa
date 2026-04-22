@@ -78,7 +78,7 @@ def test_voucher_redeem_insufficient_balance():
 
     # Try to redeem more than balance
     try:
-        VoucherService.redeem_voucher(mock_db, ["VCH-TEST"], Decimal("100000"), "ORD-001")
+        VoucherService.redeem_voucher(mock_db, ["VCH-TEST"], Decimal("100000"), str(uuid4()))
     except ValueError as e:
         assert "Insufficient" in str(e) or "balance" in str(e).lower()
 
@@ -89,6 +89,6 @@ def test_voucher_redeem_invalid_code():
     mock_db.query.return_value.filter.return_value.first.return_value = None
 
     try:
-        VoucherService.redeem_voucher(mock_db, ["INVALID"], Decimal("50000"), "ORD-001")
+        VoucherService.redeem_voucher(mock_db, ["INVALID"], Decimal("50000"), str(uuid4()))
     except ValueError as e:
         assert "not found" in str(e).lower() or "invalid" in str(e).lower()
