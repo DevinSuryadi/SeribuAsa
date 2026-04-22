@@ -3,7 +3,7 @@ Cron/Scheduler Module
 APScheduler setup for automated settlement, payout, and report generation
 """
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -59,6 +59,16 @@ class SettlementScheduler:
                 trigger=CronTrigger(hour=23, minute=0),
                 id="report_generation",
                 name="Daily Report Generation",
+                replace_existing=True,
+                misfire_grace_time=300,
+            )
+            
+            # Daily subscription billing (every day at 09:00 UTC)
+            cls._scheduler.add_job(
+                func=cls._process_subscription_billing,
+                trigger=CronTrigger(hour=9, minute=0),
+                id="subscription_billing",
+                name="Daily Subscription Billing",
                 replace_existing=True,
                 misfire_grace_time=300,
             )
@@ -186,6 +196,45 @@ class SettlementScheduler:
             
         except Exception as e:
             logger.error(f"Error in daily report generation: {e}", exc_info=True)
+    
+    @staticmethod
+    def _process_subscription_billing() -> None:
+        """Process recurring billing for subscriptions due today (called by cron)"""
+        from app.services.subscription_service import SubscriptionService
+        
+        try:
+            db = SettlementScheduler.db_session_factory()
+            
+            # Get all active subscriptions due for billing
+            due_subscriptions = SubscriptionService.get_due_subscriptions(db)
+            
+            logger.info(f"[SUBSCRIPTION_BILLING] Found {len(due_subscriptions)} subscriptions due for billing")
+            
+            processed = 0
+            failed = 0
+            
+            for subscription in due_subscriptions:
+                try:
+                    result = SubscriptionService.process_billing(db, subscription)
+                    
+                    if result.get("success"):
+                        processed += 1
+                        logger.info(f"[SUBSCRIPTION_BILLING] Successfully processed subscription {subscription.id}")
+                    else:
+                        failed += 1
+                        logger.warning(f"[SUBSCRIPTION_BILLING] Failed to process subscription {subscription.id}: {result.get('error')}")
+                
+                except Exception as e:
+                    logger.error(f"[SUBSCRIPTION_BILLING] Error processing subscription {subscription.id}: {e}")
+                    failed += 1
+                    continue
+            
+            logger.info(f"[SUBSCRIPTION_BILLING] Completed: {processed} processed, {failed} failed")
+            
+            db.close()
+            
+        except Exception as e:
+            logger.error(f"[SUBSCRIPTION_BILLING] Error in subscription billing: {e}", exc_info=True)
     
     @classmethod
     def get_jobs(cls) -> list:

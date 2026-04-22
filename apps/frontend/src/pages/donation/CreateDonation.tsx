@@ -1,88 +1,104 @@
-import { useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Heart, ArrowRight, Loader2 } from "lucide-react"
-import { toast } from "sonner"
-import { createDonation, simulatePayment } from "@/services/donations"
-import { formatIDR } from "@/lib/format"
-import { PLAN_NAMES, PAYMENT_LABELS, PAYMENT_METHOD_MAP, DONATION_CHECKOUT_STORAGE_KEY } from "@/lib/donation-constants"
-import { DonationHero } from "@/components/donation/DonationHero"
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Heart, ArrowRight, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { createDonation, simulatePayment } from "@/services/donations";
+import { formatIDR } from "@/lib/format";
+import {
+  PLAN_NAMES,
+  PAYMENT_LABELS,
+  PAYMENT_METHOD_MAP,
+  DONATION_CHECKOUT_STORAGE_KEY,
+} from "@/lib/donation-constants";
+import { DonationHero } from "@/components/donation/DonationHero";
 
 export default function CreateDonation() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [loading, setLoading] = useState(false);
 
-  const [planName, setPlanName] = useState("")
-  const [amount, setAmount] = useState("")
-  const [donationType, setDonationType] = useState<"one_time" | "subscription">("one_time")
-  const [paymentMethod, setPaymentMethod] = useState("qris")
-  const [donorName, setDonorName] = useState("")
-  const [donorEmail, setDonorEmail] = useState("")
+  const [planName, setPlanName] = useState("");
+  const [planId, setPlanId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [donationType, setDonationType] = useState<"one_time" | "subscription">("one_time");
+  const [paymentMethod, setPaymentMethod] = useState("qris");
+  const [donorName, setDonorName] = useState("");
+  const [donorEmail, setDonorEmail] = useState("");
 
   useEffect(() => {
-    const checkoutData = sessionStorage.getItem(DONATION_CHECKOUT_STORAGE_KEY)
+    const checkoutData = sessionStorage.getItem(DONATION_CHECKOUT_STORAGE_KEY);
     if (checkoutData) {
       try {
-        const data = JSON.parse(checkoutData)
+        const data = JSON.parse(checkoutData);
         if (data.plan) {
-          setPlanName(PLAN_NAMES[data.plan] || "Donasi Custom")
+          setPlanName(PLAN_NAMES[data.plan] || "Donasi Custom");
+          setPlanId(data.plan);
         }
         if (data.amount) {
-          setAmount(data.amount.toString())
+          setAmount(data.amount.toString());
         }
-        if (data.type === "monthly") setDonationType("subscription")
-        else if (data.type === "once") setDonationType("one_time")
+        if (data.type === "monthly") setDonationType("subscription");
+        else if (data.type === "once") setDonationType("one_time");
         if (data.payment) {
-          setPaymentMethod(PAYMENT_METHOD_MAP[data.payment] || "qris")
+          setPaymentMethod(PAYMENT_METHOD_MAP[data.payment] || "qris");
         }
-        if (data.name) setDonorName(data.name)
-        if (data.email) setDonorEmail(data.email)
-        sessionStorage.removeItem(DONATION_CHECKOUT_STORAGE_KEY)
+        if (data.name) setDonorName(data.name);
+        if (data.email) setDonorEmail(data.email);
+        sessionStorage.removeItem(DONATION_CHECKOUT_STORAGE_KEY);
       } catch {
         // ignore
       }
     }
 
-    const planAmount = searchParams.get("amount")
-    const planType = searchParams.get("type")
-    const planPayment = searchParams.get("payment")
-    const planId = searchParams.get("plan")
+    const planAmount = searchParams.get("amount");
+    const planType = searchParams.get("type");
+    const planPayment = searchParams.get("payment");
+    const planId = searchParams.get("plan");
 
-    if (planAmount && !amount) setAmount(planAmount)
-    if (planType === "monthly" && donationType !== "subscription") setDonationType("subscription")
-    if (planType === "once" && donationType !== "one_time") setDonationType("one_time")
+    if (planAmount && !amount) setAmount(planAmount);
+    if (planType === "monthly" && donationType !== "subscription") setDonationType("subscription");
+    if (planType === "once" && donationType !== "one_time") setDonationType("one_time");
     if (planPayment) {
-      setPaymentMethod(PAYMENT_METHOD_MAP[planPayment] || "qris")
+      setPaymentMethod(PAYMENT_METHOD_MAP[planPayment] || "qris");
     }
     if (planId && !planName) {
-      setPlanName(PLAN_NAMES[planId] || "Donasi Custom")
+      setPlanName(PLAN_NAMES[planId] || "Donasi Custom");
+      setPlanId(planId);
     }
-  }, [searchParams, amount, donationType, planName])
+  }, [searchParams, amount, donationType, planName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!amount || parseInt(amount) < 10000) {
-      toast.error("Jumlah minimal Rp 10.000")
-      return
+      toast.error("Jumlah minimal Rp 10.000");
+      return;
     }
-    setLoading(true)
+    setLoading(true);
     try {
       // Step 1: Buat donasi (tanpa recipient_id — sistem auto-assign)
       const donation = await createDonation({
         amount: parseInt(amount),
         type: donationType,
         payment_method: paymentMethod,
-      })
+        plan_id: planId, // Kirim plan ID ke backend
+        is_subscription: donationType === "subscription", // Flag untuk subscription
+      });
 
       // Step 2: Langsung simulate payment (MVP mode — tanpa payment gateway)
       // Backend akan: auto-assign penerima FIES tertinggi + generate voucher otomatis
-      toast.loading("Memproses pembayaran...", { id: "payment" })
-      const paymentResult: any = await simulatePayment(donation.id)
-      toast.dismiss("payment")
+      toast.loading("Memproses pembayaran...", { id: "payment" });
+      const paymentResult: any = await simulatePayment(donation.id);
+      toast.dismiss("payment");
 
-      toast.success("Donasi berhasil! Voucher dikirim ke penerima 🎉")
+      const voucherCreated =
+        paymentResult?.voucher_created ?? paymentResult?.data?.voucher_created ?? false;
+      if (voucherCreated) {
+        toast.success("Donasi berhasil! Voucher dikirim ke penerima 🎉");
+      } else {
+        toast.success("Donasi berhasil! Menunggu alokasi penerima.");
+      }
 
       // Step 3: Redirect ke halaman sukses dengan data impact
       navigate("/donation/success", {
@@ -90,18 +106,19 @@ export default function CreateDonation() {
           donationId: donation.id,
           amount: parseInt(amount),
           transactionId: paymentResult?.transaction_id || paymentResult?.data?.transaction_id,
-          voucherCreated: paymentResult?.voucher_created ?? paymentResult?.data?.voucher_created ?? true,
+          voucherCreated:
+            paymentResult?.voucher_created ?? paymentResult?.data?.voucher_created ?? true,
           impact: paymentResult?.impact || paymentResult?.data?.impact,
         },
-      })
+      });
     } catch (err) {
-      toast.dismiss("payment")
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      toast.error("Gagal memproses donasi", { description: errorMessage })
+      toast.dismiss("payment");
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Gagal memproses donasi", { description: errorMessage });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-6">
@@ -149,17 +166,22 @@ export default function CreateDonation() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Metode:</span>
-                <span className="font-medium text-gray-900">{PAYMENT_LABELS[paymentMethod] || paymentMethod}</span>
+                <span className="font-medium text-gray-900">
+                  {PAYMENT_LABELS[paymentMethod] || paymentMethod}
+                </span>
               </div>
             </div>
 
             {/* Amount & CTA */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 p-3 rounded-lg text-center">
               <p className="text-xs text-gray-600 mb-1">Total Donasi</p>
-              <p className="text-2xl font-bold text-green-700">{formatIDR(parseInt(amount) || 0)}</p>
+              <p className="text-2xl font-bold text-green-700">
+                {formatIDR(parseInt(amount) || 0)}
+              </p>
               {parseInt(amount) >= 500000 && (
                 <p className="text-xs text-green-600 mt-1">
-                  = {Math.floor(parseInt(amount) / 500000)} anak + {Math.floor(parseInt(amount) / 500000) * 1000} hari dukungan
+                  = {Math.floor(parseInt(amount) / 500000)} anak +{" "}
+                  {Math.floor(parseInt(amount) / 500000) * 1000} hari dukungan
                 </p>
               )}
             </div>
@@ -191,5 +213,5 @@ export default function CreateDonation() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

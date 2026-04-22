@@ -55,7 +55,7 @@ export interface ImpactRegion {
 }
 
 // Type Aliases
-export type DonationStatus = "success" | "pending" | "failed" | "cancelled";
+export type DonationStatus = "success" | "pending" | "failed" | "refunded";
 export type DonationType = "one_time" | "subscription";
 export type SubscriptionStatus = "active" | "paused" | "cancelled";
-export type PaymentMethod = "bank_transfer" | "credit_card" | "ewallet" | "crypto";
+export type PaymentMethod = "bank_transfer" | "credit_card" | "e_wallet" | "qris" | "midtrans";

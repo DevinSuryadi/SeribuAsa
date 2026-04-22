@@ -2,11 +2,12 @@
 Subscription Schemas
 Pydantic models for subscription API requests and responses
 """
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
+from uuid import UUID
 
 
 class SubscriptionStatus(str, Enum):
@@ -38,13 +39,12 @@ class SubscriptionPlanCreate(SubscriptionPlanBase):
 
 
 class SubscriptionPlanResponse(SubscriptionPlanBase):
-    id: str
+    id: UUID
     is_active: bool = True
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================
@@ -59,13 +59,12 @@ class BillingHistoryBase(BaseModel):
 
 
 class BillingHistoryResponse(BillingHistoryBase):
-    id: str
-    subscription_id: str
+    id: UUID
+    subscription_id: UUID
     transaction_id: Optional[str] = None
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================
@@ -87,8 +86,8 @@ class SubscriptionCreate(BaseModel):
 
 
 class SubscriptionResponse(SubscriptionBase):
-    id: str
-    donor_id: str
+    id: UUID
+    donor_id: UUID
     status: SubscriptionStatus
     next_billing_date: date
     started_at: datetime
@@ -97,8 +96,7 @@ class SubscriptionResponse(SubscriptionBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SubscriptionDetailResponse(SubscriptionResponse):

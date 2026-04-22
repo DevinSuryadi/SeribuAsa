@@ -2,7 +2,7 @@
 Donation Schemas
 Pydantic schemas for donation-related requests and responses
 """
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from enum import Enum
@@ -35,14 +35,32 @@ class PaymentMethodEnum(str, Enum):
 class DonationBase(BaseModel):
     """Base schema for donation"""
     amount: Decimal = Field(..., gt=0, description="Donation amount (must be positive)")
-    type: DonationTypeEnum = Field(default=DonationTypeEnum.one_time)
-    payment_method: PaymentMethodEnum = Field(default=PaymentMethodEnum.midtrans)
+    type: str = Field(default="one_time", description="Donation type: one_time or subscription")
+    payment_method: str = Field(default="midtrans", description="Payment method: qris, bank_transfer, e_wallet, etc")
+    
+    @field_validator('type')
+    @classmethod
+    def validate_type(cls, v):
+        allowed = ['one_time', 'subscription']
+        if v not in allowed:
+            raise ValueError(f'type must be one of {allowed}')
+        return v
+    
+    @field_validator('payment_method')
+    @classmethod
+    def validate_payment_method(cls, v):
+        allowed = ['midtrans', 'qris', 'bank_transfer', 'e_wallet', 'gopay', 'va_bca', 'va_mandiri', 'credit_card']
+        if v not in allowed:
+            raise ValueError(f'payment_method must be one of {allowed}')
+        return v
 
 
 class DonationCreate(DonationBase):
     """Schema for creating donation"""
     recipient_id: Optional[str] = None
     subscription_config: Optional[Dict[str, Any]] = None
+    plan_id: Optional[str] = None  # Reference to subscription plan
+    is_subscription: Optional[bool] = False  # Whether to create a subscription
 
 
 class DonationUpdate(BaseModel):

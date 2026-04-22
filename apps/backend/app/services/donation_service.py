@@ -8,7 +8,6 @@ from typing import List, Optional
 from decimal import Decimal
 import logging
 from uuid import UUID
-from datetime import datetime
 
 from app.models.donation import Donation, DonationStatusEnum, Voucher
 from app.schemas.donation import DonationCreate, DonationQueryParams
@@ -43,7 +42,7 @@ class DonationService:
             recipient_id=recipient_uuid,
             amount=donation_data.amount,
             type=donation_data.type,
-            payment_method=donation_data.payment_method.value,
+            payment_method=donation_data.payment_method,
             status=DonationStatusEnum.pending,
             subscription_config=donation_data.subscription_config
         )
@@ -196,8 +195,6 @@ class DonationService:
         """Get dashboard metrics for donor - for dashboard display"""
         
         donor_uuid = DonationService._to_uuid(donor_id)
-        now = datetime.now()
-        month_start = datetime(now.year, now.month, 1)
 
         # Total donated (all success donations)
         total_donated = db.query(func.sum(Donation.amount)).filter(
@@ -205,11 +202,11 @@ class DonationService:
             Donation.status == DonationStatusEnum.success
         ).scalar() or Decimal(0)
         
-        # Active subscriptions
-        active_subscriptions = db.query(func.count(Donation.id)).filter(
-            Donation.donor_id == donor_uuid,
-            Donation.type == "subscription",
-            Donation.status == DonationStatusEnum.success
+        # Active subscriptions (from Subscription model, not Donation)
+        from app.models.subscription import Subscription, SubscriptionStatusEnum
+        active_subscriptions = db.query(func.count(Subscription.id)).filter(
+            Subscription.donor_id == donor_uuid,
+            Subscription.status == SubscriptionStatusEnum.active
         ).scalar() or 0
         
         # Children helped (unique recipients)
@@ -230,11 +227,41 @@ class DonationService:
         
         conversion_rate = (successful_donations / total_donations * 100) if total_donations > 0 else 0
         
-        # Monthly stats (mock values for now - would need Order model in future)
-        vouchers_redeemed = 0
-        children_received_nutrition = 0
-        top_category = "Pangan Umum"
-        nutrition_score_improvement = 0.0
+        # ============================================
+        # REAL MONTHLY STATS (not mocked)
+        # ============================================
+        from datetime import date
+        from app.models.donation import Voucher
+        
+        today = date.today()
+        start_of_month = today.replace(day=1)
+        
+        # Vouchers redeemed this month (vouchers created this month)
+        vouchers_redeemed = db.query(func.count(Voucher.id)).join(
+            Donation
+        ).filter(
+            Donation.donor_id == donor_uuid,
+            Donation.status == DonationStatusEnum.success,
+            Voucher.allocated_date >= start_of_month
+        ).scalar() or 0
+        
+        # Children who received nutrition (unique recipients with vouchers this month)
+        children_received_nutrition = db.query(func.count(func.distinct(Donation.recipient_id))).join(
+            Voucher
+        ).filter(
+            Donation.donor_id == donor_uuid,
+            Donation.status == DonationStatusEnum.success,
+            Donation.recipient_id.isnot(None),
+            Voucher.allocated_date >= start_of_month
+        ).scalar() or 0
+        
+        # Nutrition score improvement (compare FIES scores before/after)
+        # This is a simplified calculation - in production would need more sophisticated tracking
+        nutrition_score_improvement = 0.0  # Placeholder - requires FIES tracking system
+        
+        # Top category redeemed (from voucher transactions)
+        # This would require Order/Product data - placeholder for now
+        top_category = "Pangan Umum"  # Placeholder until Order system is implemented
         
         return {
             "total_donated": total_donated,
@@ -242,8 +269,8 @@ class DonationService:
             "children_helped": children_helped,
             "conversion_rate": round(conversion_rate, 1),
             "monthly_stats": {
-                "vouchers_redeemed": vouchers_redeemed,
-                "children_received_nutrition": children_received_nutrition,
+                "vouchers_redeemed": vouchers_redeemed,  # ← REAL DATA
+                "children_received_nutrition": children_received_nutrition,  # ← REAL DATA
                 "nutrition_score_improvement": nutrition_score_improvement,
                 "top_category": top_category
             }

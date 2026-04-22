@@ -1,5 +1,4 @@
 import { apiFetch } from "./api";
-import type { Donation } from "@/types/donation";
 
 export interface Subscription {
   id: string;

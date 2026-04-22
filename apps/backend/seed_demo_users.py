@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from supabase import create_client, Client
-from dotenv import load_dotenv
-from sqlalchemy.orm import Session
+from supabase import create_client, Client  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: E402
 
 # Load environment variables
 load_dotenv()
@@ -125,12 +125,8 @@ def seed_demo_data():
     
     # Import database models
     try:
-        from app.database import SessionLocal, engine
-        from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, Child, GenderEnum
-        from app.models.donation import Donation, DonationStatusEnum, Voucher, VoucherStatusEnum, DonationTypeEnum
-        from app.models.product import Product, Category, Order, OrderItem, OrderStatusEnum
-        from app.models.nutrition import FIESSurvey, NutritionMeasurement
-        from sqlalchemy import text
+        from app.database import SessionLocal
+        from app.models.user import UserProfile
         logger.info("✓ Database models imported")
     except Exception as e:
         logger.error(f"✗ Failed to import models: {e}")
@@ -175,7 +171,7 @@ def seed_demo_data():
                             created_users[email] = user.id
                             logger.info(f"✓ Found existing user (retry): {email}")
                             break
-                except:
+                except Exception:
                     pass
         
         # Step 2: Seed Backend Database
@@ -268,7 +264,7 @@ def create_donor_data(db: Session, user_id: str, config: dict):
         )
         db.add(donation)
     
-    logger.info(f"   ✓ Created donor profile + 3 donations (Rp 1.5M total)")
+    logger.info("   ✓ Created donor profile + 3 donations (Rp 1.5M total)")
 
 
 def create_beneficiary_data(db: Session, user_id: str, config: dict):
@@ -281,6 +277,7 @@ def create_beneficiary_data(db: Session, user_id: str, config: dict):
         user_id=user_id,
         family_size=3,
         vouchers_balance=Decimal("1500000.00"),
+        approval_status="approved",
         fies_score=7,
         fies_classification="severe",
     )
@@ -344,7 +341,7 @@ def create_beneficiary_data(db: Session, user_id: str, config: dict):
     )
     db.add(measurement2)
     
-    logger.info(f"   ✓ Created beneficiary profile + child + FIES (score: 7) + 2 measurements")
+    logger.info("   ✓ Created beneficiary profile + child + FIES (score: 7) + 2 measurements")
 
 
 def create_vendor_data(db: Session, user_id: str, config: dict):
@@ -399,7 +396,7 @@ def create_vendor_data(db: Session, user_id: str, config: dict):
         )
         db.add(product)
     
-    logger.info(f"   ✓ Created vendor profile + 5 products")
+    logger.info("   ✓ Created vendor profile + 5 products")
 
 
 def link_donations_to_beneficiary(db: Session, created_users: dict):
@@ -506,7 +503,7 @@ def create_demo_orders(db: Session, created_users: dict):
         )
         db.add(order_item)
     
-    logger.info(f"   ✓ Created demo order (Rp 150,000) + settlement")
+    logger.info("   ✓ Created demo order (Rp 150,000) + settlement")
 
 
 if __name__ == "__main__":

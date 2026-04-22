@@ -55,9 +55,6 @@ def test_nutrition_rec_for_stunting():
     zscore_weight = -2.5
     is_stunted = zscore_weight < -2.0
     
-    if is_stunted:
-        rec_type = "nutrition"
-    
     assert is_stunted is True
 
 
@@ -65,9 +62,6 @@ def test_food_security_rec_for_severe():
     """Test food security recommendation for severe insecurity"""
     fies_score = 16
     is_severe = fies_score >= 12
-    
-    if is_severe:
-        rec_type = "food_security"
     
     assert is_severe is True
 

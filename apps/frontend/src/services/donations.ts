@@ -3,7 +3,21 @@ import type { Donation, DashboardMetrics, ImpactReport } from "@/types/donation"
 
 export async function getDonations(): Promise<Donation[]> {
   const res = await apiFetch("/donations/");
-  return Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+  // Backend returns { items: [...], total: n, page: 1, ... }
+  // Handle various response structures
+  if (res?.data?.items && Array.isArray(res.data.items)) {
+    return res.data.items;
+  }
+  if (res?.items && Array.isArray(res.items)) {
+    return res.items;
+  }
+  if (Array.isArray(res?.data)) {
+    return res.data;
+  }
+  if (Array.isArray(res)) {
+    return res;
+  }
+  return [];
 }
 
 export async function getDonation(donationId: string): Promise<Donation> {
@@ -15,6 +29,8 @@ export async function createDonation(data: {
   amount: number;
   type: string;
   payment_method: string;
+  plan_id?: string;
+  is_subscription?: boolean;
 }): Promise<Donation> {
   const res = await apiFetch("/donations/", {
     method: "POST",
@@ -23,7 +39,9 @@ export async function createDonation(data: {
   return res?.data || res;
 }
 
-export async function simulatePayment(donationId: string): Promise<{ success: boolean; data?: unknown }> {
+export async function simulatePayment(
+  donationId: string
+): Promise<{ success: boolean; data?: unknown }> {
   return apiFetch(`/donations/${donationId}/simulate-payment`, {
     method: "POST",
   });

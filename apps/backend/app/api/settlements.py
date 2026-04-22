@@ -201,7 +201,7 @@ async def mark_settlement_paid(
 
 @router.get("/export")
 async def export_settlements(
-    format: str = Query("csv", regex="^(csv|pdf)$"),
+    format: str = Query("csv", pattern="^(csv|pdf)$"),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),

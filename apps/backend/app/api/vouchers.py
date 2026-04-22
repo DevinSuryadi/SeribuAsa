@@ -518,7 +518,7 @@ async def get_allowed_voucher_categories(
         
         # Get all allowed categories
         allowed_categories = db.query(VoucherAllowedCategory).filter(
-            VoucherAllowedCategory.is_active == True
+            VoucherAllowedCategory.is_active.is_(True)
         ).all()
         
         return {

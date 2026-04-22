@@ -1,40 +1,48 @@
-import { useState } from "react"
-import { useParams, useNavigate, useLocation } from "react-router-dom"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CreditCard, AlertTriangle, Loader2, CheckCircle2, Copy } from "lucide-react"
-import { toast } from "sonner"
-import { simulatePayment } from "@/services/donations"
-import { DonationHero } from "@/components/donation/DonationHero"
+import { useState } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CreditCard, AlertTriangle, Loader2, CheckCircle2, Copy } from "lucide-react";
+import { toast } from "sonner";
+import { simulatePayment } from "@/services/donations";
+import { DonationHero } from "@/components/donation/DonationHero";
 
 export default function MockPaymentModal() {
-  const { donationId } = useParams()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const { donationId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const { amount = 0, paymentMethod = "bank_transfer" } = location.state || {}
+  const { amount = 0, paymentMethod = "bank_transfer" } = location.state || {};
 
-  const [vaNumber] = useState(() => `8801 ${Math.random().toString().slice(2, 6)} ${Math.random().toString().slice(2, 6)} ${Math.random().toString().slice(2, 6)}`)
+  const [vaNumber] = useState(
+    () =>
+      `8801 ${Math.random().toString().slice(2, 6)} ${Math.random().toString().slice(2, 6)} ${Math.random().toString().slice(2, 6)}`
+  );
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(vaNumber.replace(/\s/g, ""))
-    toast.success("Nomor VA disalin!")
-  }
+    navigator.clipboard.writeText(vaNumber.replace(/\s/g, ""));
+    toast.success("Nomor VA disalin!");
+  };
 
   const handleSimulatePayment = async () => {
-    setLoading(true)
+    if (!donationId) {
+      toast.error("Error", { description: "ID donasi tidak ditemukan" });
+      return;
+    }
+
+    setLoading(true);
 
     try {
       // Add small delay for demo UX
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      
-      const result: any = await simulatePayment(donationId!)
-      setSuccess(true)
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const result: any = await simulatePayment(donationId);
+      setSuccess(true);
 
       setTimeout(() => {
         navigate("/donation/success", {
@@ -42,16 +50,16 @@ export default function MockPaymentModal() {
             donationId: result.donation_id,
             amount: result.amount,
             transactionId: result.transaction_id,
-             impact: result.impact,
-           },
-         })
-       }, 1500)
-     } catch (err) {
-       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-       toast.error("Simulasi pembayaran gagal", { description: errorMessage })
-       setLoading(false)
-     }
-   }
+            impact: result.impact,
+          },
+        });
+      }, 1500);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Simulasi pembayaran gagal", { description: errorMessage });
+      setLoading(false);
+    }
+  };
 
   if (success) {
     return (
@@ -65,7 +73,7 @@ export default function MockPaymentModal() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -105,11 +113,11 @@ export default function MockPaymentModal() {
               <span className="text-gray-600">Berlaku sampai</span>
               <span className="font-semibold">24 jam</span>
             </div>
-           </div>
+          </div>
 
-           <Separator className="my-6" />
+          <Separator className="my-6" />
 
-           {/* Warning Banner */}
+          {/* Warning Banner */}
           <Alert className="bg-yellow-50 border-yellow-200">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800">
@@ -148,5 +156,5 @@ export default function MockPaymentModal() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

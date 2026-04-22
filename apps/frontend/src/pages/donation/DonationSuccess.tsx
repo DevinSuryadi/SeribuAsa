@@ -13,6 +13,7 @@ import { formatIDR } from "@/lib/format";
 
 interface ImpactData {
   children_helped: number;
+  months_of_support: number;
   days_of_support: number;
   message: string;
 }
@@ -29,6 +30,7 @@ export default function DonationSuccess() {
     amount: stateAmount,
     transactionId: stateTransactionId,
     impact: stateImpact,
+    voucherCreated: stateVoucherCreated,
   } = location.state || {};
 
   // Extract donationId from URL or state
@@ -114,6 +116,7 @@ export default function DonationSuccess() {
 
     return {
       children_helped: childrenHelped,
+      months_of_support: 1, // Default 1 month for one-time donations
       days_of_support: daysOfSupport,
       message,
     };
@@ -181,7 +184,7 @@ export default function DonationSuccess() {
           </div>
 
           {/* Impact Section - Compact & Clear */}
-          {impact && impact.children_helped > 0 && (
+          {impact && impact.children_helped > 0 ? (
             <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
               <p className="text-xs font-semibold text-blue-800 mb-2">Dampak Donasi Anda</p>
               <div className="grid grid-cols-2 gap-2 mb-2">
@@ -196,7 +199,15 @@ export default function DonationSuccess() {
               </div>
               <p className="text-xs text-blue-700 text-center font-medium">{impact.message}</p>
             </div>
-          )}
+          ) : stateVoucherCreated === false ? (
+            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+              <p className="text-xs font-semibold text-yellow-800 mb-2">Status Donasi</p>
+              <p className="text-xs text-yellow-700 text-center">
+                Donasi Anda akan dialokasikan ke penerima yang membutuhkan. Terima kasih atas
+                kontribusi Anda!
+              </p>
+            </div>
+          ) : null}
 
           {/* Share Section */}
           <div className="pt-4 border-t border-gray-100">
@@ -207,7 +218,11 @@ export default function DonationSuccess() {
                 size="sm"
                 className="flex-1 h-9 text-xs"
                 onClick={async () => {
-                  const shareText = `Saya baru saja berdonasi ${formatIDR(displayAmount)} melalui SeribuAsa untuk membantu ${impact?.children_helped || 0} anak mendapatkan nutrisi. Yuk, ikut berdonasi!`;
+                  const childrenText =
+                    impact?.children_helped > 0
+                      ? `untuk membantu ${impact.children_helped} anak mendapatkan nutrisi`
+                      : "untuk membantu anak-anak yang membutuhkan";
+                  const shareText = `Saya baru saja berdonasi ${formatIDR(displayAmount)} melalui SeribuAsa ${childrenText}. Yuk, ikut berdonasi!`;
 
                   if (navigator.share) {
                     try {
@@ -233,7 +248,11 @@ export default function DonationSuccess() {
                 size="sm"
                 className="flex-1 h-9 text-xs"
                 onClick={async () => {
-                  const shareText = `Saya baru saja berdonasi ${formatIDR(displayAmount)} melalui SeribuAsa untuk membantu ${impact?.children_helped || 0} anak mendapatkan nutrisi. Yuk, ikut berdonasi! ${window.location.origin}`;
+                  const childrenText =
+                    impact?.children_helped > 0
+                      ? `untuk membantu ${impact.children_helped} anak mendapatkan nutrisi`
+                      : "untuk membantu anak-anak yang membutuhkan";
+                  const shareText = `Saya baru saja berdonasi ${formatIDR(displayAmount)} melalui SeribuAsa ${childrenText}. Yuk, ikut berdonasi! ${window.location.origin}`;
                   await navigator.clipboard.writeText(shareText);
                   toast.success("Teks disalin ke clipboard!", { duration: 2000 });
                 }}

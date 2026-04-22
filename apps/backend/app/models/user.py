@@ -94,6 +94,9 @@ class BeneficiaryProfile(BaseModel):
     # Voucher balance
     vouchers_balance = Column(Numeric(15, 2), default=0)
     
+    # Approval and status
+    approval_status = Column(String(50), default="pending")  # pending, approved, rejected
+    
     # FIES score and classification
     fies_score = Column(Integer)
     fies_classification = Column(String(50))  # severe, moderate, food_secure

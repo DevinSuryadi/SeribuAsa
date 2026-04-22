@@ -1,5 +1,3 @@
-import { apiFetch } from "./api";
-
 /**
  * Download receipt for a donation as PDF
  * @param donationId - The donation ID

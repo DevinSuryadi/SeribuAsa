@@ -6,13 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, date, timedelta
-from decimal import Decimal
 
 from app.database import get_db
 from app.middleware.auth import get_current_user, AuthenticatedUser
 from app.models.subscription import (
     Subscription, SubscriptionPlan, BillingHistory,
-    SubscriptionStatusEnum, BillingStatusEnum
+    SubscriptionStatusEnum
 )
 from app.models.user import DonorProfile
 from app.schemas.subscription import (

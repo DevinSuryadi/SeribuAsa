@@ -42,6 +42,7 @@ class Donation(BaseModel):
     # Foreign keys
     donor_id = Column(UUID(as_uuid=True), ForeignKey("donor_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
     recipient_id = Column(UUID(as_uuid=True), ForeignKey("beneficiary_profiles.user_id", ondelete="SET NULL"), nullable=True, index=True)
+    subscription_id = Column(UUID(as_uuid=True), ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True, index=True)
     
     # Donation details
     amount = Column(Numeric(15, 2), nullable=False)
@@ -57,6 +58,7 @@ class Donation(BaseModel):
     
     # Relationships
     donor_profile = relationship("DonorProfile", back_populates="donations")
+    subscription = relationship("Subscription", back_populates="donations")
     vouchers = relationship("Voucher", back_populates="donation", cascade="all, delete-orphan")
     
     def __repr__(self):
@@ -142,4 +144,5 @@ class VoucherRedemption(BaseModel):
 Index("idx_voucher_code_status", Voucher.code, Voucher.status)
 Index("idx_voucher_beneficiary_status", Voucher.beneficiary_id, Voucher.status)
 Index("idx_donation_donor_status", Donation.donor_id, Donation.status)
+Index("idx_donation_subscription", Donation.subscription_id)
 Index("idx_donation_created_status", Donation.created_at, Donation.status)

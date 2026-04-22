@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Heart, Users, Store, Info } from "lucide-react";
+import { Eye, EyeOff, Heart, Users, Store } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -32,9 +32,27 @@ function GoogleIcon() {
 type Role = "donor" | "beneficiary" | "vendor";
 
 const roles: { id: Role; label: string; icon: React.ElementType; desc: string; info: string }[] = [
-  { id: "donor", label: "Donatur", icon: Heart, desc: "Bantu nutrisi", info: "Penyumbang Dana & Dukungan. Individu, korporasi, atau lembaga yang menyumbangkan dana untuk program nutrisi. Donasi Anda dikelola transparan melalui sistem e-voucher yang tepat sasaran untuk keluarga rentan." },
-  { id: "beneficiary", label: "Penerima", icon: Users, desc: "Terima dukungan", info: "Keluarga Rentan & Anak Usia Dini. Keluarga dengan anak usia 1000 hari pertama yang membutuhkan dukungan nutrisi. Prioritas bantuan ditentukan berdasarkan skor FIES (Food Insecurity Experience Scale) untuk memastikan yang paling rentan mendapat bantuan terlebih dahulu." },
-  { id: "vendor", label: "Vendor", icon: Store, desc: "Jual pangan", info: "Penyedia Bahan Pangan Bergizi. Toko kelontong, tukang sayur, atau UMKM pangan terverifikasi yang menerima e-voucher sebagai alat pembayaran. Vendor menjual bahan pangan bergizi sesuai katalog yang telah disetujui sistem." },
+  {
+    id: "donor",
+    label: "Donatur",
+    icon: Heart,
+    desc: "Bantu nutrisi",
+    info: "Penyumbang Dana & Dukungan. Individu, korporasi, atau lembaga yang menyumbangkan dana untuk program nutrisi. Donasi Anda dikelola transparan melalui sistem e-voucher yang tepat sasaran untuk keluarga rentan.",
+  },
+  {
+    id: "beneficiary",
+    label: "Penerima",
+    icon: Users,
+    desc: "Terima dukungan",
+    info: "Keluarga Rentan & Anak Usia Dini. Keluarga dengan anak usia 1000 hari pertama yang membutuhkan dukungan nutrisi. Prioritas bantuan ditentukan berdasarkan skor FIES (Food Insecurity Experience Scale) untuk memastikan yang paling rentan mendapat bantuan terlebih dahulu.",
+  },
+  {
+    id: "vendor",
+    label: "Vendor",
+    icon: Store,
+    desc: "Jual pangan",
+    info: "Penyedia Bahan Pangan Bergizi. Toko kelontong, tukang sayur, atau UMKM pangan terverifikasi yang menerima e-voucher sebagai alat pembayaran. Vendor menjual bahan pangan bergizi sesuai katalog yang telah disetujui sistem.",
+  },
 ];
 
 const passwordRequirements = [
@@ -74,7 +92,6 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-
 
   const passwordValid = password.length > 0 && isPasswordValid(password);
 
@@ -272,10 +289,7 @@ export default function Register() {
                 const Icon = r.icon;
                 const isSelected = role === r.id;
                 return (
-                  <div
-                    key={r.id}
-                    style={{ position: "relative" }}
-                  >
+                  <div key={r.id} style={{ position: "relative" }}>
                     <button
                       type="button"
                       onClick={() => setRole(r.id)}
@@ -290,14 +304,11 @@ export default function Register() {
                         flexDirection: "column",
                         alignItems: "center",
                         width: "100%",
-                        position: "relative"
+                        position: "relative",
                       }}
                     >
                       <div style={{ marginBottom: "4px" }}>
-                        <Icon
-                          size={18}
-                          style={{ color: isSelected ? "#16a34a" : "#999" }}
-                        />
+                        <Icon size={18} style={{ color: isSelected ? "#16a34a" : "#999" }} />
                       </div>
                       <div
                         style={{
@@ -315,14 +326,14 @@ export default function Register() {
                           fontWeight: 600,
                           textTransform: "uppercase",
                           letterSpacing: "0.16em",
-                          color: "#6b7280"
+                          color: "#6b7280",
                         }}
                         onMouseEnter={(e) => {
                           setInfoOpen(r.id);
                           const rect = e.currentTarget.getBoundingClientRect();
                           setPopupPosition({
-                            x: rect.left - 144 + (rect.width / 2),
-                            y: rect.top - 10
+                            x: rect.left - 144 + rect.width / 2,
+                            y: rect.top - 10,
                           });
                         }}
                         onMouseLeave={() => setInfoOpen(null)}
@@ -336,31 +347,60 @@ export default function Register() {
                     </button>
 
                     {infoOpen === r.id && (
-                      <div style={{
-                        position: "fixed",
-                        left: `${popupPosition.x}px`,
-                        top: `${popupPosition.y}px`,
-                        width: "288px",
-                        borderRadius: "26px",
-                        border: "1px solid #dcfce7",
-                        background: "#fff",
-                        padding: "16px",
-                        boxShadow: "0 18px 40px rgba(15,23,42,0.12)",
-                        zIndex: 10000,
-                        pointerEvents: "none"
-                      }}>
-                        <div style={{ marginBottom: "12px", borderBottom: "1px solid #dcfce7", paddingBottom: "12px" }}>
-                          <p style={{ fontSize: "14px", fontWeight: 600, color: "#0f172a", margin: 0 }}>{r.label}</p>
-                          <p style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.18em", color: "#16a34a", margin: 0 }}>{r.desc}</p>
+                      <div
+                        style={{
+                          position: "fixed",
+                          left: `${popupPosition.x}px`,
+                          top: `${popupPosition.y}px`,
+                          width: "288px",
+                          borderRadius: "26px",
+                          border: "1px solid #dcfce7",
+                          background: "#fff",
+                          padding: "16px",
+                          boxShadow: "0 18px 40px rgba(15,23,42,0.12)",
+                          zIndex: 10000,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <div
+                          style={{
+                            marginBottom: "12px",
+                            borderBottom: "1px solid #dcfce7",
+                            paddingBottom: "12px",
+                          }}
+                        >
+                          <p
+                            style={{
+                              fontSize: "14px",
+                              fontWeight: 600,
+                              color: "#0f172a",
+                              margin: 0,
+                            }}
+                          >
+                            {r.label}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: "11px",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.18em",
+                              color: "#16a34a",
+                              margin: 0,
+                            }}
+                          >
+                            {r.desc}
+                          </p>
                         </div>
-                        <div style={{
-                          borderRadius: "16px",
-                          background: "rgba(220, 252, 231, 0.9)",
-                          padding: "12px",
-                          fontSize: "13px",
-                          lineHeight: "1.5",
-                          color: "#334155"
-                        }}>
+                        <div
+                          style={{
+                            borderRadius: "16px",
+                            background: "rgba(220, 252, 231, 0.9)",
+                            padding: "12px",
+                            fontSize: "13px",
+                            lineHeight: "1.5",
+                            color: "#334155",
+                          }}
+                        >
                           {r.info}
                         </div>
                       </div>

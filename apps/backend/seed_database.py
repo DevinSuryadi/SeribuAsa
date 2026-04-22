@@ -168,6 +168,7 @@ def seed_users(db: Session) -> SeedContext:
             "vouchers_balance": Decimal("450000.00"),
             "fies_score": 3,
             "fies_classification": "moderate",
+            "approval_status": "approved",
         },
     )
 

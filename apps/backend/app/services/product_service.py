@@ -114,9 +114,6 @@ class ProductService:
         if not product:
             return None
 
-        price_changed = data.price is not None and data.price != product.price
-        stock_changed = data.stock_quantity is not None and data.stock_quantity != product.stock_quantity
-
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(product, key, value)

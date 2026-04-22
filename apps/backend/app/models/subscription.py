@@ -85,6 +85,7 @@ class Subscription(BaseModel):
     # Relationships
     donor_profile = relationship("DonorProfile", back_populates="subscriptions")
     plan = relationship("SubscriptionPlan", back_populates="subscriptions")
+    donations = relationship("Donation", back_populates="subscription")
     billing_history = relationship("BillingHistory", back_populates="subscription", cascade="all, delete-orphan")
     
     def __repr__(self):
