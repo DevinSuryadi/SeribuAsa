@@ -150,6 +150,7 @@ class SubscriptionService:
         Creates a new donation and processes payment
         """
         from app.services.donation_allocation_service import DonationAllocationService
+        from app.services.midtrans_service import MidtransService
         
         logger.info(f"[BILLING] Processing billing for subscription {subscription.id}")
         
@@ -172,6 +173,11 @@ class SubscriptionService:
             
             # Process payment
             result = DonationAllocationService.process_successful_donation(
+                db=db,
+                donation_id=str(donation.id)
+            )
+            # Process payment via Midtrans
+            result = MidtransService.process_payment_success(
                 db=db,
                 donation_id=str(donation.id)
             )
