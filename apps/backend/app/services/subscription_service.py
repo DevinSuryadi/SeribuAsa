@@ -149,7 +149,7 @@ class SubscriptionService:
         
         Creates a new donation and processes payment
         """
-        from app.services.mock_payment_service import MockPaymentService
+        from app.services.donation_allocation_service import DonationAllocationService
         
         logger.info(f"[BILLING] Processing billing for subscription {subscription.id}")
         
@@ -171,7 +171,7 @@ class SubscriptionService:
             db.flush()  # Get ID without committing
             
             # Process payment
-            result = MockPaymentService.simulate_payment_success(
+            result = DonationAllocationService.process_successful_donation(
                 db=db,
                 donation_id=str(donation.id)
             )
