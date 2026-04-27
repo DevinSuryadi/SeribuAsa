@@ -5,6 +5,16 @@ Loads environment variables and provides settings for the application.
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import Optional
+from pathlib import Path
+
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+ENV_FILES = (
+    str(BACKEND_DIR / ".env"),
+    str(PROJECT_ROOT / ".env"),
+    ".env",
+)
 
 
 class Settings(BaseSettings):
@@ -73,7 +83,7 @@ class Settings(BaseSettings):
     TEST_MODE: bool = False
     
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore"
