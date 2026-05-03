@@ -14,6 +14,8 @@ import {
   TrendingUp,
   Store,
   Shield,
+  Package,
+  ClipboardList,
   ChevronRight,
   Activity,
 } from "lucide-react";
@@ -22,7 +24,8 @@ import { apiFetch } from "@/services/api";
 import { toast } from "sonner";
 
 interface AdminStats {
-  users: { total: number; donors: number; beneficiaries: number; vendors: number };
+  users: { total: number; donors: number; beneficiaries: number; vendors: number; pending_beneficiaries: number; pending_vendors: number };
+  products: { total: number; pending: number; approved: number; rejected: number };
   vouchers: { active_count: number; total_balance: number };
   orders: { total: number; completed: number };
   redemptions: { total_count: number; total_amount: number };
@@ -221,6 +224,8 @@ export default function AdminDashboard() {
             <div className="space-y-2">
               {[
                 { label: "Kelola Pengguna", desc: `${stats?.users.total || 0} total akun`, icon: Users, href: "/dashboard/admin/users", color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200" },
+                { label: "Kelola Produk", desc: `${stats?.products.total || 0} produk`, icon: Package, href: "/dashboard/admin/products", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200" },
+                { label: "Kelayakan Penerima", desc: `${stats?.users.pending_beneficiaries || 0} pending review`, icon: ClipboardList, href: "/dashboard/admin/beneficiaries", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
                 { label: "Kelola Voucher", desc: `${stats?.vouchers.active_count || 0} voucher aktif`, icon: Wallet, href: "/dashboard/admin/vouchers", color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
                 { label: "Kelola Donasi", desc: formatIDR(stats?.donations.total_amount || 0), icon: Heart, href: "/dashboard/admin/donations", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200" },
                 { label: "Kelola Pesanan", desc: `${stats?.orders.total || 0} total pesanan`, icon: ShoppingCart, href: "/dashboard/admin/orders", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },

@@ -4,8 +4,18 @@ Loads environment variables and provides settings for the application.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 from pathlib import Path
+
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+ENV_FILES = (
+    str(BACKEND_DIR / ".env"),
+    str(PROJECT_ROOT / ".env"),
+    ".env",
+)
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
