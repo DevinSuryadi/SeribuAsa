@@ -166,9 +166,11 @@ class DonationService:
             Donation.status == DonationStatusEnum.success
         ).scalar() or Decimal(0)
         
-        children_helped = db.query(func.count(func.distinct(Donation.recipient_id))).filter(
-            Donation.donor_id == donor_uuid,
-            Donation.recipient_id.isnot(None)
+        children_helped = db.query(func.count(func.distinct(Voucher.beneficiary_id))).join(
+            Donation,
+            Voucher.donation_id == Donation.id
+        ).filter(
+            Donation.donor_id == donor_uuid
         ).scalar() or 0
         
         vouchers_allocated = db.query(func.count(Voucher.id)).join(
@@ -210,9 +212,11 @@ class DonationService:
         ).scalar() or 0
         
         # Children helped (unique recipients)
-        children_helped = db.query(func.count(func.distinct(Donation.recipient_id))).filter(
+        children_helped = db.query(func.count(func.distinct(Voucher.beneficiary_id))).join(
+            Donation,
+            Voucher.donation_id == Donation.id
+        ).filter(
             Donation.donor_id == donor_uuid,
-            Donation.recipient_id.isnot(None),
             Donation.status == DonationStatusEnum.success
         ).scalar() or 0
         
@@ -231,14 +235,14 @@ class DonationService:
         # REAL MONTHLY STATS (not mocked)
         # ============================================
         from datetime import date
-        from app.models.donation import Voucher
         
         today = date.today()
         start_of_month = today.replace(day=1)
         
         # Vouchers redeemed this month (vouchers created this month)
-        vouchers_redeemed = db.query(func.count(Voucher.id)).join(
-            Donation
+        vouchers_redeemed = db.query(func.count(Voucher.id)).select_from(Voucher).join(
+            Donation,
+            Voucher.donation_id == Donation.id
         ).filter(
             Donation.donor_id == donor_uuid,
             Donation.status == DonationStatusEnum.success,
@@ -246,12 +250,12 @@ class DonationService:
         ).scalar() or 0
         
         # Children who received nutrition (unique recipients with vouchers this month)
-        children_received_nutrition = db.query(func.count(func.distinct(Donation.recipient_id))).join(
-            Voucher
+        children_received_nutrition = db.query(func.count(func.distinct(Voucher.beneficiary_id))).join(
+            Donation,
+            Voucher.donation_id == Donation.id
         ).filter(
             Donation.donor_id == donor_uuid,
             Donation.status == DonationStatusEnum.success,
-            Donation.recipient_id.isnot(None),
             Voucher.allocated_date >= start_of_month
         ).scalar() or 0
         
