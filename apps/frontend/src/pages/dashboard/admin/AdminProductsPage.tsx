@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useCallback, useEffect, useMemo, useState } from "react";
+=======
+import { useCallback, useEffect, useState } from "react";
+>>>>>>> 9c38274 (feat/add admin route and pages)
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { formatIDR } from "@/lib/format";
@@ -24,6 +28,7 @@ type ProductReviewItem = {
 type ProductReviewListResponse = {
   items: ProductReviewItem[];
   total: number;
+<<<<<<< HEAD
   page: number;
   page_size: number;
   total_pages: number;
@@ -48,10 +53,19 @@ export default function AdminProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [mutatingId, setMutatingId] = useState<string | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
+=======
+};
+
+export default function AdminProductsPage() {
+  const [items, setItems] = useState<ProductReviewItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
+>>>>>>> 9c38274 (feat/add admin route and pages)
 
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
+<<<<<<< HEAD
       setError(null);
 
       const fetchPage = async (page: number) => {
@@ -82,11 +96,18 @@ export default function AdminProductsPage() {
       const message = err?.message || "Gagal memuat review produk";
       setError(message);
       toast.error(message);
+=======
+      const data = (await apiFetch("/admin/products/reviews?page=1&page_size=50")) as ProductReviewListResponse;
+      setItems(data.items || []);
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal memuat review produk");
+>>>>>>> 9c38274 (feat/add admin route and pages)
     } finally {
       setLoading(false);
     }
   }, []);
 
+<<<<<<< HEAD
   const stores = useMemo<StoreSummary[]>(() => {
     const storeMap = new Map<string, StoreSummary>();
 
@@ -149,6 +170,8 @@ export default function AdminProductsPage() {
     }
   }, [selectedStoreId, stores]);
 
+=======
+>>>>>>> 9c38274 (feat/add admin route and pages)
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
@@ -169,6 +192,7 @@ export default function AdminProductsPage() {
     }
   };
 
+<<<<<<< HEAD
   const visibleProducts = selectedStore?.items || [];
   const productStats = {
     totalStores: stores.length,
@@ -314,10 +338,69 @@ export default function AdminProductsPage() {
 
                 <div className="mt-4 text-sm font-medium text-primary">Lihat produk toko</div>
               </button>
+=======
+  return (
+    <DashboardLayout title="Kelola Produk" subtitle="Review dan approval katalog produk vendor.">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-sm text-muted-foreground">Produk yang belum approved atau perlu ditinjau ulang.</p>
+          <Button variant="outline" onClick={() => void loadProducts()} disabled={loading}>
+            Refresh
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Memuat data produk...</div>
+        ) : items.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Belum ada produk untuk direview.</div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {items.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-border bg-card p-5 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">{item.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {item.vendor_store_name || "Vendor"} · {item.category_name || "Kategori belum ada"}
+                    </p>
+                  </div>
+                  <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(item.approval_status)}`}>
+                    {item.approval_status}
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>{item.description || "Tidak ada deskripsi"}</p>
+                  <p>Harga: {formatIDR(Number(item.price || 0))}</p>
+                  <p>Voucher price: {formatIDR(Number(item.voucher_price || 0))}</p>
+                  <p>Stok: {item.stock_quantity} {item.unit}</p>
+                  <p>ID: {shortId(item.id)}</p>
+                  <p>Dibuat: {formatDateTime(item.created_at)}</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => void updateApproval(item.id, "approved")} disabled={mutatingId === item.id}>
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void updateApproval(item.id, "rejected")}
+                    disabled={mutatingId === item.id}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+>>>>>>> 9c38274 (feat/add admin route and pages)
             ))}
           </div>
         )}
       </div>
     </DashboardLayout>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 9c38274 (feat/add admin route and pages)
