@@ -292,10 +292,9 @@ async def simulate_payment(
     current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """
-    Simulate successful payment (DEMO ONLY).
-    In production, this will be replaced by Midtrans webhook.
+    Mark payment as successful and trigger real allocation logic.
+    Route name is kept for MVP compatibility with the current frontend flow.
     """
-    print(f"[SIMULATE_PAYMENT] Called with donation_id: {donation_id}, user: {current_user.user_id}")
     logger.info(f"[SIMULATE_PAYMENT] Called with donation_id: {donation_id}, user: {current_user.user_id}")
     
     # Verify donation exists and belongs to current user
@@ -322,52 +321,16 @@ async def simulate_payment(
     logger.info(f"[SIMULATE_PAYMENT] Donation found. Status: {donation.status}, Donor: {donation.donor_id}")
     
     try:
-        from app.services.mock_payment_service import MockPaymentService
-        from uuid import UUID
-        from decimal import Decimal
-        
-        print("[SIMULATE_PAYMENT] Calling mock_payment_service...")
-        result = MockPaymentService.simulate_payment_success(
+        from app.services.donation_allocation_service import DonationAllocationService
+
+        result = DonationAllocationService.process_successful_donation(
             db=db,
             donation_id=donation_id
         )
-        
-        print(f"[SIMULATE_PAYMENT] Service returned result: {result}")
         logger.info(f"[SIMULATE_PAYMENT] Service returned result: {result}")
-        
-        # Convert UUID and Decimal to serializable types
-        print("[SIMULATE_PAYMENT] Serializing result...")
-        serializable_result = {}
-        for key, value in result.items():
-            print(f"[SIMULATE_PAYMENT] Processing key: {key}, type: {type(value)}")
-            if isinstance(value, UUID):
-                serializable_result[key] = str(value)
-            elif isinstance(value, Decimal):
-                serializable_result[key] = float(value)
-            elif isinstance(value, dict):
-                # Handle nested dict (impact)
-                print(f"[SIMULATE_PAYMENT] Processing nested dict for key: {key}")
-                def serialize_nested(val):
-                    if isinstance(val, Decimal):
-                        return float(val)
-                    elif isinstance(val, UUID):
-                        return str(val)
-                    elif isinstance(val, (int, float, str, bool)) or val is None:
-                        return val
-                    else:
-                        return str(val)
-                serializable_result[key] = {
-                    k: serialize_nested(v) for k, v in value.items()
-                }
-            else:
-                serializable_result[key] = value
-        
-        print(f"[SIMULATE_PAYMENT] Serialized result: {serializable_result}")
-        logger.info(f"[SIMULATE_PAYMENT] Serialized result: {serializable_result}")
-        return serializable_result
+        return result
         
     except ValueError as e:
-        print(f"[SIMULATE_PAYMENT] ValueError: {e}")
         logger.warning(f"[SIMULATE_PAYMENT] ValueError: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -375,8 +338,6 @@ async def simulate_payment(
         )
     except Exception as e:
         import traceback
-        print(f"[SIMULATE_PAYMENT] Exception: {str(e)}")
-        print(traceback.format_exc())
         error_detail = f"Payment simulation failed: {str(e)}\n{traceback.format_exc()}"
         logger.error(f"[SIMULATE_PAYMENT] {error_detail}")
         raise HTTPException(
@@ -405,6 +366,7 @@ async def get_donation(
         )
     
     recipient_name = None
+    children_helped = 0
     if donation.recipient_id:
         from app.models.user import BeneficiaryProfile
         beneficiary = db.query(BeneficiaryProfile).filter(
@@ -412,8 +374,24 @@ async def get_donation(
         ).first()
         if beneficiary:
             recipient_name = beneficiary.user_profile.full_name if beneficiary.user_profile else None
-    
-    children_helped = 1 if donation.recipient_id else 0
+            children_helped = 1
+    else:
+        from app.models.donation import Voucher
+        from app.models.user import BeneficiaryProfile
+
+        allocated_beneficiaries = (
+            db.query(BeneficiaryProfile)
+            .join(Voucher, Voucher.beneficiary_id == BeneficiaryProfile.user_id)
+            .filter(Voucher.donation_id == donation.id)
+            .all()
+        )
+        children_helped = len({str(profile.user_id) for profile in allocated_beneficiaries})
+        if children_helped == 1 and allocated_beneficiaries:
+            profile = allocated_beneficiaries[0].user_profile
+            recipient_name = profile.full_name if profile else None
+        elif children_helped > 1:
+            recipient_name = f"{children_helped} penerima teralokasi"
+
     months_of_support = 0
     if donation.subscription_config:
         months_of_support = donation.subscription_config.get("duration_months", 0)
