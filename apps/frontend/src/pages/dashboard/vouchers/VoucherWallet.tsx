@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Copy, Loader2, QrCode } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { VoucherBalance } from "@/components/voucher/VoucherBalance";
 import { VoucherValidator } from "@/components/voucher/VoucherValidator";
 import { VoucherTransactionList } from "@/components/voucher/VoucherTransactionList";
+import VoucherQRDisplay from "@/components/voucher/VoucherQRDisplay";
 import { Button } from "@/components/ui/button";
 import {
   getVoucherBalance,
@@ -60,10 +61,6 @@ export function VoucherWallet() {
   const [isLoading, setIsLoading] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const getVoucherQrPayload = (code: string) => `VOUCHER:${code}`;
-  const getVoucherQrSrc = (code: string) =>
-    `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(getVoucherQrPayload(code))}`;
 
   useEffect(() => {
     loadVoucherData();
@@ -148,15 +145,6 @@ export function VoucherWallet() {
   const calculateExpiringDays = () => {
     // Default to 7 days or could extract from balance.expiring_soon
     return 7;
-  };
-
-  const copyVoucherCode = async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      toast.success("Kode voucher disalin");
-    } catch {
-      toast.error("Gagal menyalin kode voucher");
-    }
   };
 
   return (
@@ -250,41 +238,11 @@ export function VoucherWallet() {
                       key={voucher.id}
                       className="bg-white border border-gray-200 rounded-lg p-4"
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
-                          <QrCode size={16} className="text-primary" />
-                          Voucher
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => copyVoucherCode(voucher.code)}
-                          className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900"
-                          aria-label={`Salin kode voucher ${voucher.code}`}
-                        >
-                          <Copy size={13} />
-                          Salin
-                        </button>
-                      </div>
-
-                      <img
-                        src={getVoucherQrSrc(voucher.code)}
-                        alt={`QR voucher ${voucher.code}`}
-                        className="w-full max-w-[220px] mx-auto rounded-md border border-gray-100"
-                        loading="lazy"
+                      <VoucherQRDisplay
+                        code={voucher.code}
+                        balance={Number(voucher.balance || 0)}
+                        expiryDate={voucher.expiry_date}
                       />
-
-                      <div className="mt-3 space-y-1">
-                        <p className="text-xs text-gray-500">Kode</p>
-                        <p className="text-sm font-mono font-medium text-gray-900 break-all">
-                          {voucher.code}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Saldo:{" "}
-                          <span className="font-semibold text-gray-800">
-                            Rp {Number(voucher.balance || 0).toLocaleString("id-ID")}
-                          </span>
-                        </p>
-                      </div>
                     </div>
                   ))}
                 </div>

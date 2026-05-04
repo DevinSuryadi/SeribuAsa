@@ -42,10 +42,9 @@ export interface BackendProfile {
 export interface Voucher {
   id: string;
   code: string;
-  amount: number;
-  remaining_amount: number;
+  balance: number;
   expiry_date: string;
-  status: "active" | "used" | "expired";
+  status: "active" | "redeemed" | "expired" | "cancelled";
   category?: string;
 }
 

@@ -31,7 +31,11 @@ import {
   PartyPopper,
 } from "lucide-react";
 import { formatIDR } from "@/lib/format";
-import { getVoucherBalance, redeemVoucher } from "@/services/vouchers";
+import {
+  getVoucherBalance,
+  redeemQrVoucher,
+  validateVoucher as validateVoucherCode,
+} from "@/services/vouchers";
 import { getOrders } from "@/services/orders";
 import { toast } from "sonner";
 import jsQR from "jsqr";
@@ -478,26 +482,10 @@ const PenukaranVoucher = () => {
     setValidating(true);
     setErrorMessage("");
     try {
-      if (!isVendorMode) {
-        if (!balance || balance.total_balance <= 0) {
-          setErrorMessage("Saldo voucher tidak mencukupi atau tidak ada voucher aktif.");
-          setStep("failed");
-          return;
-        }
-        const voucherMatch = balance.active_vouchers?.find(
-          (v) => v.code.toLowerCase() === code.toLowerCase()
-        );
-        if (!voucherMatch) {
-          setErrorMessage("Kode voucher tidak ditemukan atau sudah kadaluarsa.");
-          setStep("failed");
-          return;
-        }
-        if (parseFloat(String(voucherMatch.balance)) < checkoutTotal) {
-          setErrorMessage("Saldo voucher tidak mencukupi untuk transaksi ini.");
-          setStep("failed");
-          return;
-        }
-      }
+      await validateVoucherCode({
+        code,
+        amount: checkoutTotal,
+      });
       setStep("validate");
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Gagal memvalidasi voucher");
@@ -511,18 +499,23 @@ const PenukaranVoucher = () => {
     setRedeeming(true);
     setErrorMessage("");
     try {
-      const orderId = `ORD-${Date.now()}`;
-      const result = await redeemVoucher(
-        { voucher_codes: [code], amount: checkoutTotal, order_id: orderId },
-        { idempotencyKey: `vendor-redeem-${code}-${orderId}-${checkoutTotal}` }
+      const result = await redeemQrVoucher(
+        {
+          code,
+          amount: checkoutTotal,
+          notes: isVendorMode
+            ? "Redeem QR voucher oleh vendor"
+            : "Redeem QR voucher oleh beneficiary",
+        },
+        { idempotencyKey: `vendor-redeem-${code}-${checkoutTotal}` }
       );
-      if (result.success) {
-        setTransactionId(orderId);
-        setStep("success");
-        toast.success("Penukaran berhasil!");
-      } else {
-        setErrorMessage("Gagal menukarkan voucher");
-        setStep("failed");
+
+      setTransactionId(result.order_id);
+      setStep("success");
+      toast.success("Penukaran berhasil!");
+
+      if (!isVendorMode) {
+        refreshBalance();
       }
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : "Gagal menukarkan voucher");
@@ -553,11 +546,13 @@ const PenukaranVoucher = () => {
     >
       <div className="max-w-2xl mx-auto space-y-6">
         {/* ── Tab: Tukar vs Generate QR ── */}
-        <Tabs defaultValue="redeem">
+        <Tabs defaultValue={isVendorMode ? "redeem" : "generate"}>
           <TabsList className="w-full h-11">
-            <TabsTrigger value="redeem" className="flex-1 gap-1.5 text-xs">
-              <ScanLine className="h-3.5 w-3.5" /> Tukar Voucher
-            </TabsTrigger>
+            {isVendorMode && (
+              <TabsTrigger value="redeem" className="flex-1 gap-1.5 text-xs">
+                <ScanLine className="h-3.5 w-3.5" /> Tukar Voucher
+              </TabsTrigger>
+            )}
             {!isVendorMode && (
               <TabsTrigger value="generate" className="flex-1 gap-1.5 text-xs">
                 <QrCode className="h-3.5 w-3.5" /> Generate QR Saya

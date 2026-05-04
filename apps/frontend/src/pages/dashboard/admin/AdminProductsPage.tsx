@@ -60,11 +60,15 @@ export default function AdminProductsPage() {
           page_size: String(PRODUCT_PAGE_SIZE),
         });
 
-        return (await apiFetch(`/admin/products/reviews?${params.toString()}`)) as ProductReviewListResponse;
+        return (await apiFetch(
+          `/admin/products/reviews?${params.toString()}`
+        )) as ProductReviewListResponse;
       };
 
       const firstPage = await fetchPage(1);
-      const totalPages = firstPage.total_pages || (firstPage.total ? Math.ceil(firstPage.total / PRODUCT_PAGE_SIZE) : 0);
+      const totalPages =
+        firstPage.total_pages ||
+        (firstPage.total ? Math.ceil(firstPage.total / PRODUCT_PAGE_SIZE) : 0);
       const allItems = [...(firstPage.items || [])];
 
       if (totalPages > 1) {
@@ -176,7 +180,10 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <DashboardLayout title="Kelola Produk" subtitle="Mulai dari daftar toko, lalu buka produk di dalam toko tersebut.">
+    <DashboardLayout
+      title="Kelola Produk"
+      subtitle="Mulai dari daftar toko, lalu buka produk di dalam toko tersebut."
+    >
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-border bg-card p-4">
@@ -184,11 +191,15 @@ export default function AdminProductsPage() {
             <p className="text-sm text-muted-foreground">Toko aktif</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="text-2xl font-semibold text-foreground">{productStats.totalProducts}</div>
+            <div className="text-2xl font-semibold text-foreground">
+              {productStats.totalProducts}
+            </div>
             <p className="text-sm text-muted-foreground">Total produk</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="text-2xl font-semibold text-foreground">{productStats.pendingProducts}</div>
+            <div className="text-2xl font-semibold text-foreground">
+              {productStats.pendingProducts}
+            </div>
             <p className="text-sm text-muted-foreground">Produk pending</p>
           </div>
         </div>
@@ -212,9 +223,13 @@ export default function AdminProductsPage() {
         </div>
 
         {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+            {error}
+          </div>
         ) : loading && items.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Memuat data produk...</div>
+          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+            Memuat data produk...
+          </div>
         ) : stores.length === 0 ? (
           <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
             Belum ada produk untuk ditampilkan.
@@ -223,16 +238,27 @@ export default function AdminProductsPage() {
           <div className="space-y-4 rounded-2xl border border-border bg-card p-5">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div>
-                <h3 className="text-xl font-semibold text-foreground">{selectedStore.vendor_store_name}</h3>
+                <h3 className="text-xl font-semibold text-foreground">
+                  {selectedStore.vendor_store_name}
+                </h3>
                 <p className="text-sm text-muted-foreground">
-                  Vendor ID {shortId(selectedStore.vendor_id)} · diperbarui {formatDateTime(selectedStore.latestCreatedAt)}
+                  Vendor ID {shortId(selectedStore.vendor_id)} · diperbarui{" "}
+                  {formatDateTime(selectedStore.latestCreatedAt)}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">Total {selectedStore.totalProducts}</span>
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1">Pending {selectedStore.pendingProducts}</span>
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1">Approved {selectedStore.approvedProducts}</span>
-                <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1">Rejected {selectedStore.rejectedProducts}</span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
+                  Total {selectedStore.totalProducts}
+                </span>
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
+                  Pending {selectedStore.pendingProducts}
+                </span>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1">
+                  Approved {selectedStore.approvedProducts}
+                </span>
+                <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1">
+                  Rejected {selectedStore.rejectedProducts}
+                </span>
               </div>
             </div>
 
@@ -247,9 +273,13 @@ export default function AdminProductsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h4 className="text-lg font-semibold text-foreground">{item.name}</h4>
-                        <p className="text-sm text-muted-foreground">{item.category_name || "Kategori belum ada"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.category_name || "Kategori belum ada"}
+                        </p>
                       </div>
-                      <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(item.approval_status)}`}>
+                      <span
+                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(item.approval_status)}`}
+                      >
                         {item.approval_status}
                       </span>
                     </div>
@@ -266,7 +296,11 @@ export default function AdminProductsPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => void updateApproval(item.id, "approved")} disabled={mutatingId === item.id}>
+                      <Button
+                        size="sm"
+                        onClick={() => void updateApproval(item.id, "approved")}
+                        disabled={mutatingId === item.id}
+                      >
                         Approve
                       </Button>
                       <Button
@@ -291,13 +325,19 @@ export default function AdminProductsPage() {
                 type="button"
                 onClick={() => setSelectedStoreId(store.vendor_id)}
                 className={`rounded-2xl border bg-card p-5 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${
-                  selectedStoreId === store.vendor_id ? "border-primary ring-2 ring-primary/20" : "border-border"
+                  selectedStoreId === store.vendor_id
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "border-border"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">{store.vendor_store_name}</h3>
-                    <p className="text-sm text-muted-foreground">Vendor ID {shortId(store.vendor_id)}</p>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {store.vendor_store_name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Vendor ID {shortId(store.vendor_id)}
+                    </p>
                   </div>
                   <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                     {store.totalProducts} produk
@@ -305,10 +345,18 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <span className="rounded-xl bg-slate-50 px-3 py-2">Approved {store.approvedProducts}</span>
-                  <span className="rounded-xl bg-amber-50 px-3 py-2">Pending {store.pendingProducts}</span>
-                  <span className="rounded-xl bg-rose-50 px-3 py-2">Rejected {store.rejectedProducts}</span>
-                  <span className="rounded-xl bg-slate-50 px-3 py-2">Updated {formatDateTime(store.latestCreatedAt)}</span>
+                  <span className="rounded-xl bg-slate-50 px-3 py-2">
+                    Approved {store.approvedProducts}
+                  </span>
+                  <span className="rounded-xl bg-amber-50 px-3 py-2">
+                    Pending {store.pendingProducts}
+                  </span>
+                  <span className="rounded-xl bg-rose-50 px-3 py-2">
+                    Rejected {store.rejectedProducts}
+                  </span>
+                  <span className="rounded-xl bg-slate-50 px-3 py-2">
+                    Updated {formatDateTime(store.latestCreatedAt)}
+                  </span>
                 </div>
 
                 <div className="mt-4 text-sm font-medium text-primary">Lihat produk toko</div>

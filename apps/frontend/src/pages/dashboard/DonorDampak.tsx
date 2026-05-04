@@ -67,7 +67,17 @@ const DonorDampak = () => {
   );
   const childrenHelped = useMemo(() => report?.summary?.total_children_helped || 0, [report]);
   const vouchersAllocated = useMemo(() => report?.summary?.total_vouchers_allocated || 0, [report]);
-  const vouchersRedeemed = useMemo(() => report?.summary?.total_vouchers_redeemed || 0, [report]);
+  const vouchersRedeemed = useMemo(
+    () =>
+      Number(
+        (
+          report?.summary as {
+            total_vouchers_redeemed?: number;
+          } | null
+        )?.total_vouchers_redeemed || 0
+      ),
+    [report]
+  );
   const trendData = useMemo(() => report?.donation_trend || [], [report]);
   const geoData = useMemo(() => report?.geographic_distribution || [], [report]);
   // Calculate redemption rate from actual API data, not hardcoded
@@ -75,7 +85,13 @@ const DonorDampak = () => {
     if (vouchersAllocated > 0 && vouchersRedeemed > 0) {
       return Math.round((vouchersRedeemed / vouchersAllocated) * 100);
     }
-    return report?.summary?.redemption_rate ?? 0;
+    return (
+      (
+        report?.summary as {
+          redemption_rate?: number;
+        } | null
+      )?.redemption_rate ?? 0
+    );
   }, [vouchersAllocated, vouchersRedeemed, report]);
 
   const kpiCards = [
@@ -330,7 +346,7 @@ const DonorDampak = () => {
             <ResponsiveContainer width="100%" height={240}>
               <PieChart>
                 <Pie
-                  data={geoData.slice(0, 4).map((g) => ({ name: g.region, value: g.amount }))}
+                  data={geoData.slice(0, 4).map((g) => ({ name: g.district, value: g.amount }))}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
