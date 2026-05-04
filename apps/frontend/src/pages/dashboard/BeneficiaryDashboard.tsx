@@ -15,8 +15,6 @@ import {
   RefreshCw,
   AlertCircle,
   ShoppingCart,
-  Ticket,
-  CheckCircle2,
   ChevronRight,
   Package,
   TrendingUp,
@@ -30,6 +28,7 @@ import { formatIDR, formatDate } from "@/lib/format";
 import { useStaggerChildren } from "@/hooks/useStaggerChildren";
 import { toast } from "sonner";
 import type { FIESStatus, NutritionData, VoucherTransaction } from "@/types";
+import foto from "@/assets/hero-beneficiaryDashboard.svg";
 
 interface QuickAction {
   label: string;
@@ -40,7 +39,7 @@ interface QuickAction {
   iconClass: string;
 }
 
-interface SummaryCardProps {
+interface StatusCardProps {
   title: string;
   value: string;
   description: string;
@@ -50,11 +49,10 @@ interface SummaryCardProps {
   iconWrapClass: string;
   iconClass: string;
   valueClass: string;
-  accentClass: string;
-  showWarning?: boolean;
+  linkClass: string;
 }
 
-function SummaryCard({
+function StatusCard({
   title,
   value,
   description,
@@ -64,50 +62,43 @@ function SummaryCard({
   iconWrapClass,
   iconClass,
   valueClass,
-  accentClass,
-  showWarning = false,
-}: SummaryCardProps) {
+  linkClass,
+}: StatusCardProps) {
   return (
     <Link
       to={href}
-      className="group relative overflow-hidden rounded-[18px] border border-slate-200/80 bg-white px-3.5 py-3 shadow-[0_6px_18px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_10px_24px_rgba(15,23,42,0.07)]"
+      className="group flex min-h-[78px] items-center gap-2.5 rounded-[15px] border border-slate-200/70 bg-white px-3 py-2.5 shadow-[0_5px_16px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_9px_22px_rgba(15,23,42,0.06)] sm:min-h-[82px] sm:px-3.5 lg:min-h-[86px]"
     >
       <div
-        className={`pointer-events-none absolute inset-x-0 bottom-0 h-9 opacity-55 ${accentClass}`}
-      />
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11 ${iconWrapClass}`}
+      >
+        <Icon
+          className={`h-[17px] w-[17px] sm:h-[18px] sm:w-[18px] ${iconClass}`}
+        />
+      </div>
 
-      {showWarning && (
-        <AlertTriangle className="absolute right-3.5 top-3.5 h-4 w-4 text-amber-500" />
-      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-[10.5px] font-semibold leading-tight text-slate-600 sm:text-[11px]">
+          {title}
+        </p>
 
-      <div className="relative z-10 flex min-h-[72px] items-center gap-3">
-        <div
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconWrapClass}`}
-        >
-          <Icon className={`h-4 w-4 ${iconClass}`} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium leading-tight text-slate-600">
-            {title}
-          </p>
-
+        {value && (
           <p
-            className={`mt-0.5 text-[19px] font-extrabold leading-none tracking-tight ${valueClass}`}
+            className={`mt-0.5 text-[17px] font-extrabold leading-none tracking-tight sm:text-[18px] ${valueClass}`}
           >
             {value}
           </p>
+        )}
 
-          <p className="mt-1 whitespace-pre-line text-[11px] leading-snug text-slate-500">
-            {description}
-          </p>
+        <p className="mt-1 text-[10.5px] leading-snug text-slate-600 sm:text-[11px]">
+          {description}
+        </p>
 
-          <div
-            className={`mt-2.5 flex items-center gap-1.5 text-[11px] font-bold ${valueClass}`}
-          >
-            <span>{linkLabel}</span>
-            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
-          </div>
+        <div
+          className={`mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-extrabold sm:text-[11px] ${linkClass}`}
+        >
+          <span>{linkLabel}</span>
+          <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-1" />
         </div>
       </div>
     </Link>
@@ -217,12 +208,10 @@ export default function BeneficiaryDashboard() {
   if (isLoading) {
     return (
       <DashboardLayout title="Beranda" subtitle="Penerima Manfaat">
-        <div className="flex min-h-[320px] items-center justify-center">
+        <div className="flex min-h-[220px] items-center justify-center">
           <div className="text-center">
-            <Loader2 className="mx-auto mb-3 h-9 w-9 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">
-              Memuat dashboard...
-            </p>
+            <Loader2 className="mx-auto mb-2 h-7 w-7 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Memuat dashboard...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -232,8 +221,8 @@ export default function BeneficiaryDashboard() {
   if (error || voucherError) {
     return (
       <DashboardLayout title="Beranda" subtitle="Penerima Manfaat">
-        <div className="flex items-start gap-4 rounded-2xl border border-red-200 bg-red-50 p-5">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
             <AlertCircle className="h-5 w-5 text-red-600" />
           </div>
 
@@ -242,9 +231,7 @@ export default function BeneficiaryDashboard() {
               Gagal memuat data
             </h3>
 
-            <p className="mb-3 text-sm text-red-600">
-              {error || voucherError}
-            </p>
+            <p className="mb-3 text-sm text-red-600">{error || voucherError}</p>
 
             <Button
               variant="outline"
@@ -270,32 +257,32 @@ export default function BeneficiaryDashboard() {
       desc: "Beli bahan makanan bergizi",
       icon: ShoppingBasket,
       href: "/dashboard/katalog",
-      iconWrapClass: "bg-green-100",
-      iconClass: "text-green-600",
+      iconWrapClass: "bg-emerald-50",
+      iconClass: "text-emerald-600",
     },
     {
       label: "Keranjang Belanja",
       desc: "Lihat & kelola item belanja",
       icon: ShoppingCart,
       href: "/dashboard/cart",
-      iconWrapClass: "bg-blue-100",
-      iconClass: "text-blue-600",
+      iconWrapClass: "bg-emerald-50",
+      iconClass: "text-emerald-600",
     },
     {
       label: "Riwayat Pesanan",
       desc: "Lihat pesanan sebelumnya",
       icon: Package,
       href: "/dashboard/orders",
-      iconWrapClass: "bg-orange-100",
-      iconClass: "text-orange-600",
+      iconWrapClass: "bg-emerald-50",
+      iconClass: "text-emerald-600",
     },
     {
       label: "Pemantauan Gizi",
       desc: "Pantau tumbuh kembang anak",
       icon: Activity,
       href: "/dashboard/pemantauan-gizi",
-      iconWrapClass: "bg-teal-100",
-      iconClass: "text-teal-600",
+      iconWrapClass: "bg-emerald-50",
+      iconClass: "text-emerald-600",
     },
   ];
 
@@ -304,33 +291,25 @@ export default function BeneficiaryDashboard() {
       number: 1,
       label: "Pilih Produk",
       desc: "Pilih produk bergizi",
-      icon: ShoppingBasket,
-      iconWrapClass: "bg-green-100",
-      iconClass: "text-green-600",
+      circleClass: "bg-emerald-50 text-emerald-700",
     },
     {
       number: 2,
       label: "Keranjang",
       desc: "Atur item belanja",
-      icon: ShoppingCart,
-      iconWrapClass: "bg-blue-100",
-      iconClass: "text-blue-600",
+      circleClass: "bg-emerald-50 text-emerald-700",
     },
     {
       number: 3,
       label: "Pembayaran",
       desc: "Bayar dengan voucher",
-      icon: Ticket,
-      iconWrapClass: "bg-purple-100",
-      iconClass: "text-purple-600",
+      circleClass: "bg-purple-100 text-purple-700",
     },
     {
       number: 4,
       label: "Selesai",
       desc: "Pesanan terkonfirmasi",
-      icon: CheckCircle2,
-      iconWrapClass: "bg-orange-100",
-      iconClass: "text-orange-600",
+      circleClass: "bg-orange-100 text-orange-600",
     },
   ];
 
@@ -364,23 +343,82 @@ export default function BeneficiaryDashboard() {
       title={`Selamat datang, ${userDisplayName}`}
       subtitle="Kelola voucher nutrisi dan pantau kesehatan keluarga Anda."
     >
-      <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-3 pb-3 lg:max-h-[calc(100svh-140px)] lg:overflow-hidden">
-        {/* Summary Cards */}
-        <div ref={gridRef} className="grid shrink-0 gap-3 lg:grid-cols-3">
-          <SummaryCard
-            title="Saldo E-Voucher"
-            value={formatIDR(totalBalance)}
-            description={`${activeVouchers} voucher aktif`}
-            linkLabel="Lihat dompet"
-            href="/dashboard/dompet-nutrisi"
-            icon={Wallet}
-            iconWrapClass="bg-green-100"
-            iconClass="text-green-600"
-            valueClass="text-green-600"
-            accentClass="bg-[radial-gradient(circle_at_80%_110%,rgba(34,197,94,0.16),transparent_45%)]"
-          />
+      <div className="mx-auto flex w-full max-w-[1760px] flex-col gap-2.5 pb-2 sm:gap-3 lg:gap-3">
+        {/* Hero E-Voucher */}
+        <section className="grid min-h-[128px] overflow-hidden rounded-[18px] border border-emerald-100/80 bg-white shadow-[0_7px_22px_rgba(15,23,42,0.045)] sm:min-h-[138px] lg:min-h-[148px] lg:grid-cols-[0.78fr_1.22fr] xl:min-h-[154px]">
+          <div className="flex flex-col justify-center gap-2.5 px-3.5 py-3 sm:px-4 lg:border-r lg:border-slate-200/70 xl:px-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-emerald-50 sm:h-12 sm:w-12">
+                <Wallet className="h-[22px] w-[22px] text-emerald-700 sm:h-6 sm:w-6" />
+              </div>
 
-          <SummaryCard
+              <div>
+                <p className="text-[12px] font-extrabold leading-tight text-slate-700 sm:text-[13px]">
+                  Saldo E-Voucher
+                </p>
+
+                <p className="mt-0.5 text-[27px] font-black leading-none tracking-tight text-emerald-700 sm:text-[30px] lg:text-[31px]">
+                  {formatIDR(totalBalance)}
+                </p>
+
+                <p className="mt-0.5 text-[11.5px] font-semibold text-slate-500 sm:text-xs">
+                  {activeVouchers} voucher aktif
+                </p>
+              </div>
+            </div>
+
+            <Link
+              to="/dashboard/dompet-nutrisi"
+              className="inline-flex h-8 w-fit items-center gap-2 rounded-[11px] border-2 border-emerald-500 bg-white px-3 text-[11px] font-extrabold text-emerald-700 shadow-[0_5px_14px_rgba(16,185,129,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-50 sm:h-9 sm:px-3.5 sm:text-xs"
+            >
+              <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Lihat dompet nutrisi
+            </Link>
+          </div>
+
+          <div className="relative flex min-h-[128px] items-center overflow-hidden bg-[linear-gradient(115deg,#ffffff_0%,#f8fffb_45%,#eaf8ef_100%)] px-3.5 py-3 sm:min-h-[138px] sm:px-4 lg:min-h-[148px] xl:min-h-[154px] xl:px-5">
+            <div className="absolute -bottom-14 -right-10 h-32 w-32 rounded-full bg-emerald-100/70 blur-2xl sm:h-40 sm:w-40" />
+            <div className="absolute -top-14 right-20 h-28 w-28 rounded-full bg-lime-100/60 blur-2xl sm:right-36 sm:h-32 sm:w-32" />
+
+            <div className="relative z-10 max-w-[285px] sm:max-w-[330px] lg:max-w-[360px]">
+              <h2 className="text-[18px] font-black leading-tight tracking-tight text-emerald-800 sm:text-[20px] lg:text-[17px]">
+                Dukung tumbuh kembang anak dengan gizi seimbang.
+              </h2>
+
+              <p className="mt-2 max-w-[300px] text-[11.5px] font-medium leading-[17px] text-slate-600 sm:text-xs sm:leading-[18px] lg:text-[13px] lg:leading-5">
+                Gunakan voucher untuk membeli bahan makanan bergizi bagi
+                keluarga Anda.
+              </p>
+            </div>
+
+            <div className="pointer-events-none absolute bottom-0 right-0 hidden h-full w-[46%] items-end justify-end lg:flex xl:w-[49%] 2xl:w-[52%]">
+              <img
+                src={foto}
+                alt="Ilustrasi ibu hamil, anak, dan e-voucher nutrisi"
+                className="h-full w-full object-contain object-right-bottom"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+
+            <div className="pointer-events-none absolute bottom-3 right-4 hidden rounded-[13px] border border-emerald-100 bg-white/70 px-3 py-2 shadow-[0_8px_20px_rgba(15,118,110,0.1)] backdrop-blur-md sm:block lg:hidden">
+              <p className="text-[9.5px] font-bold uppercase tracking-wide text-emerald-600">
+                E-Voucher
+              </p>
+              <p className="text-[15px] font-black leading-tight text-emerald-800">
+                Nutrisi
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Status Cards */}
+        <div
+          ref={gridRef}
+          className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:gap-3 xl:grid-cols-3"
+        >
+          <StatusCard
             title="Status Survei FIES"
             value={fiesValue}
             description={
@@ -391,146 +429,100 @@ export default function BeneficiaryDashboard() {
             linkLabel="Lihat survei"
             href="/dashboard/survei-fies"
             icon={ClipboardList}
-            iconWrapClass="bg-blue-100"
+            iconWrapClass="bg-blue-50"
             iconClass="text-blue-600"
             valueClass="text-blue-600"
-            accentClass="bg-[radial-gradient(circle_at_80%_110%,rgba(59,130,246,0.12),transparent_45%)]"
-            showWarning={!hasFiesThisMonth}
+            linkClass="text-blue-600"
           />
 
-          <SummaryCard
+          <StatusCard
             title="Status Gizi Anak"
             value={nutritionValue}
-            description={`Status Gizi\nz-score: ${nutritionZScore}`}
+            description={`Z-score: ${nutritionZScore}`}
             linkLabel="Lihat detail"
             href="/dashboard/pemantauan-gizi"
             icon={TrendingUp}
-            iconWrapClass="bg-teal-100"
-            iconClass="text-teal-600"
-            valueClass="text-teal-600"
-            accentClass="bg-[radial-gradient(circle_at_80%_110%,rgba(20,184,166,0.14),transparent_45%)]"
+            iconWrapClass="bg-emerald-50"
+            iconClass="text-emerald-600"
+            valueClass="text-emerald-600"
+            linkClass="text-emerald-600"
+          />
+
+          <StatusCard
+            title={
+              hasFiesThisMonth
+                ? "Survei FIES Bulan Ini Sudah Diisi"
+                : "Survei FIES Bulan Ini Belum Diisi"
+            }
+            value={hasFiesThisMonth ? "Aman" : ""}
+            description={
+              hasFiesThisMonth
+                ? "Kelayakan voucher Anda tetap terjaga."
+                : "Isi survei agar kelayakan voucher Anda tetap terjaga."
+            }
+            linkLabel={hasFiesThisMonth ? "Lihat hasil" : "Isi Sekarang"}
+            href="/dashboard/survei-fies"
+            icon={hasFiesThisMonth ? ClipboardList : AlertTriangle}
+            iconWrapClass={hasFiesThisMonth ? "bg-emerald-50" : "bg-orange-50"}
+            iconClass={hasFiesThisMonth ? "text-emerald-600" : "text-orange-500"}
+            valueClass={hasFiesThisMonth ? "text-emerald-600" : "hidden"}
+            linkClass={hasFiesThisMonth ? "text-emerald-600" : "text-orange-500"}
           />
         </div>
 
-        {/* FIES Warning Banner */}
-        {!hasFiesThisMonth && (
-          <div className="flex shrink-0 flex-col gap-2 rounded-[16px] border border-orange-200 bg-orange-50/70 px-4 py-2.5 shadow-[0_6px_18px_rgba(251,146,60,0.06)] sm:flex-row sm:items-center">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-100">
-              <AlertTriangle className="h-4 w-4 text-orange-600" />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold leading-tight text-orange-700">
-                Survei FIES Bulan Ini Belum Diisi
-              </p>
-
-              <p className="mt-0.5 text-xs leading-snug text-slate-600">
-                Isi survei agar kelayakan voucher Anda tetap terjaga.
-              </p>
-            </div>
-
-            <Button
-              className="h-8 rounded-xl bg-orange-500 px-4 text-xs font-bold text-white shadow-sm hover:bg-orange-600 sm:min-w-[108px]"
-              asChild
-            >
-              <Link to="/dashboard/survei-fies">Isi Sekarang</Link>
-            </Button>
-          </div>
-        )}
-
         {/* Main Content */}
-        <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1.03fr)_minmax(340px,0.97fr)] xl:items-stretch">
-          {/* Left Column */}
-          <div className="flex min-h-0 min-w-0 flex-col gap-3">
-            {/* Quick Actions */}
-            <section className="shrink-0 rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
-              <h2 className="mb-3 text-[15px] font-bold tracking-tight text-slate-900">
-                Aksi Cepat
-              </h2>
+        <div className="grid grid-cols-1 gap-2.5 lg:gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          {/* Aksi Utama */}
+          <section className="rounded-[18px] border border-slate-200/70 bg-white p-3 shadow-[0_7px_20px_rgba(15,23,42,0.04)] sm:p-3.5">
+            <h2 className="mb-2 text-[14px] font-black tracking-tight text-emerald-800 sm:text-[15px]">
+              Aksi Utama
+            </h2>
 
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                {quickActions.map((action) => {
-                  const Icon = action.icon;
+            <div className="overflow-hidden rounded-[14px] border border-slate-200/80 bg-white">
+              {quickActions.map((action, index) => {
+                const Icon = action.icon;
 
-                  return (
-                    <Link
-                      key={action.label}
-                      to={action.href}
-                      className="group flex min-h-[68px] items-center gap-3 rounded-[15px] border border-slate-200/80 bg-white px-3 py-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_10px_22px_rgba(15,23,42,0.065)]"
+                return (
+                  <Link
+                    key={action.label}
+                    to={action.href}
+                    className={`group flex min-h-[44px] items-center gap-2.5 px-2.5 py-2 transition-all duration-200 hover:bg-emerald-50/60 sm:min-h-[49px] sm:px-3 ${
+                      index !== quickActions.length - 1
+                        ? "border-b border-slate-200/80"
+                        : ""
+                    }`}
+                  >
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${action.iconWrapClass}`}
                     >
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${action.iconWrapClass}`}
-                      >
-                        <Icon
-                          className={`h-[18px] w-[18px] ${action.iconClass}`}
-                        />
-                      </div>
+                      <Icon
+                        className={`h-[15px] w-[15px] sm:h-[17px] sm:w-[17px] ${action.iconClass}`}
+                      />
+                    </div>
 
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-bold text-slate-900">
-                          {action.label}
-                        </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[11.5px] font-extrabold text-emerald-800 sm:text-[12.5px]">
+                        {action.label}
+                      </p>
 
-                        <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
-                          {action.desc}
-                        </p>
-                      </div>
+                      <p className="mt-0.5 truncate text-[10px] font-medium leading-snug text-slate-500 sm:text-[10.5px]">
+                        {action.desc}
+                      </p>
+                    </div>
 
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-emerald-50 group-hover:text-emerald-600">
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
+                    <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 transition-all duration-200 group-hover:bg-white group-hover:text-emerald-600 group-hover:shadow-sm sm:h-7 sm:w-7">
+                      <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
 
-            {/* Shopping Flow */}
-            <section className="flex min-h-[156px] flex-1 flex-col rounded-[18px] border border-slate-200/80 bg-white px-4 py-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
-              <h2 className="shrink-0 text-[15px] font-bold tracking-tight text-slate-900">
-                Alur Belanja
-              </h2>
-
-              <div className="flex min-h-0 flex-1 items-center overflow-x-auto pb-0.5 pt-2.5">
-                <div className="grid min-w-[480px] flex-1 grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-start gap-2">
-                  {shoppingSteps.map((step, index) => {
-                    const Icon = step.icon;
-
-                    return (
-                      <div key={step.number} className="contents">
-                        <div className="flex min-w-0 flex-col items-center text-center">
-                          <div
-                            className={`flex h-10 w-10 items-center justify-center rounded-full ${step.iconWrapClass}`}
-                          >
-                            <Icon
-                              className={`h-[18px] w-[18px] ${step.iconClass}`}
-                            />
-                          </div>
-
-                          <p className="mt-2 text-[11px] font-bold leading-tight text-slate-950">
-                            {step.number}. {step.label}
-                          </p>
-
-                          <p className="mt-1 max-w-[105px] text-[10.5px] leading-snug text-slate-500">
-                            {step.desc}
-                          </p>
-                        </div>
-
-                        {index < shoppingSteps.length - 1 && (
-                          <div className="mt-5 h-px w-9 bg-slate-300 sm:w-10" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
-          </div>
-
-          {/* Right Column */}
-          <section className="flex min-h-[346px] flex-col rounded-[18px] border border-slate-200/80 bg-white px-4 py-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.04)] xl:min-h-0">
+          {/* Transaksi Terakhir */}
+          <section className="flex min-h-[196px] flex-col rounded-[18px] border border-slate-200/70 bg-white p-3 shadow-[0_7px_20px_rgba(15,23,42,0.04)] sm:min-h-[220px] sm:p-3.5 xl:min-h-[224px]">
             <div className="flex shrink-0 items-center justify-between gap-3">
-              <h2 className="text-[15px] font-bold tracking-tight text-slate-900">
+              <h2 className="text-[14px] font-black tracking-tight text-emerald-800 sm:text-[15px]">
                 Transaksi Terakhir
               </h2>
 
@@ -538,7 +530,7 @@ export default function BeneficiaryDashboard() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1 rounded-lg px-2 text-xs"
+                  className="h-7 gap-1 rounded-lg px-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                   asChild
                 >
                   <Link to="/dashboard/dompet-nutrisi">
@@ -550,59 +542,57 @@ export default function BeneficiaryDashboard() {
             </div>
 
             {transactions.length === 0 ? (
-              <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-2xl bg-white px-4 py-6 text-center">
-                <div className="relative mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-50">
-                  <div className="absolute -left-2 top-9 h-1.5 w-1.5 rounded-full bg-slate-300" />
-                  <div className="absolute -right-1 top-6 h-1.5 w-1.5 rounded-full bg-slate-200" />
+              <div className="flex min-h-[142px] flex-1 flex-col items-center justify-center px-3 py-4 text-center sm:min-h-[162px]">
+                <div className="relative mb-3 flex h-[58px] w-[58px] items-center justify-center rounded-full bg-emerald-50 sm:h-[66px] sm:w-[66px]">
+                  <div className="absolute -left-2.5 top-7 h-2 w-2 rounded-full bg-emerald-200" />
+                  <div className="absolute -right-2 top-4 h-2 w-2 rounded-full bg-emerald-200" />
 
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 shadow-sm">
-                    <Wallet className="h-6 w-6 text-slate-500" />
-                  </div>
+                  <Wallet className="h-7 w-7 text-emerald-600 sm:h-8 sm:w-8" />
                 </div>
 
-                <p className="text-base font-extrabold tracking-tight text-slate-950">
+                <p className="text-[14px] font-black tracking-tight text-emerald-800 sm:text-[15px]">
                   Belum ada transaksi
                 </p>
 
-                <p className="mt-1.5 max-w-sm text-xs leading-5 text-slate-500">
+                <p className="mt-1 max-w-sm text-[10.5px] font-medium leading-4 text-slate-500 sm:text-[11.5px]">
                   Mulai belanja untuk melihat riwayat transaksi Anda.
                 </p>
               </div>
             ) : (
-              <div className="mt-3 min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
+              <div className="mt-2 min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
                 {transactions.slice(0, 6).map((t: VoucherTransaction) => {
                   const isCredit = (t.amount || 0) > 0;
 
                   return (
                     <div
                       key={t.id}
-                      className="flex items-center gap-3 py-2.5 transition-colors hover:bg-slate-50/80"
+                      className="flex items-center gap-2.5 py-2 transition-colors hover:bg-slate-50/80"
                     >
                       <div
-                        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${
-                          isCredit ? "bg-green-100" : "bg-slate-100"
+                        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9 ${
+                          isCredit ? "bg-emerald-50" : "bg-slate-100"
                         }`}
                       >
                         <Wallet
-                          className={`h-[18px] w-[18px] ${
-                            isCredit ? "text-green-600" : "text-slate-500"
+                          className={`h-[15px] w-[15px] sm:h-[17px] sm:w-[17px] ${
+                            isCredit ? "text-emerald-600" : "text-slate-500"
                           }`}
                         />
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-slate-900">
+                        <div className="truncate text-[11.5px] font-bold text-slate-900 sm:text-[12.5px]">
                           {t.description || t.source || "Transaksi"}
                         </div>
 
-                        <div className="mt-0.5 text-xs text-slate-500">
+                        <div className="mt-0.5 text-[10px] font-medium text-slate-500 sm:text-[10.5px]">
                           {t.date ? formatDate(t.date) : "-"}
                         </div>
                       </div>
 
                       <div
-                        className={`flex-shrink-0 text-sm font-bold ${
-                          isCredit ? "text-green-600" : "text-slate-900"
+                        className={`flex-shrink-0 text-[11.5px] font-extrabold sm:text-[12.5px] ${
+                          isCredit ? "text-emerald-600" : "text-slate-900"
                         }`}
                       >
                         {isCredit ? "+" : "-"}
@@ -615,6 +605,73 @@ export default function BeneficiaryDashboard() {
             )}
           </section>
         </div>
+
+        {/* Alur Belanja */}
+        <section className="rounded-[18px] border border-slate-200/70 bg-white px-3 py-3 shadow-[0_7px_20px_rgba(15,23,42,0.04)] sm:px-3.5 sm:py-3.5">
+          <h2 className="mb-2.5 text-[14px] font-black tracking-tight text-emerald-800 sm:text-[15px]">
+            Alur Belanja
+          </h2>
+
+          {/* Mobile / Tablet */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:hidden">
+            {shoppingSteps.map((step) => (
+              <div
+                key={step.number}
+                className="flex items-center gap-2 rounded-[13px] border border-slate-100 bg-slate-50/40 p-2"
+              >
+                <div
+                  className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-[13px] font-black sm:h-8 sm:w-8 sm:text-[15px] ${step.circleClass}`}
+                >
+                  {step.number}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="truncate text-[11.5px] font-black leading-tight text-slate-800 sm:text-xs">
+                    {step.label}
+                  </p>
+
+                  <p className="mt-0.5 truncate text-[10px] font-medium leading-snug text-slate-500 sm:text-[10.5px]">
+                    {step.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop */}
+          <div className="hidden xl:flex xl:items-center xl:justify-between xl:gap-4">
+            {shoppingSteps.map((step, index) => (
+              <div
+                key={step.number}
+                className="flex min-w-0 flex-1 items-center gap-4"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[15px] font-black ${step.circleClass}`}
+                  >
+                    {step.number}
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="whitespace-nowrap text-[12px] font-black leading-tight text-slate-800">
+                      {step.label}
+                    </p>
+
+                    <p className="mt-0.5 whitespace-nowrap text-[10.5px] font-medium leading-snug text-slate-500">
+                      {step.desc}
+                    </p>
+                  </div>
+                </div>
+
+                {index < shoppingSteps.length - 1 && (
+                  <div className="flex flex-1 items-center">
+                    <div className="h-[2px] w-full rounded-full bg-slate-200" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </DashboardLayout>
   );
