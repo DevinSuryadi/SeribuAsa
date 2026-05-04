@@ -149,6 +149,7 @@ export default function VendorDashboard() {
   }
 
   const walletBalance = wallet?.balance || 0;
+  const pendingWithdrawals = wallet?.pending_amount || 0;
 
   return (
     <DashboardLayout
@@ -176,6 +177,12 @@ export default function VendorDashboard() {
                 Minimum penarikan:{" "}
                 <strong className="text-white">{formatIDR(MIN_WITHDRAWAL)}</strong>
               </p>
+              {pendingWithdrawals > 0 ? (
+                <p className="mt-1 text-xs text-indigo-100/90">
+                  Withdrawal QR menunggu pencairan:{" "}
+                  <strong className="text-white">{formatIDR(pendingWithdrawals)}</strong>
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-col gap-2 flex-shrink-0">
               <Button
@@ -226,8 +233,12 @@ export default function VendorDashboard() {
           <KpiCard
             icon={BarChart3}
             label="Status Pencairan"
-            value={orders.length > 0 ? "Aktif" : "-"}
-            subtitle="Periode berjalan"
+            value={pendingWithdrawals > 0 ? "Menunggu" : "Siap"}
+            subtitle={
+              pendingWithdrawals > 0
+                ? `${formatIDR(pendingWithdrawals)} sedang diproses`
+                : "Belum ada withdrawal pending"
+            }
             variant="purple"
           />
         </KpiCardGrid>
@@ -336,6 +347,16 @@ export default function VendorDashboard() {
                   color: "text-orange-600",
                   bg: "bg-orange-50",
                   border: "border-orange-200",
+                  primary: false,
+                },
+                {
+                  label: "QR Pencairan",
+                  desc: "Generate QR cashout vendor",
+                  icon: Wallet,
+                  href: "/dashboard/settlement",
+                  color: "text-emerald-600",
+                  bg: "bg-emerald-50",
+                  border: "border-emerald-200",
                   primary: false,
                 },
                 {
