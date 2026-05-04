@@ -24,7 +24,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {
-  Activity, Plus, Baby, Loader2, Trash2, Pencil, Calendar,
+  Activity, Plus, Baby, Loader2, Trash2, Calendar,
   AlertCircle, TrendingUp, ChevronLeft, ChevronRight,
   Scale, Ruler, Heart, ShieldCheck,
 } from "lucide-react";
@@ -33,7 +33,6 @@ import {
   addMeasurement,
   getChildren,
   getMeasurementHistory,
-  updateMeasurement,
   deleteMeasurement,
   addChild,
 } from "@/services/nutrition";
@@ -195,7 +194,6 @@ const PemantauanGizi = () => {
 
   const [showForm, setShowForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [editingMeasurement, setEditingMeasurement] = useState<Measurement | null>(null);
   const [deletingMeasurement, setDeletingMeasurement] = useState<Measurement | null>(null);
   const [children, setChildren] = useState<ChildData[]>([]);
   const [selectedChild, setSelectedChild] = useState<ChildData | null>(null);
@@ -307,7 +305,7 @@ const PemantauanGizi = () => {
   const resetForm = () => {
     setFormWeight(""); setFormHeight(""); setFormMuac("");
     setFormDate(new Date().toISOString().split("T")[0]);
-    setFormErrors({}); setEditingMeasurement(null);
+    setFormErrors({});
   };
 
   const handleAddMeasurement = async () => {
@@ -315,24 +313,35 @@ const PemantauanGizi = () => {
       if (!selectedChild) toast.error("Silakan pilih anak terlebih dahulu");
       return;
     }
+
     setSubmitting(true);
+
     try {
       const weight = parseFloat(formWeight);
       const height = parseFloat(formHeight);
-      const existingOnDate = measurements.find((m) => m.measurement_date === formDate && m.id !== editingMeasurement?.id);
-      if (existingOnDate && !editingMeasurement) {
-        toast.error("Sudah ada pengukuran pada tanggal ini", { description: "Silakan edit pengukuran yang sudah ada" });
+      const existingOnDate = measurements.find((m) => m.measurement_date === formDate);
+
+      if (existingOnDate) {
+        toast.error("Sudah ada pengukuran pada tanggal ini", {
+          description: "Jika ingin mengganti data, hapus data lama terlebih dahulu lalu input ulang.",
+        });
         setSubmitting(false);
         return;
       }
-      if (editingMeasurement) {
-        await updateMeasurement(editingMeasurement.id, { child_id: selectedChild.id, measurement_date: formDate, weight, height, muac: formMuac ? parseFloat(formMuac) : undefined });
-        toast.success("Data pengukuran berhasil diperbarui");
-      } else {
-        await addMeasurement({ child_id: selectedChild.id, measurement_date: formDate, weight, height, muac: formMuac ? parseFloat(formMuac) : undefined });
-        toast.success("Data pengukuran berhasil disimpan");
-      }
-      resetForm(); setShowForm(false);
+
+      await addMeasurement({
+        child_id: selectedChild.id,
+        measurement_date: formDate,
+        weight,
+        height,
+        muac: formMuac ? parseFloat(formMuac) : undefined,
+      });
+
+      toast.success("Data pengukuran berhasil disimpan");
+
+      resetForm();
+      setShowForm(false);
+
       await fetchMeasurements(selectedChild.id);
       await fetchLatestMeasurementsForChildren(children);
     } catch (err: unknown) {
@@ -340,13 +349,6 @@ const PemantauanGizi = () => {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleEditClick = (m: Measurement) => {
-    setEditingMeasurement(m);
-    setFormWeight(m.weight.toString()); setFormHeight(m.height.toString());
-    setFormMuac(m.muac?.toString() || ""); setFormDate(m.measurement_date);
-    setShowForm(true);
   };
 
   const handleDeleteClick = (m: Measurement) => { setDeletingMeasurement(m); setShowDeleteConfirm(true); };
@@ -686,15 +688,8 @@ const PemantauanGizi = () => {
                                     variant="ghost"
                                     size="sm"
                                     className="h-8 w-8 rounded-lg p-0"
-                                    onClick={() => handleEditClick(m)}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 rounded-lg p-0"
                                     onClick={() => handleDeleteClick(m)}
+                                    title="Hapus pengukuran"
                                   >
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
@@ -836,15 +831,29 @@ const PemantauanGizi = () => {
           </>
         )}
 
-        {/* ── Add/Edit Measurement Dialog ── */}
+        {/* ── Add Measurement Dialog ── */}
         <Dialog open={showForm} onOpenChange={(open: boolean) => { if (!open) resetForm(); setShowForm(open); }}>
           <DialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-primary" />
-                {editingMeasurement ? "Edit" : "Input"} Pengukuran — {selectedChild?.full_name || "Anak"}
+                Input Pengukuran — {selectedChild?.full_name || "Anak"}
               </DialogTitle>
             </DialogHeader>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-900">
+              <div className="flex gap-2.5">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold">Pastikan data pengukuran sudah tepat</p>
+                  <p className="mt-1 text-xs leading-relaxed">
+                    Data yang sudah disimpan tidak bisa diedit. Periksa kembali tanggal,
+                    berat badan, tinggi badan, dan MUAC sebelum menekan tombol simpan.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <Label>Anak</Label>
@@ -882,7 +891,7 @@ const PemantauanGizi = () => {
               </div>
               <Button className="w-full" onClick={handleAddMeasurement} disabled={submitting}>
                 {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {submitting ? "Menyimpan..." : editingMeasurement ? "Perbarui Pengukuran" : "Simpan Pengukuran"}
+                {submitting ? "Menyimpan..." : "Simpan Pengukuran"}
               </Button>
             </div>
           </DialogContent>

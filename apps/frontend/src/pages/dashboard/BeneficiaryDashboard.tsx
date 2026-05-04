@@ -70,38 +70,40 @@ function SummaryCard({
   return (
     <Link
       to={href}
-      className="group relative overflow-hidden rounded-[18px] border border-slate-200/80 bg-white px-4 py-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_10px_24px_rgba(15,23,42,0.075)]"
+      className="group relative overflow-hidden rounded-[18px] border border-slate-200/80 bg-white px-3.5 py-3 shadow-[0_6px_18px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_10px_24px_rgba(15,23,42,0.07)]"
     >
       <div
-        className={`pointer-events-none absolute inset-x-0 bottom-0 h-10 opacity-60 ${accentClass}`}
+        className={`pointer-events-none absolute inset-x-0 bottom-0 h-9 opacity-55 ${accentClass}`}
       />
 
       {showWarning && (
-        <AlertTriangle className="absolute right-3.5 top-3.5 h-[18px] w-[18px] text-amber-500" />
+        <AlertTriangle className="absolute right-3.5 top-3.5 h-4 w-4 text-amber-500" />
       )}
 
-      <div className="relative z-10 flex min-h-[82px] items-center gap-3">
+      <div className="relative z-10 flex min-h-[72px] items-center gap-3">
         <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconWrapClass}`}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconWrapClass}`}
         >
-          <Icon className={`h-[18px] w-[18px] ${iconClass}`} />
+          <Icon className={`h-4 w-4 ${iconClass}`} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium text-slate-600">{title}</p>
+          <p className="text-[11px] font-medium leading-tight text-slate-600">
+            {title}
+          </p>
 
           <p
-            className={`mt-0.5 text-lg font-extrabold leading-tight tracking-tight ${valueClass}`}
+            className={`mt-0.5 text-[19px] font-extrabold leading-none tracking-tight ${valueClass}`}
           >
             {value}
           </p>
 
-          <p className="mt-0.5 whitespace-pre-line text-[11px] leading-snug text-slate-500">
+          <p className="mt-1 whitespace-pre-line text-[11px] leading-snug text-slate-500">
             {description}
           </p>
 
           <div
-            className={`mt-3 flex items-center gap-1.5 text-[11px] font-bold ${valueClass}`}
+            className={`mt-2.5 flex items-center gap-1.5 text-[11px] font-bold ${valueClass}`}
           >
             <span>{linkLabel}</span>
             <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
@@ -117,7 +119,11 @@ const getFiesLabel = (classification?: string | null) => {
 
   const normalized = classification.toLowerCase();
 
-  if (normalized === "low" || normalized === "mild" || normalized === "food_secure") {
+  if (
+    normalized === "low" ||
+    normalized === "mild" ||
+    normalized === "food_secure"
+  ) {
     return "Baik";
   }
 
@@ -211,9 +217,9 @@ export default function BeneficiaryDashboard() {
   if (isLoading) {
     return (
       <DashboardLayout title="Beranda" subtitle="Penerima Manfaat">
-        <div className="flex min-h-[360px] items-center justify-center">
+        <div className="flex min-h-[320px] items-center justify-center">
           <div className="text-center">
-            <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
+            <Loader2 className="mx-auto mb-3 h-9 w-9 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">
               Memuat dashboard...
             </p>
@@ -358,9 +364,9 @@ export default function BeneficiaryDashboard() {
       title={`Selamat datang, ${userDisplayName}`}
       subtitle="Kelola voucher nutrisi dan pantau kesehatan keluarga Anda."
     >
-      <div className="space-y-3.5">
+      <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-3 pb-3 lg:max-h-[calc(100svh-140px)] lg:overflow-hidden">
         {/* Summary Cards */}
-        <div ref={gridRef} className="grid gap-3 lg:grid-cols-3">
+        <div ref={gridRef} className="grid shrink-0 gap-3 lg:grid-cols-3">
           <SummaryCard
             title="Saldo E-Voucher"
             value={formatIDR(totalBalance)}
@@ -408,9 +414,9 @@ export default function BeneficiaryDashboard() {
 
         {/* FIES Warning Banner */}
         {!hasFiesThisMonth && (
-          <div className="flex flex-col gap-2.5 rounded-[16px] border border-orange-200 bg-orange-50/70 px-4 py-3 shadow-[0_6px_18px_rgba(251,146,60,0.06)] sm:flex-row sm:items-center">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-orange-100">
-              <AlertTriangle className="h-[18px] w-[18px] text-orange-600" />
+          <div className="flex shrink-0 flex-col gap-2 rounded-[16px] border border-orange-200 bg-orange-50/70 px-4 py-2.5 shadow-[0_6px_18px_rgba(251,146,60,0.06)] sm:flex-row sm:items-center">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-100">
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -424,7 +430,7 @@ export default function BeneficiaryDashboard() {
             </div>
 
             <Button
-              className="h-9 rounded-xl bg-orange-500 px-5 text-xs font-bold text-white shadow-sm hover:bg-orange-600 sm:min-w-[116px]"
+              className="h-8 rounded-xl bg-orange-500 px-4 text-xs font-bold text-white shadow-sm hover:bg-orange-600 sm:min-w-[108px]"
               asChild
             >
               <Link to="/dashboard/survei-fies">Isi Sekarang</Link>
@@ -432,94 +438,99 @@ export default function BeneficiaryDashboard() {
           </div>
         )}
 
-        {/* Quick Actions */}
-        <section className="space-y-2">
-          <h2 className="text-sm font-bold tracking-tight text-slate-900 sm:text-base">
-            Aksi Cepat
-          </h2>
+        {/* Main Content */}
+        <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1.03fr)_minmax(340px,0.97fr)] xl:items-stretch">
+          {/* Left Column */}
+          <div className="flex min-h-0 min-w-0 flex-col gap-3">
+            {/* Quick Actions */}
+            <section className="shrink-0 rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
+              <h2 className="mb-3 text-[15px] font-bold tracking-tight text-slate-900">
+                Aksi Cepat
+              </h2>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-
-              return (
-                <Link
-                  key={action.label}
-                  to={action.href}
-                  className="group flex items-center gap-3 rounded-[16px] border border-slate-200/80 bg-white px-3.5 py-3 shadow-[0_6px_18px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_10px_24px_rgba(15,23,42,0.07)]"
-                >
-                  <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${action.iconWrapClass}`}
-                  >
-                    <Icon className={`h-[18px] w-[18px] ${action.iconClass}`} />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-bold text-slate-900">
-                      {action.label}
-                    </p>
-
-                    <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                      {action.desc}
-                    </p>
-                  </div>
-
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-emerald-50 group-hover:text-emerald-600">
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Bottom Content */}
-        <div className="grid gap-3 xl:grid-cols-[1.06fr_0.95fr]">
-          {/* Shopping Flow */}
-          <section className="rounded-[18px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
-            <h2 className="mb-3 text-sm font-bold tracking-tight text-slate-900 sm:text-base">
-              Alur Belanja
-            </h2>
-
-            <div className="overflow-x-auto">
-              <div className="grid min-w-[500px] grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-start gap-2">
-                {shoppingSteps.map((step, index) => {
-                  const Icon = step.icon;
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {quickActions.map((action) => {
+                  const Icon = action.icon;
 
                   return (
-                    <div key={step.number} className="contents">
-                      <div className="flex min-w-0 flex-col items-center text-center">
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-full ${step.iconWrapClass}`}
-                        >
-                          <Icon
-                            className={`h-[18px] w-[18px] ${step.iconClass}`}
-                          />
-                        </div>
+                    <Link
+                      key={action.label}
+                      to={action.href}
+                      className="group flex min-h-[68px] items-center gap-3 rounded-[15px] border border-slate-200/80 bg-white px-3 py-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_10px_22px_rgba(15,23,42,0.065)]"
+                    >
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${action.iconWrapClass}`}
+                      >
+                        <Icon
+                          className={`h-[18px] w-[18px] ${action.iconClass}`}
+                        />
+                      </div>
 
-                        <p className="mt-2.5 text-xs font-bold leading-tight text-slate-950">
-                          {step.number}. {step.label}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-bold text-slate-900">
+                          {action.label}
                         </p>
 
-                        <p className="mt-1 text-[11px] leading-snug text-slate-500">
-                          {step.desc}
+                        <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
+                          {action.desc}
                         </p>
                       </div>
 
-                      {index < shoppingSteps.length - 1 && (
-                        <div className="mt-5 h-px w-10 bg-slate-300 sm:w-12" />
-                      )}
-                    </div>
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-emerald-50 group-hover:text-emerald-600">
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </div>
+                    </Link>
                   );
                 })}
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* Recent Transactions */}
-          <section className="rounded-[18px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
-            <div className="mb-2.5 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-bold tracking-tight text-slate-900 sm:text-base">
+            {/* Shopping Flow */}
+            <section className="flex min-h-[156px] flex-1 flex-col rounded-[18px] border border-slate-200/80 bg-white px-4 py-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
+              <h2 className="shrink-0 text-[15px] font-bold tracking-tight text-slate-900">
+                Alur Belanja
+              </h2>
+
+              <div className="flex min-h-0 flex-1 items-center overflow-x-auto pb-0.5 pt-2.5">
+                <div className="grid min-w-[480px] flex-1 grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-start gap-2">
+                  {shoppingSteps.map((step, index) => {
+                    const Icon = step.icon;
+
+                    return (
+                      <div key={step.number} className="contents">
+                        <div className="flex min-w-0 flex-col items-center text-center">
+                          <div
+                            className={`flex h-10 w-10 items-center justify-center rounded-full ${step.iconWrapClass}`}
+                          >
+                            <Icon
+                              className={`h-[18px] w-[18px] ${step.iconClass}`}
+                            />
+                          </div>
+
+                          <p className="mt-2 text-[11px] font-bold leading-tight text-slate-950">
+                            {step.number}. {step.label}
+                          </p>
+
+                          <p className="mt-1 max-w-[105px] text-[10.5px] leading-snug text-slate-500">
+                            {step.desc}
+                          </p>
+                        </div>
+
+                        {index < shoppingSteps.length - 1 && (
+                          <div className="mt-5 h-px w-9 bg-slate-300 sm:w-10" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Right Column */}
+          <section className="flex min-h-[346px] flex-col rounded-[18px] border border-slate-200/80 bg-white px-4 py-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.04)] xl:min-h-0">
+            <div className="flex shrink-0 items-center justify-between gap-3">
+              <h2 className="text-[15px] font-bold tracking-tight text-slate-900">
                 Transaksi Terakhir
               </h2>
 
@@ -539,22 +550,27 @@ export default function BeneficiaryDashboard() {
             </div>
 
             {transactions.length === 0 ? (
-              <div className="flex min-h-[122px] flex-col items-center justify-center rounded-2xl bg-white px-4 py-5 text-center">
-                <div className="mb-2.5 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
-                  <Wallet className="h-5 w-5 text-slate-500" />
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-2xl bg-white px-4 py-6 text-center">
+                <div className="relative mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-50">
+                  <div className="absolute -left-2 top-9 h-1.5 w-1.5 rounded-full bg-slate-300" />
+                  <div className="absolute -right-1 top-6 h-1.5 w-1.5 rounded-full bg-slate-200" />
+
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 shadow-sm">
+                    <Wallet className="h-6 w-6 text-slate-500" />
+                  </div>
                 </div>
 
-                <p className="text-sm font-bold text-slate-900">
+                <p className="text-base font-extrabold tracking-tight text-slate-950">
                   Belum ada transaksi
                 </p>
 
-                <p className="mt-1 max-w-xs text-xs text-slate-500">
+                <p className="mt-1.5 max-w-sm text-xs leading-5 text-slate-500">
                   Mulai belanja untuk melihat riwayat transaksi Anda.
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
-                {transactions.slice(0, 4).map((t: VoucherTransaction) => {
+              <div className="mt-3 min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
+                {transactions.slice(0, 6).map((t: VoucherTransaction) => {
                   const isCredit = (t.amount || 0) > 0;
 
                   return (
@@ -575,17 +591,17 @@ export default function BeneficiaryDashboard() {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-xs font-semibold text-slate-900">
+                        <div className="truncate text-sm font-semibold text-slate-900">
                           {t.description || t.source || "Transaksi"}
                         </div>
 
-                        <div className="mt-0.5 text-[11px] text-slate-500">
+                        <div className="mt-0.5 text-xs text-slate-500">
                           {t.date ? formatDate(t.date) : "-"}
                         </div>
                       </div>
 
                       <div
-                        className={`flex-shrink-0 text-xs font-bold ${
+                        className={`flex-shrink-0 text-sm font-bold ${
                           isCredit ? "text-green-600" : "text-slate-900"
                         }`}
                       >
