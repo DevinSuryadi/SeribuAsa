@@ -9,10 +9,17 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
     css: true,
+    include: ["src/**/*.test.{ts,tsx}"],
+    exclude: ["node_modules", "e2e", "dist"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
       exclude: ["node_modules/", "src/test/setup.ts", "*.config.ts", "*.config.js"],
+    },
+    server: {
+      deps: {
+        inline: ["gsap"],
+      },
     },
   },
   resolve: {

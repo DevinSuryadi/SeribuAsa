@@ -24,5 +24,15 @@
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
-  "packageManager": "npm@10.2.4"
+  "packageManager": "npm@10.2.4",
+  "dependencies": {
+    "@radix-ui/react-toast": "^1.2.15",
+    "@supabase/supabase-js": "^2.100.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "gsap": "^3.14.2",
+    "lucide-react": "^1.7.0",
+    "recharts": "^3.8.0",
+    "tailwind-merge": "^3.5.0"
+  }
 }
