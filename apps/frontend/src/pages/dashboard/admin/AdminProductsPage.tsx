@@ -152,7 +152,6 @@ export default function AdminProductsPage() {
       setSelectedStoreId(null);
     }
   }, [selectedStoreId, stores]);
-
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);

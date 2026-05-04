@@ -85,7 +85,11 @@ export function useVendorData(): UseVendorDataReturn {
       setWallet({
         balance: res.balance || 0,
         total_earnings: (res as unknown as { total_earnings?: number }).total_earnings || 0,
-        pending_amount: (res as unknown as { pending_amount?: number }).pending_amount || 0,
+        pending_amount:
+          (res as unknown as { pending_withdrawals?: number; pending_amount?: number })
+            .pending_withdrawals ||
+          (res as unknown as { pending_amount?: number }).pending_amount ||
+          0,
         currency: "IDR",
       });
     } catch (err: unknown) {
