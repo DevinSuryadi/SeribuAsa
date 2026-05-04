@@ -1,29 +1,9 @@
-import { Navbar } from "../components/landing/Navbar";
-import { HeroSection } from "../components/landing/HeroSection";
-import { HowItWorksSection } from "../components/landing/HowItWorksSection";
-import { RolesSection } from "../components/landing/RolesSection";
-import { ImpactSection } from "../components/landing/ImpactSection";
-import { SDGSection } from "../components/landing/SDGSection";
-import { TrustSection } from "../components/landing/TrustSection";
-import { CTASection } from "../components/landing/CTASection";
-import { Footer } from "../components/landing/Footer";
-
-const Index = () => {
+function Index() {
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main>
-        <HeroSection />
-        <ImpactSection />
-        <RolesSection />
-        <HowItWorksSection />
-        <SDGSection />
-        <TrustSection />
-        <CTASection />
-      </main>
-      <Footer />
+    <div className="min-h-screen flex items-center justify-center">
+      <h1 className="text-4xl font-bold">NutriGuard</h1>
     </div>
   );
-};
+}
 
 export default Index;
