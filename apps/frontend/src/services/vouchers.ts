@@ -75,6 +75,23 @@ export async function redeemSingleVoucher(
   });
 }
 
+export async function redeemQrVoucher(
+  data: {
+    code: string;
+    amount: number;
+    notes?: string;
+  },
+  options?: { idempotencyKey?: string }
+) {
+  return apiFetch("/vouchers/redeem-qr", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": options?.idempotencyKey || makeIdempotencyKey(),
+    },
+    body: JSON.stringify(data),
+  });
+}
+
 export async function getTransactionHistory(params?: {
   beneficiary_id?: string;
   page?: number;

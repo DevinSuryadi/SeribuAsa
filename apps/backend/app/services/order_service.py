@@ -11,6 +11,7 @@ from uuid import UUID
 
 from app.models.product import Order, OrderItem, OrderStatusEnum, Product
 from app.models.donation import Voucher, VoucherRedemption, VoucherStatusEnum
+from app.models.cart import VoucherTransaction, VoucherTransactionTypeEnum
 from app.models.user import BeneficiaryProfile, UserProfile, VendorProfile
 from app.schemas.order import OrderCreate, OrderStatusUpdate, OrderQueryParams
 
@@ -108,6 +109,12 @@ class OrderService:
                         break
 
             cash_paid = total_amount - voucher_used
+            if voucher_used > 0 and cash_paid <= 0:
+                payment_status = "paid"
+            elif voucher_used > 0:
+                payment_status = "partial"
+            else:
+                payment_status = "pending"
 
             # Create order
             order = Order(
@@ -117,6 +124,7 @@ class OrderService:
                 voucher_used=voucher_used,
                 cash_paid=cash_paid,
                 status=OrderStatusEnum.pending,
+                payment_status=payment_status,
                 notes=data.notes,
             )
             db.add(order)
@@ -145,6 +153,24 @@ class OrderService:
                     amount=amount,
                 )
                 db.add(redemption)
+
+                db.add(
+                    VoucherTransaction(
+                        voucher_id=voucher.id,
+                        order_id=order.id,
+                        transaction_type=VoucherTransactionTypeEnum.redeemed,
+                        amount=amount,
+                    )
+                )
+
+            if voucher_used > 0:
+                beneficiary = db.query(BeneficiaryProfile).filter(
+                    BeneficiaryProfile.user_id == beneficiary_uuid
+                ).first()
+                if beneficiary:
+                    beneficiary.vouchers_balance = Decimal(
+                        beneficiary.vouchers_balance or Decimal("0")
+                    ) - voucher_used
 
             db.commit()
             db.refresh(order)

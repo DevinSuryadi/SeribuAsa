@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { useCallback, useEffect, useMemo, useState } from "react";
-=======
-import { useCallback, useEffect, useState } from "react";
->>>>>>> 9c38274 (feat/add admin route and pages)
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { formatIDR } from "@/lib/format";
@@ -28,7 +24,6 @@ type ProductReviewItem = {
 type ProductReviewListResponse = {
   items: ProductReviewItem[];
   total: number;
-<<<<<<< HEAD
   page: number;
   page_size: number;
   total_pages: number;
@@ -53,19 +48,10 @@ export default function AdminProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [mutatingId, setMutatingId] = useState<string | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
-=======
-};
-
-export default function AdminProductsPage() {
-  const [items, setItems] = useState<ProductReviewItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mutatingId, setMutatingId] = useState<string | null>(null);
->>>>>>> 9c38274 (feat/add admin route and pages)
 
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
-<<<<<<< HEAD
       setError(null);
 
       const fetchPage = async (page: number) => {
@@ -74,11 +60,15 @@ export default function AdminProductsPage() {
           page_size: String(PRODUCT_PAGE_SIZE),
         });
 
-        return (await apiFetch(`/admin/products/reviews?${params.toString()}`)) as ProductReviewListResponse;
+        return (await apiFetch(
+          `/admin/products/reviews?${params.toString()}`
+        )) as ProductReviewListResponse;
       };
 
       const firstPage = await fetchPage(1);
-      const totalPages = firstPage.total_pages || (firstPage.total ? Math.ceil(firstPage.total / PRODUCT_PAGE_SIZE) : 0);
+      const totalPages =
+        firstPage.total_pages ||
+        (firstPage.total ? Math.ceil(firstPage.total / PRODUCT_PAGE_SIZE) : 0);
       const allItems = [...(firstPage.items || [])];
 
       if (totalPages > 1) {
@@ -96,18 +86,11 @@ export default function AdminProductsPage() {
       const message = err?.message || "Gagal memuat review produk";
       setError(message);
       toast.error(message);
-=======
-      const data = (await apiFetch("/admin/products/reviews?page=1&page_size=50")) as ProductReviewListResponse;
-      setItems(data.items || []);
-    } catch (err: any) {
-      toast.error(err?.message || "Gagal memuat review produk");
->>>>>>> 9c38274 (feat/add admin route and pages)
     } finally {
       setLoading(false);
     }
   }, []);
 
-<<<<<<< HEAD
   const stores = useMemo<StoreSummary[]>(() => {
     const storeMap = new Map<string, StoreSummary>();
 
@@ -170,8 +153,6 @@ export default function AdminProductsPage() {
     }
   }, [selectedStoreId, stores]);
 
-=======
->>>>>>> 9c38274 (feat/add admin route and pages)
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
@@ -192,7 +173,6 @@ export default function AdminProductsPage() {
     }
   };
 
-<<<<<<< HEAD
   const visibleProducts = selectedStore?.items || [];
   const productStats = {
     totalStores: stores.length,
@@ -201,7 +181,10 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <DashboardLayout title="Kelola Produk" subtitle="Mulai dari daftar toko, lalu buka produk di dalam toko tersebut.">
+    <DashboardLayout
+      title="Kelola Produk"
+      subtitle="Mulai dari daftar toko, lalu buka produk di dalam toko tersebut."
+    >
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-border bg-card p-4">
@@ -209,11 +192,15 @@ export default function AdminProductsPage() {
             <p className="text-sm text-muted-foreground">Toko aktif</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="text-2xl font-semibold text-foreground">{productStats.totalProducts}</div>
+            <div className="text-2xl font-semibold text-foreground">
+              {productStats.totalProducts}
+            </div>
             <p className="text-sm text-muted-foreground">Total produk</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="text-2xl font-semibold text-foreground">{productStats.pendingProducts}</div>
+            <div className="text-2xl font-semibold text-foreground">
+              {productStats.pendingProducts}
+            </div>
             <p className="text-sm text-muted-foreground">Produk pending</p>
           </div>
         </div>
@@ -237,9 +224,13 @@ export default function AdminProductsPage() {
         </div>
 
         {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+            {error}
+          </div>
         ) : loading && items.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Memuat data produk...</div>
+          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+            Memuat data produk...
+          </div>
         ) : stores.length === 0 ? (
           <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
             Belum ada produk untuk ditampilkan.
@@ -248,16 +239,27 @@ export default function AdminProductsPage() {
           <div className="space-y-4 rounded-2xl border border-border bg-card p-5">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div>
-                <h3 className="text-xl font-semibold text-foreground">{selectedStore.vendor_store_name}</h3>
+                <h3 className="text-xl font-semibold text-foreground">
+                  {selectedStore.vendor_store_name}
+                </h3>
                 <p className="text-sm text-muted-foreground">
-                  Vendor ID {shortId(selectedStore.vendor_id)} · diperbarui {formatDateTime(selectedStore.latestCreatedAt)}
+                  Vendor ID {shortId(selectedStore.vendor_id)} · diperbarui{" "}
+                  {formatDateTime(selectedStore.latestCreatedAt)}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">Total {selectedStore.totalProducts}</span>
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1">Pending {selectedStore.pendingProducts}</span>
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1">Approved {selectedStore.approvedProducts}</span>
-                <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1">Rejected {selectedStore.rejectedProducts}</span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
+                  Total {selectedStore.totalProducts}
+                </span>
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
+                  Pending {selectedStore.pendingProducts}
+                </span>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1">
+                  Approved {selectedStore.approvedProducts}
+                </span>
+                <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1">
+                  Rejected {selectedStore.rejectedProducts}
+                </span>
               </div>
             </div>
 
@@ -272,9 +274,13 @@ export default function AdminProductsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h4 className="text-lg font-semibold text-foreground">{item.name}</h4>
-                        <p className="text-sm text-muted-foreground">{item.category_name || "Kategori belum ada"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.category_name || "Kategori belum ada"}
+                        </p>
                       </div>
-                      <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(item.approval_status)}`}>
+                      <span
+                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(item.approval_status)}`}
+                      >
                         {item.approval_status}
                       </span>
                     </div>
@@ -291,7 +297,11 @@ export default function AdminProductsPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => void updateApproval(item.id, "approved")} disabled={mutatingId === item.id}>
+                      <Button
+                        size="sm"
+                        onClick={() => void updateApproval(item.id, "approved")}
+                        disabled={mutatingId === item.id}
+                      >
                         Approve
                       </Button>
                       <Button
@@ -316,13 +326,19 @@ export default function AdminProductsPage() {
                 type="button"
                 onClick={() => setSelectedStoreId(store.vendor_id)}
                 className={`rounded-2xl border bg-card p-5 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${
-                  selectedStoreId === store.vendor_id ? "border-primary ring-2 ring-primary/20" : "border-border"
+                  selectedStoreId === store.vendor_id
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "border-border"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">{store.vendor_store_name}</h3>
-                    <p className="text-sm text-muted-foreground">Vendor ID {shortId(store.vendor_id)}</p>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {store.vendor_store_name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Vendor ID {shortId(store.vendor_id)}
+                    </p>
                   </div>
                   <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                     {store.totalProducts} produk
@@ -330,77 +346,26 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <span className="rounded-xl bg-slate-50 px-3 py-2">Approved {store.approvedProducts}</span>
-                  <span className="rounded-xl bg-amber-50 px-3 py-2">Pending {store.pendingProducts}</span>
-                  <span className="rounded-xl bg-rose-50 px-3 py-2">Rejected {store.rejectedProducts}</span>
-                  <span className="rounded-xl bg-slate-50 px-3 py-2">Updated {formatDateTime(store.latestCreatedAt)}</span>
+                  <span className="rounded-xl bg-slate-50 px-3 py-2">
+                    Approved {store.approvedProducts}
+                  </span>
+                  <span className="rounded-xl bg-amber-50 px-3 py-2">
+                    Pending {store.pendingProducts}
+                  </span>
+                  <span className="rounded-xl bg-rose-50 px-3 py-2">
+                    Rejected {store.rejectedProducts}
+                  </span>
+                  <span className="rounded-xl bg-slate-50 px-3 py-2">
+                    Updated {formatDateTime(store.latestCreatedAt)}
+                  </span>
                 </div>
 
                 <div className="mt-4 text-sm font-medium text-primary">Lihat produk toko</div>
               </button>
-=======
-  return (
-    <DashboardLayout title="Kelola Produk" subtitle="Review dan approval katalog produk vendor.">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-sm text-muted-foreground">Produk yang belum approved atau perlu ditinjau ulang.</p>
-          <Button variant="outline" onClick={() => void loadProducts()} disabled={loading}>
-            Refresh
-          </Button>
-        </div>
-
-        {loading ? (
-          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Memuat data produk...</div>
-        ) : items.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Belum ada produk untuk direview.</div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {items.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-border bg-card p-5 space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {item.vendor_store_name || "Vendor"} · {item.category_name || "Kategori belum ada"}
-                    </p>
-                  </div>
-                  <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(item.approval_status)}`}>
-                    {item.approval_status}
-                  </span>
-                </div>
-
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>{item.description || "Tidak ada deskripsi"}</p>
-                  <p>Harga: {formatIDR(Number(item.price || 0))}</p>
-                  <p>Voucher price: {formatIDR(Number(item.voucher_price || 0))}</p>
-                  <p>Stok: {item.stock_quantity} {item.unit}</p>
-                  <p>ID: {shortId(item.id)}</p>
-                  <p>Dibuat: {formatDateTime(item.created_at)}</p>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => void updateApproval(item.id, "approved")} disabled={mutatingId === item.id}>
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void updateApproval(item.id, "rejected")}
-                    disabled={mutatingId === item.id}
-                  >
-                    Reject
-                  </Button>
-                </div>
-              </div>
->>>>>>> 9c38274 (feat/add admin route and pages)
             ))}
           </div>
         )}
       </div>
     </DashboardLayout>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 9c38274 (feat/add admin route and pages)

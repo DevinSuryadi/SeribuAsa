@@ -219,6 +219,24 @@ class VoucherSingleRedemptionResponse(BaseModel):
     status: str
 
 
+class VoucherQrRedemptionRequest(BaseModel):
+    """Request for vendor QR redemption flow"""
+    code: str = Field(..., min_length=5, max_length=50)
+    amount: Decimal = Field(..., gt=0)
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+
+class VoucherQrRedemptionResponse(BaseModel):
+    """Response after vendor redeems a beneficiary QR voucher"""
+    order_id: str
+    voucher_id: str
+    code: str
+    redeemed_amount: Decimal
+    remaining_balance: Decimal
+    order_status: str
+    payment_status: str
+
+
 # ============================================
 # NEW: Voucher Transaction History
 # ============================================
