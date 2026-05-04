@@ -3,14 +3,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Sparkles, ShoppingBasket, Info, RefreshCw, Zap, Leaf, Apple,
-  Target, TrendingUp, ArrowRight, AlertCircle, CheckCircle2,
+  Sparkles,
+  ShoppingBasket,
+  Info,
+  RefreshCw,
+  Apple,
+  Target,
+  TrendingUp,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle2,
+  ClipboardList,
 } from 'lucide-react';
 import { useStaggerChildren } from '@/hooks/useStaggerChildren';
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getRecommendations } from '@/services/recommendations';
 import { toast } from 'sonner';
+import foto from '@/assets/recomAI-image.svg';
 
 interface Recommendation {
   id: string;
@@ -22,124 +32,113 @@ interface Recommendation {
   impact_score?: number;
 }
 
-const priorityConfig = {
-  high: {
-    label: 'Prioritas Tinggi',
-    color: 'text-red-700',
-    bg: 'bg-red-50',
-    border: 'border-red-200',
-    strip: 'bg-red-500',
-    badge: 'bg-red-100 text-red-700 border-red-200',
-    icon: AlertCircle,
-  },
-  medium: {
-    label: 'Prioritas Sedang',
-    color: 'text-amber-700',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    strip: 'bg-amber-400',
-    badge: 'bg-amber-100 text-amber-700 border-amber-200',
-    icon: Zap,
-  },
-  low: {
-    label: 'Info',
-    color: 'text-blue-700',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    strip: 'bg-blue-400',
-    badge: 'bg-blue-100 text-blue-700 border-blue-200',
-    icon: Info,
-  },
+const categoryLabel: Record<string, string> = {
+  nutrition: 'Nutrisi',
+  gizi: 'Gizi',
+  stunting: 'Stunting',
+  protein: 'Protein',
 };
 
 const categoryIcon: Record<string, React.ElementType> = {
-  gizi: Leaf,
+  nutrition: TrendingUp,
+  gizi: TrendingUp,
   stunting: Target,
   protein: Apple,
   default: TrendingUp,
 };
 
+const priorityConfig = {
+  high: {
+    color: 'text-rose-700',
+    progress: 'bg-rose-500',
+  },
+  medium: {
+    color: 'text-amber-700',
+    progress: 'bg-amber-500',
+  },
+  low: {
+    color: 'text-emerald-800',
+    progress: 'bg-[#2f6f4e]',
+  },
+};
+
 function RecommendationCard({ rec, index }: { rec: Recommendation; index: number }) {
   const cfg = priorityConfig[rec.priority] || priorityConfig.low;
-  const PriorityIcon = cfg.icon;
-  const CatIcon = categoryIcon[rec.category?.toLowerCase()] || categoryIcon.default;
-  const impactPct = Math.min(100, Math.max(20, rec.impact_score ?? 60 + index * 7));
+  const categoryKey = rec.category?.toLowerCase();
+  const CatIcon = categoryIcon[categoryKey] || categoryIcon.default;
+  const impactPct = Math.min(100, Math.max(20, rec.impact_score ?? 60));
 
   return (
-    <div
-      className="group relative bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex"
+    <article
+      className="group relative overflow-hidden rounded-[18px] border border-[#dde8de] bg-white shadow-[0_10px_30px_rgba(27,51,39,0.055)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_40px_rgba(27,51,39,0.08)]"
       style={{ animationDelay: `${index * 0.1}s` }}
     >
-      {/* Priority color strip */}
-      <div className={`w-1 flex-shrink-0 ${cfg.strip}`} />
-
-      <div className="flex-1 p-5">
-        {/* Header badges */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex flex-wrap gap-1.5">
-            <Badge variant="outline" className={`text-[10px] font-semibold border ${cfg.badge} flex items-center gap-1`}>
-              <PriorityIcon className="h-2.5 w-2.5" />
-              {cfg.label}
-            </Badge>
-            <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 flex items-center gap-1">
-              <CatIcon className="h-2.5 w-2.5" />
-              {rec.category}
-            </Badge>
-          </div>
-          <div className={`flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg ${cfg.bg}`}>
-            <Sparkles className={`h-4 w-4 ${cfg.color}`} />
-          </div>
+      <div className="p-4 sm:p-5">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Badge
+            variant="outline"
+            className="h-6 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-semibold text-emerald-800"
+          >
+            <CatIcon className="mr-1.5 h-3 w-3" />
+            {categoryLabel[categoryKey] || rec.category}
+          </Badge>
         </div>
 
-        {/* Title */}
-        <h3 className="font-bold text-foreground text-base mb-2 leading-snug group-hover:text-primary transition-colors">
-          {rec.title}
-        </h3>
+        <div className="grid gap-3">
+          <div>
+            <h3 className="text-base font-bold tracking-[-0.02em] text-[#17231d] sm:text-lg">
+              {rec.title}
+            </h3>
 
-        {/* Description */}
-        <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-          {rec.description}
-        </p>
-
-        {/* Impact progress bar */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Dampak Nutrisi</p>
-            <p className="text-[10px] font-bold text-foreground">{impactPct}%</p>
+            <p className="mt-1.5 max-w-3xl text-xs leading-5 text-[#66756d] sm:text-sm">
+              {rec.description}
+            </p>
           </div>
-          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-700 ${cfg.strip}`}
-              style={{ width: `${impactPct}%` }}
-            />
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between gap-4">
+              <p className="text-xs font-medium text-[#617066]">Dampak Nutrisi</p>
+              <p className={`text-sm font-bold ${cfg.color}`}>{impactPct}%</p>
+            </div>
+
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#edf2ee]">
+              <div
+                className={`h-full rounded-full ${cfg.progress} transition-all duration-700`}
+                style={{ width: `${impactPct}%` }}
+              />
+            </div>
+          </div>
+
+          {!!rec.action_items?.length && (
+            <div className="flex flex-wrap gap-2">
+              {rec.action_items.map((item, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#dbe7dc] bg-[#f7faf7] px-2.5 py-1.5 text-xs text-[#53645b]"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#2f6f4e]" />
+                  {item}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <Button
+              size="sm"
+              className="h-9 rounded-lg bg-[#165c3c] px-3.5 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(22,92,60,0.18)] transition-all hover:bg-[#0f4a30]"
+              asChild
+            >
+              <Link to="/dashboard/katalog">
+                <ShoppingBasket className="mr-2 h-3.5 w-3.5" />
+                Belanja Paket Ini
+                <ArrowRight className="ml-2 h-3.5 w-3.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+              </Link>
+            </Button>
           </div>
         </div>
-
-        {/* Action items */}
-        {rec.action_items && rec.action_items.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {rec.action_items.map((item, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-xs text-muted-foreground border border-border hover:bg-primary/5 hover:text-primary hover:border-primary/20 cursor-default transition-colors"
-              >
-                <CheckCircle2 className="h-2.5 w-2.5" />
-                {item}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* CTA */}
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 group/btn border-primary/20 hover:bg-primary hover:text-primary-foreground transition-colors" asChild>
-          <Link to="/dashboard/katalog">
-            <ShoppingBasket className="h-3 w-3" />
-            Belanja Paket Ini
-            <ArrowRight className="h-3 w-3 ml-auto opacity-0 -translate-x-1 group-hover/btn:opacity-100 group-hover/btn:translate-x-0 transition-all" />
-          </Link>
-        </Button>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -153,6 +152,7 @@ const RekomendasiAI = () => {
     try {
       setLoading(true);
       setError(null);
+
       const res = await getRecommendations();
       setRecommendations(res.data?.recommendations || []);
     } catch (err: unknown) {
@@ -168,166 +168,249 @@ const RekomendasiAI = () => {
     fetchRecommendations();
   }, [fetchRecommendations]);
 
+  const highCount = recommendations.filter((r) => r.priority === 'high').length;
+  const mediumCount = recommendations.filter((r) => r.priority === 'medium').length;
+  const lowCount = recommendations.filter((r) => r.priority === 'low').length;
+
   return (
-    <DashboardLayout title="Rekomendasi Nutrisi AI" subtitle="Saran paket nutrisi berdasarkan kebutuhan keluarga Anda.">
-      <div className="space-y-6">
+    <DashboardLayout
+      title="Rekomendasi Nutrisi AI"
+      subtitle="Saran paket nutrisi berdasarkan kebutuhan keluarga Anda."
+    >
+      <div className="relative mx-auto max-w-[1800px] space-y-4 pb-3">
+        <div className="pointer-events-none absolute right-0 top-12 -z-10 h-52 w-52 rounded-full bg-emerald-100/25 blur-3xl" />
 
-        {/* AI Hero Banner */}
-        <div
-          className="relative rounded-2xl overflow-hidden p-6"
-          style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%)' }}
-        >
-          {/* Animated sparkle circles */}
-          <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/5 animate-pulse" />
-          <div className="absolute right-16 bottom-2 h-16 w-16 rounded-full bg-white/5" />
-          <div className="absolute left-1/2 top-1 h-10 w-10 rounded-full bg-white/5" />
+        <section className="relative overflow-hidden rounded-[18px] border border-[#d9e6da] bg-[#f7faf6] shadow-[0_10px_34px_rgba(27,51,39,0.055)]">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#f8fbf8] via-[#f8fbf8]/96 to-[#f8fbf8]/38" />
 
-          <div className="relative z-10 flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
-                  <Sparkles className="h-4 w-4 text-white" />
-                </div>
-                <Badge className="bg-white/20 text-white border-0 text-xs">AI Powered</Badge>
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[62%] lg:block">
+            <img
+              src={foto}
+              alt=""
+              aria-hidden="true"
+              className="absolute right-0 top-1/2 h-[130%] w-full -translate-y-1/2 object-contain object-right opacity-95"
+              style={{
+                WebkitMaskImage:
+                  'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.18) 10%, black 28%, black 100%)',
+                maskImage:
+                  'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.18) 10%, black 28%, black 100%)',
+              }}
+            />
+
+            <div className="absolute inset-y-0 left-0 w-56 bg-gradient-to-r from-[#f8fbf8] via-[#f8fbf8]/90 to-transparent" />
+          </div>
+
+          <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-r from-[#f8fbf8] via-[#f8fbf8]/72 to-transparent" />
+
+          <div className="relative z-10 grid min-h-[145px] items-center gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(280px,1fr)] lg:px-6 lg:py-5">
+            <div className="max-w-md">
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#d7e5d8] bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-[#2f6f4e] shadow-sm">
+                <Sparkles className="h-3 w-3" />
+                AI Powered
               </div>
-              <h2 className="text-xl font-bold text-white mb-1">Analisis Gizi Cerdas</h2>
-              <p className="text-sm text-white/75 max-w-sm leading-relaxed">
+
+              <h2 className="text-xl font-bold tracking-[-0.04em] text-[#17231d] sm:text-2xl lg:text-[26px] lg:leading-[1.08]">
+                Analisis Gizi Cerdas
+              </h2>
+
+              <p className="mt-2 max-w-md text-xs leading-5 text-[#5f6f67] sm:text-sm">
                 Rekomendasi disusun berdasarkan{' '}
-                <strong className="text-white">pedoman Kemenkes RI</strong> &{' '}
-                <strong className="text-white">panduan WHO</strong>, disesuaikan kondisi anak Anda.
+                <strong className="font-bold text-[#165c3c]">
+                  pedoman Kemenkes RI
+                </strong>{' '}
+                dan{' '}
+                <strong className="font-bold text-[#165c3c]">panduan WHO</strong>,
+                disesuaikan kondisi anak Anda.
               </p>
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Button
+                  className="h-9 rounded-lg bg-[#165c3c] px-3.5 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(22,92,60,0.18)] transition-all hover:bg-[#0f4a30]"
+                  onClick={fetchRecommendations}
+                  disabled={loading}
+                >
+                  <RefreshCw
+                    className={`mr-2 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`}
+                  />
+                  Perbarui Analisis
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-9 rounded-lg border-[#cfded1] bg-white/85 px-3.5 text-xs font-semibold text-[#165c3c] shadow-sm transition-all hover:!border-[#165c3c] hover:!bg-[#eef5ee] hover:!text-[#0f4a30]"
+                  asChild
+                >
+                  <Link to="/dashboard/survei-fies">
+                    <ClipboardList className="mr-2 h-3.5 w-3.5" />
+                    Isi Survei FIES
+                  </Link>
+                </Button>
+              </div>
             </div>
-            <div className="flex-shrink-0 hidden sm:flex flex-col items-center gap-1 text-white/60">
-              <div className="text-3xl font-extrabold text-white">{recommendations.length}</div>
-              <div className="text-xs">Rekomendasi</div>
+
+            <div className="relative hidden h-full min-h-[120px] lg:block" />
+
+            <div className="relative block overflow-hidden rounded-xl border border-[#d9e6da] bg-white/70 lg:hidden">
+              <img
+                src={foto}
+                alt="Ilustrasi bahan makanan sehat"
+                className="h-28 w-full object-contain object-right"
+              />
             </div>
           </div>
+        </section>
 
-          <div className="relative z-10 mt-4 flex gap-2">
-            <Button
-              size="sm"
-              className="bg-white text-blue-700 hover:bg-blue-50 border-0 text-xs font-semibold gap-1.5"
-              onClick={fetchRecommendations}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-              Perbarui Analisis
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-white/30 text-white hover:bg-white/10 text-xs gap-1.5"
-              asChild
-            >
-              <Link to="/dashboard/survei-fies">
-                <Target className="h-3 w-3" />
-                Isi Survei FIES
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* Loading */}
         {loading && (
-          <div className="space-y-4">
+          <section className="space-y-2.5">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="w-1 bg-secondary flex-shrink-0" />
-                <div className="flex-1 p-5 animate-pulse space-y-3">
-                  <div className="flex gap-2">
-                    <div className="h-5 w-24 bg-secondary rounded-full" />
-                    <div className="h-5 w-20 bg-secondary rounded-full" />
+              <div
+                key={i}
+                className="overflow-hidden rounded-[18px] border border-[#dfe8df] bg-white shadow-[0_10px_30px_rgba(27,51,39,0.055)]"
+              >
+                <div className="p-4">
+                  <div className="animate-pulse space-y-3">
+                    <div className="flex gap-2">
+                      <div className="h-6 w-20 rounded-full bg-[#edf2ee]" />
+                      <div className="h-6 w-20 rounded-full bg-[#edf2ee]" />
+                    </div>
+                    <div className="h-4 w-3/4 rounded bg-[#edf2ee]" />
+                    <div className="h-3.5 w-full rounded bg-[#edf2ee]" />
+                    <div className="h-3.5 w-2/3 rounded bg-[#edf2ee]" />
+                    <div className="h-1.5 w-full rounded-full bg-[#edf2ee]" />
+                    <div className="flex gap-2">
+                      <div className="h-7 w-52 rounded-full bg-[#edf2ee]" />
+                      <div className="h-7 w-44 rounded-full bg-[#edf2ee]" />
+                      <div className="h-7 w-36 rounded-full bg-[#edf2ee]" />
+                    </div>
+                    <div className="h-9 w-36 rounded-lg bg-[#edf2ee]" />
                   </div>
-                  <div className="h-5 w-3/4 bg-secondary rounded" />
-                  <div className="h-4 w-full bg-secondary rounded" />
-                  <div className="h-4 w-2/3 bg-secondary rounded" />
-                  <div className="h-1.5 w-full bg-secondary rounded-full" />
                 </div>
               </div>
             ))}
-          </div>
+          </section>
         )}
 
-        {/* Error */}
         {!loading && error && (
-          <Card className="border-destructive/30 bg-destructive/5">
-            <CardContent className="pt-6 flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-destructive">Gagal memuat rekomendasi</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
+          <Card className="rounded-[18px] border border-red-200 bg-red-50/70 shadow-[0_10px_30px_rgba(127,29,29,0.055)]">
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-red-600">
+                <AlertCircle className="h-4 w-4" />
               </div>
-              <Button variant="outline" size="sm" onClick={fetchRecommendations} className="flex-shrink-0">
-                <RefreshCw className="mr-1 h-3 w-3" /> Coba Lagi
+
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-red-700">
+                  Gagal memuat rekomendasi
+                </p>
+                <p className="mt-0.5 text-xs text-red-700/70">{error}</p>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchRecommendations}
+                className="h-8 shrink-0 rounded-lg border-red-200 bg-white text-xs text-red-700 hover:bg-red-50"
+              >
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                Coba Lagi
               </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Empty State */}
         {!loading && !error && recommendations.length === 0 && (
-          <div className="text-center rounded-2xl border border-dashed border-border bg-card py-16 px-8">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mx-auto mb-4">
-              <Sparkles className="h-7 w-7 text-primary" />
+          <section className="rounded-[18px] border border-dashed border-[#cadbcd] bg-white/80 px-5 py-8 text-center shadow-[0_10px_30px_rgba(27,51,39,0.055)]">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#eef5ee] text-[#2f6f4e]">
+              <Sparkles className="h-5 w-5" />
             </div>
-            <h3 className="text-lg font-bold text-foreground mb-2">Belum Ada Rekomendasi</h3>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-6">
+
+            <h3 className="text-base font-bold tracking-[-0.02em] text-[#17231d]">
+              Belum Ada Rekomendasi
+            </h3>
+
+            <p className="mx-auto mt-1.5 max-w-sm text-xs leading-5 text-[#66756d] sm:text-sm">
               Isi survei FIES dan input data gizi anak untuk mendapatkan rekomendasi personal.
             </p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <Button asChild>
+
+            <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+              <Button
+                className="h-9 rounded-lg bg-[#165c3c] px-3.5 text-xs font-semibold text-white hover:bg-[#0f4a30]"
+                asChild
+              >
                 <Link to="/dashboard/survei-fies">
-                  <Target className="h-4 w-4 mr-2" /> Isi Survei FIES
+                  <Target className="mr-2 h-3.5 w-3.5" />
+                  Isi Survei FIES
                 </Link>
               </Button>
-              <Button variant="outline" asChild>
+
+              <Button
+                variant="outline"
+                className="h-9 rounded-lg border-[#cfded1] bg-white px-3.5 text-xs font-semibold text-[#165c3c] hover:bg-[#f7faf7]"
+                asChild
+              >
                 <Link to="/dashboard/pemantauan-gizi">
-                  <TrendingUp className="h-4 w-4 mr-2" /> Input Data Gizi
+                  <TrendingUp className="mr-2 h-3.5 w-3.5" />
+                  Input Data Gizi
                 </Link>
               </Button>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Recommendations Grid */}
         {!loading && !error && recommendations.length > 0 && (
-          <div ref={gridRef} className="space-y-4">
-            {/* Priority summary bar */}
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">{recommendations.length} rekomendasi</span>
-              <span>·</span>
-              {(['high', 'medium', 'low'] as const).map((p) => {
-                const count = recommendations.filter((r) => r.priority === p).length;
-                if (!count) return null;
+          <section ref={gridRef} className="space-y-3">
+            <div className="border-b border-[#dfe8df]">
+              <div className="flex items-center gap-6">
+                <button
+                  type="button"
+                  className="relative inline-flex h-9 items-center gap-1.5 text-sm font-semibold text-[#165c3c]"
+                >
+                  <Info className="h-4 w-4" />
+                  Info
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[#6b776f]">
+              <span className="rounded-full bg-[#eef5ee] px-2.5 py-1.5 font-semibold text-[#165c3c]">
+                {recommendations.length} rekomendasi
+              </span>
+
+              {!!highCount && (
+                <span className="rounded-full bg-rose-50 px-2.5 py-1.5 font-semibold text-rose-700">
+                  {highCount} prioritas tinggi
+                </span>
+              )}
+
+              {!!mediumCount && (
+                <span className="rounded-full bg-amber-50 px-2.5 py-1.5 font-semibold text-amber-700">
+                  {mediumCount} prioritas sedang
+                </span>
+              )}
+
+              {!!lowCount && (
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1.5 font-semibold text-emerald-800">
+                  {lowCount} info
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {(['high', 'medium', 'low'] as const).map((priority) => {
+                const group = recommendations.filter((r) => r.priority === priority);
+                if (!group.length) return null;
+
                 return (
-                  <span key={p} className={`font-medium ${priorityConfig[p].color}`}>
-                    {count} {priorityConfig[p].label.toLowerCase()}
-                  </span>
+                  <div key={priority} className="space-y-2.5">
+                    <div className="space-y-3">
+                      {group.map((rec, i) => (
+                        <RecommendationCard key={rec.id} rec={rec} index={i} />
+                      ))}
+                    </div>
+                  </div>
                 );
               })}
             </div>
-
-            {/* Cards grouped by priority */}
-            {(['high', 'medium', 'low'] as const).map((priority) => {
-              const group = recommendations.filter((r) => r.priority === priority);
-              if (!group.length) return null;
-              return (
-                <div key={priority}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`h-2 w-2 rounded-full ${priorityConfig[priority].strip}`} />
-                    <p className={`text-xs font-semibold uppercase tracking-wider ${priorityConfig[priority].color}`}>
-                      {priorityConfig[priority].label}
-                    </p>
-                  </div>
-                  <div className="space-y-3">
-                    {group.map((rec, i) => (
-                      <RecommendationCard key={rec.id} rec={rec} index={i} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          </section>
         )}
       </div>
     </DashboardLayout>
