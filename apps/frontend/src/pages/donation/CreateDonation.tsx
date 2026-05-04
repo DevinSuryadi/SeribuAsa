@@ -128,11 +128,11 @@ export default function CreateDonation() {
             },
           });
         },
-        onPending: function (result: any) {
+        onPending: function () {
           toast.info("Pembayaran tertunda. Harap selesaikan pembayaran Anda.", { id: "pending" });
           navigate("/dashboard");
         },
-        onError: function (result: any) {
+        onError: function () {
           toast.error("Pembayaran gagal diproses!", { id: "error" });
           setLoading(false);
         },

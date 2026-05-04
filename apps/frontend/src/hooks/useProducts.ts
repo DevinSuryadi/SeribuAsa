@@ -106,8 +106,8 @@ export function useProducts() {
     setError(null);
     try {
       const data = await productsService.getProduct(id);
-      setSelectedProduct(data as Product);
-      return data as Product;
+      setSelectedProduct(data as unknown as Product);
+      return data as unknown as Product;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch product";
       setError(message);

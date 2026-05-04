@@ -13,7 +13,9 @@ from uuid import UUID
 from app.models.donation import Donation, Voucher, VoucherRedemption, VoucherStatusEnum
 from app.models.user import BeneficiaryProfile
 from app.models.cart import VoucherTransaction, VoucherTransactionTypeEnum, VoucherLock
+from app.models.product import Order, OrderStatusEnum, PaymentStatusEnum
 from app.models.product import Product, Category
+from app.models.user import VendorProfile
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +103,7 @@ class VoucherService:
     ) -> Optional[Voucher]:
         """Get voucher by code"""
         return db.query(Voucher).filter(
-            Voucher.code == code,
-            Voucher.is_active
+            Voucher.code == code
         ).first()
     
     @staticmethod
@@ -169,13 +170,17 @@ class VoucherService:
         
         redemptions = []
         remaining_amount = amount
-        
+        total_redeemed = Decimal("0")
+
         for voucher in vouchers:
             if remaining_amount <= 0:
                 break
-            
-            redemption_amount = min(float(voucher.balance), float(remaining_amount))  # type: ignore[arg-type]
-            
+
+            redemption_amount = min(
+                Decimal(voucher.balance or Decimal("0")),
+                Decimal(remaining_amount),
+            )
+
             redemption = VoucherRedemption(
                 voucher_id=voucher.id,
                 order_id=order_uuid,
@@ -183,20 +188,33 @@ class VoucherService:
             )
             redemptions.append(redemption)
             db.add(redemption)
-            
-            voucher.balance -= redemption_amount  # type: ignore[assignment]
-            remaining_amount -= redemption_amount  # type: ignore[operator]
-            
+
+            voucher.balance = Decimal(voucher.balance or Decimal("0")) - redemption_amount
+            remaining_amount = Decimal(remaining_amount) - redemption_amount
+            total_redeemed += redemption_amount
+
+            db.add(
+                VoucherTransaction(
+                    voucher_id=voucher.id,
+                    order_id=order_uuid,
+                    transaction_type=VoucherTransactionTypeEnum.redeemed,
+                    amount=redemption_amount,
+                )
+            )
+
             if voucher.balance <= 0:
                 voucher.status = VoucherStatusEnum.redeemed
-        
+                voucher.balance = Decimal("0")
+
         beneficiary = db.query(BeneficiaryProfile).filter(
             BeneficiaryProfile.user_id == vouchers[0].beneficiary_id
         ).first()
         
         if beneficiary:
-            beneficiary.vouchers_balance -= amount  # type: ignore[assignment]
-        
+            beneficiary.vouchers_balance = Decimal(
+                beneficiary.vouchers_balance or Decimal("0")
+            ) - total_redeemed
+
         db.commit()
         
         for redemption in redemptions:
@@ -214,7 +232,7 @@ class VoucherService:
                 }
                 for v, r in zip(vouchers, redemptions)
             ],
-            "total_redeemed": amount
+            "total_redeemed": total_redeemed
         }
     
     @staticmethod
@@ -226,39 +244,51 @@ class VoucherService:
         """Get voucher transaction history for a beneficiary"""
         beneficiary_uuid = VoucherService._to_uuid(beneficiary_id)
         transactions = []
-        
-        vouchers = db.query(Voucher).filter(
-            Voucher.beneficiary_id == beneficiary_uuid
-        ).order_by(Voucher.allocated_date.desc()).all()
-        
-        for voucher in vouchers:
+
+        voucher_transactions = (
+            db.query(VoucherTransaction, Voucher)
+            .join(Voucher, Voucher.id == VoucherTransaction.voucher_id)
+            .filter(Voucher.beneficiary_id == beneficiary_uuid)
+            .order_by(VoucherTransaction.created_at.desc())
+            .all()
+        )
+
+        for tx, voucher in voucher_transactions:
+            if tx.transaction_type == VoucherTransactionTypeEnum.allocated:
+                tx_type = "allocation"
+                amount_value = float(tx.amount or 0)
+                description = f"Voucher {voucher.code} dialokasikan"
+                source = (
+                    f"Donation {voucher.donation_id}"
+                    if voucher.donation_id
+                    else "Direct allocation"
+                )
+            elif tx.transaction_type == VoucherTransactionTypeEnum.redeemed:
+                tx_type = "redemption"
+                amount_value = -float(tx.amount or 0)
+                description = "Voucher ditukar di vendor"
+                source = f"Order {tx.order_id}" if tx.order_id else "Vendor redemption"
+            elif tx.transaction_type == VoucherTransactionTypeEnum.expired:
+                tx_type = "expired"
+                amount_value = -float(tx.amount or 0)
+                description = "Voucher kedaluwarsa"
+                source = f"Voucher {voucher.code}"
+            else:
+                tx_type = str(tx.transaction_type.value)
+                amount_value = float(tx.amount or 0)
+                description = f"Transaksi voucher {voucher.code}"
+                source = f"Voucher {voucher.code}"
+
             transactions.append({
-                "id": str(voucher.id),
-                "type": "allocation",
-                "amount": float(voucher.balance) if voucher.balance else 0,
-                "balance_after": float(voucher.balance) if voucher.balance else 0,
-                "source": f"Donation {voucher.donation_id}" if voucher.donation_id else "Direct allocation",
-                "date": voucher.allocated_date,
-                "description": f"Voucher {voucher.code} allocated"
+                "id": str(tx.id),
+                "type": tx_type,
+                "amount": amount_value,
+                "balance_after": float(voucher.balance or 0),
+                "source": source,
+                "date": tx.created_at,
+                "description": description,
             })
-        
-        redemptions = db.query(VoucherRedemption).join(
-            Voucher, VoucherRedemption.voucher_id == Voucher.id
-        ).filter(
-            Voucher.beneficiary_id == beneficiary_uuid
-        ).order_by(VoucherRedemption.created_at.desc()).all()
-        
-        for redemption in redemptions:
-            transactions.append({
-                "id": str(redemption.id),
-                "type": "redemption",
-                "amount": -float(redemption.amount) if redemption.amount else 0,
-                "balance_after": 0.0,
-                "source": f"Order {redemption.order_id}",
-                "date": redemption.created_at,
-                "description": "Redeemed at vendor"
-            })
-        
+
         transactions.sort(key=lambda x: x["date"], reverse=True)
         
         if params:
@@ -444,7 +474,46 @@ class VoucherService:
         logger.info(f"Recorded transaction {transaction_type.value} for voucher {voucher_id}: {amount}")
         
         return transaction
-    
+
+    @staticmethod
+    def _apply_voucher_redemption(
+        db: Session,
+        voucher: Voucher,
+        amount: Decimal,
+        order_id: UUID,
+    ) -> None:
+        redeem_amount = Decimal(amount)
+
+        voucher.balance = Decimal(voucher.balance or Decimal("0")) - redeem_amount
+        if voucher.balance <= 0:
+            voucher.balance = Decimal("0")
+            voucher.status = VoucherStatusEnum.redeemed
+
+        beneficiary = db.query(BeneficiaryProfile).filter(
+            BeneficiaryProfile.user_id == voucher.beneficiary_id
+        ).first()
+
+        if beneficiary:
+            beneficiary.vouchers_balance = Decimal(
+                beneficiary.vouchers_balance or Decimal("0")
+            ) - redeem_amount
+
+        db.add(
+            VoucherTransaction(
+                voucher_id=voucher.id,
+                order_id=order_id,
+                transaction_type=VoucherTransactionTypeEnum.redeemed,
+                amount=redeem_amount,
+            )
+        )
+        db.add(
+            VoucherRedemption(
+                voucher_id=voucher.id,
+                order_id=order_id,
+                amount=redeem_amount,
+            )
+        )
+
     @staticmethod
     def redeem_voucher_with_transaction(
         db: Session,
@@ -470,45 +539,23 @@ class VoucherService:
             raise ValueError("Could not lock voucher")
         
         try:
-            # Deduct balance
-            voucher.balance -= amount  # type: ignore[assignment]
-            
-            if voucher.balance <= 0:
-                voucher.status = VoucherStatusEnum.redeemed
-                voucher.balance = Decimal(0)
-            
-            # Update beneficiary balance
-            beneficiary = db.query(BeneficiaryProfile).filter(
-                BeneficiaryProfile.user_id == voucher.beneficiary_id
-            ).first()
-            
-            if beneficiary:
-                beneficiary.vouchers_balance -= amount  # type: ignore[assignment]
-            
-            # Record transaction
-            VoucherService.record_transaction(
-                db,
-                str(voucher.id),
-                VoucherTransactionTypeEnum.redeemed,
-                amount,
-                order_id
+            order_uuid = VoucherService._to_uuid(order_id)
+            if order_uuid is None:
+                raise ValueError("Order ID is required")
+
+            VoucherService._apply_voucher_redemption(
+                db=db,
+                voucher=voucher,
+                amount=amount,
+                order_id=order_uuid,
             )
-            
-            # Create redemption record
-            redemption = VoucherRedemption(
-                voucher_id=voucher.id,
-                order_id=VoucherService._to_uuid(order_id),
-                amount=amount
-            )
-            db.add(redemption)
-            
             db.commit()
-            
+
             # Unlock after success
             VoucherService.unlock_voucher(db, str(voucher.id))
-            
+
             logger.info(f"Successfully redeemed voucher {voucher_code} for {amount}")
-            
+
             return {
                 "voucher_id": str(voucher.id),
                 "code": voucher.code,
@@ -516,9 +563,85 @@ class VoucherService:
                 "remaining_balance": float(voucher.balance),
                 "status": voucher.status.value
             }
-        
+
         except Exception as e:
             # Unlock on failure
             VoucherService.unlock_voucher(db, str(voucher.id))
             logger.error(f"Error redeeming voucher: {e}")
+            raise
+
+    @staticmethod
+    def redeem_voucher_for_vendor_sale(
+        db: Session,
+        vendor_id: str | UUID,
+        voucher_code: str,
+        amount: Decimal,
+        notes: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Redeem a beneficiary voucher from a vendor QR scan and create a completed order."""
+        vendor_uuid = VoucherService._to_uuid(vendor_id)
+        if vendor_uuid is None:
+            raise ValueError("Vendor ID is required")
+
+        vendor = db.query(VendorProfile).filter(
+            VendorProfile.user_id == vendor_uuid,
+            VendorProfile.approval_status == "approved",
+            VendorProfile.is_active.is_(True),
+        ).first()
+        if not vendor:
+            raise ValueError("Vendor is not approved for voucher redemption")
+
+        VoucherService.validate_voucher(db, voucher_code, None, amount)
+        voucher = VoucherService.get_voucher_by_code(db, voucher_code)
+        if not voucher:
+            raise ValueError("Voucher not found")
+
+        if not VoucherService.lock_voucher(db, str(voucher.id)):
+            raise ValueError("Voucher is currently in use. Please try again later")
+
+        try:
+            order = Order(
+                beneficiary_id=voucher.beneficiary_id,
+                vendor_id=vendor_uuid,
+                total_amount=Decimal(amount),
+                voucher_used=Decimal(amount),
+                cash_paid=Decimal("0"),
+                status=OrderStatusEnum.completed,
+                payment_status=PaymentStatusEnum.paid,
+                notes=(notes or "QR voucher redemption").strip(),
+            )
+            db.add(order)
+            db.flush()
+
+            VoucherService._apply_voucher_redemption(
+                db=db,
+                voucher=voucher,
+                amount=Decimal(amount),
+                order_id=order.id,
+            )
+
+            db.commit()
+            db.refresh(order)
+            db.refresh(voucher)
+            VoucherService.unlock_voucher(db, str(voucher.id))
+
+            logger.info(
+                "Vendor %s redeemed voucher %s for order %s",
+                vendor_uuid,
+                voucher_code,
+                order.id,
+            )
+
+            return {
+                "order_id": str(order.id),
+                "voucher_id": str(voucher.id),
+                "code": voucher.code,
+                "redeemed_amount": float(amount),
+                "remaining_balance": float(voucher.balance or 0),
+                "order_status": str(order.status),
+                "payment_status": str(order.payment_status),
+            }
+        except Exception:
+            db.rollback()
+            VoucherService.unlock_voucher(db, str(voucher.id))
             raise

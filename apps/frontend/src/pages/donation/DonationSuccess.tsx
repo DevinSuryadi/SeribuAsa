@@ -162,6 +162,7 @@ export default function DonationSuccess() {
 
   const displayAmount = donationData?.amount || stateAmount || 0;
   const displayTransactionId = donationData?.transaction_id || stateTransactionId || "N/A";
+  const shareChildrenHelped = impact?.children_helped ?? 0;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-6">
@@ -219,8 +220,8 @@ export default function DonationSuccess() {
                 className="flex-1 h-9 text-xs"
                 onClick={async () => {
                   const childrenText =
-                    impact?.children_helped > 0
-                      ? `untuk membantu ${impact.children_helped} anak mendapatkan nutrisi`
+                    shareChildrenHelped > 0
+                      ? `untuk membantu ${shareChildrenHelped} anak mendapatkan nutrisi`
                       : "untuk membantu anak-anak yang membutuhkan";
                   const shareText = `Saya baru saja berdonasi ${formatIDR(displayAmount)} melalui SeribuAsa ${childrenText}. Yuk, ikut berdonasi!`;
 
@@ -249,8 +250,8 @@ export default function DonationSuccess() {
                 className="flex-1 h-9 text-xs"
                 onClick={async () => {
                   const childrenText =
-                    impact?.children_helped > 0
-                      ? `untuk membantu ${impact.children_helped} anak mendapatkan nutrisi`
+                    shareChildrenHelped > 0
+                      ? `untuk membantu ${shareChildrenHelped} anak mendapatkan nutrisi`
                       : "untuk membantu anak-anak yang membutuhkan";
                   const shareText = `Saya baru saja berdonasi ${formatIDR(displayAmount)} melalui SeribuAsa ${childrenText}. Yuk, ikut berdonasi! ${window.location.origin}`;
                   await navigator.clipboard.writeText(shareText);

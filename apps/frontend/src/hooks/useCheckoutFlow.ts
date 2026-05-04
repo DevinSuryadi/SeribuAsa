@@ -9,7 +9,6 @@ import { getCart, updateCartItem, removeCartItem, clearCart } from "@/services/c
 import {
   validateVoucher,
   checkProductEligibility,
-  redeemSingleVoucher,
   getVoucherBalance,
 } from "@/services/vouchers";
 import { createOrder } from "@/services/orders";
@@ -135,7 +134,7 @@ export function useCheckoutFlow() {
       const balanceData = await getVoucherBalance(user.id);
       setState((prev) => ({
         ...prev,
-        voucherBalance: balanceData.balance || 0,
+        voucherBalance: Number(balanceData.total_balance || 0),
       }));
     } catch (err: any) {
       // Don't set error state, just log it - balance loading shouldn't block checkout
@@ -156,12 +155,14 @@ export function useCheckoutFlow() {
         validatedVoucher: result,
         isLoading: false,
       }));
+      return result;
     } catch (err: any) {
       setState((prev) => ({
         ...prev,
         error: err.message || "Invalid voucher code",
         isLoading: false,
       }));
+      throw err;
     }
   }, []);
 
@@ -334,25 +335,6 @@ export function useCheckoutFlow() {
       // If any orders failed to create, throw error
       if (orderCreationErrors.length > 0) {
         throw new Error(`Order creation failed for: ${orderCreationErrors.join(", ")}`);
-      }
-
-      // THEN redeem voucher with real order IDs (after orders are created)
-      if (state.appliedVoucher && state.appliedVoucher.voucher_id && orderIds.length > 0) {
-        try {
-          // Redeem voucher against the first order (or distribute across orders)
-          await redeemSingleVoucher(
-            {
-              code: state.appliedVoucher.code,
-              amount: state.appliedVoucher.applied_amount,
-              order_id: orderIds[0],
-            },
-            {
-              idempotencyKey: `redeem-${state.appliedVoucher.code}-${orderIds[0]}-${state.appliedVoucher.applied_amount}`,
-            }
-          );
-        } catch (err: any) {
-          console.error("Voucher redemption failed after order creation:", err);
-        }
       }
 
       // Clear cart after successful order

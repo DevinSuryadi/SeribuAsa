@@ -61,7 +61,7 @@ export function useVendorData(): UseVendorDataReturn {
   const refetchOrders = useCallback(async () => {
     try {
       const res = await getOrders({ page_size: 50 });
-      setOrders(res.orders || res.items || []);
+      setOrders((res.orders || []) as unknown as VendorOrder[]);
     } catch (err: unknown) {
       console.error("Failed to fetch orders", err);
       throw err;
@@ -71,7 +71,7 @@ export function useVendorData(): UseVendorDataReturn {
   const refetchProducts = useCallback(async () => {
     try {
       const res = await getProducts();
-      setProducts(res.items || []);
+      setProducts((res.items || []) as unknown as VendorProduct[]);
     } catch (err: unknown) {
       console.error("Failed to fetch products", err);
       throw err;

@@ -118,7 +118,7 @@ const KatalogPangan = () => {
             : Promise.resolve({ items: [] }),
         ]);
 
-        setProducts(productsData.items || []);
+        setProducts((productsData.items || []) as unknown as Product[]);
         const catNames = (catsData || []).map((c: any) => c.name);
         setCategories(["Semua", ...catNames]);
         setBalance(parseFloat(balanceData.total_balance || 0));
