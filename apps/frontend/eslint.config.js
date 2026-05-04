@@ -19,13 +19,5 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
-    rules: {
-      // Allow exports alongside components (needed for shadcn/ui)
-      "react-refresh/only-export-components": "off",
-      // Allow setState in effects for now (common pattern)
-      "react-hooks/set-state-in-effect": "warn",
-      // Allow explicit any for rapid development
-      "@typescript-eslint/no-explicit-any": "warn",
-    },
   },
 ]);
