@@ -1,7 +1,7 @@
 export const loadMidtransScript = (clientKey: string): Promise<boolean> => {
   return new Promise((resolve) => {
     const midtransScriptUrl = 'https://app.sandbox.midtrans.com/snap/snap.js';
-    
+
     let scriptTag = document.getElementById('midtrans-script') as HTMLScriptElement | null;
     if (scriptTag) {
       resolve(true);

@@ -702,15 +702,31 @@ const VendorSettlement = () => {
       </div>
 
       <Dialog open={showClaimModal} onOpenChange={setShowClaimModal}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
+        <DialogContent className="rounded-2xl max-w-sm p-0 overflow-hidden [&>button:first-of-type]:hidden">
+          <DialogHeader className="sr-only">
             <DialogTitle>Klaim Settlement</DialogTitle>
-            <DialogDescription>
-              Ajukan pencairan dana untuk periode{" "}
-              {selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : "-"}
-            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border bg-green-50">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-green-600">
+                <ArrowRight className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-green-800">Klaim Settlement</p>
+                <p className="text-[10px] text-green-600">
+                  Periode {selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : "-"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowClaimModal(false)}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors"
+            >
+              <span className="text-foreground text-sm font-bold leading-none">✕</span>
+            </button>
+          </div>
+          <div className="p-5 space-y-4">
             <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-2.5 text-sm">
               {[
                 {

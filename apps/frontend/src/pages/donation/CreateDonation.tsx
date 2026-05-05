@@ -112,7 +112,12 @@ export default function CreateDonation() {
       
       // @ts-ignore
       window.snap.pay(snapToken, {
-        onSuccess: function (result: any) {
+        onSuccess: async function (result: any) {
+          try {
+            await import("@/services/donations").then(m => m.simulatePayment(donation.id));
+          } catch (e) {
+            console.error("Failed to verify payment status:", e);
+          }
           toast.success("Pembayaran berhasil diselesaikan! 🎉", { id: "paid" });
           navigate("/donation/success", {
             state: {

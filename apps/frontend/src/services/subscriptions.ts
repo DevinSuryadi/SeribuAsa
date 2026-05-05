@@ -38,7 +38,12 @@ export interface UpgradePlan {
  */
 export async function getSubscriptions(): Promise<Subscription[]> {
   const res = await apiFetch("/subscriptions/");
-  return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+  // Backend returns { subscriptions: [...], total: n }
+  if (res?.data?.subscriptions && Array.isArray(res.data.subscriptions)) return res.data.subscriptions;
+  if (res?.subscriptions && Array.isArray(res.subscriptions)) return res.subscriptions;
+  if (Array.isArray(res?.data)) return res.data;
+  if (Array.isArray(res)) return res;
+  return [];
 }
 
 /**

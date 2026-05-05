@@ -38,6 +38,7 @@ import {
 } from "@/services/vouchers";
 import { getOrders } from "@/services/orders";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 import jsQR from "jsqr";
 
 // ── Types ─────────────────────────────────────────────────────
@@ -169,9 +170,24 @@ function VoucherQRGenerator({ balance }: { balance: VoucherBalance | null }) {
   const payload = selectedCode
     ? `VOUCHER:${selectedCode}${customAmount ? `:${customAmount}` : ""}`
     : "";
-  const qrUrl = payload
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=${encodeURIComponent(payload)}`
-    : "";
+
+  const handleDownloadQR = () => {
+    const svgEl = document.getElementById(`gen-qr-${selectedCode}`) as SVGElement | null;
+    if (!svgEl) return;
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const canvas = document.createElement("canvas");
+    canvas.width = 280; canvas.height = 280;
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      ctx?.drawImage(img, 0, 0, 280, 280);
+      const a = document.createElement("a");
+      a.download = `voucher-${selectedCode}.png`;
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    };
+    img.src = `data:image/svg+xml;base64,${btoa(svgData)}`;
+  };
 
   const copyCode = () => {
     if (!selectedCode) return;
@@ -242,18 +258,24 @@ function VoucherQRGenerator({ balance }: { balance: VoucherBalance | null }) {
       </div>
 
       {/* QR Display */}
-      {qrUrl && (
+      {payload && (
         <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <QrCode className="h-4 w-4 text-green-700" />
             <p className="text-sm font-bold text-green-800">QR Voucher Anda</p>
           </div>
-          <img
-            src={qrUrl}
-            alt={`QR ${selectedCode}`}
-            className="w-48 h-48 mx-auto rounded-xl border border-green-200 shadow-sm"
-            loading="lazy"
-          />
+          <div className="flex justify-center">
+            <div className="rounded-xl border-4 border-green-600 bg-white p-2 shadow-sm">
+              <QRCodeSVG
+                id={`gen-qr-${selectedCode}`}
+                value={payload}
+                size={180}
+                level="H"
+                fgColor="#15803d"
+                bgColor="#ffffff"
+              />
+            </div>
+          </div>
           <p className="text-xs font-mono font-bold text-green-700 mt-3">{selectedCode}</p>
           {customAmount && (
             <p className="text-xs text-green-600 mt-1">
@@ -273,12 +295,7 @@ function VoucherQRGenerator({ balance }: { balance: VoucherBalance | null }) {
               size="sm"
               variant="outline"
               className="gap-1.5 border-green-300 text-green-700 hover:bg-green-100"
-              onClick={() => {
-                const link = document.createElement("a");
-                link.href = qrUrl;
-                link.download = `voucher-${selectedCode}.png`;
-                link.click();
-              }}
+              onClick={handleDownloadQR}
             >
               <Download className="h-3 w-3" /> Unduh QR
             </Button>
@@ -507,7 +524,7 @@ const PenukaranVoucher = () => {
             ? "Redeem QR voucher oleh vendor"
             : "Redeem QR voucher oleh beneficiary",
         },
-        { idempotencyKey: `vendor-redeem-${code}-${checkoutTotal}` }
+        { idempotencyKey: `vendor-redeem-${code}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
       );
 
       setTransactionId(result.order_id);

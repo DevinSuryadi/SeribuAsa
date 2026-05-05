@@ -407,7 +407,7 @@ const DompetNutrisi = () => {
 
       {/* ── QR Modal ── */}
       <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
-        <DialogContent className="rounded-2xl max-w-sm p-0 overflow-hidden">
+        <DialogContent className="rounded-2xl max-w-sm p-0 overflow-hidden [&>button:first-of-type]:hidden">
           <DialogHeader className="sr-only">
             <DialogTitle>QR Voucher {selectedVoucher?.code}</DialogTitle>
           </DialogHeader>

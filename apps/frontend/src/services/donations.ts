@@ -20,6 +20,20 @@ export async function getDonations(): Promise<Donation[]> {
   return [];
 }
 
+export async function simulatePayment(donationId: string): Promise<any> {
+  const res = await apiFetch(`/donations/${donationId}/simulate-payment`, {
+    method: "POST",
+  });
+  return res?.data || res;
+}
+
+export async function fixPendingDonations(): Promise<{ fixed_count: number; errors: any[] }> {
+  const res = await apiFetch("/donations/fix-pending-donations", {
+    method: "POST",
+  });
+  return res?.data || res;
+}
+
 export async function getDonation(donationId: string): Promise<Donation> {
   const res = await apiFetch(`/donations/${donationId}`);
   return res?.data || res;

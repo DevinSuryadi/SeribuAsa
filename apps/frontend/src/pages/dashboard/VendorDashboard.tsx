@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -159,31 +158,36 @@ export default function VendorDashboard() {
       <div className="space-y-6">
         {/* Wallet Hero Card */}
         <div
-          className="rounded-2xl p-5 relative overflow-hidden"
+          className="rounded-2xl p-6 relative overflow-hidden"
           style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 60%, #6d28d9 100%)" }}
         >
-          <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
-          <div className="absolute right-8 bottom-0 h-16 w-16 rounded-full bg-white/5" />
-          <div className="relative z-10 flex items-center justify-between gap-4">
-            <div>
+          {/* Decorative circles */}
+          <div className="absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10 pointer-events-none" />
+          <div className="absolute -right-2 top-16 h-20 w-20 rounded-full bg-white/5 pointer-events-none" />
+          <div className="absolute left-1/3 bottom-0 h-24 w-24 rounded-full bg-white/5 pointer-events-none" />
+
+          <div className="relative z-10 flex items-start justify-between gap-4">
+            <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <Wallet className="h-4 w-4 text-indigo-200" />
                 <p className="text-sm text-indigo-100 font-medium">Saldo E-Wallet Toko</p>
               </div>
-              <div className="text-3xl font-extrabold text-white tracking-tight mb-2">
+              <div className="text-4xl font-extrabold text-white tracking-tight mb-3">
                 {formatIDR(walletBalance)}
               </div>
-              <p className="text-xs text-indigo-200">
-                Minimum penarikan:{" "}
-                <strong className="text-white">{formatIDR(MIN_WITHDRAWAL)}</strong>
-              </p>
-              {pendingWithdrawals > 0 ? (
-                <p className="mt-1 text-xs text-indigo-100/90">
-                  Withdrawal QR menunggu pencairan:{" "}
-                  <strong className="text-white">{formatIDR(pendingWithdrawals)}</strong>
-                </p>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-indigo-200">
+                  Minimum penarikan:{" "}
+                  <strong className="text-white">{formatIDR(MIN_WITHDRAWAL)}</strong>
+                </span>
+                {pendingWithdrawals > 0 && (
+                  <span className="text-xs bg-white/10 text-indigo-100 px-2 py-0.5 rounded-full">
+                    Pending: {formatIDR(pendingWithdrawals)}
+                  </span>
+                )}
+              </div>
             </div>
+
             <div className="flex flex-col gap-2 flex-shrink-0">
               <Button
                 size="sm"
@@ -195,14 +199,31 @@ export default function VendorDashboard() {
               </Button>
               <Button
                 size="sm"
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 font-semibold gap-1.5"
+                className="bg-white/10 border border-white/40 text-white hover:bg-white/20 font-semibold gap-1.5"
                 asChild
               >
                 <Link to="/dashboard/penukaran-voucher">
                   <QrCode className="h-3.5 w-3.5" /> Tukar Voucher
                 </Link>
               </Button>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="relative z-10 mt-4 pt-4 border-t border-white/20 flex items-center gap-4">
+            <div>
+              <p className="text-[10px] text-white/60 uppercase tracking-wider">Total Pesanan</p>
+              <p className="text-lg font-bold text-white">{orders.length}</p>
+            </div>
+            <div className="w-px h-8 bg-white/20" />
+            <div>
+              <p className="text-[10px] text-white/60 uppercase tracking-wider">Pending</p>
+              <p className="text-lg font-bold text-white">{pendingOrders}</p>
+            </div>
+            <div className="w-px h-8 bg-white/20" />
+            <div>
+              <p className="text-[10px] text-white/60 uppercase tracking-wider">Produk Aktif</p>
+              <p className="text-lg font-bold text-white">{activeProducts}</p>
             </div>
           </div>
         </div>
@@ -422,14 +443,29 @@ export default function VendorDashboard() {
 
       {/* Withdrawal Modal */}
       <Dialog open={withdrawModalOpen} onOpenChange={setWithdrawModalOpen}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
+        <DialogContent className="rounded-2xl max-w-sm p-0 overflow-hidden [&>button:first-of-type]:hidden">
+          <DialogHeader className="sr-only">
             <DialogTitle>Tarik Dana ke Rekening</DialogTitle>
-            <DialogDescription>
-              Minimum penarikan Rp {MIN_WITHDRAWAL.toLocaleString("id-ID")}
-            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border bg-indigo-50">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600">
+                <ArrowDownToLine className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-indigo-800">Tarik Dana</p>
+                <p className="text-[10px] text-indigo-600">Min. {formatIDR(MIN_WITHDRAWAL)}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setWithdrawModalOpen(false)}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors"
+            >
+              <span className="text-foreground text-sm font-bold leading-none">✕</span>
+            </button>
+          </div>
+          <div className="p-5 space-y-4">
             <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Saldo Tersedia:</span>
@@ -458,6 +494,9 @@ export default function VendorDashboard() {
               disabled={withdrawLoading}
             >
               {withdrawLoading ? "Memproses..." : "Tarik Dana Sekarang"}
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => setWithdrawModalOpen(false)}>
+              Batal
             </Button>
           </div>
         </DialogContent>

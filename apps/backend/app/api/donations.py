@@ -388,12 +388,31 @@ async def simulate_payment(
     
     try:
         from app.services.donation_allocation_service import DonationAllocationService
+        from app.models.subscription import Subscription
 
         result = DonationAllocationService.process_successful_donation(
             db=db,
             donation_id=donation_id
         )
         logger.info(f"[SIMULATE_PAYMENT] Service returned result: {result}")
+
+        # If this is a subscription donation with no subscription record yet, create one
+        db.refresh(donation)
+        if donation.type and donation.type.value == "subscription":
+            existing_sub = db.query(Subscription).filter(
+                Subscription.donor_id == donation.donor_id
+            ).first()
+            if not existing_sub:
+                try:
+                    from app.services.subscription_service import SubscriptionService
+                    plan_id = None
+                    if donation.subscription_config:
+                        plan_id = donation.subscription_config.get("plan_id")
+                    SubscriptionService.create_from_donation(db=db, donation=donation, plan_id=plan_id)
+                    logger.info(f"[SIMULATE_PAYMENT] Created subscription for donation {donation_id}")
+                except Exception as sub_err:
+                    logger.warning(f"[SIMULATE_PAYMENT] Could not create subscription: {sub_err}")
+
         return result
         
     except ValueError as e:
@@ -410,6 +429,58 @@ async def simulate_payment(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to simulate payment: {str(e)}"
         )
+
+
+@router.post("/fix-pending-donations")
+async def fix_pending_donations(
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """
+    Dev utility: Mark all pending donations for the current user as successful.
+    Useful when Midtrans webhooks can't reach localhost.
+    """
+    from app.models.donation import Donation, DonationStatusEnum
+    from app.models.subscription import Subscription
+    from app.services.donation_allocation_service import DonationAllocationService
+    from app.services.subscription_service import SubscriptionService
+
+    pending = db.query(Donation).filter(
+        Donation.donor_id == current_user.user_id,
+        Donation.status == DonationStatusEnum.pending
+    ).all()
+
+    fixed = []
+    errors = []
+    for donation in pending:
+        try:
+            result = DonationAllocationService.process_successful_donation(
+                db=db,
+                donation_id=str(donation.id)
+            )
+            # Create subscription if needed
+            db.refresh(donation)
+            if donation.type and donation.type.value == "subscription":
+                existing_sub = db.query(Subscription).filter(
+                    Subscription.donor_id == donation.donor_id
+                ).first()
+                if not existing_sub:
+                    try:
+                        plan_id = None
+                        if donation.subscription_config:
+                            plan_id = donation.subscription_config.get("plan_id")
+                        SubscriptionService.create_from_donation(db=db, donation=donation, plan_id=plan_id)
+                    except Exception as sub_err:
+                        logger.warning(f"[FIX_PENDING] Could not create sub for {donation.id}: {sub_err}")
+            fixed.append(str(donation.id))
+        except Exception as e:
+            errors.append({"donation_id": str(donation.id), "error": str(e)})
+
+    return {
+        "fixed_count": len(fixed),
+        "fixed_donation_ids": fixed,
+        "errors": errors
+    }
 
 
 @router.get("/{donation_id}", response_model=DonationWithImpact)
