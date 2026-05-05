@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import type { ElementType } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
@@ -13,14 +14,20 @@ import {
 import {
   CreditCard,
   Download,
-  ArrowRight,
   Wallet,
   Calendar,
   TrendingUp,
   Loader2,
+  ArrowUpRight,
+  Clock3,
+  Landmark,
+  ArrowRight,
 } from "lucide-react";
-import { formatIDR, formatDate } from "@/lib/format";
-import { requestSettlementPayout, exportSettlements } from "@/services/settlements";
+import { formatIDR } from "@/lib/format";
+import {
+  requestSettlementPayout,
+  exportSettlements,
+} from "@/services/settlements";
 import type { Settlement } from "@/services/settlements";
 import { triggerDownload } from "@/services/downloads";
 import type { SettlementReport } from "@/services/reports";
@@ -30,7 +37,6 @@ import { toast } from "sonner";
 import { useVendorSettlement } from "@/hooks/useVendorSettlement";
 import { ErrorState } from "@/components/dashboard/ErrorState";
 import { CardSkeletonGrid } from "@/components/dashboard/LoadingSkeleton";
-import { KpiCard, KpiCardGrid } from "@/components/dashboard/KpiCard";
 import { settlementStatusConfig } from "@/lib/status-config";
 
 interface VendorProfile {
@@ -39,41 +45,159 @@ interface VendorProfile {
   bank_account_holder?: string;
 }
 
+type ViewFilter = "all" | "paid" | "ready" | "pending";
+
+type StatCardProps = {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: ElementType;
+  iconWrapClass: string;
+  iconClass: string;
+  valueClass: string;
+  borderClass: string;
+};
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconWrapClass,
+  iconClass,
+  valueClass,
+  borderClass,
+}: StatCardProps) {
+  return (
+    <div
+      className={`flex h-full min-h-[104px] rounded-[18px] border bg-white px-3.5 py-3.5 shadow-[0_7px_18px_rgba(15,23,42,0.035)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(15,23,42,0.055)] ${borderClass}`}
+    >
+      <div className="flex w-full items-start gap-3">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] ${iconWrapClass}`}
+        >
+          <Icon className={`h-[17px] w-[17px] ${iconClass}`} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p
+            className={`break-words text-[22px] font-black leading-none tracking-tight sm:text-[24px] ${valueClass}`}
+          >
+            {value}
+          </p>
+
+          <p className="mt-1.5 text-[12px] font-bold leading-tight text-slate-700">
+            {title}
+          </p>
+
+          <p className="mt-0.5 text-[10.5px] font-medium leading-snug text-slate-500">
+            {subtitle}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type InsightCardProps = {
+  title: string;
+  value: string;
+  icon: ElementType;
+  iconWrapClass: string;
+  iconClass: string;
+  valueClass: string;
+};
+
+function InsightCard({
+  title,
+  value,
+  icon: Icon,
+  iconWrapClass,
+  iconClass,
+  valueClass,
+}: InsightCardProps) {
+  return (
+    <div className="flex h-full min-h-[74px] rounded-[17px] border border-slate-200/70 bg-white px-3.5 py-3 shadow-[0_7px_18px_rgba(15,23,42,0.035)]">
+      <div className="flex w-full items-center gap-3">
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] ${iconWrapClass}`}
+        >
+          <Icon className={`h-[17px] w-[17px] ${iconClass}`} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p
+            className={`break-words text-[21px] font-black leading-none tracking-tight sm:text-[22px] ${valueClass}`}
+          >
+            {value}
+          </p>
+          <p className="mt-1 text-[11.5px] font-semibold text-slate-600">
+            {title}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const getStatusLabel = (status: string) => {
+  const labels: Record<string, string> = {
+    paid: "Sudah Cair",
+    ready: "Siap Dicairkan",
+    pending: "Menunggu Proses",
+    processing: "Diproses",
+    failed: "Gagal",
+    cancelled: "Dibatalkan",
+  };
+
+  return labels[status] || "Menunggu Proses";
+};
+
 const VendorSettlement = () => {
   const { user } = useAuth();
   const { data: settlements, loading, error, refetch } = useVendorSettlement();
 
   const [report, setReport] = useState<SettlementReport | null>(null);
-  const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
+  const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(
+    null
+  );
+
   const [showClaimModal, setShowClaimModal] = useState(false);
-  const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(null);
+  const [selectedSettlement, setSelectedSettlement] =
+    useState<Settlement | null>(null);
   const [claimLoading, setClaimLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+
+  const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
+
   const [startDate, setStartDate] = useState<string>(() => {
     const date = new Date();
     date.setDate(date.getDate() - 90);
     return date.toISOString().split("T")[0];
   });
-  const [endDate, setEndDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
-  // Fetch settlement report separately (for analytics)
+  const [endDate, setEndDate] = useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
+
   useEffect(() => {
     if (!user) return;
-    const controller = new AbortController();
+
     getSettlementReport(startDate, endDate)
       .then(setReport)
-      .catch(() => {}); // non-critical, dashboard still works without it
-    return () => controller.abort();
+      .catch(() => {
+        // Tidak wajib, halaman tetap bisa berjalan tanpa laporan analitik.
+      });
   }, [startDate, endDate, user]);
 
-  // Fetch vendor profile (for bank info)
   const fetchVendorProfile = useCallback(async () => {
     if (!user?.id) return;
+
     try {
       const data = await apiFetch(`/users/${user.id}`);
       setVendorProfile(data as VendorProfile);
     } catch {
-      // Non-critical, fallback to placeholder
+      // Tidak wajib, fallback ke teks belum diatur.
     }
   }, [user?.id]);
 
@@ -81,24 +205,43 @@ const VendorSettlement = () => {
     fetchVendorProfile();
   }, [fetchVendorProfile]);
 
+  const totalPaidCount = useMemo(
+    () => settlements.filter((s) => s.status === "paid").length,
+    [settlements]
+  );
+
   const totalEarned = useMemo(() => {
     if (report?.summary?.settled_amount) return report.summary.settled_amount;
+
     return settlements
       .filter((s) => s.status === "paid" || s.status === "ready")
       .reduce((a, b) => a + (b.net_amount || 0), 0);
   }, [report, settlements]);
 
   const pendingCount = useMemo(() => {
-    if (report) return report.summary.pending_count;
-    return settlements.filter((s) => s.status === "ready" || s.status === "pending").length;
+    if (report?.summary?.pending_count) return report.summary.pending_count;
+
+    return settlements.filter(
+      (s) => s.status === "ready" || s.status === "pending"
+    ).length;
   }, [report, settlements]);
 
   const pendingTotal = useMemo(() => {
     if (report?.summary?.pending_amount) return report.summary.pending_amount;
+
     return settlements
       .filter((s) => s.status === "ready" || s.status === "pending")
       .reduce((a, b) => a + (b.net_amount || 0), 0);
   }, [report, settlements]);
+
+  const monthGrowth = report?.trends?.month_over_month_growth ?? 0;
+  const avgSettlementTime = report?.trends?.average_settlement_time ?? 0;
+  const successRate = report?.trends?.settlement_success_rate ?? 0;
+
+  const filteredSettlements = useMemo(() => {
+    if (viewFilter === "all") return settlements;
+    return settlements.filter((s) => s.status === viewFilter);
+  }, [settlements, viewFilter]);
 
   const handleClaim = (settlement: Settlement) => {
     setSelectedSettlement(settlement);
@@ -107,17 +250,23 @@ const VendorSettlement = () => {
 
   const handleClaimSubmit = async () => {
     if (!selectedSettlement) return;
+
     try {
       setClaimLoading(true);
       await requestSettlementPayout(selectedSettlement.id);
+
       toast.success(
-        `Pencairan ${formatIDR(selectedSettlement.net_amount || 0)} diproses dalam 1-3 hari kerja.`
+        `Pencairan ${formatIDR(
+          selectedSettlement.net_amount || 0
+        )} diproses dalam 1-3 hari kerja.`
       );
+
       setShowClaimModal(false);
       setSelectedSettlement(null);
       refetch();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal mengajukan klaim";
+      const msg =
+        err instanceof Error ? err.message : "Gagal mengajukan pencairan";
       toast.error(msg);
     } finally {
       setClaimLoading(false);
@@ -126,18 +275,20 @@ const VendorSettlement = () => {
 
   const handleExport = async () => {
     if (settlements.length === 0) {
-      toast.info("Tidak ada data untuk diekspor");
+      toast.info("Tidak ada data pencairan untuk diunduh");
       return;
     }
 
     setExportLoading(true);
+
     try {
       const blob = await exportSettlements("csv", startDate, endDate);
       const dateStr = new Date().toISOString().split("T")[0];
-      triggerDownload(blob, `laporan-settlement-${dateStr}.csv`);
-      toast.success("Laporan berhasil diunduh");
+      triggerDownload(blob, `laporan-pencairan-${dateStr}.csv`);
+      toast.success("Laporan pencairan berhasil diunduh");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal mengekspor laporan";
+      const msg =
+        err instanceof Error ? err.message : "Gagal mengunduh laporan";
       toast.error(msg);
     } finally {
       setExportLoading(false);
@@ -151,7 +302,7 @@ const VendorSettlement = () => {
         subtitle="Riwayat pencairan dana voucher yang telah ditukarkan."
       >
         <div className="space-y-4">
-          <CardSkeletonGrid count={4} columns={4} />
+          <CardSkeletonGrid count={6} columns={3} />
         </div>
       </DashboardLayout>
     );
@@ -173,260 +324,353 @@ const VendorSettlement = () => {
       title="Riwayat Pencairan"
       subtitle="Riwayat pencairan dana voucher yang telah ditukarkan."
     >
-      <div className="space-y-5">
-        {/* KPI Cards */}
-        <KpiCardGrid columns={4}>
-          <KpiCard
-            icon={Wallet}
-            label="Total Dicairkan"
+      <div className="flex min-h-[calc(100vh-132px)] w-full max-w-none flex-col gap-3 pb-3">
+        {/* Ringkasan Utama */}
+        <section className="grid w-full shrink-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total Dicairkan"
             value={formatIDR(totalEarned)}
-            subtitle={`${settlements.filter((s) => s.status === "paid").length} periode`}
-            variant="green"
+            subtitle={`${totalPaidCount} pencairan berhasil`}
+            icon={Wallet}
+            iconWrapClass="bg-emerald-50"
+            iconClass="text-emerald-600"
+            valueClass="text-emerald-700"
+            borderClass="border-emerald-100"
           />
-          <KpiCard
-            icon={Calendar}
-            label="Menunggu Cair"
+
+          <StatCard
+            title="Menunggu Cair"
             value={formatIDR(pendingTotal)}
-            subtitle={`${pendingCount} periode`}
-            variant="amber"
+            subtitle={`${pendingCount} pencairan aktif`}
+            icon={Calendar}
+            iconWrapClass="bg-amber-50"
+            iconClass="text-amber-600"
+            valueClass="text-amber-600"
+            borderClass="border-amber-100"
           />
-          <KpiCard
-            icon={CreditCard}
-            label="Rekening Tujuan"
+
+          <StatCard
+            title="Rekening Tujuan"
             value={vendorProfile?.bank_name || "Belum diatur"}
             subtitle={
               vendorProfile?.bank_account_number
                 ? `****${vendorProfile.bank_account_number.slice(-4)}`
-                : "Silakan lengkapi di profil"
+                : "Lengkapi rekening di profil"
             }
-            variant={vendorProfile?.bank_account_number ? "indigo" : "red"}
+            icon={Landmark}
+            iconWrapClass={
+              vendorProfile?.bank_account_number ? "bg-indigo-50" : "bg-red-50"
+            }
+            iconClass={
+              vendorProfile?.bank_account_number
+                ? "text-indigo-600"
+                : "text-red-500"
+            }
+            valueClass={
+              vendorProfile?.bank_account_number
+                ? "text-indigo-700"
+                : "text-red-500"
+            }
+            borderClass={
+              vendorProfile?.bank_account_number
+                ? "border-indigo-100"
+                : "border-red-100"
+            }
           />
-          <KpiCard
-            icon={Calendar}
-            label="Jadwal Cair"
+
+          <StatCard
+            title="Jadwal Cair"
             value="Tgl 5"
             subtitle="Setiap bulan"
-            variant="purple"
+            icon={Clock3}
+            iconWrapClass="bg-violet-50"
+            iconClass="text-violet-600"
+            valueClass="text-violet-600"
+            borderClass="border-violet-100"
           />
-        </KpiCardGrid>
+        </section>
 
-        {/* Trend Cards (if report available) */}
-        {report && (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-            {[
-              {
-                label: "Pertumbuhan Bulanan",
-                value: `${report.trends.month_over_month_growth > 0 ? "+" : ""}${report.trends.month_over_month_growth.toFixed(1)}%`,
-                icon: TrendingUp,
-                positive: report.trends.month_over_month_growth >= 0,
-              },
-              {
-                label: "Rata-rata Waktu Cair",
-                value: `${report.trends.average_settlement_time.toFixed(1)} hari`,
-                icon: Calendar,
-                positive: true,
-              },
-              {
-                label: "Tingkat Sukses",
-                value: `${report.trends.settlement_success_rate.toFixed(1)}%`,
-                icon: TrendingUp,
-                positive: true,
-              },
-            ].map((t) => {
-              const Icon = t.icon;
-              return (
-                <div
-                  key={t.label}
-                  className={`rounded-xl border p-4 flex items-center gap-3 ${t.positive ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}
-                >
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg border bg-white ${t.positive ? "border-green-200" : "border-red-200"}`}
-                  >
-                    <Icon className={`h-4 w-4 ${t.positive ? "text-green-600" : "text-red-600"}`} />
-                  </div>
-                  <div>
-                    <div
-                      className={`text-lg font-extrabold ${t.positive ? "text-green-700" : "text-red-700"}`}
-                    >
-                      {t.value}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{t.label}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {/* Insight */}
+        <section className="grid w-full shrink-0 grid-cols-1 items-stretch gap-3 md:grid-cols-3">
+          <InsightCard
+            title="Pertumbuhan Bulanan"
+            value={`${monthGrowth.toFixed(1)}%`}
+            icon={TrendingUp}
+            iconWrapClass={monthGrowth >= 0 ? "bg-emerald-50" : "bg-red-50"}
+            iconClass={monthGrowth >= 0 ? "text-emerald-600" : "text-red-500"}
+            valueClass={monthGrowth >= 0 ? "text-emerald-700" : "text-red-500"}
+          />
 
-        {/* Date Filter + Download */}
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex gap-3">
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1 block">Dari</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="rounded-xl border border-input bg-card px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1 block">Sampai</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="rounded-xl border border-input bg-card px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={handleExport}
-            disabled={exportLoading || settlements.length === 0}
-          >
-            {exportLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            Unduh Laporan
-          </Button>
-        </div>
+          <InsightCard
+            title="Rata-rata Waktu Cair"
+            value={`${avgSettlementTime.toFixed(1)} hari`}
+            icon={Calendar}
+            iconWrapClass="bg-indigo-50"
+            iconClass="text-indigo-600"
+            valueClass="text-indigo-700"
+          />
 
-        {/* Settlement List */}
-        <div>
-          <h2 className="text-sm font-semibold text-foreground mb-3">Riwayat Pencairan</h2>
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            {settlements.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary mx-auto mb-4">
-                  <CreditCard className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <p className="font-semibold text-foreground mb-1">Belum ada settlement</p>
-                <p className="text-sm text-muted-foreground">
-                  Settlement muncul setelah ada penukaran voucher
-                </p>
+          <InsightCard
+            title="Tingkat Keberhasilan"
+            value={`${successRate.toFixed(1)}%`}
+            icon={ArrowUpRight}
+            iconWrapClass="bg-emerald-50"
+            iconClass="text-emerald-600"
+            valueClass="text-emerald-700"
+          />
+        </section>
+
+        {/* Filter dan Aksi */}
+        <section className="w-full shrink-0 rounded-[18px] border border-slate-200/70 bg-white p-3.5 shadow-[0_8px_24px_rgba(15,23,42,0.035)]">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-[150px_150px]">
+              <div>
+                <label className="mb-1.5 block text-[11.5px] font-bold text-slate-700">
+                  Dari
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-[12.5px] outline-none transition focus:border-indigo-300"
+                />
               </div>
-            ) : (
-              <div className="divide-y divide-border/50">
-                {settlements.map((s) => {
-                  const sc =
-                    settlementStatusConfig[s.status as keyof typeof settlementStatusConfig] ||
-                    settlementStatusConfig.calculating;
-                  const SCIcon = sc.icon;
-                  return (
-                    <div
-                      key={s.id}
-                      className="flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/30 transition-colors"
-                    >
-                      <div
-                        className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
-                          s.status === "paid"
-                            ? "bg-blue-50"
-                            : s.status === "ready"
-                              ? "bg-green-50"
-                              : "bg-amber-50"
-                        }`}
-                      >
-                        <SCIcon
-                          className={`h-4 w-4 ${
-                            s.status === "paid"
-                              ? "text-blue-600"
-                              : s.status === "ready"
-                                ? "text-green-600"
-                                : "text-amber-600"
-                          }`}
-                        />
+
+              <div>
+                <label className="mb-1.5 block text-[11.5px] font-bold text-slate-700">
+                  Sampai
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-[12.5px] outline-none transition focus:border-indigo-300"
+                />
+              </div>
+            </div>
+
+            <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between lg:w-auto lg:justify-end">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                {[
+                  { label: "Semua", value: "all" as ViewFilter },
+                  { label: "Sudah Cair", value: "paid" as ViewFilter },
+                  { label: "Siap Cair", value: "ready" as ViewFilter },
+                  { label: "Menunggu", value: "pending" as ViewFilter },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setViewFilter(item.value)}
+                    className={`h-9 rounded-xl px-3 text-[11.5px] font-bold transition ${
+                      viewFilter === item.value
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              <Button
+                onClick={handleExport}
+                disabled={exportLoading}
+                className="h-9 rounded-xl bg-slate-900 px-4 text-[11.5px] font-bold hover:bg-slate-800"
+              >
+                {exportLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Unduh Laporan
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Daftar Pencairan */}
+        <section className="flex w-full flex-1 flex-col rounded-[20px] border border-slate-200/70 bg-white p-3.5 shadow-[0_10px_26px_rgba(15,23,42,0.04)] sm:p-4">
+          <div className="mb-3 flex shrink-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-[16px] font-black tracking-tight text-slate-900">
+                Daftar Pencairan
+              </h2>
+              <p className="mt-0.5 text-[11.5px] font-medium text-slate-500">
+                {filteredSettlements.length} pencairan ditemukan
+              </p>
+            </div>
+          </div>
+
+          {filteredSettlements.length === 0 ? (
+            <div className="flex min-h-[110px] flex-1 items-center justify-center rounded-[16px] border border-dashed border-slate-200 bg-slate-50/60 px-4 py-4 text-center">
+              <div className="flex flex-col items-center sm:flex-row sm:gap-4 sm:text-left">
+                <div className="mb-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 sm:mb-0">
+                  <CreditCard className="h-5 w-5 text-slate-500" />
+                </div>
+
+                <div>
+                  <p className="text-[16px] font-black tracking-tight text-slate-900">
+                    Belum ada pencairan
+                  </p>
+
+                  <p className="mt-1 max-w-md text-[11.5px] leading-5 text-slate-500">
+                    Riwayat pencairan akan muncul setelah ada penukaran voucher
+                    yang berhasil diproses.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid flex-1 grid-cols-1 items-start gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+              {filteredSettlements.map((settlement) => {
+                const statusMeta =
+                  settlementStatusConfig[
+                    settlement.status as keyof typeof settlementStatusConfig
+                  ] || settlementStatusConfig.pending;
+
+                const canClaim = settlement.status === "ready";
+                const statusLabel = getStatusLabel(settlement.status);
+
+                return (
+                  <div
+                    key={settlement.id}
+                    className="rounded-[17px] border border-slate-200/80 bg-white p-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.05)]"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-indigo-50">
+                        <Wallet className="h-[18px] w-[18px] text-indigo-600" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-foreground">
-                          {s.period_start ? formatDate(s.period_start) : "—"} —{" "}
-                          {s.period_end ? formatDate(s.period_end) : "—"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {s.vendor_store_name || "Toko Anda"}
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-black leading-tight text-slate-900">
+                          Pencairan #{String(settlement.id).slice(0, 8)}
+                        </p>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={`border text-[10px] font-bold ${statusMeta.className}`}
+                          >
+                            {statusLabel}
+                          </Badge>
+
+                          <span className="text-[10.5px] font-medium text-slate-500">
+                            ID pencairan dana vendor
+                          </span>
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-sm font-bold text-foreground">
-                          {formatIDR(s.net_amount || 0)}
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={`text-[9px] border gap-0.5 ${sc.className}`}
-                        >
-                          <SCIcon className="h-2.5 w-2.5" /> {sc.label}
-                        </Badge>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2.5">
+                      <div className="rounded-[13px] bg-slate-50 px-3 py-2.5">
+                        <p className="text-[9.5px] font-semibold uppercase tracking-wide text-slate-400">
+                          Nominal
+                        </p>
+                        <p className="mt-1 truncate text-[13px] font-black text-slate-900">
+                          {formatIDR(settlement.net_amount || 0)}
+                        </p>
                       </div>
-                      {s.status === "ready" && (
+
+                      <div className="rounded-[13px] bg-slate-50 px-3 py-2.5">
+                        <p className="text-[9.5px] font-semibold uppercase tracking-wide text-slate-400">
+                          Status
+                        </p>
+                        <p className="mt-1 truncate text-[13px] font-black text-slate-700">
+                          {statusLabel}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      {canClaim ? (
                         <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 text-xs gap-1 flex-shrink-0 border-green-200 text-green-700 hover:bg-green-50"
-                          onClick={() => handleClaim(s)}
+                          onClick={() => handleClaim(settlement)}
+                          className="h-9 w-full rounded-xl bg-emerald-600 px-4 text-[11.5px] font-bold hover:bg-emerald-700"
                         >
-                          <ArrowRight className="h-3 w-3" /> Klaim
+                          Ajukan Cair
+                          <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          disabled
+                          className="h-9 w-full rounded-xl px-4 text-[11.5px] font-bold"
+                        >
+                          Tidak tersedia
                         </Button>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* Claim Modal */}
       <Dialog open={showClaimModal} onOpenChange={setShowClaimModal}>
-        <DialogContent className="rounded-2xl">
+        <DialogContent className="rounded-[22px] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Klaim Settlement</DialogTitle>
-            <DialogDescription>
-              Ajukan pencairan dana untuk periode{" "}
-              {selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : "—"}
+            <DialogTitle className="text-[20px] font-black tracking-tight text-slate-900">
+              Ajukan Pencairan
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500">
+              Konfirmasi pencairan dana ke rekening tujuan Anda.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-2.5 text-sm">
-              {[
-                {
-                  label: "Periode",
-                  value: `${selectedSettlement?.period_start ? formatDate(selectedSettlement.period_start) : "—"} s/d ${selectedSettlement?.period_end ? formatDate(selectedSettlement.period_end) : "—"}`,
-                },
-                {
-                  label: "Total Redemptions",
-                  value: formatIDR(selectedSettlement?.total_redemptions || 0),
-                },
-                {
-                  label: "Admin Fee",
-                  value: formatIDR(selectedSettlement?.admin_fee || 0),
-                },
-              ].map((r) => (
-                <div key={r.label} className="flex justify-between">
-                  <span className="text-muted-foreground">{r.label}:</span>
-                  <span className="font-medium">{r.value}</span>
-                </div>
-              ))}
-              <div className="flex justify-between border-t border-border pt-2.5">
-                <span className="font-semibold text-foreground">Jumlah Bersih:</span>
-                <span className="font-bold text-green-600">
-                  {formatIDR(selectedSettlement?.net_amount || 0)}
-                </span>
-              </div>
+
+          <div className="space-y-3.5 pt-1">
+            <div className="rounded-[16px] border border-emerald-100 bg-emerald-50/70 p-3.5">
+              <p className="text-[11px] font-semibold text-slate-500">
+                Nominal cair
+              </p>
+              <p className="mt-1 text-[25px] font-black tracking-tight text-emerald-700">
+                {formatIDR(selectedSettlement?.net_amount || 0)}
+              </p>
             </div>
-            <Button
-              className="w-full h-11 bg-green-600 hover:bg-green-700"
-              onClick={handleClaimSubmit}
-              disabled={claimLoading}
-            >
-              {claimLoading ? "Memproses..." : "Ajukan Klaim Sekarang"}
-            </Button>
-            <Button variant="ghost" className="w-full" onClick={() => setShowClaimModal(false)}>
-              Batal
-            </Button>
+
+            <div className="rounded-[16px] border border-slate-200 bg-slate-50/70 p-3.5">
+              <p className="text-[11px] font-semibold text-slate-500">
+                Rekening tujuan
+              </p>
+
+              <p className="mt-2 text-[13px] font-black text-slate-900">
+                {vendorProfile?.bank_name || "Belum diatur"}
+              </p>
+
+              <p className="mt-1 text-[12px] text-slate-500">
+                {vendorProfile?.bank_account_holder ||
+                  "Nama pemilik rekening belum diatur"}
+              </p>
+
+              <p className="mt-1 text-[12px] text-slate-500">
+                {vendorProfile?.bank_account_number
+                  ? `****${vendorProfile.bank_account_number.slice(-4)}`
+                  : "Nomor rekening belum diatur"}
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl"
+                onClick={() => setShowClaimModal(false)}
+                disabled={claimLoading}
+              >
+                Batal
+              </Button>
+
+              <Button
+                className="h-10 rounded-xl bg-emerald-600 px-5 font-bold hover:bg-emerald-700"
+                onClick={handleClaimSubmit}
+                disabled={claimLoading}
+              >
+                {claimLoading && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Konfirmasi Cairkan
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

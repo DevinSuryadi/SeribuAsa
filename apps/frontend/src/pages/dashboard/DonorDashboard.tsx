@@ -233,24 +233,49 @@ export default function DonorDashboard() {
         </div>
 
         {/* Thank You Banner */}
-        <div className="relative overflow-hidden rounded-[14px] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-emerald-50 to-white px-4 py-2 shadow-sm">
-          <div className="flex min-h-[58px] items-center gap-4">
-            <div className="flex h-[58px] w-[92px] shrink-0 items-end justify-center overflow-hidden">
-              <img
-                src={foto}
-                alt="Ilustrasi anak menerima nutrisi"
-                className="h-[58px] w-[92px] object-contain object-bottom"
-              />
+        <div className="relative overflow-hidden rounded-[18px] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-emerald-50/80 to-white px-5 py-4 shadow-sm sm:px-6 sm:py-5 lg:px-8">
+          <div className="pointer-events-none absolute -left-12 -top-16 h-40 w-40 rounded-full bg-emerald-100/45 blur-2xl" />
+          <div className="pointer-events-none absolute -right-10 -bottom-20 h-48 w-48 rounded-full bg-emerald-100/55 blur-3xl" />
+
+          <div className="relative flex min-h-[118px] flex-col gap-4 md:min-h-[132px] md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex h-[118px] w-[170px] shrink-0 items-end justify-center overflow-hidden md:h-[132px] md:w-[210px]">
+                <img
+                  src={foto}
+                  alt="Ilustrasi donatur mendukung nutrisi keluarga"
+                  className="h-full w-full object-contain object-bottom"
+                />
+              </div>
+
+              <div className="max-w-xl">
+                <p className="text-lg font-extrabold leading-tight text-emerald-900 sm:text-xl">
+                  Terima kasih!
+                </p>
+
+                <p className="mt-2 max-w-lg text-sm font-medium leading-6 text-slate-700 sm:text-[15px]">
+                  Dukungan Anda membantu lebih banyak anak menerima nutrisi bulan
+                  ini.
+                </p>
+              </div>
             </div>
 
-            <p className="max-w-2xl text-xs font-semibold leading-5 text-emerald-900 sm:text-[13px]">
-              Terima kasih!
-              <span className="ml-1.5">
-                Dukungan Anda membantu lebih banyak anak menerima nutrisi bulan ini.
-              </span>
-            </p>
+            <div className="hidden items-center gap-4 lg:flex">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-emerald-600 shadow-sm ring-1 ring-emerald-100">
+                <Heart className="h-5 w-5" />
+              </div>
 
-            <Heart className="pointer-events-none absolute right-8 top-1/2 h-9 w-9 -translate-y-1/2 text-white/80" />
+              <div className="h-px w-14 border-t border-dashed border-emerald-300" />
+
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-emerald-600 shadow-sm ring-1 ring-emerald-100">
+                <Users className="h-5 w-5" />
+              </div>
+
+              <div className="h-px w-14 border-t border-dashed border-emerald-300" />
+
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-emerald-600 shadow-sm ring-1 ring-emerald-100">
+                <CreditCard className="h-5 w-5" />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -399,7 +424,7 @@ export default function DonorDashboard() {
             </CardContent>
           </Card>
 
-           {/* Impact Summary */}
+          {/* Impact Summary */}
           <Card className="rounded-[18px] border border-slate-200 bg-white shadow-sm">
             <CardHeader className="pb-2.5">
               <div className="flex items-center gap-2.5">
