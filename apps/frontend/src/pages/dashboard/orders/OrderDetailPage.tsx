@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { format } from "date-fns";
-import { id as idLocale } from "date-fns/locale";
 import { ArrowLeft, CalendarDays, Package, Store } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getOrder } from "@/services/orders";
+import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
 
 function formatCurrency(value: number) {
@@ -93,7 +92,7 @@ function OrderDetailPage() {
           {createdAt && !Number.isNaN(createdAt.getTime()) && (
             <div className="inline-flex items-center gap-2 text-sm text-gray-600">
               <CalendarDays size={14} className="text-gray-400" />
-              {format(createdAt, "dd MMM yyyy", { locale: idLocale })}
+              {formatDate(createdAt)}
             </div>
           )}
           {order.vendor_store_name && (
