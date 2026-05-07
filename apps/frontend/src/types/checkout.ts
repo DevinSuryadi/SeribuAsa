@@ -16,49 +16,19 @@ export interface CartItemData {
   vendor_id: string;
 }
 
-export interface ValidatedVoucher {
-  id: string;
-  code: string;
-  balance: number;
-  expiry_date: string;
-  days_until_expiry: number;
-}
-
-export interface AppliedVoucher {
-  voucher_id: string;
-  code: string;
-  applied_amount: number;
-  remaining_balance: number;
-}
-
-export interface EligibilityData {
-  eligible_amount: number;
-  ineligible_amount: number;
-  total_amount: number;
-  eligible_products: string[];
-  ineligible_products: string[];
-  voucher_can_cover: number;
-}
-
 export interface OrderSummary {
   cart_total: number;
-  voucher_discount: number;
-  cash_amount: number;
   items: CartItemData[];
   grouped_by_vendor: {
     [vendor_id: string]: CartItemData[];
   };
-  applied_voucher: AppliedVoucher | null;
 }
 
 export interface CheckoutState {
   currentStep: CheckoutStep;
   cartItems: CartItemData[];
-  appliedVoucher: AppliedVoucher | null;
-  validatedVoucher: ValidatedVoucher | null;
-  eligibilityData: EligibilityData | null;
   orderSummary: OrderSummary | null;
-  voucherBalance: number; // Real balance from API
+  walletBalance: number; // Available wallet balance from API
   isLoading: boolean;
   isSubmitting: boolean;
   error: string | null;
@@ -70,10 +40,7 @@ export interface CheckoutContextType extends CheckoutState {
   loadCartItems: () => Promise<void>;
   updateCartItem: (itemId: string, quantity: number) => Promise<void>;
   removeCartItem: (itemId: string) => Promise<void>;
-  validateVoucher: (code: string, amount: number) => Promise<void>;
-  applyVoucher: (voucherId: string, appliedAmount: number) => void;
-  removeAppliedVoucher: () => void;
-  checkEligibility: () => Promise<void>;
+  loadWalletBalance: () => Promise<void>;
   getOrderSummary: () => OrderSummary;
   submitOrder: () => Promise<string>;
   canProceedToNextStep: () => boolean;
