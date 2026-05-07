@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +100,7 @@ const statusMap: Record<
 };
 
 // ── OrderCard ──────────────────────────────────────────────────
-function OrderCard({
+const OrderCard = memo(function OrderCard({
   order,
   onOrderClick,
   onReorder,
