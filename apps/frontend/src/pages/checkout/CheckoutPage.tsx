@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { CheckoutSteps } from "@/components/checkout/CheckoutSteps";
 import { CartReviewStep } from "@/components/checkout/CartReviewStep";
-import { VoucherRedemptionStep } from "@/components/checkout/VoucherRedemptionStep";
+import { WalletReviewStep } from "@/components/checkout/WalletReviewStep";
 import { OrderConfirmationStep } from "@/components/checkout/OrderConfirmationStep";
 import { useCheckoutFlow } from "@/hooks/useCheckoutFlow";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,13 +19,10 @@ function CheckoutPage() {
   const { user } = useAuth();
   const checkoutFlow = useCheckoutFlow();
 
-  // Load cart and voucher balance on mount
+  // Load cart and wallet balance on mount
   useEffect(() => {
     checkoutFlow.loadCartItems();
-    checkoutFlow.loadVoucherBalance();
-    if (checkoutFlow.cartItems.length > 0) {
-      checkoutFlow.checkEligibility();
-    }
+    checkoutFlow.loadWalletBalance();
   }, []);
 
   // Redirect if cart is empty
@@ -77,8 +74,6 @@ function CheckoutPage() {
         toast.error(`Saldo tidak cukup. ${errorMessage}`);
       } else if (errorMessage.includes("stock") || errorMessage.includes("stok")) {
         toast.error(`Stok tidak tersedia. ${errorMessage}`);
-      } else if (errorMessage.includes("voucher")) {
-        toast.error(`Error voucher. ${errorMessage}`);
       } else {
         toast.error(errorMessage);
       }
@@ -91,26 +86,10 @@ function CheckoutPage() {
     }
   };
 
-  const handleApplyVoucher = () => {
-    // Fetch voucher details and call applyVoucher with full info
-    if (checkoutFlow.validatedVoucher) {
-      checkoutFlow.applyVoucher(
-        checkoutFlow.validatedVoucher.id,
-        Math.min(
-          checkoutFlow.validatedVoucher.balance,
-          checkoutFlow.cartItems.reduce((sum, item) => sum + Number(item.subtotal), 0)
-        ),
-        checkoutFlow.validatedVoucher.code,
-        Math.max(
-          0,
-          checkoutFlow.validatedVoucher.balance -
-            Math.min(
-              checkoutFlow.validatedVoucher.balance,
-              checkoutFlow.cartItems.reduce((sum, item) => sum + Number(item.subtotal), 0)
-            )
-        )
-      );
-    }
+  const handleConfirmWallet = () => {
+    // Proceed to order confirmation with wallet balance
+    checkoutFlow.setCurrentStep(3);
+    window.scrollTo(0, 0);
   };
 
   return (
@@ -149,26 +128,22 @@ function CheckoutPage() {
                   onClearCart={async () => {
                     await checkoutFlow.clearAllItems();
                   }}
-                  voucherBalance={checkoutFlow.voucherBalance}
+                  walletBalance={checkoutFlow.walletBalance}
                 />
               </div>
             )}
 
-            {/* Step 2: Voucher Redemption */}
+            {/* Step 2: Wallet Review */}
             {checkoutFlow.currentStep === 2 && (
               <div className="animate-in fade-in duration-300 ease-out">
-                <VoucherRedemptionStep
+                <WalletReviewStep
                   cartTotal={checkoutFlow.cartItems.reduce(
                     (sum, item) => sum + Number(item.subtotal),
                     0
                   )}
-                  voucherBalance={checkoutFlow.voucherBalance}
-                  eligibilityData={checkoutFlow.eligibilityData}
-                  appliedVoucher={checkoutFlow.appliedVoucher}
+                  walletBalance={checkoutFlow.walletBalance}
                   isLoading={checkoutFlow.isLoading}
-                  onValidate={checkoutFlow.validateVoucherCode}
-                  onApply={handleApplyVoucher}
-                  onRemove={checkoutFlow.removeAppliedVoucher}
+                  onConfirm={handleConfirmWallet}
                 />
               </div>
             )}
