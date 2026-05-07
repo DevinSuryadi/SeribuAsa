@@ -144,6 +144,75 @@ class ReportCache:
 _cache_instance = None
 
 
+class AppCache(ReportCache):
+    """Namespace-aware in-memory cache for general application use.
+
+    Supports namespaced keys (e.g. stats:dashboard, auth:<user_id>)
+    and bulk invalidation by namespace prefix.
+    """
+
+    def _make_key(self, namespace: str, key: str, **kwargs) -> str:
+        """Build a namespaced cache key."""
+        params_str = "_".join(f"{k}={v}" for k, v in sorted(kwargs.items()))
+        base = f"{namespace}:{key}"
+        return f"{base}:{params_str}" if params_str else base
+
+    def get(self, namespace: str, key: str, **kwargs) -> Optional[Any]:
+        full_key = self._make_key(namespace, key, **kwargs)
+        # Use ReportCache's internal dict directly to avoid key generation mismatch
+        if full_key not in self._cache:
+            return None
+        entry = self._cache[full_key]
+        if datetime.utcnow() > entry["expires_at"]:
+            del self._cache[full_key]
+            logger.debug(f"Cache key {full_key} expired")
+            return None
+        logger.debug(f"Cache hit for {full_key}")
+        return entry["value"]
+
+    def set(
+        self,
+        namespace: str,
+        key: str,
+        value: Any,
+        ttl_seconds: Optional[int] = None,
+        **kwargs,
+    ) -> None:
+        full_key = self._make_key(namespace, key, **kwargs)
+        ttl = ttl_seconds or self.default_ttl
+        self._cache[full_key] = {
+            "value": value,
+            "expires_at": datetime.utcnow() + timedelta(seconds=ttl),
+            "created_at": datetime.utcnow(),
+        }
+        logger.debug(f"Cached {full_key} with TTL {ttl}s")
+
+    def invalidate(self, namespace: str, key: str, **kwargs) -> bool:
+        full_key = self._make_key(namespace, key, **kwargs)
+        if full_key in self._cache:
+            del self._cache[full_key]
+            logger.debug(f"Invalidated cache key {full_key}")
+            return True
+        return False
+
+    def invalidate_namespace(self, namespace: str) -> int:
+        return self.invalidate_pattern(f"{namespace}:*")
+
+
+# ---------------------------------------------------------------------------
+# Global instances
+# ---------------------------------------------------------------------------
+_app_cache_instance: Optional[AppCache] = None
+
+
+def get_app_cache() -> AppCache:
+    """Get or create the global AppCache instance."""
+    global _app_cache_instance
+    if _app_cache_instance is None:
+        _app_cache_instance = AppCache()
+    return _app_cache_instance
+
+
 def get_report_cache() -> ReportCache:
     """Get or create global report cache instance"""
     global _cache_instance

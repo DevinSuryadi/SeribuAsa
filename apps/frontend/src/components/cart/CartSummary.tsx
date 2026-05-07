@@ -13,7 +13,7 @@ interface CartSummaryProps {
  */
 export function CartSummary({
   totalAmount,
-  walletBalance,
+  walletBalance = 0,
   canAfford,
   isLoading = false,
 }: CartSummaryProps) {

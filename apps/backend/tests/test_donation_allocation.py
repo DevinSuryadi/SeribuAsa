@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base
 from app.models import FIESSurvey  # noqa: F401
 from app.models.donation import Donation, DonationStatusEnum, DonationTypeEnum, Voucher
+from app.models.wallet import WalletAllocation
 from app.models.user import BeneficiaryProfile, DonorProfile, UserProfile
 from app.services.donation_allocation_service import DonationAllocationService
 from app.services.donation_service import DonationService
@@ -97,26 +98,23 @@ def test_successful_donation_allocates_to_current_month_beneficiaries_by_priorit
 
         result = DonationAllocationService.process_successful_donation(db, str(donation.id))
 
-        vouchers = db.query(Voucher).order_by(Voucher.balance.desc()).all()
-        balances = {str(voucher.beneficiary_id): voucher.balance for voucher in vouchers}
+        allocations = db.query(WalletAllocation).order_by(WalletAllocation.original_amount.desc()).all()
+        balances = {str(alloc.beneficiary_id): alloc.original_amount for alloc in allocations}
         donor = db.query(DonorProfile).filter(DonorProfile.user_id == donor_id).first()
         metrics = DonationService.get_impact_metrics(db, str(donor_id))
 
         assert result["success"] is True
         assert result["voucher_created"] is True
         assert result["allocated_beneficiaries"] == 3
-        assert len(vouchers) == 3
-        assert sum((voucher.balance for voucher in vouchers), Decimal("0")) == Decimal("900000.00")
+        assert len(allocations) == 3
+        assert sum((alloc.original_amount for alloc in allocations), Decimal("0")) == Decimal("900000.00")
         assert str(stale_id) not in balances
         assert str(pending_id) not in balances
         assert balances[str(severe_id)] > balances[str(moderate_id)] > balances[str(secure_id)]
         assert balances[str(secure_id)] > Decimal("0")
-        assert vouchers[0].expiry_date == DonationAllocationService._add_months(
-            date.today(),
-            3,
-        )
         assert donor is not None
         assert donor.total_donated == Decimal("900000.00")
+        assert metrics["total_donated"] == Decimal("900000.00")
         assert metrics["total_children_helped"] == 3
 
     finally:
@@ -145,12 +143,12 @@ def test_successful_donation_without_eligible_survey_creates_no_voucher():
         db.refresh(donation)
 
         donor = db.query(DonorProfile).filter(DonorProfile.user_id == donor_id).first()
-        vouchers = db.query(Voucher).all()
+        allocations = db.query(WalletAllocation).all()
 
         assert donation.status == DonationStatusEnum.success
         assert result["voucher_created"] is False
         assert result["allocated_beneficiaries"] == 0
-        assert vouchers == []
+        assert allocations == []
         assert donor is not None
         assert donor.total_donated == Decimal("500000.00")
 

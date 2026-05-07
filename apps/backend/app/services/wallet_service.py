@@ -12,7 +12,6 @@ Operations:
 from __future__ import annotations
 
 import logging
-import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional

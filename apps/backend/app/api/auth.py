@@ -15,6 +15,9 @@ from app.schemas.auth import (
 )
 from app.services.google_auth_service import google_auth_service
 from app.services.supabase_auth import supabase_auth
+from app.utils.cache import get_app_cache
+
+cache = get_app_cache()
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +124,9 @@ async def exchange_google_token(
         )
 
         db.commit()
+        
+        # Invalidate auth cache for this user
+        cache.invalidate("auth", str(user_id))
 
         return _build_google_response(
             token_data=token_response,
@@ -190,6 +196,9 @@ async def sync_google_profile(
         )
 
         db.commit()
+        
+        # Invalidate auth cache for this user
+        cache.invalidate("auth", str(user_id))
 
         return _build_google_response(
             token_data={},

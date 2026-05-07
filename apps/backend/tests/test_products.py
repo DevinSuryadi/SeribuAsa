@@ -82,7 +82,10 @@ def test_product_service_get_products():
     mock_query = MagicMock()
     mock_db.query.return_value = mock_query
     mock_query.filter.return_value = mock_query
+    mock_query.options.return_value = mock_query
     mock_query.order_by.return_value = mock_query
+    mock_query.offset.return_value = mock_query
+    mock_query.limit.return_value = mock_query
     mock_query.all.return_value = []
 
     params = ProductQueryParams(search="test", in_stock_only=True)

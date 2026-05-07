@@ -352,7 +352,7 @@ class SettlementScheduler:
                 )
                 .filter(
                     Order.status == OrderStatusEnum.pending,
-                    Order.pickup_expires_at != None,
+                    Order.pickup_expires_at is not None,
                     Order.pickup_expires_at < now_iso,
                     Order.is_active,
                 )

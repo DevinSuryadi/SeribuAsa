@@ -11,6 +11,7 @@ from app.models.cart import VoucherTransaction, VoucherTransactionTypeEnum
 from app.models.donation import Voucher, VoucherStatusEnum
 from app.models.product import Order, Product
 from app.models.user import BeneficiaryProfile, UserProfile, VendorProfile
+from app.models.wallet import WalletTransaction
 from app.schemas.order import OrderCreate, OrderItemCreate
 from app.services.order_service import OrderService
 from app.services.voucher_service import VoucherService
@@ -126,13 +127,13 @@ def test_beneficiary_order_creation_updates_voucher_balance_and_history():
         assert beneficiary is not None
         assert vendor is not None
 
-        beneficiary.vouchers_balance = Decimal("50000")
+        beneficiary.vouchers_balance = Decimal("100000")
 
         voucher = Voucher(
             code="VCH-ORDER-001",
             beneficiary_id=beneficiary.user_id,
             donation_id=None,
-            balance=Decimal("50000"),
+            balance=Decimal("100000"),
             allocated_date=datetime.utcnow(),
             expiry_date=(datetime.utcnow() + timedelta(days=30)).date(),
             status=VoucherStatusEnum.active,
@@ -171,19 +172,19 @@ def test_beneficiary_order_creation_updates_voucher_balance_and_history():
 
         db.refresh(voucher)
         db.refresh(beneficiary)
-        voucher_transactions = db.query(VoucherTransaction).filter(
-            VoucherTransaction.voucher_id == voucher.id
+        wallet_transactions = db.query(WalletTransaction).filter(
+            WalletTransaction.beneficiary_id == beneficiary.user_id
         ).all()
 
-        assert order.voucher_used == Decimal("50000")
-        assert order.cash_paid == Decimal("30000")
-        assert order.payment_status == "partial"
-        assert voucher.balance == Decimal("0")
-        assert voucher.status == VoucherStatusEnum.redeemed
-        assert beneficiary.vouchers_balance == Decimal("0")
-        assert len(voucher_transactions) == 1
-        assert voucher_transactions[0].transaction_type == VoucherTransactionTypeEnum.redeemed
-        assert voucher_transactions[0].amount == Decimal("50000")
+        assert order.voucher_used == Decimal("80000")
+        assert order.cash_paid == Decimal("0")
+        assert order.payment_status == "paid"
+        assert beneficiary.vouchers_balance == Decimal("100000")
+        assert beneficiary.wallet_held == Decimal("80000")
+        assert beneficiary.wallet_available == Decimal("20000")
+        assert len(wallet_transactions) == 1
+        assert wallet_transactions[0].transaction_type == "hold"
+        assert wallet_transactions[0].amount == Decimal("80000")
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)

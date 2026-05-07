@@ -123,6 +123,7 @@ class DonationAllocationService:
             "amount": float(donation.amount or Decimal("0")),
             "transaction_id": donation.midtrans_transaction_id,
             "wallet_credited": bool(allocations),
+            "voucher_created": bool(allocations),
             "allocated_beneficiaries": len(allocations),
             "allocations": allocations,
             "impact": impact,
@@ -211,7 +212,6 @@ class DonationAllocationService:
             donation.amount,
             candidates,
         )
-        expiry_days = 90  # 3 months
 
         created_allocations: list[dict] = []
         for candidate in candidates:

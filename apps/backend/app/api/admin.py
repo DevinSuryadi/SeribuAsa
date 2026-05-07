@@ -35,6 +35,9 @@ from app.schemas.admin import (
     AdminUserApprovalListResponse,
     ApprovalUpdateRequest,
 )
+from app.utils.cache import get_app_cache
+
+cache = get_app_cache()
 
 logger = logging.getLogger(__name__)
 
@@ -208,8 +211,18 @@ def _resolve_donation_recipient_name(donation: Donation) -> tuple[Optional[UUID]
 
 
 def _build_admin_donation_item(donation: Donation) -> AdminDonationItem:
-    allocated_total = sum((Decimal(voucher.balance or Decimal("0")) for voucher in donation.vouchers), Decimal("0"))
-    allocated_beneficiaries = len({str(voucher.beneficiary_id) for voucher in donation.vouchers})
+    voucher_balances = [Decimal(voucher.balance or Decimal("0")) for voucher in donation.vouchers]
+    allocation_balances = [
+        Decimal(allocation.original_amount or Decimal("0"))
+        for allocation in donation.wallet_allocations
+    ]
+    allocation_amounts = allocation_balances or voucher_balances
+    allocated_total = sum(allocation_amounts, Decimal("0"))
+    allocated_beneficiaries = (
+        len({str(allocation.beneficiary_id) for allocation in donation.wallet_allocations})
+        if donation.wallet_allocations
+        else len({str(voucher.beneficiary_id) for voucher in donation.vouchers})
+    )
 
     if donation.status == DonationStatusEnum.pending:
         allocation_status = "pending_payment"
@@ -254,6 +267,12 @@ async def get_admin_stats(
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """Get admin dashboard statistics."""
+    # Try cache first
+    cached = cache.get("stats", "dashboard")
+    if cached:
+        logger.debug("Admin stats cache hit")
+        return AdminStatsResponse(**cached)
+    
     total_users = db.query(UserProfile).count()
     total_donors = db.query(DonorProfile).count()
     total_beneficiaries = db.query(BeneficiaryProfile).count()
@@ -289,7 +308,7 @@ async def get_admin_stats(
         ~Donation.vouchers.any(),
     ).count()
 
-    return AdminStatsResponse(
+    result = AdminStatsResponse(
         users={
             "total": total_users,
             "donors": total_donors,
@@ -326,6 +345,10 @@ async def get_admin_stats(
             "unallocated_success_count": unallocated_success_count,
         },
     )
+    
+    # Cache for 2 minutes
+    cache.set("stats", "dashboard", result.model_dump(), ttl_seconds=120)
+    return result
 
 
 @router.get("/users", response_model=AdminUserListResponse)
@@ -349,7 +372,13 @@ async def list_admin_users(
     search_term = search.strip().lower() if search else None
     rows: list[AdminUserItem] = []
 
-    base_query = db.query(UserProfile).filter(UserProfile.is_active)
+    base_query = (
+        db.query(UserProfile)
+        .outerjoin(DonorProfile, DonorProfile.user_id == UserProfile.user_id)
+        .outerjoin(BeneficiaryProfile, BeneficiaryProfile.user_id == UserProfile.user_id)
+        .outerjoin(VendorProfile, VendorProfile.user_id == UserProfile.user_id)
+        .filter(UserProfile.is_active)
+    )
 
     if search_term:
         base_query = base_query.filter(
@@ -360,7 +389,62 @@ async def list_admin_users(
             )
         )
 
-    user_profiles = (
+    if normalized_role == "donor":
+        base_query = base_query.filter(DonorProfile.user_id.isnot(None))
+    elif normalized_role == "beneficiary":
+        base_query = base_query.filter(BeneficiaryProfile.user_id.isnot(None))
+    elif normalized_role == "vendor":
+        base_query = base_query.filter(VendorProfile.user_id.isnot(None))
+    elif normalized_role == "user":
+        base_query = base_query.filter(
+            DonorProfile.user_id.is_(None),
+            BeneficiaryProfile.user_id.is_(None),
+            VendorProfile.user_id.is_(None),
+        )
+
+    if normalized_status:
+        if normalized_role == "beneficiary":
+            base_query = base_query.filter(BeneficiaryProfile.approval_status == normalized_status)
+        elif normalized_role == "vendor":
+            base_query = base_query.filter(VendorProfile.approval_status == normalized_status)
+        elif normalized_role in {"donor", "user"}:
+            if normalized_status != "approved":
+                base_query = base_query.filter(False)
+        else:
+            if normalized_status == "approved":
+                base_query = base_query.filter(
+                    or_(
+                        DonorProfile.user_id.isnot(None),
+                        and_(
+                            BeneficiaryProfile.user_id.isnot(None),
+                            BeneficiaryProfile.approval_status == "approved",
+                        ),
+                        and_(
+                            VendorProfile.user_id.isnot(None),
+                            VendorProfile.approval_status == "approved",
+                        ),
+                        and_(
+                            DonorProfile.user_id.is_(None),
+                            BeneficiaryProfile.user_id.is_(None),
+                            VendorProfile.user_id.is_(None),
+                        ),
+                    )
+                )
+            else:
+                base_query = base_query.filter(
+                    or_(
+                        and_(
+                            BeneficiaryProfile.user_id.isnot(None),
+                            BeneficiaryProfile.approval_status == normalized_status,
+                        ),
+                        and_(
+                            VendorProfile.user_id.isnot(None),
+                            VendorProfile.approval_status == normalized_status,
+                        ),
+                    )
+                )
+
+    query = (
         base_query
         .options(
             selectinload(UserProfile.donor_profile),
@@ -368,6 +452,13 @@ async def list_admin_users(
             selectinload(UserProfile.vendor_profile),
         )
         .order_by(UserProfile.created_at.desc())
+    )
+
+    total = query.count()
+    user_profiles = (
+        query
+        .offset((page - 1) * page_size)
+        .limit(page_size)
         .all()
     )
 
@@ -388,15 +479,9 @@ async def list_admin_users(
             role_value = "user"
             approval_status_value = "approved"
 
-        if normalized_role and role_value != normalized_role:
-            continue
-        if normalized_status and approval_status_value != normalized_status:
-            continue
-
         rows.append(_build_admin_user_item(user_profile, role_value, approval_status_value))
 
-    total = len(rows)
-    paged_items, total = _paginate(rows, page, page_size)
+    paged_items = rows
     return AdminUserListResponse(
         items=paged_items,
         total=total,
@@ -438,14 +523,20 @@ async def list_user_approvals(
         if search_term:
             beneficiary_query = beneficiary_query.filter(UserProfile.full_name.ilike(f"%{search_term}%"))
 
-        beneficiary_rows = beneficiary_query.order_by(UserProfile.created_at.desc()).all()
+        total = beneficiary_query.count()
+        beneficiary_rows = (
+            beneficiary_query.order_by(UserProfile.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
         survey_lookup = _latest_survey_lookup(db, [profile.user_id for _, profile in beneficiary_rows])
-        items.extend(
+        items = [
             _build_beneficiary_approval_item(user_profile, profile, survey_lookup.get(profile.user_id))
             for user_profile, profile in beneficiary_rows
-        )
+        ]
 
-    if normalized_role in (None, "vendor"):
+    if normalized_role == "vendor":
         vendor_query = (
             db.query(UserProfile, VendorProfile)
             .join(VendorProfile, VendorProfile.user_id == UserProfile.user_id)
@@ -459,14 +550,73 @@ async def list_user_approvals(
                 | (VendorProfile.store_name.ilike(f"%{search_term}%"))
             )
 
-        vendor_rows = vendor_query.order_by(UserProfile.created_at.desc()).all()
+        total = vendor_query.count()
+        vendor_rows = (
+            vendor_query.order_by(UserProfile.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
+        items = [
+            _build_vendor_approval_item(user_profile, profile)
+            for user_profile, profile in vendor_rows
+        ]
+
+    if normalized_role is None:
+        # Get both beneficiary and vendor approvals with proper pagination
+        beneficiary_query = (
+            db.query(UserProfile, BeneficiaryProfile)
+            .join(BeneficiaryProfile, BeneficiaryProfile.user_id == UserProfile.user_id)
+            .filter(UserProfile.is_active, BeneficiaryProfile.is_active)
+        )
+        if normalized_status:
+            beneficiary_query = beneficiary_query.filter(BeneficiaryProfile.approval_status == normalized_status)
+        if search_term:
+            beneficiary_query = beneficiary_query.filter(UserProfile.full_name.ilike(f"%{search_term}%"))
+
+        vendor_query = (
+            db.query(UserProfile, VendorProfile)
+            .join(VendorProfile, VendorProfile.user_id == UserProfile.user_id)
+            .filter(UserProfile.is_active, VendorProfile.is_active)
+        )
+        if normalized_status:
+            vendor_query = vendor_query.filter(VendorProfile.approval_status == normalized_status)
+        if search_term:
+            vendor_query = vendor_query.filter(
+                (UserProfile.full_name.ilike(f"%{search_term}%"))
+                | (VendorProfile.store_name.ilike(f"%{search_term}%"))
+            )
+
+        total = beneficiary_query.count() + vendor_query.count()
+        
+        # Fetch both with generous limit and combine
+        beneficiary_rows = (
+            beneficiary_query.order_by(UserProfile.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
+        vendor_rows = (
+            vendor_query.order_by(UserProfile.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
+        
+        survey_lookup = _latest_survey_lookup(db, [profile.user_id for _, profile in beneficiary_rows])
+        items = []
+        items.extend(
+            _build_beneficiary_approval_item(user_profile, profile, survey_lookup.get(profile.user_id))
+            for user_profile, profile in beneficiary_rows
+        )
         items.extend(
             _build_vendor_approval_item(user_profile, profile)
             for user_profile, profile in vendor_rows
         )
+        items.sort(key=lambda item: item.created_at, reverse=True)
+        items = items[:page_size]
 
-    items.sort(key=lambda item: item.created_at, reverse=True)
-    paged_items, total = _paginate(items, page, page_size)
+    paged_items = items
     return AdminUserApprovalListResponse(
         items=paged_items,
         total=total,
@@ -505,6 +655,7 @@ async def update_user_approval(
         )
         db.commit()
         db.refresh(beneficiary_profile)
+        cache.invalidate_namespace("stats")
         latest_survey = _latest_survey_lookup(db, [beneficiary_profile.user_id]).get(beneficiary_profile.user_id)
         return _build_beneficiary_approval_item(user_profile, beneficiary_profile, latest_survey)
 
@@ -522,6 +673,7 @@ async def update_user_approval(
         )
         db.commit()
         db.refresh(vendor_profile)
+        cache.invalidate_namespace("stats")
         return _build_vendor_approval_item(user_profile, vendor_profile)
 
     raise HTTPException(
@@ -610,6 +762,7 @@ async def update_product_approval(
     )
     db.commit()
     db.refresh(product)
+    cache.invalidate_namespace("stats")
 
     return _build_product_review_item(product)
 
@@ -640,6 +793,7 @@ async def list_admin_donations(
         db.query(Donation)
         .options(
             selectinload(Donation.donor_profile).selectinload(DonorProfile.user_profile),
+            selectinload(Donation.wallet_allocations),
             selectinload(Donation.vouchers)
             .selectinload(Voucher.beneficiary_profile)
             .selectinload(BeneficiaryProfile.user_profile),
@@ -650,7 +804,13 @@ async def list_admin_donations(
     if donor_id:
         query = query.filter(Donation.donor_id == donor_id)
 
-    donations = query.order_by(Donation.created_at.desc()).all()
+    total = query.count()
+    donations = (
+        query.order_by(Donation.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
     items = [_build_admin_donation_item(donation) for donation in donations]
 
     if normalized_allocation_status:
@@ -666,7 +826,7 @@ async def list_admin_donations(
             or search_term in (item.midtrans_transaction_id or "").lower()
         ]
 
-    paged_items, total = _paginate(items, page, page_size)
+    paged_items = items
     return AdminDonationListResponse(
         items=paged_items,
         total=total,
@@ -708,7 +868,13 @@ async def list_beneficiary_eligibility(
     if search:
         query = query.filter(UserProfile.full_name.ilike(f"%{search.strip()}%"))
 
-    rows = query.order_by(UserProfile.created_at.desc()).all()
+    total = query.count()
+    rows = (
+        query.order_by(UserProfile.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
     survey_lookup = _latest_survey_lookup(db, [profile.user_id for _, profile in rows])
 
     items: list[AdminBeneficiaryEligibilityItem] = []
@@ -741,7 +907,7 @@ async def list_beneficiary_eligibility(
         if not eligible_only or item.eligible_for_allocation:
             items.append(item)
 
-    paged_items, total = _paginate(items, page, page_size)
+    paged_items = items
     return AdminBeneficiaryEligibilityListResponse(
         items=paged_items,
         total=total,
@@ -905,3 +1071,18 @@ async def export_redemptions(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=redemptions.csv"},
     )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Cache Monitoring Endpoint
+# ──────────────────────────────────────────────────────────────────────
+
+@router.get("/cache-stats")
+async def get_cache_stats(
+    current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
+):
+    """Get cache statistics for monitoring."""
+    return {
+        "cache_stats": cache.get_stats(),
+        "namespaces": ["stats", "auth", "ref", "report", "donor", "wallet"]
+    }

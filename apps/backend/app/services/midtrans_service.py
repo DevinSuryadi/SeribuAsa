@@ -1,3 +1,4 @@
+import asyncio
 import midtransclient
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -31,7 +32,7 @@ class MidtransService:
         )
 
     @staticmethod
-    def create_transaction(donation: Donation, donor_email: str, donor_name: str) -> dict:
+    async def create_transaction(donation: Donation, donor_email: str, donor_name: str) -> dict:
         """
         Create a Snap transaction for a given donation.
         Returns the Snap Token and Redirect URL.
@@ -52,7 +53,7 @@ class MidtransService:
             }
         }
         logger.info(f"Creating Midtrans transaction for donation {donation.id} with amount {donation.amount}")
-        transaction = snap.create_transaction(param)
+        transaction = await asyncio.to_thread(snap.create_transaction, param)
         return transaction
 
     @staticmethod
@@ -223,7 +224,7 @@ class MidtransService:
             }
 
     @staticmethod
-    def handle_notification(db: Session, notification_dict: dict):
+    async def handle_notification(db: Session, notification_dict: dict):
         """
         Handle Midtrans webhook notification.
         """
@@ -234,7 +235,7 @@ class MidtransService:
         core_api = MidtransService.get_core_api_client()
         
         try:
-            status_response = core_api.transactions.notification(notification_dict)
+            status_response = await asyncio.to_thread(core_api.transactions.notification, notification_dict)
         except Exception as e:
             logger.error(f"Failed to verify notification: {str(e)}")
             raise e

@@ -10,6 +10,7 @@ import logging
 from uuid import UUID
 
 from app.models.donation import Donation, DonationStatusEnum, Voucher
+from app.models.wallet import WalletAllocation
 from app.schemas.donation import DonationCreate, DonationQueryParams
 
 logger = logging.getLogger(__name__)
@@ -166,16 +167,16 @@ class DonationService:
             Donation.status == DonationStatusEnum.success
         ).scalar() or Decimal(0)
         
-        children_helped = db.query(func.count(func.distinct(Voucher.beneficiary_id))).join(
+        children_helped = db.query(func.count(func.distinct(WalletAllocation.beneficiary_id))).join(
             Donation,
-            Voucher.donation_id == Donation.id
+            WalletAllocation.donation_id == Donation.id
         ).filter(
             Donation.donor_id == donor_uuid
         ).scalar() or 0
         
-        vouchers_allocated = db.query(func.count(Voucher.id)).join(
+        vouchers_allocated = db.query(func.count(WalletAllocation.id)).join(
             Donation,
-            Voucher.donation_id == Donation.id
+            WalletAllocation.donation_id == Donation.id
         ).filter(
             Donation.donor_id == donor_uuid
         ).scalar() or 0

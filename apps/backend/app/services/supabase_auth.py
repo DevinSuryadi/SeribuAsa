@@ -86,12 +86,14 @@ class SupabaseAuthService:
         Returns:
             dict: Simplified user info
         """
+        user_metadata = token_data.get("user_metadata") if isinstance(token_data.get("user_metadata"), dict) else {}
+        app_metadata = token_data.get("app_metadata") if isinstance(token_data.get("app_metadata"), dict) else {}
         return {
             "user_id": token_data.get("id"),
             "email": token_data.get("email"),
             "email_verified": token_data.get("email_confirmed_at") is not None,
-            "full_name": token_data.get("user_metadata", {}).get("full_name", ""),
-            "role": token_data.get("user_metadata", {}).get("role", "donor"),
+            "full_name": user_metadata.get("full_name", ""),
+            "role": user_metadata.get("role") or app_metadata.get("role") or token_data.get("role"),
             "created_at": token_data.get("created_at"),
         }
 

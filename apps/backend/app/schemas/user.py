@@ -2,8 +2,8 @@
 User Profile Schemas
 Handles user registration, profile creation, and response models
 """
-from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Literal
 from datetime import date, datetime
 from uuid import UUID
 
@@ -14,14 +14,8 @@ GenderType = Literal["male", "female"]
 
 class UserProfileCreate(BaseModel):
     """Schema for creating a new user profile on signup"""
-    user_id: UUID = Field(..., description="Supabase auth user ID")
-    full_name: str = Field(..., min_length=1, max_length=255, description="User's full name")
-    role: UserRole = Field(..., description="User role")
-    phone: Optional[str] = Field(None, max_length=20, description="User's phone number")
-    address: Optional[str] = Field(None, description="User's address")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "123e4567-e89b-12d3-a456-426614174000",
                 "full_name": "John Doe",
@@ -30,59 +24,65 @@ class UserProfileCreate(BaseModel):
                 "address": "Jl. Contoh No. 123"
             }
         }
+    )
+
+    user_id: UUID = Field(..., description="Supabase auth user ID")
+    full_name: str = Field(..., min_length=1, max_length=255, description="User's full name")
+    role: UserRole = Field(..., description="User role")
+    phone: str | None = Field(None, max_length=20, description="User's phone number")
+    address: str | None = Field(None, description="User's address")
 
 
 class UserProfileResponse(BaseModel):
     """Schema for user profile response"""
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     user_id: UUID
     full_name: str
-    role: Optional[UserRole] = None
-    phone: Optional[str]
-    address: Optional[str]
-    date_of_birth: Optional[date]
-    gender: Optional[GenderType]
-    avatar_url: Optional[str]
+    role: UserRole | None = None
+    phone: str | None
+    address: str | None
+    date_of_birth: date | None
+    gender: GenderType | None
+    avatar_url: str | None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class UserSignUpRequest(BaseModel):
     """Schema for signup request from frontend"""
-    user_id: UUID = Field(..., description="Supabase auth user ID")
-    full_name: str = Field(..., min_length=1, max_length=255)
-    role: UserRole = Field(...)
-    phone: Optional[str] = Field(None, max_length=20)
-    address: Optional[str] = Field(None)
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "123e4567-e89b-12d3-a456-426614174000",
                 "full_name": "Jane Smith",
                 "role": "beneficiary"
             }
         }
+    )
+
+    user_id: UUID = Field(..., description="Supabase auth user ID")
+    full_name: str = Field(..., min_length=1, max_length=255)
+    role: UserRole = Field(...)
+    phone: str | None = Field(None, max_length=20)
+    address: str | None = Field(None)
 
 
 class UserSignUpResponse(BaseModel):
     """Schema for signup response"""
+    model_config = ConfigDict(from_attributes=True)
+
     user_id: UUID
     full_name: str
     role: UserRole
     message: str = "User created successfully"
 
-    class Config:
-        from_attributes = True
-
 
 class UserProfileUpdateRequest(BaseModel):
     """Schema for updating existing user profile"""
-    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
-    phone: Optional[str] = Field(None, max_length=20)
-    address: Optional[str] = Field(None)
-    date_of_birth: Optional[date] = Field(None)
-    gender: Optional[GenderType] = Field(None)
+    full_name: str | None = Field(None, min_length=1, max_length=255)
+    phone: str | None = Field(None, max_length=20)
+    address: str | None = Field(None)
+    date_of_birth: date | None = Field(None)
+    gender: GenderType | None = Field(None)

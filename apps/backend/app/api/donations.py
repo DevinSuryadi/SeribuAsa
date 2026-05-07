@@ -2,12 +2,12 @@
 Donation Router
 Handles donation creation, listing, and management
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date
 
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.services.donation_service import DonationService
 from app.middleware.auth import get_current_user, AuthenticatedUser
 from app.schemas.donation import (
@@ -24,7 +24,10 @@ from app.schemas.donation import (
 )
 from app.models.donation import Donation
 from app.services.midtrans_service import MidtransService
+from app.utils.cache import get_app_cache
 import logging
+
+cache = get_app_cache()
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +69,7 @@ async def create_donation(
     # Create Midtrans transaction
     donor_name = donor_profile.user_profile.full_name if donor_profile.user_profile else "Donor"
     try:
-        midtrans_tx = MidtransService.create_transaction(
+        midtrans_tx = await MidtransService.create_transaction(
             donation=donation,
             donor_email=current_user.email,
             donor_name=donor_name
@@ -104,6 +107,9 @@ async def create_donation(
     
     logger.info(f"[DONATION] Donation created: {donation.id} by user {current_user.user_id}")
     
+    # Invalidate admin stats cache
+    cache.invalidate_namespace("stats")
+    
     # We return the dictionary with extra midtrans info if needed, but since response_model=DonationResponse, 
     # it will filter out extra fields. We need to override the response type if we want to return the token directly.
     # We will let the frontend call a separate endpoint for the snap token if they want, or we can change the response model.
@@ -111,18 +117,40 @@ async def create_donation(
     
     return donation
 
+async def _process_midtrans_notification_async(
+    db_session_factory,
+    notification: dict
+):
+    """Background task to process Midtrans webhook notification."""
+    db = db_session_factory()
+    try:
+        result = await MidtransService.handle_notification(db, notification)
+        db.commit()
+        logger.info(f"[BG_TASK] Midtrans webhook processed: {result}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[BG_TASK] Midtrans webhook processing failed: {e}")
+    finally:
+        db.close()
+
+
 @router.post("/webhook/midtrans")
 async def midtrans_webhook(
     notification: dict,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """Webhook for Midtrans notifications"""
-    try:
-        result = MidtransService.handle_notification(db, notification)
-        return result
-    except Exception as e:
-        logger.error(f"Midtrans webhook error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    """Webhook for Midtrans notifications.
+    
+    Returns immediately while processing happens in background.
+    This prevents Midtrans timeout/retry storms.
+    """
+    background_tasks.add_task(
+        _process_midtrans_notification_async,
+        SessionLocal,
+        notification
+    )
+    return {"status": "received", "message": "Notification queued for processing"}
 
 @router.post("/{donation_id}/payment-link", response_model=PaymentResponse)
 async def get_payment_link(
@@ -140,7 +168,7 @@ async def get_payment_link(
     donor_name = donor_profile.user_profile.full_name if donor_profile and donor_profile.user_profile else "Donor"
     
     try:
-        tx = MidtransService.create_transaction(donation, current_user.email, donor_name)
+        tx = await MidtransService.create_transaction(donation, current_user.email, donor_name)
         return PaymentResponse(
             donation_id=str(donation.id),
             snap_token=tx.get("token"),
@@ -205,7 +233,7 @@ async def export_donation_history(
     format: str = "csv",
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    status: Optional[str] = None,
+    status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user)
 ):
@@ -219,8 +247,8 @@ async def export_donation_history(
     # Build query
     query = db.query(Donation).filter(Donation.donor_id == current_user.user_id)
     
-    if status:
-        query = query.filter(Donation.status == status)
+    if status_filter:
+        query = query.filter(Donation.status == status_filter)
     if date_from:
         query = query.filter(Donation.created_at >= date_from)
     if date_to:
@@ -351,84 +379,101 @@ async def download_donation_receipt(
     })
 
 
-@router.post("/{donation_id}/simulate-payment")
-async def simulate_payment(
+async def _process_donation_allocation_async(
+    db_session_factory,
     donation_id: str,
-    db: Session = Depends(get_db),
-    current_user: AuthenticatedUser = Depends(get_current_user)
+    donor_id: str
 ):
-    """
-    Mark payment as successful and trigger real allocation logic.
-    Route name is kept for MVP compatibility with the current frontend flow.
-    """
-    logger.info(f"[SIMULATE_PAYMENT] Called with donation_id: {donation_id}, user: {current_user.user_id}")
-    
-    # Verify donation exists and belongs to current user
-    from app.models.donation import Donation
-    from uuid import UUID
-    
-    try:
-        # Convert string ID to UUID
-        donation_uuid = UUID(str(donation_id))
-        logger.info(f"[SIMULATE_PAYMENT] Converted to UUID: {donation_uuid}")
-    except Exception as e:
-        logger.error(f"[SIMULATE_PAYMENT] Invalid UUID format: {donation_id}, error: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Invalid donation ID format: {donation_id}")
-    
-    donation = db.query(Donation).filter(Donation.id == donation_uuid).first()
-    if not donation:
-        logger.error(f"[SIMULATE_PAYMENT] Donation {donation_id} not found")
-        raise HTTPException(status_code=404, detail="Donation not found")
-    
-    if str(donation.donor_id) != str(current_user.user_id):
-        logger.error(f"[SIMULATE_PAYMENT] Permission denied. Donation donor: {donation.donor_id}, Current user: {current_user.user_id}")
-        raise HTTPException(status_code=403, detail="Not authorized to simulate payment for this donation")
-    
-    logger.info(f"[SIMULATE_PAYMENT] Donation found. Status: {donation.status}, Donor: {donation.donor_id}")
-    
+    """Background task to process donation allocation and subscription creation."""
+    db = db_session_factory()
     try:
         from app.services.donation_allocation_service import DonationAllocationService
         from app.models.subscription import Subscription
+        from app.services.subscription_service import SubscriptionService
+        from app.models.donation import Donation
+        from uuid import UUID
 
         result = DonationAllocationService.process_successful_donation(
             db=db,
             donation_id=donation_id
         )
-        logger.info(f"[SIMULATE_PAYMENT] Service returned result: {result}")
+        logger.info(f"[BG_TASK] Allocation completed for donation {donation_id}: {result}")
 
         # If this is a subscription donation with no subscription record yet, create one
-        db.refresh(donation)
-        if donation.type and donation.type.value == "subscription":
+        donation = db.query(Donation).filter(Donation.id == UUID(str(donation_id))).first()
+        if donation and donation.type and donation.type.value == "subscription":
             existing_sub = db.query(Subscription).filter(
                 Subscription.donor_id == donation.donor_id
             ).first()
             if not existing_sub:
                 try:
-                    from app.services.subscription_service import SubscriptionService
                     plan_id = None
                     if donation.subscription_config:
                         plan_id = donation.subscription_config.get("plan_id")
                     SubscriptionService.create_from_donation(db=db, donation=donation, plan_id=plan_id)
-                    logger.info(f"[SIMULATE_PAYMENT] Created subscription for donation {donation_id}")
+                    logger.info(f"[BG_TASK] Created subscription for donation {donation_id}")
                 except Exception as sub_err:
-                    logger.warning(f"[SIMULATE_PAYMENT] Could not create subscription: {sub_err}")
-
-        return result
+                    logger.warning(f"[BG_TASK] Could not create subscription: {sub_err}")
         
-    except ValueError as e:
-        logger.warning(f"[SIMULATE_PAYMENT] ValueError: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        db.commit()
+        logger.info(f"[BG_TASK] Donation {donation_id} processing completed successfully")
     except Exception as e:
-        import traceback
-        error_detail = f"Payment simulation failed: {str(e)}\n{traceback.format_exc()}"
-        logger.error(f"[SIMULATE_PAYMENT] {error_detail}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to simulate payment: {str(e)}"
-        )
+        db.rollback()
+        logger.error(f"[BG_TASK] Failed to process donation {donation_id}: {e}")
+    finally:
+        db.close()
+
+
+@router.post("/{donation_id}/simulate-payment")
+async def simulate_payment(
+    donation_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """
+    Mark payment as successful and trigger allocation logic in background.
+    Returns immediately while heavy allocation work happens asynchronously.
+    """
+    logger.info(f"[SIMULATE_PAYMENT] Called with donation_id: {donation_id}, user: {current_user.user_id}")
+    
+    from app.models.donation import Donation
+    from uuid import UUID
+    
+    try:
+        donation_uuid = UUID(str(donation_id))
+    except Exception:
+        logger.error(f"[SIMULATE_PAYMENT] Invalid UUID format: {donation_id}")
+        raise HTTPException(status_code=400, detail=f"Invalid donation ID format: {donation_id}")
+    
+    donation = db.query(Donation).filter(Donation.id == donation_uuid).first()
+    if not donation:
+        raise HTTPException(status_code=404, detail="Donation not found")
+    
+    if str(donation.donor_id) != str(current_user.user_id):
+        raise HTTPException(status_code=403, detail="Not authorized to simulate payment for this donation")
+    
+    # Update status synchronously
+    donation.status = DonationStatusEnum.success
+    db.commit()
+    db.refresh(donation)
+    
+    # Enqueue heavy allocation work in background
+    background_tasks.add_task(
+        _process_donation_allocation_async,
+        SessionLocal,
+        donation_id,
+        str(current_user.user_id)
+    )
+    
+    logger.info(f"[SIMULATE_PAYMENT] Payment confirmed, allocation processing in background for donation {donation_id}")
+    
+    return {
+        "success": True,
+        "donation_id": donation_id,
+        "status": "success",
+        "message": "Payment confirmed. Allocation processing in background."
+    }
 
 
 @router.post("/fix-pending-donations")
@@ -454,7 +499,7 @@ async def fix_pending_donations(
     errors = []
     for donation in pending:
         try:
-            result = DonationAllocationService.process_successful_donation(
+            DonationAllocationService.process_successful_donation(
                 db=db,
                 donation_id=str(donation.id)
             )

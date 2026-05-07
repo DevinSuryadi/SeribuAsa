@@ -6,7 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
-from pathlib import Path
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -54,7 +53,9 @@ class Settings(BaseSettings):
     MIDTRANS_IS_PRODUCTION: bool = False
     
     # JWT (Optional - if using custom JWT)
-    JWT_SECRET_KEY: str = "your-secret-key-min-32-chars-change-in-production"
+    # In production, this MUST be set via environment variable.
+    # A test-only fallback is provided when running in test mode.
+    JWT_SECRET_KEY: str | None = None
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     
@@ -106,6 +107,18 @@ class Settings(BaseSettings):
         """Check if running in test mode"""
         import sys
         return self.TEST_MODE or "pytest" in sys.modules
+    
+    def get_jwt_secret_key(self) -> str:
+        """Get JWT secret key with test fallback."""
+        if self.JWT_SECRET_KEY:
+            return self.JWT_SECRET_KEY
+        if self.is_test_mode():
+            # Safe test-only fallback
+            return "test-secret-key-min-32-chars-long-for-testing-only"
+        raise ValueError(
+            "JWT_SECRET_KEY must be set in production. "
+            "Please set it via environment variable or .env file."
+        )
     
     def get_database_url(self) -> str:
         """Get database URL with fallback for testing"""

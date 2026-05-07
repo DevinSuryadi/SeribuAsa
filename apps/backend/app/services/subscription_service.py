@@ -200,6 +200,14 @@ class SubscriptionService:
                     "donation_id": str(donation.id),
                     "transaction_id": result.get("transaction_id")
                 }
+            
+            # Payment processing failed
+            db.rollback()
+            logger.error(f"[BILLING] Payment processing failed for subscription {subscription.id}")
+            return {
+                "success": False,
+                "error": "Payment processing failed"
+            }
                 
         except Exception as e:
             db.rollback()

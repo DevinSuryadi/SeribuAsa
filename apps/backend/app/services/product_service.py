@@ -59,7 +59,12 @@ class ProductService:
         if params.in_stock_only:
             query = query.filter(Product.stock_quantity > 0)
 
-        return query.order_by(Product.created_at.desc()).all()
+        return (
+            query.order_by(Product.created_at.desc())
+            .offset((params.page - 1) * params.page_size)
+            .limit(params.page_size)
+            .all()
+        )
 
     @staticmethod
     def get_products_count(

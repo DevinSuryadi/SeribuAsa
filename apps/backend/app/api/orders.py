@@ -23,7 +23,10 @@ from app.schemas.order import (
     OrderQueryParams,
     ConfirmPickupRequest,
 )
+from app.utils.cache import get_app_cache
 import logging
+
+cache = get_app_cache()
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +85,9 @@ async def create_order(
             status_code=status.HTTP_201_CREATED,
             response_body=response_payload,
         )
+        
+        # Invalidate admin stats cache
+        cache.invalidate_namespace("stats")
 
         return OrderResponse(**response_payload)
     except ValueError as e:
@@ -187,6 +193,8 @@ async def update_order_status(
         order = OrderService.update_order_status(db, order_id, current_user.user_id, data)
         if not order:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found or not yours")
+        # Invalidate admin stats cache
+        cache.invalidate_namespace("stats")
         return OrderResponse.model_validate(order)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

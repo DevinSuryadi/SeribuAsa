@@ -20,7 +20,7 @@ class BaseModel(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, server_default=text('now()'), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, server_default=text('CURRENT_TIMESTAMP'), nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     
     # Soft delete flag

@@ -10,7 +10,6 @@ import logging
 from app.database import get_db
 from app.middleware.auth import get_current_user, AuthenticatedUser
 from app.models.wallet import WalletAllocation, WalletTransaction
-from app.models.user import BeneficiaryProfile
 from app.services.wallet_service import WalletService
 
 logger = logging.getLogger(__name__)

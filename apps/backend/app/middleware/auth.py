@@ -15,6 +15,9 @@ from app.services.supabase_auth import supabase_auth
 from app.config import settings
 from app.database import SessionLocal
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
+from app.utils.cache import get_app_cache
+
+cache = get_app_cache()
 
 logger = logging.getLogger(__name__)
 
@@ -92,31 +95,51 @@ def _dev_user_from_headers(request: Request) -> Optional[AuthenticatedUser]:
     )
 
 
-def _resolve_role_from_db(user_id: UUID, fallback_role: str) -> str:
+def _resolve_role_from_db(user_id: UUID, fallback_role: str | None) -> str | None:
     """Resolve role from local profile tables, fallback to provided role."""
+    # Check cache first
+    cached_role = cache.get("auth", str(user_id))
+    if cached_role:
+        return cached_role
+    
+    resolved_role: str | None = None
     db = SessionLocal()
     try:
         if db.query(BeneficiaryProfile).filter(BeneficiaryProfile.user_id == user_id).first():
-            return "beneficiary"
-
-        if db.query(VendorProfile).filter(VendorProfile.user_id == user_id).first():
-            return "vendor"
-
-        donor = db.query(DonorProfile).filter(DonorProfile.user_id == user_id).first()
-        if donor:
-            if donor.corporate_name:
-                return "corporate_donor"
-            return "donor"
-
-        if db.query(UserProfile).filter(UserProfile.user_id == user_id).first():
-            return fallback_role
-
-        return fallback_role
+            resolved_role = "beneficiary"
+        elif db.query(VendorProfile).filter(VendorProfile.user_id == user_id).first():
+            resolved_role = "vendor"
+        else:
+            donor = db.query(DonorProfile).filter(DonorProfile.user_id == user_id).first()
+            if donor:
+                if donor.corporate_name:
+                    resolved_role = "corporate_donor"
+                else:
+                    resolved_role = "donor"
+            elif db.query(UserProfile).filter(UserProfile.user_id == user_id).first():
+                resolved_role = fallback_role
+            else:
+                resolved_role = fallback_role
     except Exception as exc:
         logger.warning("[AUTH] Failed to resolve role from DB for %s: %s", user_id, str(exc))
-        return fallback_role
+        resolved_role = fallback_role
     finally:
         db.close()
+    
+    # Cache resolved role for 10 minutes
+    if resolved_role:
+        cache.set("auth", str(user_id), resolved_role, ttl_seconds=600)
+    
+    return resolved_role
+
+
+def _normalize_role(raw_role: Optional[str]) -> Optional[str]:
+    if not raw_role:
+        return None
+    role = str(raw_role).strip().lower()
+    if role not in DEV_ALLOWED_ROLES:
+        return None
+    return role
 
 
 def _decode_unverified_jwt_payload(token: str) -> Optional[dict]:
@@ -154,11 +177,10 @@ def _dev_user_from_unverified_token(token: str) -> Optional[AuthenticatedUser]:
     user_metadata = payload.get("user_metadata") if isinstance(payload.get("user_metadata"), dict) else {}
     app_metadata = payload.get("app_metadata") if isinstance(payload.get("app_metadata"), dict) else {}
 
-    raw_role = user_metadata.get("role") or app_metadata.get("role") or payload.get("role") or "donor"
-    role = str(raw_role).strip().lower()
-    if role not in DEV_ALLOWED_ROLES:
-        role = "donor"
-    role = _resolve_role_from_db(user_id, role)
+    token_role = _normalize_role(
+        user_metadata.get("role") or app_metadata.get("role") or payload.get("role")
+    )
+    role = token_role or _resolve_role_from_db(user_id, "donor")
 
     raw_email = payload.get("email") or user_metadata.get("email")
     email = str(raw_email).strip() if raw_email else f"{role}@nutriguard.id"
@@ -211,10 +233,32 @@ async def get_current_user(
         token_data = await supabase_auth.verify_token(credentials.credentials)
         user_info = supabase_auth.extract_user_info(token_data)
         
-        fallback_role = user_info.get("role") or "donor"
-        actual_role = _resolve_role_from_db(UUID(str(user_info["user_id"])), fallback_role)
-        
-        logger.info(f"[AUTH] JWT verified - user_id: {user_info['user_id']}, email: {user_info['email']}, role: {actual_role}")
+        token_role = _normalize_role(user_info.get("role"))
+        if token_role:
+            actual_role = token_role
+        else:
+            actual_role = _resolve_role_from_db(UUID(str(user_info["user_id"])), "donor")
+            if not actual_role:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid authentication credentials",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+        if token_role and actual_role != token_role:
+            logger.warning(
+                "[AUTH] Role mismatch for user %s: token=%s db=%s",
+                user_info["user_id"],
+                token_role,
+                actual_role,
+            )
+
+        logger.info(
+            "[AUTH] JWT verified - user_id: %s, email: %s, role: %s",
+            user_info["user_id"],
+            user_info["email"],
+            actual_role,
+        )
         
         return AuthenticatedUser(
             user_id=user_info["user_id"],

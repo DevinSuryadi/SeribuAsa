@@ -126,8 +126,8 @@ class OrderService:
                 payment_status  = "paid",         # wallet already held = paid
                 notes           = data.notes,
                 pickup_qr_code  = qr_code,
-                pickup_expires_at  = (now + timedelta(hours=QR_EXPIRY_HOURS)).isoformat(),
-                cancel_deadline    = (now + timedelta(minutes=CANCEL_WINDOW_MINS)).isoformat(),
+                pickup_expires_at  = now + timedelta(hours=QR_EXPIRY_HOURS),
+                cancel_deadline    = now + timedelta(minutes=CANCEL_WINDOW_MINS),
             )
             db.add(order)
             db.flush()   # get order.id
@@ -264,7 +264,7 @@ class OrderService:
                 deadline = datetime.fromisoformat(order.cancel_deadline)
                 if datetime.utcnow() > deadline:
                     raise ValueError(
-                        f"Batas waktu pembatalan sudah lewat (30 menit setelah pesanan dibuat)."
+                        "Batas waktu pembatalan sudah lewat (30 menit setelah pesanan dibuat)."
                     )
 
             # Refund held balance
@@ -326,7 +326,12 @@ class OrderService:
         if params.status:
             query = query.filter(Order.status == params.status)
         query = OrderService._apply_search(query, params.search)
-        return query.order_by(Order.created_at.desc()).all()
+        return (
+            query.order_by(Order.created_at.desc())
+            .offset((params.page - 1) * params.page_size)
+            .limit(params.page_size)
+            .all()
+        )
 
     @staticmethod
     def get_order_by_id(db: Session, order_id: str, user_id: str, role: str) -> Optional[Order]:
@@ -334,7 +339,7 @@ class OrderService:
         user_uuid  = OrderService._to_uuid(user_id)
         query = db.query(Order).filter(Order.id == order_uuid).options(
             joinedload(Order.vendor_profile),
-            joinedload(Order.items),
+            joinedload(Order.items).joinedload(OrderItem.product),
         )
 
         if role == "beneficiary":
@@ -359,7 +364,7 @@ class OrderService:
         order = db.query(Order).options(
             joinedload(Order.beneficiary_profile),
             joinedload(Order.vendor_profile),
-            joinedload(Order.items),
+            joinedload(Order.items).joinedload(OrderItem.product),
         ).filter(
             Order.id == order_uuid,
             Order.vendor_id == vendor_uuid,
@@ -382,10 +387,19 @@ class OrderService:
             WalletService.refund_hold(db=db, order=order)
             order.status = OrderStatusEnum.cancelled
             # Restore stock
+            product_ids = [item.product_id for item in order.items]
+            products = (
+                db.query(Product)
+                .filter(Product.id.in_(product_ids))
+                .all()
+            )
+            product_lookup = {product.id: product for product in products}
             for item in order.items:
-                product = db.query(Product).filter(Product.id == item.product_id).first()
+                product = product_lookup.get(item.product_id)
                 if product:
                     product.stock_quantity += item.quantity
+                else:
+                    logger.warning("Product not found for order item %s", item.product_id)
             logger.info("Order cancelled via dashboard: order=%s vendor=%s", order_id, vendor_id)
 
         elif data.status == "processing":
