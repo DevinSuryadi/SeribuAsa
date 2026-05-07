@@ -1,6 +1,6 @@
 """
 Order Schemas
-Pydantic schemas for order management
+Pydantic schemas for order management (E-Wallet Escrow flow)
 """
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
@@ -32,29 +32,36 @@ class OrderItemResponse(BaseModel):
 
 
 # ============================================
-# Order Schemas
+# Order Create / Response
 # ============================================
 class OrderCreate(BaseModel):
     vendor_id: UUID
     items: List[OrderItemCreate] = Field(..., min_length=1)
-    voucher_codes: List[str] = Field(default_factory=list)
     notes: Optional[str] = None
+    # voucher_codes removed — wallet balance is used automatically
 
 
 class OrderResponse(BaseModel):
     id: UUID
-    user_id: UUID = Field(alias="beneficiary_id")
+    user_id: UUID                          = Field(alias="beneficiary_id")
     vendor_id: UUID
-    cart_total: Decimal = Field(alias="total_amount")
-    voucher_discount: Decimal = Field(alias="voucher_used")
-    cash_amount: Decimal = Field(alias="cash_paid")
+    cart_total: Decimal                    = Field(alias="total_amount")
+    voucher_discount: Decimal              = Field(alias="voucher_used")
+    cash_amount: Decimal                   = Field(alias="cash_paid")
     status: str
     payment_status: str
-    notes: Optional[str] = None
-    vendor_store_name: Optional[str] = None
-    items: List[OrderItemResponse] = []
+    notes: Optional[str]                   = None
+    vendor_store_name: Optional[str]       = None
+    items: List[OrderItemResponse]         = []
+
+    # QR Pickup fields (new)
+    pickup_qr_code: Optional[str]          = None
+    pickup_expires_at: Optional[datetime]  = None
+    cancel_deadline: Optional[datetime]    = None
+    confirmed_by_vendor_id: Optional[UUID] = None
+
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: Optional[datetime]         = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -75,16 +82,23 @@ class OrderListResponse(BaseModel):
 # Order Status Update
 # ============================================
 class OrderStatusUpdate(BaseModel):
-    status: str = Field(..., pattern="^(completed|cancelled)$")
+    status: str = Field(..., pattern="^(processing|completed|cancelled)$")
+
+
+# ============================================
+# QR Pickup Confirm (vendor → scan beneficiary QR)
+# ============================================
+class ConfirmPickupRequest(BaseModel):
+    qr_code: str = Field(..., min_length=10, description="QR code value from beneficiary's app")
 
 
 # ============================================
 # Query Parameters
 # ============================================
 class OrderQueryParams(BaseModel):
-    page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=100)
-    status: Optional[str] = None
-    search: Optional[str] = None
+    page: int       = Field(default=1, ge=1)
+    page_size: int  = Field(default=20, ge=1, le=100)
+    status: Optional[str]  = None
+    search: Optional[str]  = None
     start_date: Optional[str] = None
-    end_date: Optional[str] = None
+    end_date: Optional[str]   = None

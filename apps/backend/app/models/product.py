@@ -5,7 +5,7 @@ Product and Order Models
 - Order: Orders from beneficiaries
 - OrderItem: Order line items
 """
-from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB
+from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB, DateTime
 from sqlalchemy.orm import relationship
 import enum
 from app.models.base import BaseModel
@@ -98,28 +98,36 @@ class Order(BaseModel):
     
     # Order details
     total_amount = Column(Numeric(15, 2), nullable=False)
-    voucher_used = Column(Numeric(15, 2), default=0)
-    cash_paid = Column(Numeric(15, 2), default=0)
-    
+    voucher_used = Column(Numeric(15, 2), default=0)  # kept for backward compat
+    cash_paid    = Column(Numeric(15, 2), default=0)
+
     # Status
-    status = Column(String(50), nullable=False, default=OrderStatusEnum.pending, index=True)
+    status         = Column(String(50), nullable=False, default=OrderStatusEnum.pending, index=True)
     payment_status = Column(String(50), default=PaymentStatusEnum.pending)
-    
+
     # Notes
     notes = Column(Text)
+
+    # ── QR Pickup (new e-wallet flow) ──────────────────────────────────
+    pickup_qr_code          = Column(String(100), unique=True, index=True, nullable=True)
+    pickup_expires_at       = Column(DateTime, nullable=True)   # order QR valid 24h
+    cancel_deadline         = Column(DateTime, nullable=True)   # beneficiary can cancel within 30min
+    confirmed_by_vendor_id  = Column(UUID(as_uuid=True), ForeignKey("vendor_profiles.user_id", ondelete="SET NULL"), nullable=True)
     
     # Relationships
     beneficiary_profile = relationship("BeneficiaryProfile", foreign_keys=[beneficiary_id], back_populates="orders")
-    vendor_profile = relationship("VendorProfile", foreign_keys=[vendor_id], back_populates="orders")
-    
+    vendor_profile      = relationship("VendorProfile",      foreign_keys=[vendor_id],      back_populates="orders")
+    confirming_vendor   = relationship("VendorProfile",      foreign_keys=[confirmed_by_vendor_id])
+
     # Order items
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
-    
-    # Voucher redemptions
-    voucher_redemptions = relationship("VoucherRedemption", back_populates="order", cascade="all, delete-orphan")
-    
-    # Voucher transactions
+
+    # Legacy voucher redemptions (kept for backward compat)
+    voucher_redemptions  = relationship("VoucherRedemption",  back_populates="order", cascade="all, delete-orphan")
     voucher_transactions = relationship("VoucherTransaction", back_populates="order", cascade="all, delete-orphan")
+
+    # New e-wallet transactions
+    wallet_transactions = relationship("WalletTransaction", back_populates="order", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Order {self.id} - {self.total_amount} ({self.status})>"
