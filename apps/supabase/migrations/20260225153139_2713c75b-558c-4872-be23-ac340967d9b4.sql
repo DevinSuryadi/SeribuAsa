@@ -20,7 +20,7 @@ RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
   SELECT EXISTS (
     SELECT 1
@@ -35,25 +35,25 @@ CREATE POLICY "Users can read their own roles"
   ON public.user_roles
   FOR SELECT
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own role on signup"
   ON public.user_roles
   FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Admins can read all roles"
   ON public.user_roles
   FOR SELECT
   TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  USING (public.has_role((select auth.uid()), 'admin'));
 
 CREATE POLICY "Admins can manage all roles"
   ON public.user_roles
   FOR ALL
   TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  USING (public.has_role((select auth.uid()), 'admin'));
 
 -- Profiles table
 CREATE TABLE public.profiles (
@@ -70,26 +70,26 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view their own profile"
   ON public.profiles FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Admins can view all profiles"
   ON public.profiles FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  USING (public.has_role((select auth.uid()), 'admin'));
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 BEGIN
   INSERT INTO public.profiles (user_id, full_name)
@@ -110,7 +110,7 @@ BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SET search_path = public;
+$$ LANGUAGE plpgsql SET search_path = '';
 
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
