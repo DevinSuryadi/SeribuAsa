@@ -27,6 +27,13 @@ from app.schemas.auth import (
     GoogleAuthUser,
     GoogleAuthResponse,
 )
+from app.schemas.vendor_wallet import (
+    WithdrawalAmountRequest,
+    QrWithdrawalRedeemRequest,
+    VendorWalletBalanceResponse,
+    WithdrawalResponse,
+    WithdrawalHistoryResponse,
+)
 
 __all__ = [
     # Donation
@@ -56,4 +63,11 @@ __all__ = [
     "GoogleSyncRequest",
     "GoogleAuthUser",
     "GoogleAuthResponse",
+
+    # Vendor wallet
+    "WithdrawalAmountRequest",
+    "QrWithdrawalRedeemRequest",
+    "VendorWalletBalanceResponse",
+    "WithdrawalResponse",
+    "WithdrawalHistoryResponse",
 ]

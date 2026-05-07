@@ -29,7 +29,9 @@ from app.schemas.voucher import (
     VoucherEligibilityResponse,
     VoucherSingleRedemptionRequest,
     VoucherSingleRedemptionResponse,
-    VoucherTransactionHistoryResponse
+    VoucherTransactionHistoryResponse,
+    VoucherQrRedemptionRequest,
+    VoucherQrRedemptionResponse,
 )
 from app.models.donation import Donation, DonationStatusEnum
 from app.models.donation import Voucher
@@ -98,6 +100,12 @@ async def get_balance(
     current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """Get voucher balance for beneficiary"""
+    if current_user.role == "beneficiary" and str(current_user.user_id) != str(beneficiary_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only access your own voucher balance",
+        )
+
     balance_data = VoucherService.get_balance(
         db=db,
         beneficiary_id=beneficiary_id
@@ -254,21 +262,30 @@ async def validate_voucher(
     try:
         # Get beneficiary profile
         from app.models.user import BeneficiaryProfile
-        beneficiary = db.query(BeneficiaryProfile).filter(
-            BeneficiaryProfile.user_id == current_user.user_id
-        ).first()
-        
-        if not beneficiary:
+        beneficiary_id = None
+        if current_user.role == "beneficiary":
+            beneficiary = db.query(BeneficiaryProfile).filter(
+                BeneficiaryProfile.user_id == current_user.user_id
+            ).first()
+
+            if not beneficiary:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Beneficiary profile not found"
+                )
+
+            beneficiary_id = str(beneficiary.user_id)
+
+        elif current_user.role not in ["vendor", "admin"]:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Beneficiary profile not found"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Voucher validation is only available for beneficiary, vendor, and admin users"
             )
-        
-        # Validate voucher
+
         validation_result = VoucherService.validate_voucher(
             db=db,
             code=validation_data.code,
-            beneficiary_id=beneficiary.user_id,
+            beneficiary_id=beneficiary_id,
             amount=validation_data.amount
         )
         
@@ -420,6 +437,99 @@ async def redeem_single_voucher(
         )
 
 
+@router.post("/redeem-qr", response_model=VoucherQrRedemptionResponse)
+async def redeem_qr_voucher(
+    redemption_data: VoucherQrRedemptionRequest,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Redeem a beneficiary QR voucher from a verified vendor account."""
+    try:
+        if current_user.role not in ["vendor", "admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="QR voucher redemption is only available for vendor and admin users"
+            )
+
+        if not idempotency_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing Idempotency-Key header",
+            )
+
+        request_hash = hashlib.sha256(
+            json.dumps(redemption_data.model_dump(mode="json"), sort_keys=True).encode("utf-8")
+        ).hexdigest()
+
+        idem_state, idem_record = IdempotencyService.begin(
+            endpoint="vouchers:redeem-qr",
+            user_id=current_user.user_id,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+        )
+
+        if idem_state == "replay" and idem_record:
+            return VoucherQrRedemptionResponse(**idem_record.response_body)
+
+        if idem_state == "processing":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="QR voucher redemption request is already being processed",
+            )
+
+        if idem_state == "conflict":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Idempotency key already used with different payload",
+            )
+
+        redemption_result = VoucherService.redeem_voucher_for_vendor_sale(
+            db=db,
+            vendor_id=current_user.user_id,
+            voucher_code=redemption_data.code,
+            amount=redemption_data.amount,
+            notes=redemption_data.notes,
+        )
+
+        response_payload = VoucherQrRedemptionResponse(**redemption_result).model_dump(mode="json")
+        IdempotencyService.complete(
+            endpoint="vouchers:redeem-qr",
+            user_id=current_user.user_id,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            status_code=status.HTTP_200_OK,
+            response_body=response_payload,
+        )
+
+        return VoucherQrRedemptionResponse(**response_payload)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        if idempotency_key:
+            IdempotencyService.abort(
+                endpoint="vouchers:redeem-qr",
+                user_id=current_user.user_id,
+                idempotency_key=idempotency_key,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception:
+        if idempotency_key:
+            IdempotencyService.abort(
+                endpoint="vouchers:redeem-qr",
+                user_id=current_user.user_id,
+                idempotency_key=idempotency_key,
+            )
+        logger.error("Error redeeming QR voucher", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to redeem QR voucher"
+        )
+
+
 @router.get("/transactions")
 async def get_transaction_history(
     beneficiary_id: Optional[str] = Query(None, description="Beneficiary ID to filter by"),
@@ -466,7 +576,15 @@ async def get_transaction_history(
         )
         
         if transaction_type:
-            query = query.filter(VoucherTransaction.transaction_type == transaction_type)
+            normalized_transaction_type = {
+                "allocation": "allocated",
+                "allocated": "allocated",
+                "redeemed": "redeemed",
+                "expired": "expired",
+                "adjusted": "adjusted",
+                "revoked": "revoked",
+            }.get(transaction_type, transaction_type)
+            query = query.filter(VoucherTransaction.transaction_type == normalized_transaction_type)
         
         # Pagination
         total = query.count()
@@ -479,7 +597,9 @@ async def get_transaction_history(
                 id=str(t.id),
                 voucher_id=str(t.voucher_id),
                 order_id=str(t.order_id) if t.order_id else None,
-                transaction_type=t.transaction_type,
+                transaction_type="allocation"
+                if str(t.transaction_type) == "VoucherTransactionTypeEnum.allocated" or getattr(t.transaction_type, "value", None) == "allocated"
+                else getattr(t.transaction_type, "value", str(t.transaction_type)),
                 amount=t.amount,
                 created_at=t.created_at
             ).model_dump()

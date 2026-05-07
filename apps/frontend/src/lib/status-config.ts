@@ -107,8 +107,8 @@ export const donationStatusConfig: Record<DonationStatus, StatusConfig> = {
     className: "bg-red-100 text-red-700 border-red-200",
     icon: XCircle,
   },
-  cancelled: {
-    label: "Dibatalkan",
+  refunded: {
+    label: "Refund",
     className: "bg-gray-100 text-gray-700 border-gray-200",
     icon: XCircle,
   },

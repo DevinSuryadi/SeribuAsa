@@ -20,6 +20,20 @@ export async function getDonations(): Promise<Donation[]> {
   return [];
 }
 
+export async function simulatePayment(donationId: string): Promise<any> {
+  const res = await apiFetch(`/donations/${donationId}/simulate-payment`, {
+    method: "POST",
+  });
+  return res?.data || res;
+}
+
+export async function fixPendingDonations(): Promise<{ fixed_count: number; errors: any[] }> {
+  const res = await apiFetch("/donations/fix-pending-donations", {
+    method: "POST",
+  });
+  return res?.data || res;
+}
+
 export async function getDonation(donationId: string): Promise<Donation> {
   const res = await apiFetch(`/donations/${donationId}`);
   return res?.data || res;
@@ -39,13 +53,16 @@ export async function createDonation(data: {
   return res?.data || res;
 }
 
-export async function simulatePayment(
+export async function getPaymentLink(
   donationId: string
-): Promise<{ success: boolean; data?: unknown }> {
-  return apiFetch(`/donations/${donationId}/simulate-payment`, {
+): Promise<{ donation_id: string; snap_token?: string; redirect_url?: string }> {
+  const res = await apiFetch(`/donations/${donationId}/payment-link`, {
     method: "POST",
   });
+  return res?.data || res;
 }
+
+
 
 export async function getImpactMetrics(donorId: string): Promise<ImpactReport> {
   const res = await apiFetch(`/donations/impact/${donorId}`);

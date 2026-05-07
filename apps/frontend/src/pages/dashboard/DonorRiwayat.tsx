@@ -16,7 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatIDR, formatDate } from "@/lib/format";
-import { getDonations } from "@/services/donations";
+import { getDonations, fixPendingDonations } from "@/services/donations";
 import {
   downloadDonationReceipt,
   exportDonationHistory,
@@ -48,6 +48,7 @@ const DonorRiwayat = () => {
   const [statusFilter, setStatusFilter] = useState<FilterKey>("all");
   const [downloadingReceipt, setDownloadingReceipt] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [fixingPending, setFixingPending] = useState(false);
 
   const fetchDonations = useCallback(async () => {
     const controller = new AbortController();
@@ -85,6 +86,23 @@ const DonorRiwayat = () => {
     }
   };
 
+  const handleFixPending = async () => {
+    setFixingPending(true);
+    try {
+      const result = await fixPendingDonations();
+      if (result.fixed_count > 0) {
+        toast.success(`${result.fixed_count} donasi berhasil diupdate ke Sukses`);
+        await fetchDonations();
+      } else {
+        toast.info("Tidak ada donasi pending yang perlu diperbaiki");
+      }
+    } catch (err: any) {
+      toast.error("Gagal memperbaiki donasi", { description: err.message });
+    } finally {
+      setFixingPending(false);
+    }
+  };
+
   // Handle export history
   const handleExportHistory = async () => {
     setExporting(true);
@@ -117,7 +135,7 @@ const DonorRiwayat = () => {
 
   const totalDonated = useMemo(
     () =>
-      filtered.filter((d) => d.status === "success").reduce((sum, d) => sum + (d.amount || 0), 0),
+      filtered.filter((d) => d.status === "success").reduce((sum, d) => sum + Number(d.amount || 0), 0),
     [filtered]
   );
 
@@ -194,6 +212,22 @@ const DonorRiwayat = () => {
               </button>
             ))}
           </div>
+          {donations.some((d) => d.status === "pending") && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 flex-shrink-0 border-amber-300 text-amber-700 hover:bg-amber-50"
+              onClick={handleFixPending}
+              disabled={fixingPending}
+            >
+              {fixingPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle className="h-3.5 w-3.5" />
+              )}
+              Verifikasi Pembayaran
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

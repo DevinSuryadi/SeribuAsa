@@ -326,7 +326,7 @@ export default function BeneficiaryDashboard() {
   };
 
   const userDisplayName =
-    user?.user_metadata?.full_name?.split(" ")[0] ||
+    user?.fullName?.split(" ")[0] ||
     user?.email?.split("@")[0] ||
     "Penerima";
 

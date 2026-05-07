@@ -61,7 +61,7 @@ export function useVendorData(): UseVendorDataReturn {
   const refetchOrders = useCallback(async () => {
     try {
       const res = await getOrders({ page_size: 50 });
-      setOrders(res.orders || res.items || []);
+      setOrders((res.orders || []) as unknown as VendorOrder[]);
     } catch (err: unknown) {
       console.error("Failed to fetch orders", err);
       throw err;
@@ -71,7 +71,7 @@ export function useVendorData(): UseVendorDataReturn {
   const refetchProducts = useCallback(async () => {
     try {
       const res = await getProducts();
-      setProducts(res.items || []);
+      setProducts((res.items || []) as unknown as VendorProduct[]);
     } catch (err: unknown) {
       console.error("Failed to fetch products", err);
       throw err;
@@ -85,7 +85,11 @@ export function useVendorData(): UseVendorDataReturn {
       setWallet({
         balance: res.balance || 0,
         total_earnings: (res as unknown as { total_earnings?: number }).total_earnings || 0,
-        pending_amount: (res as unknown as { pending_amount?: number }).pending_amount || 0,
+        pending_amount:
+          (res as unknown as { pending_withdrawals?: number; pending_amount?: number })
+            .pending_withdrawals ||
+          (res as unknown as { pending_amount?: number }).pending_amount ||
+          0,
         currency: "IDR",
       });
     } catch (err: unknown) {

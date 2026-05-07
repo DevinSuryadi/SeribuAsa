@@ -19,9 +19,11 @@ from app.schemas.donation import (
     DonationQueryParams,
     DonationTypeEnum,
     DonationStatusEnum,
-    DashboardMetrics
+    DashboardMetrics,
+    PaymentResponse
 )
 from app.models.donation import Donation
+from app.services.midtrans_service import MidtransService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -61,6 +63,25 @@ async def create_donation(
     
     logger.info(f"[DONATION] Created donation {donation.id}, type={donation_data.type}, is_subscription={donation_data.is_subscription}, plan_id={donation_data.plan_id}")
     
+    # Create Midtrans transaction
+    donor_name = donor_profile.user_profile.full_name if donor_profile.user_profile else "Donor"
+    try:
+        midtrans_tx = MidtransService.create_transaction(
+            donation=donation,
+            donor_email=current_user.email,
+            donor_name=donor_name
+        )
+        # We can append midtrans data to response or use a different model
+        # For now, let's just log it. The client will need the snap token.
+        logger.info(f"[DONATION] Midtrans transaction created: {midtrans_tx}")
+        # To return the snap token, we would typically modify DonationResponse to include it.
+        # Since we use ConfigDict(from_attributes=True), we can attach it directly to the donation object before returning,
+        # or we could change the response model. Let's just attach it as midtrans_token attribute temporarily if the schema allows,
+        # but DonationResponse doesn't have snap_token. We'll return it in a custom way or rely on the frontend fetching it.
+        # For full compatibility, we'll return a custom response if needed, but for now we'll stick to DonationResponse.
+    except Exception as e:
+        logger.error(f"[DONATION] Failed to create Midtrans transaction: {e}")
+    
     # If this is a subscription donation, create subscription record
     if donation_data.is_subscription and donation_data.type == "subscription":
         logger.info(f"[DONATION] Creating subscription for donation {donation.id}")
@@ -83,7 +104,52 @@ async def create_donation(
     
     logger.info(f"[DONATION] Donation created: {donation.id} by user {current_user.user_id}")
     
+    # We return the dictionary with extra midtrans info if needed, but since response_model=DonationResponse, 
+    # it will filter out extra fields. We need to override the response type if we want to return the token directly.
+    # We will let the frontend call a separate endpoint for the snap token if they want, or we can change the response model.
+    # To keep schema compatibility, we will change response_model to PaymentResponse or similar if appropriate, but here we just return donation.
+    
     return donation
+
+@router.post("/webhook/midtrans")
+async def midtrans_webhook(
+    notification: dict,
+    db: Session = Depends(get_db)
+):
+    """Webhook for Midtrans notifications"""
+    try:
+        result = MidtransService.handle_notification(db, notification)
+        return result
+    except Exception as e:
+        logger.error(f"Midtrans webhook error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{donation_id}/payment-link", response_model=PaymentResponse)
+async def get_payment_link(
+    donation_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Get Midtrans Snap Token for a donation"""
+    donation = DonationService.get_donation_by_id(db, donation_id, current_user.user_id)
+    if not donation:
+        raise HTTPException(status_code=404, detail="Donation not found")
+        
+    from app.models.user import DonorProfile
+    donor_profile = db.query(DonorProfile).filter(DonorProfile.user_id == current_user.user_id).first()
+    donor_name = donor_profile.user_profile.full_name if donor_profile and donor_profile.user_profile else "Donor"
+    
+    try:
+        tx = MidtransService.create_transaction(donation, current_user.email, donor_name)
+        return PaymentResponse(
+            donation_id=str(donation.id),
+            snap_token=tx.get("token"),
+            redirect_url=tx.get("redirect_url"),
+            payment_status=donation.status.value,
+            message="Payment link generated"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate payment link: {str(e)}")
 
 
 @router.get("/", response_model=DonationListResponse)
@@ -322,12 +388,31 @@ async def simulate_payment(
     
     try:
         from app.services.donation_allocation_service import DonationAllocationService
+        from app.models.subscription import Subscription
 
         result = DonationAllocationService.process_successful_donation(
             db=db,
             donation_id=donation_id
         )
         logger.info(f"[SIMULATE_PAYMENT] Service returned result: {result}")
+
+        # If this is a subscription donation with no subscription record yet, create one
+        db.refresh(donation)
+        if donation.type and donation.type.value == "subscription":
+            existing_sub = db.query(Subscription).filter(
+                Subscription.donor_id == donation.donor_id
+            ).first()
+            if not existing_sub:
+                try:
+                    from app.services.subscription_service import SubscriptionService
+                    plan_id = None
+                    if donation.subscription_config:
+                        plan_id = donation.subscription_config.get("plan_id")
+                    SubscriptionService.create_from_donation(db=db, donation=donation, plan_id=plan_id)
+                    logger.info(f"[SIMULATE_PAYMENT] Created subscription for donation {donation_id}")
+                except Exception as sub_err:
+                    logger.warning(f"[SIMULATE_PAYMENT] Could not create subscription: {sub_err}")
+
         return result
         
     except ValueError as e:
@@ -344,6 +429,58 @@ async def simulate_payment(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to simulate payment: {str(e)}"
         )
+
+
+@router.post("/fix-pending-donations")
+async def fix_pending_donations(
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """
+    Dev utility: Mark all pending donations for the current user as successful.
+    Useful when Midtrans webhooks can't reach localhost.
+    """
+    from app.models.donation import Donation, DonationStatusEnum
+    from app.models.subscription import Subscription
+    from app.services.donation_allocation_service import DonationAllocationService
+    from app.services.subscription_service import SubscriptionService
+
+    pending = db.query(Donation).filter(
+        Donation.donor_id == current_user.user_id,
+        Donation.status == DonationStatusEnum.pending
+    ).all()
+
+    fixed = []
+    errors = []
+    for donation in pending:
+        try:
+            result = DonationAllocationService.process_successful_donation(
+                db=db,
+                donation_id=str(donation.id)
+            )
+            # Create subscription if needed
+            db.refresh(donation)
+            if donation.type and donation.type.value == "subscription":
+                existing_sub = db.query(Subscription).filter(
+                    Subscription.donor_id == donation.donor_id
+                ).first()
+                if not existing_sub:
+                    try:
+                        plan_id = None
+                        if donation.subscription_config:
+                            plan_id = donation.subscription_config.get("plan_id")
+                        SubscriptionService.create_from_donation(db=db, donation=donation, plan_id=plan_id)
+                    except Exception as sub_err:
+                        logger.warning(f"[FIX_PENDING] Could not create sub for {donation.id}: {sub_err}")
+            fixed.append(str(donation.id))
+        except Exception as e:
+            errors.append({"donation_id": str(donation.id), "error": str(e)})
+
+    return {
+        "fixed_count": len(fixed),
+        "fixed_donation_ids": fixed,
+        "errors": errors
+    }
 
 
 @router.get("/{donation_id}", response_model=DonationWithImpact)

@@ -256,7 +256,7 @@ const DompetNutrisi = () => {
                 <div key={v.id || i} className="p-4 hover:bg-secondary/20 transition-colors">
                   <VoucherQRDisplay
                     code={v.code || `VCH-${i + 1}`}
-                    balance={v.remaining_amount || v.amount || 0}
+                    balance={Number(v.balance || 0)}
                     expiryDate={v.expiry_date}
                     compact
                   />
@@ -407,7 +407,7 @@ const DompetNutrisi = () => {
 
       {/* ── QR Modal ── */}
       <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
-        <DialogContent className="rounded-2xl max-w-sm p-0 overflow-hidden">
+        <DialogContent className="rounded-2xl max-w-sm p-0 overflow-hidden [&>button:first-of-type]:hidden">
           <DialogHeader className="sr-only">
             <DialogTitle>QR Voucher {selectedVoucher?.code}</DialogTitle>
           </DialogHeader>
@@ -432,7 +432,7 @@ const DompetNutrisi = () => {
           {selectedVoucher && (
             <VoucherQRDisplay
               code={selectedVoucher.code || ""}
-              balance={selectedVoucher.remaining_amount || selectedVoucher.amount || 0}
+              balance={Number(selectedVoucher.balance || 0)}
               expiryDate={selectedVoucher.expiry_date}
               compact={false}
             />

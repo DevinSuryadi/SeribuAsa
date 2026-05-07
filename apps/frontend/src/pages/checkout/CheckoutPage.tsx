@@ -101,7 +101,14 @@ function CheckoutPage() {
           checkoutFlow.cartItems.reduce((sum, item) => sum + Number(item.subtotal), 0)
         ),
         checkoutFlow.validatedVoucher.code,
-        checkoutFlow.validatedVoucher.balance
+        Math.max(
+          0,
+          checkoutFlow.validatedVoucher.balance -
+            Math.min(
+              checkoutFlow.validatedVoucher.balance,
+              checkoutFlow.cartItems.reduce((sum, item) => sum + Number(item.subtotal), 0)
+            )
+        )
       );
     }
   };
