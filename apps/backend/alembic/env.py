@@ -6,6 +6,13 @@ from sqlalchemy import pool
 
 from alembic import context
 
+# Load .env file if python-dotenv is available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Import models and Base
 from app.database import Base
 from app.models import (  # noqa: F401
@@ -23,6 +30,10 @@ config = context.config
 # Override sqlalchemy.url with DATABASE_URL env var if available
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
+    # Ensure explicit driver: replace postgresql:// with postgresql+psycopg2://
+    # to avoid sqlalchemy.exc.NoSuchModuleError on some environments
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
     config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
