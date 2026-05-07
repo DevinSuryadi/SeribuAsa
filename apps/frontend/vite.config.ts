@@ -10,4 +10,19 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          recharts: ["recharts"],
+          "date-fns": ["date-fns"],
+          supabase: ["@supabase/supabase-js"],
+          lucide: ["lucide-react"],
+          gsap: ["gsap"],
+          jsqr: ["jsqr"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 500,
+  },
 });
