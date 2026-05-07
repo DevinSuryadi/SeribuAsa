@@ -72,6 +72,28 @@ class SettlementScheduler:
                 replace_existing=True,
                 misfire_grace_time=300,
             )
+
+            # ── E-Wallet jobs ────────────────────────────────────────────────
+            # Daily: expire wallet allocations older than 90 days (01:30 UTC)
+            cls._scheduler.add_job(
+                func=cls._expire_wallet_allocations,
+                trigger=CronTrigger(hour=1, minute=30),
+                id="wallet_allocation_expiry",
+                name="Daily Wallet Allocation Expiry",
+                replace_existing=True,
+                misfire_grace_time=300,
+            )
+
+            # Every 30 min: auto-cancel orders whose QR pickup expired (> 24h)
+            cls._scheduler.add_job(
+                func=cls._auto_cancel_expired_orders,
+                trigger=CronTrigger(minute="*/30"),
+                id="order_auto_cancel",
+                name="Auto-Cancel Expired QR Orders",
+                replace_existing=True,
+                misfire_grace_time=120,
+            )
+
             
             cls._scheduler.start()
             logger.info("Scheduler initialized successfully")
@@ -295,3 +317,68 @@ class SettlementScheduler:
         if cls._scheduler:
             cls._scheduler.remove_job(job_id)
             logger.info(f"Job removed: {job_id}")
+
+    # ── E-Wallet Cron Methods ─────────────────────────────────────────────────
+    @staticmethod
+    def _expire_wallet_allocations() -> None:
+        """Daily: expire WalletAllocations past their expires_at date."""
+        from app.services.wallet_service import WalletService
+        try:
+            db = SettlementScheduler.db_session_factory()
+            result = WalletService.expire_allocations(db)
+            logger.info("[WALLET_EXPIRY] %s", result)
+            db.close()
+        except Exception as e:
+            logger.error("[WALLET_EXPIRY] Error: %s", e, exc_info=True)
+
+    @staticmethod
+    def _auto_cancel_expired_orders() -> None:
+        """Every 30 min: auto-cancel orders whose QR pickup has expired (> 24h)."""
+        from app.models.product import Order, OrderStatusEnum
+        from app.services.wallet_service import WalletService
+        from datetime import datetime
+        from sqlalchemy.orm import joinedload
+        try:
+            db = SettlementScheduler.db_session_factory()
+            now_iso = datetime.utcnow().isoformat()
+
+            # Find pending orders with expired QR (pickup_expires_at is stored as ISO string)
+            expired_orders = (
+                db.query(Order)
+                .options(
+                    joinedload(Order.beneficiary_profile),
+                    joinedload(Order.vendor_profile),
+                    joinedload(Order.items),
+                )
+                .filter(
+                    Order.status == OrderStatusEnum.pending,
+                    Order.pickup_expires_at != None,
+                    Order.pickup_expires_at < now_iso,
+                    Order.is_active,
+                )
+                .all()
+            )
+
+            cancelled_count = 0
+            for order in expired_orders:
+                try:
+                    # Restore stock
+                    for item in order.items:
+                        from app.models.product import Product
+                        product = db.query(Product).filter(Product.id == item.product_id).first()
+                        if product:
+                            product.stock_quantity += item.quantity
+                    # Refund hold
+                    WalletService.refund_hold(db, order)
+                    order.status = OrderStatusEnum.cancelled
+                    cancelled_count += 1
+                except Exception as inner_e:
+                    logger.error("[ORDER_AUTO_CANCEL] Failed for order %s: %s", order.id, inner_e)
+
+            if cancelled_count:
+                db.commit()
+                logger.info("[ORDER_AUTO_CANCEL] Auto-cancelled %s expired orders", cancelled_count)
+            db.close()
+        except Exception as e:
+            logger.error("[ORDER_AUTO_CANCEL] Error: %s", e, exc_info=True)
+

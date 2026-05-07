@@ -32,7 +32,7 @@ import {
 import { formatIDR } from "@/lib/format";
 import { getProducts, getCategories } from "@/services/products";
 import { addToCart, getCart } from "@/services/cart";
-import { getVoucherBalance } from "@/services/vouchers";
+import { getWalletBalance } from "@/services/wallet";
 import { useStaggerChildren } from "@/hooks/useStaggerChildren";
 import { toast } from "sonner";
 
@@ -179,11 +179,11 @@ const KatalogPangan = () => {
             return [];
           }),
           user?.id
-            ? getVoucherBalance(user.id).catch((err) => {
+            ? getWalletBalance().catch((err) => {
                 console.error("Failed to load balance:", err);
-                return { total_balance: 0 };
+                return { wallet_available: 0 };
               })
-            : Promise.resolve({ total_balance: 0 }),
+            : Promise.resolve({ wallet_available: 0 }),
           user?.id
             ? getCart().catch((err) => {
                 console.error("Failed to load cart:", err);
@@ -195,7 +195,7 @@ const KatalogPangan = () => {
         setProducts((productsData.items || []) as unknown as Product[]);
         const catNames = (catsData || []).map((c: any) => c.name);
         setCategories(["Semua", ...catNames]);
-        setBalance(parseFloat(balanceData.total_balance || 0));
+        setBalance(parseFloat(balanceData.wallet_available || 0));
         setCartItemCount((cartData.items || []).length);
         setLastUpdated(new Date());
         setLoading(false);

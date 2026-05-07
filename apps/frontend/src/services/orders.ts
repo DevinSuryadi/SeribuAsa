@@ -27,7 +27,6 @@ export async function createOrder(
   data: {
     vendor_id: string;
     items: { product_id: string; quantity: number; price: number }[];
-    voucher_codes?: string[];
     notes?: string;
   },
   options?: { idempotencyKey?: string }

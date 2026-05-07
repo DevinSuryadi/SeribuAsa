@@ -40,15 +40,14 @@ const DonorLangganan = lazy(() => import("./pages/dashboard/DonorLangganan"));
 const KelolaProduk = lazy(() => import("./pages/dashboard/KelolaProduk"));
 const VendorSettlement = lazy(() => import("./pages/dashboard/VendorSettlement"));
 const SurveiFIES = lazy(() => import("./pages/dashboard/SurveiFIES"));
-const PenukaranVoucher = lazy(() => import("./pages/dashboard/PenukaranVoucher"));
 const DompetNutrisi = lazy(() => import("./pages/dashboard/DompetNutrisi"));
 const RekomendasiAI = lazy(() => import("./pages/dashboard/RekomendasiAI"));
 const CartManagement = lazy(() => import("./pages/dashboard/cart/CartManagement"));
-const VoucherWallet = lazy(() => import("./pages/dashboard/vouchers/VoucherWallet"));
 const OrderHistoryPage = lazy(() => import("./pages/dashboard/orders/OrderHistoryPage"));
 const OrderDetailPage = lazy(() => import("./pages/dashboard/orders/OrderDetailPage"));
 const CheckoutPage = lazy(() => import("./pages/checkout/CheckoutPage"));
 const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
+const VendorQrScanner = lazy(() => import("./pages/dashboard/VendorQrScanner"));
 
 function PageLoader() {
   return (
@@ -220,12 +219,18 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* Legacy penukaran-voucher route redirects to scan-qr */}
         <Route
           path="/dashboard/penukaran-voucher"
+          element={<Navigate to="/dashboard/scan-qr" replace />}
+        />
+        {/* Dedicated vendor QR scan route */}
+        <Route
+          path="/dashboard/scan-qr"
           element={
-            <ProtectedRoute allowedRoles={["vendor", "admin", "beneficiary"]}>
+            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
               <Suspense fallback={<PageLoader />}>
-                <PenukaranVoucher />
+                <VendorQrScanner />
               </Suspense>
             </ProtectedRoute>
           }
@@ -342,15 +347,10 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* Legacy /dashboard/vouchers redirects to DompetNutrisi */}
         <Route
           path="/dashboard/vouchers"
-          element={
-            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
-              <Suspense fallback={<PageLoader />}>
-                <VoucherWallet />
-              </Suspense>
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/dashboard/dompet-nutrisi" replace />}
         />
         <Route
           path="/dashboard/orders"

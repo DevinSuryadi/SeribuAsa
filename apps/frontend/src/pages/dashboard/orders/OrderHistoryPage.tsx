@@ -9,6 +9,7 @@ import { addToCart } from "@/services/cart";
 import type { Order, OrderItem, OrderFilters, OrdersResponse } from "@/types/orders";
 import { toast } from "sonner";
 import { formatIDR, formatDate } from "@/lib/format";
+import OrderQrModal from "@/components/order/OrderQrModal";
 import {
   ShoppingCart,
   X,
@@ -25,6 +26,7 @@ import {
   RotateCcw,
   ReceiptText,
   Store,
+  QrCode,
 } from "lucide-react";
 import { OrderFiltersPanel } from "@/components/order/OrderFiltersPanel";
 
@@ -97,6 +99,12 @@ const statusMap: Record<
     icon: XCircle,
     dot: "bg-red-400",
   },
+  completed: {
+    label: "Selesai",
+    cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    icon: CheckCircle2,
+    dot: "bg-emerald-500",
+  },
 };
 
 // ── OrderCard ──────────────────────────────────────────────────
@@ -105,11 +113,13 @@ const OrderCard = memo(function OrderCard({
   onOrderClick,
   onReorder,
   reorderingId,
+  onShowQr,
 }: {
   order: Order;
   onOrderClick: (id: string) => void;
   onReorder: (o: Order) => void;
   reorderingId: string | null;
+  onShowQr: (id: string) => void;
 }) {
   const sc = statusMap[order.status] ?? {
     label: order.status,
@@ -198,6 +208,18 @@ const OrderCard = memo(function OrderCard({
             )}
           </div>
           <div className="flex gap-1.5 flex-shrink-0">
+            {/* QR button for pending orders */}
+            {order.status === "pending" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => onShowQr(order.id)}
+              >
+                <QrCode className="h-3 w-3" />
+                <span className="hidden sm:inline">Tampilkan QR</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -226,6 +248,7 @@ const OrderCard = memo(function OrderCard({
     </div>
   );
 }
+
 
 // ── Skeleton ───────────────────────────────────────────────────
 function OrderCardSkeleton() {
@@ -270,6 +293,9 @@ function OrderHistoryPage() {
     total_pages: 1,
   });
   const [reorderingOrderId, setReorderingOrderId] = useState<string | null>(null);
+  const [qrOrderId, setQrOrderId] = useState<string | null>(null);
+
+  const handleShowQr = useCallback((id: string) => setQrOrderId(id), []);
 
   const loadOrders = useCallback(async () => {
     setIsLoading(true);
@@ -496,6 +522,7 @@ function OrderHistoryPage() {
                         onOrderClick={handleOrderClick}
                         onReorder={handleReorder}
                         reorderingId={reorderingOrderId}
+                        onShowQr={handleShowQr}
                       />
                     ))}
 
@@ -534,6 +561,14 @@ function OrderHistoryPage() {
         )}
       </div>
     </DashboardLayout>
+
+    {/* QR Pickup Modal */}
+    <OrderQrModal
+      orderId={qrOrderId}
+      open={!!qrOrderId}
+      onClose={() => setQrOrderId(null)}
+      onCancelled={() => { setQrOrderId(null); loadOrders(); }}
+    />
   );
 }
 

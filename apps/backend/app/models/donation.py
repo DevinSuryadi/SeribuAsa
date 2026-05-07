@@ -58,8 +58,9 @@ class Donation(BaseModel):
     
     # Relationships
     donor_profile = relationship("DonorProfile", back_populates="donations")
-    subscription = relationship("Subscription", back_populates="donations")
-    vouchers = relationship("Voucher", back_populates="donation", cascade="all, delete-orphan")
+    subscription  = relationship("Subscription", back_populates="donations")
+    vouchers      = relationship("Voucher",       back_populates="donation", cascade="all, delete-orphan")  # legacy
+    wallet_allocations = relationship("WalletAllocation", back_populates="donation")  # new e-wallet
     
     def __repr__(self):
         return f"<Donation {self.id} - {self.amount} ({self.status})>"

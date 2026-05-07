@@ -36,45 +36,6 @@ export interface BackendProfile {
 }
 
 // ============================================
-// VOUCHER TYPES
-// ============================================
-
-export interface Voucher {
-  id: string;
-  code: string;
-  balance: number;
-  expiry_date: string;
-  status: "active" | "redeemed" | "expired" | "cancelled";
-  category?: string;
-}
-
-export interface VoucherBalance {
-  total_balance: number;
-  active_vouchers: Voucher[];
-  expiring_soon: {
-    count: number;
-    total_amount: number;
-  };
-}
-
-export interface VoucherTransaction {
-  id: string;
-  amount: number;
-  type: "allocation" | "redeemed" | "expired" | "adjustment";
-  date: string;
-  description: string;
-  source?: string;
-}
-
-export interface VoucherHistoryResponse {
-  items: VoucherTransaction[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
-
-// ============================================
 // NUTRITION TYPES
 // ============================================
 

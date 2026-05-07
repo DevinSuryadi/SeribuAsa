@@ -82,13 +82,9 @@ function MetricCard({
             {value}
           </p>
 
-          <p className="mt-1.5 text-[11.5px] font-bold leading-tight text-slate-700">
-            {title}
-          </p>
+          <p className="mt-1.5 text-[11.5px] font-bold leading-tight text-slate-700">{title}</p>
 
-          <p className="mt-0.5 text-[10.5px] font-medium leading-snug text-slate-500">
-            {subtitle}
-          </p>
+          <p className="mt-0.5 text-[10.5px] font-medium leading-snug text-slate-500">{subtitle}</p>
         </div>
       </div>
     </div>
@@ -127,9 +123,7 @@ function VendorMenuCard({
       </div>
 
       <div className="min-w-0 flex-1 text-left">
-        <p className="truncate text-[12.5px] font-black leading-tight text-slate-900">
-          {title}
-        </p>
+        <p className="truncate text-[12.5px] font-black leading-tight text-slate-900">{title}</p>
 
         <p className="mt-0.5 truncate text-[10.5px] font-medium leading-snug text-slate-500">
           {desc}
@@ -155,12 +149,7 @@ function VendorMenuCard({
   }
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={className}
-    >
+    <button type="button" onClick={onClick} disabled={disabled} className={className}>
       {content}
     </button>
   );
@@ -211,16 +200,11 @@ export default function VendorDashboard() {
 
     return orders
       .filter((order) => order.status === "completed")
-      .reduce(
-        (sum, order) => sum + parseFloat(String(order.total_amount) || "0"),
-        0
-      );
+      .reduce((sum, order) => sum + parseFloat(String(order.total_amount) || "0"), 0);
   }, [totalSalesFromReport, orders]);
 
   const activeProducts = useMemo(
-    () =>
-      products.filter((product) => product.approval_status === "approved")
-        .length,
+    () => products.filter((product) => product.approval_status === "approved").length,
     [products]
   );
 
@@ -237,14 +221,11 @@ export default function VendorDashboard() {
       try {
         await updateOrderStatus(orderId, status);
 
-        toast.success(
-          `Pesanan ${status === "completed" ? "diselesaikan" : "dibatalkan"}`
-        );
+        toast.success(`Pesanan ${status === "completed" ? "diselesaikan" : "dibatalkan"}`);
 
         refetchOrders();
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : "Gagal memperbarui status";
+        const message = err instanceof Error ? err.message : "Gagal memperbarui status";
         toast.error(message);
       }
     },
@@ -274,8 +255,7 @@ export default function VendorDashboard() {
       setWithdrawAmount("");
       refetch();
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Gagal memproses penarikan";
+      const message = err instanceof Error ? err.message : "Gagal memproses penarikan";
       toast.error(message);
     } finally {
       setWithdrawLoading(false);
@@ -284,10 +264,7 @@ export default function VendorDashboard() {
 
   if (loading) {
     return (
-      <DashboardLayout
-        title="Dashboard Vendor"
-        subtitle="Memuat data toko Anda..."
-      >
+      <DashboardLayout title="Dashboard Vendor" subtitle="Memuat data toko Anda...">
         <PageSkeleton />
       </DashboardLayout>
     );
@@ -295,10 +272,7 @@ export default function VendorDashboard() {
 
   if (error) {
     return (
-      <DashboardLayout
-        title="Dashboard Vendor"
-        subtitle="Kelola produk dan penukaran voucher."
-      >
+      <DashboardLayout title="Dashboard Vendor" subtitle="Kelola produk dan penukaran voucher.">
         <ErrorState message={error} onRetry={refetch} />
       </DashboardLayout>
     );
@@ -333,9 +307,7 @@ export default function VendorDashboard() {
 
                 <p className="mt-1.5 text-[11.5px] font-medium text-slate-500 sm:text-xs">
                   Minimum penarikan:{" "}
-                  <span className="font-black text-emerald-700">
-                    {formatIDR(MIN_WITHDRAWAL)}
-                  </span>
+                  <span className="font-black text-emerald-700">{formatIDR(MIN_WITHDRAWAL)}</span>
                 </p>
               </div>
             </div>
@@ -366,9 +338,9 @@ export default function VendorDashboard() {
                 className="h-10 rounded-[13px] bg-white px-4 text-[12.5px] font-black text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.07)] hover:bg-emerald-50"
                 asChild
               >
-                <Link to="/dashboard/penukaran-voucher">
+                <Link to="/dashboard/scan-qr">
                   <QrCode className="mr-2 h-4 w-4" />
-                  Tukar Voucher
+                  Scan QR Pickup
                 </Link>
               </Button>
             </div>
@@ -472,9 +444,7 @@ export default function VendorDashboard() {
               ) : (
                 <div className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
                   {orders.slice(0, 6).map((order) => {
-                    const config =
-                      orderStatusConfig[order.status] ||
-                      orderStatusConfig.pending;
+                    const config = orderStatusConfig[order.status] || orderStatusConfig.pending;
 
                     return (
                       <div
@@ -492,9 +462,7 @@ export default function VendorDashboard() {
                             </p>
 
                             <p className="mt-0.5 text-[10.5px] font-medium text-slate-500">
-                              {order.created_at
-                                ? formatDate(order.created_at)
-                                : "-"}
+                              {order.created_at ? formatDate(order.created_at) : "-"}
                             </p>
                           </div>
                         </div>
@@ -505,9 +473,7 @@ export default function VendorDashboard() {
                               {formatIDR(Number(order.total_amount) || 0)}
                             </p>
 
-                            <Badge className={`mt-1 ${config.className}`}>
-                              {config.label}
-                            </Badge>
+                            <Badge className={`mt-1 ${config.className}`}>{config.label}</Badge>
                           </div>
 
                           {order.status === "pending" && (
@@ -515,9 +481,7 @@ export default function VendorDashboard() {
                               <Button
                                 size="sm"
                                 className="h-8 rounded-lg bg-emerald-600 px-3 text-[11px] font-bold hover:bg-emerald-700"
-                                onClick={() =>
-                                  handleStatusUpdate(order.id, "completed")
-                                }
+                                onClick={() => handleStatusUpdate(order.id, "completed")}
                               >
                                 Selesai
                               </Button>
@@ -526,9 +490,7 @@ export default function VendorDashboard() {
                                 size="sm"
                                 variant="outline"
                                 className="h-8 rounded-lg px-3 text-[11px] font-bold"
-                                onClick={() =>
-                                  handleStatusUpdate(order.id, "cancelled")
-                                }
+                                onClick={() => handleStatusUpdate(order.id, "cancelled")}
                               >
                                 Batal
                               </Button>
@@ -546,9 +508,7 @@ export default function VendorDashboard() {
           {/* Vendor Menu */}
           <div className="flex min-h-[230px] flex-col rounded-[20px] border border-slate-200/70 bg-white p-3.5 shadow-[0_10px_26px_rgba(15,23,42,0.04)] sm:p-4 lg:min-h-0">
             <div className="mb-3 shrink-0">
-              <h2 className="text-[16px] font-black tracking-tight text-slate-900">
-                Menu Vendor
-              </h2>
+              <h2 className="text-[16px] font-black tracking-tight text-slate-900">Menu Vendor</h2>
 
               <p className="mt-0.5 text-[11.5px] font-medium text-slate-500">
                 Akses cepat untuk aktivitas utama toko.
@@ -557,9 +517,9 @@ export default function VendorDashboard() {
 
             <div className="grid flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
               <VendorMenuCard
-                title="Pindai & Tukar Voucher"
-                desc="Verifikasi voucher penerima"
-                href="/dashboard/penukaran-voucher"
+                title="Scan QR Pickup"
+                desc="Verifikasi pickup penerima"
+                href="/dashboard/scan-qr"
                 icon={QrCode}
                 iconWrapClass="bg-indigo-50"
                 iconClass="text-indigo-600"
@@ -604,9 +564,7 @@ export default function VendorDashboard() {
       <Dialog open={withdrawModalOpen} onOpenChange={setWithdrawModalOpen}>
         <DialogContent className="rounded-[22px] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-[20px] font-black text-slate-900">
-              Tarik Dana
-            </DialogTitle>
+            <DialogTitle className="text-[20px] font-black text-slate-900">Tarik Dana</DialogTitle>
 
             <DialogDescription className="text-sm leading-6 text-slate-500">
               Masukkan nominal penarikan dana dari saldo toko Anda.
@@ -615,9 +573,7 @@ export default function VendorDashboard() {
 
           <div className="space-y-4 pt-2">
             <div className="rounded-[16px] border border-emerald-100 bg-emerald-50/70 p-4">
-              <p className="text-xs font-semibold text-slate-500">
-                Saldo tersedia
-              </p>
+              <p className="text-xs font-semibold text-slate-500">Saldo tersedia</p>
 
               <p className="mt-1 text-2xl font-black tracking-tight text-emerald-700">
                 {formatIDR(walletBalance)}
@@ -663,9 +619,7 @@ export default function VendorDashboard() {
                 onClick={handleWithdraw}
                 disabled={withdrawLoading}
               >
-                {withdrawLoading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
+                {withdrawLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Proses Penarikan
               </Button>
             </div>

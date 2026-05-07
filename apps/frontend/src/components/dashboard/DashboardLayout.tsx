@@ -56,10 +56,11 @@ const navByRole: Record<string, NavItem[]> = {
   vendor: [
     { label: "Ringkasan", href: "/dashboard/vendor", icon: LayoutDashboard },
     { label: "Kelola Produk", href: "/dashboard/kelola-produk", icon: Package },
-    { label: "Pindai Voucher", href: "/dashboard/penukaran-voucher", icon: QrCode },
+    { label: "Scan QR Pickup", href: "/dashboard/scan-qr", icon: QrCode },
     { label: "Pencairan", href: "/dashboard/settlement", icon: CreditCard },
     { label: "Profil", href: "/dashboard/profile", icon: Settings },
   ],
+
   admin: [
     { label: "Dashboard Admin", href: "/dashboard/admin", icon: LayoutDashboard },
     { label: "Kelola Pengguna", href: "/dashboard/admin/users", icon: Users },

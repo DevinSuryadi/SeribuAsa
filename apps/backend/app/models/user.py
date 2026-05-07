@@ -91,34 +91,51 @@ class BeneficiaryProfile(BaseModel):
     # Family information
     family_size = Column(Integer, default=1)
     
-    # Voucher balance
-    vouchers_balance = Column(Numeric(15, 2), default=0)
-    
+    # E-Wallet balance (renamed from vouchers_balance; kept column name for backward compat)
+    vouchers_balance = Column(Numeric(15, 2), default=0)  # total balance (available + held)
+    wallet_held      = Column(Numeric(15, 2), default=0)  # amount locked for pending orders
+
+    @property
+    def wallet_balance(self) -> "Decimal":
+        """Alias: total wallet balance (available + held)"""
+        from decimal import Decimal
+        return Decimal(self.vouchers_balance or 0)
+
+    @property
+    def wallet_available(self) -> "Decimal":
+        """Saldo yang bisa langsung digunakan sekarang"""
+        from decimal import Decimal
+        return Decimal(self.vouchers_balance or 0) - Decimal(self.wallet_held or 0)
+
     # Approval and status
     approval_status = Column(String(50), default="pending")  # pending, approved, rejected
-    
+
     # FIES score and classification
     fies_score = Column(Integer)
     fies_classification = Column(String(50))  # severe, moderate, food_secure
-    
+
     # Relationships
     user_profile = relationship("UserProfile", back_populates="beneficiary_profile")
-    
+
     # Children
     children = relationship("Child", back_populates="beneficiary_profile", cascade="all, delete-orphan")
-    
-    # Vouchers
+
+    # Legacy vouchers (kept for backward compat / audit history)
     vouchers = relationship("Voucher", back_populates="beneficiary_profile", cascade="all, delete-orphan")
-    
+
+    # New E-Wallet system
+    wallet_allocations  = relationship("WalletAllocation",  back_populates="beneficiary_profile", cascade="all, delete-orphan")
+    wallet_transactions = relationship("WalletTransaction", back_populates="beneficiary_profile", cascade="all, delete-orphan")
+
     # Orders
     orders = relationship("Order", back_populates="beneficiary_profile", foreign_keys="Order.beneficiary_id", cascade="all, delete-orphan")
-    
+
     # Cart items
     cart_items = relationship("CartItem", back_populates="beneficiary_profile", cascade="all, delete-orphan")
-    
+
     # FIES surveys
     fies_surveys = relationship("FIESSurvey", back_populates="beneficiary_profile", cascade="all, delete-orphan")
-    
+
     def __repr__(self):
         return f"<BeneficiaryProfile {self.user_profile.full_name}>"
 

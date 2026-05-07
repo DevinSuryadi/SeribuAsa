@@ -1,21 +1,31 @@
 """
 Order Service
-Business logic for order processing with atomic transactions
+Business logic for order processing with e-wallet escrow flow.
+
+Flow:
+  create_order        – hold wallet balance, generate pickup QR (valid 24h)
+  confirm_pickup_qr   – vendor scans QR → release escrow to vendor wallet
+  cancel_order        – beneficiary cancels (within 30-min window) → refund hold
+  update_order_status – vendor dashboard button (legacy + admin use)
 """
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from typing import Optional, List
 from decimal import Decimal
 import logging
+import uuid as uuid_lib
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from app.models.product import Order, OrderItem, OrderStatusEnum, Product
-from app.models.donation import Voucher, VoucherRedemption, VoucherStatusEnum
-from app.models.cart import VoucherTransaction, VoucherTransactionTypeEnum
 from app.models.user import BeneficiaryProfile, UserProfile, VendorProfile
 from app.schemas.order import OrderCreate, OrderStatusUpdate, OrderQueryParams
+from app.services.wallet_service import WalletService
 
 logger = logging.getLogger(__name__)
+
+QR_EXPIRY_HOURS    = 24
+CANCEL_WINDOW_MINS = 30
 
 
 class OrderService:
@@ -32,11 +42,9 @@ class OrderService:
     def _apply_search(query, search: Optional[str]):
         if not search:
             return query
-
         search_term = search.strip()
         if not search_term:
             return query
-
         like_term = f"%{search_term}%"
         return query.filter(
             or_(
@@ -53,14 +61,17 @@ class OrderService:
             )
         )
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # CREATE ORDER — holds wallet balance, generates pickup QR
+    # ──────────────────────────────────────────────────────────────────────────
     @staticmethod
     def create_order(db: Session, beneficiary_id: str, data: OrderCreate) -> Order:
         try:
             beneficiary_uuid = OrderService._to_uuid(beneficiary_id)
-            vendor_uuid = OrderService._to_uuid(data.vendor_id)
-            total_amount = Decimal(0)
+            vendor_uuid      = OrderService._to_uuid(data.vendor_id)
+            total_amount     = Decimal(0)
 
-            # Validate all products first
+            # 1. Validate all products
             validated_items = []
             for item in data.items:
                 product = db.query(Product).filter(
@@ -70,123 +81,220 @@ class OrderService:
                 ).first()
 
                 if not product:
-                    raise ValueError(f"Product not found or not approved: {item.product_id}")
-
+                    raise ValueError(f"Produk tidak ditemukan atau belum disetujui: {item.product_id}")
                 if product.stock_quantity < item.quantity:
-                    raise ValueError(f"Insufficient stock for {product.name}: have {product.stock_quantity}, need {item.quantity}")
+                    raise ValueError(
+                        f"Stok {product.name} tidak cukup: tersedia {product.stock_quantity}, butuh {item.quantity}"
+                    )
 
                 validated_items.append((product, item))
-                total_amount += item.price * item.quantity
+                total_amount += Decimal(str(item.price)) * item.quantity
 
-            # Process voucher redemption
-            voucher_used = Decimal(0)
-            redemptions_to_create = []
+            # 2. Check & hold wallet balance (e-wallet escrow)
+            beneficiary = db.query(BeneficiaryProfile).filter(
+                BeneficiaryProfile.user_id == beneficiary_uuid
+            ).first()
+            if not beneficiary:
+                raise ValueError("Profil penerima tidak ditemukan")
 
-            if data.voucher_codes:
-                remaining = total_amount
-                for code in data.voucher_codes:
-                    voucher = db.query(Voucher).filter(
-                        Voucher.code == code,
-                        Voucher.beneficiary_id == beneficiary_uuid,
-                        Voucher.status == VoucherStatusEnum.active,
-                        Voucher.balance > 0
-                    ).first()
+            now = datetime.utcnow()
 
-                    if not voucher:
-                        raise ValueError(f"Invalid or expired voucher: {code}")
+            # Reserve balance — WalletService.hold() does NOT commit
+            held = WalletService.hold(
+                db=db,
+                beneficiary=beneficiary,
+                amount=total_amount,
+                description=f"Pemesanan {len(data.items)} item",
+            )
+            if not held:
+                available = Decimal(beneficiary.vouchers_balance or 0) - Decimal(beneficiary.wallet_held or 0)
+                raise ValueError(
+                    f"Saldo tidak mencukupi. Tersedia: Rp {available:,.0f}, Dibutuhkan: Rp {total_amount:,.0f}"
+                )
 
-                    deduct = min(voucher.balance, remaining)
-                    redemptions_to_create.append((voucher, deduct))
-                    voucher_used += deduct
-                    remaining -= deduct
+            # 3. Generate unique pickup QR code
+            qr_code = uuid_lib.uuid4().hex.upper()[:24]
 
-                    if voucher.balance <= deduct:
-                        voucher.status = VoucherStatusEnum.redeemed
-
-                    voucher.balance -= deduct
-
-                    if remaining <= 0:
-                        break
-
-            cash_paid = total_amount - voucher_used
-            if voucher_used > 0 and cash_paid <= 0:
-                payment_status = "paid"
-            elif voucher_used > 0:
-                payment_status = "partial"
-            else:
-                payment_status = "pending"
-
-            # Create order
+            # 4. Create order
             order = Order(
-                beneficiary_id=beneficiary_uuid,
-                vendor_id=vendor_uuid,
-                total_amount=total_amount,
-                voucher_used=voucher_used,
-                cash_paid=cash_paid,
-                status=OrderStatusEnum.pending,
-                payment_status=payment_status,
-                notes=data.notes,
+                beneficiary_id  = beneficiary_uuid,
+                vendor_id       = vendor_uuid,
+                total_amount    = total_amount,
+                voucher_used    = total_amount,   # entire amount from wallet
+                cash_paid       = Decimal(0),
+                status          = OrderStatusEnum.pending,
+                payment_status  = "paid",         # wallet already held = paid
+                notes           = data.notes,
+                pickup_qr_code  = qr_code,
+                pickup_expires_at  = (now + timedelta(hours=QR_EXPIRY_HOURS)).isoformat(),
+                cancel_deadline    = (now + timedelta(minutes=CANCEL_WINDOW_MINS)).isoformat(),
             )
             db.add(order)
-            db.flush()
+            db.flush()   # get order.id
 
-            # Create order items and deduct stock
+            # Link WalletTransaction to order
+            wallet_tx = db.query(
+                __import__("app.models.wallet", fromlist=["WalletTransaction"]).WalletTransaction
+            ).filter_by(
+                beneficiary_id=beneficiary_uuid,
+                transaction_type="hold",
+                order_id=None,
+            ).order_by(
+                __import__("app.models.wallet", fromlist=["WalletTransaction"]).WalletTransaction.created_at.desc()
+            ).first()
+            if wallet_tx:
+                wallet_tx.order_id = order.id
+
+            # 5. Create order items & deduct stock
             for product, item in validated_items:
-                order_item = OrderItem(
-                    order_id=order.id,
-                    product_id=item.product_id,
-                    quantity=item.quantity,
-                    price=item.price,
-                    subtotal=item.price * item.quantity,
-                )
-                db.add(order_item)
+                db.add(OrderItem(
+                    order_id   = order.id,
+                    product_id = item.product_id,
+                    quantity   = item.quantity,
+                    price      = Decimal(str(item.price)),
+                    subtotal   = Decimal(str(item.price)) * item.quantity,
+                ))
                 product.stock_quantity -= item.quantity
-
                 if product.stock_quantity < 10:
-                    logger.warning(f"Low stock alert: {product.name} ({product.stock_quantity} remaining)")
-
-            # Create voucher redemptions
-            for voucher, amount in redemptions_to_create:
-                redemption = VoucherRedemption(
-                    voucher_id=voucher.id,
-                    order_id=order.id,
-                    amount=amount,
-                )
-                db.add(redemption)
-
-                db.add(
-                    VoucherTransaction(
-                        voucher_id=voucher.id,
-                        order_id=order.id,
-                        transaction_type=VoucherTransactionTypeEnum.redeemed,
-                        amount=amount,
-                    )
-                )
-
-            if voucher_used > 0:
-                beneficiary = db.query(BeneficiaryProfile).filter(
-                    BeneficiaryProfile.user_id == beneficiary_uuid
-                ).first()
-                if beneficiary:
-                    beneficiary.vouchers_balance = Decimal(
-                        beneficiary.vouchers_balance or Decimal("0")
-                    ) - voucher_used
+                    logger.warning("Low stock alert: %s (%s remaining)", product.name, product.stock_quantity)
 
             db.commit()
             db.refresh(order)
-            logger.info(f"Order created: {order.id} by beneficiary {beneficiary_uuid}")
+            logger.info("Order created: %s by beneficiary %s | QR: %s", order.id, beneficiary_uuid, qr_code)
             return order
 
         except Exception as e:
             db.rollback()
-            logger.error(f"Order creation failed: {str(e)}")
+            logger.error("Order creation failed: %s", str(e))
             raise
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # CONFIRM PICKUP VIA QR — vendor scans QR code → releases escrow
+    # ──────────────────────────────────────────────────────────────────────────
+    @staticmethod
+    def confirm_pickup_qr(db: Session, qr_code: str, vendor_id: str) -> Order:
+        """
+        Called when vendor scans beneficiary's order QR.
+        Validates QR, checks expiry, completes order, releases wallet to vendor.
+        """
+        try:
+            vendor_uuid = OrderService._to_uuid(vendor_id)
+
+            order = db.query(Order).options(
+                joinedload(Order.beneficiary_profile),
+                joinedload(Order.vendor_profile),
+                joinedload(Order.items),
+            ).filter(
+                Order.pickup_qr_code == qr_code.strip().upper(),
+                Order.is_active,
+            ).first()
+
+            if not order:
+                raise ValueError("QR code tidak valid atau pesanan tidak ditemukan")
+
+            # Vendor must own this order
+            if str(order.vendor_id) != str(vendor_uuid):
+                raise ValueError("QR code ini bukan untuk toko Anda")
+
+            if order.status == OrderStatusEnum.completed:
+                raise ValueError("Pesanan sudah selesai dikonfirmasi")
+            if order.status == OrderStatusEnum.cancelled:
+                raise ValueError("Pesanan telah dibatalkan")
+            if order.status != OrderStatusEnum.pending:
+                raise ValueError(f"Status pesanan tidak valid: {order.status}")
+
+            # Check QR expiry (stored as ISO string)
+            if order.pickup_expires_at:
+                expires_at = datetime.fromisoformat(order.pickup_expires_at)
+                if datetime.utcnow() > expires_at:
+                    raise ValueError("QR code sudah kadaluarsa (lebih dari 24 jam). Silakan buat pesanan baru.")
+
+            # Release escrow: debit beneficiary, credit vendor
+            net = WalletService.release_to_vendor(db=db, order=order)
+
+            # Complete order
+            order.status               = OrderStatusEnum.completed
+            order.confirmed_by_vendor_id = vendor_uuid
+            order.payment_status       = "paid"
+
+            db.commit()
+            db.refresh(order)
+
+            logger.info(
+                "Pickup confirmed: order=%s vendor=%s net_to_vendor=%s",
+                order.id, vendor_uuid, net,
+            )
+            return order
+
+        except Exception as e:
+            db.rollback()
+            logger.error("Confirm pickup failed: %s", str(e))
+            raise
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # CANCEL ORDER — beneficiary cancels (within 30-min window)
+    # ──────────────────────────────────────────────────────────────────────────
+    @staticmethod
+    def cancel_order(db: Session, order_id: str, beneficiary_id: str) -> Order:
+        """
+        Beneficiary cancels their own pending order within 30-minute window.
+        Refunds held wallet balance and restores product stock.
+        """
+        try:
+            order_uuid       = OrderService._to_uuid(order_id)
+            beneficiary_uuid = OrderService._to_uuid(beneficiary_id)
+
+            order = db.query(Order).options(
+                joinedload(Order.beneficiary_profile),
+                joinedload(Order.vendor_profile),
+                joinedload(Order.items),
+            ).filter(
+                Order.id == order_uuid,
+                Order.beneficiary_id == beneficiary_uuid,
+                Order.is_active,
+            ).first()
+
+            if not order:
+                raise ValueError("Pesanan tidak ditemukan")
+            if order.status != OrderStatusEnum.pending:
+                raise ValueError(f"Hanya pesanan 'pending' yang dapat dibatalkan. Status saat ini: {order.status}")
+
+            # Check cancel deadline
+            if order.cancel_deadline:
+                deadline = datetime.fromisoformat(order.cancel_deadline)
+                if datetime.utcnow() > deadline:
+                    raise ValueError(
+                        f"Batas waktu pembatalan sudah lewat (30 menit setelah pesanan dibuat)."
+                    )
+
+            # Refund held balance
+            WalletService.refund_hold(db=db, order=order)
+
+            # Restore product stock
+            for item in order.items:
+                product = db.query(Product).filter(Product.id == item.product_id).first()
+                if product:
+                    product.stock_quantity += item.quantity
+
+            order.status = OrderStatusEnum.cancelled
+
+            db.commit()
+            db.refresh(order)
+            logger.info("Order cancelled by beneficiary: order=%s beneficiary=%s", order_id, beneficiary_id)
+            return order
+
+        except Exception as e:
+            db.rollback()
+            logger.error("Cancel order failed: %s", str(e))
+            raise
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # READ operations (unchanged)
+    # ──────────────────────────────────────────────────────────────────────────
     @staticmethod
     def count_orders(db: Session, user_id: str, role: str, params: OrderQueryParams, vendor_id: Optional[str] = None) -> int:
-        """Count total orders matching filters for pagination"""
         query = db.query(Order).filter(Order.is_active)
-        user_uuid = OrderService._to_uuid(user_id)
+        user_uuid   = OrderService._to_uuid(user_id)
         vendor_uuid = OrderService._to_uuid(vendor_id) if vendor_id else None
 
         if role == "beneficiary":
@@ -198,7 +306,6 @@ class OrderService:
         if params.status:
             query = query.filter(Order.status == params.status)
         query = OrderService._apply_search(query, params.search)
-
         return query.count()
 
     @staticmethod
@@ -207,7 +314,7 @@ class OrderService:
             joinedload(Order.vendor_profile),
             joinedload(Order.items),
         )
-        user_uuid = OrderService._to_uuid(user_id)
+        user_uuid   = OrderService._to_uuid(user_id)
         vendor_uuid = OrderService._to_uuid(vendor_id) if vendor_id else None
 
         if role == "beneficiary":
@@ -219,13 +326,12 @@ class OrderService:
         if params.status:
             query = query.filter(Order.status == params.status)
         query = OrderService._apply_search(query, params.search)
-
         return query.order_by(Order.created_at.desc()).all()
 
     @staticmethod
     def get_order_by_id(db: Session, order_id: str, user_id: str, role: str) -> Optional[Order]:
         order_uuid = OrderService._to_uuid(order_id)
-        user_uuid = OrderService._to_uuid(user_id)
+        user_uuid  = OrderService._to_uuid(user_id)
         query = db.query(Order).filter(Order.id == order_uuid).options(
             joinedload(Order.vendor_profile),
             joinedload(Order.items),
@@ -238,46 +344,53 @@ class OrderService:
 
         return query.first()
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # UPDATE ORDER STATUS — vendor dashboard button (legacy / admin override)
+    # ──────────────────────────────────────────────────────────────────────────
     @staticmethod
     def update_order_status(db: Session, order_id: str, vendor_id: str, data: OrderStatusUpdate) -> Optional[Order]:
-        order_uuid = OrderService._to_uuid(order_id)
+        """
+        Manual status update by vendor via dashboard button.
+        For completing: also releases wallet escrow to vendor.
+        For cancelling: also refunds hold to beneficiary.
+        """
+        order_uuid  = OrderService._to_uuid(order_id)
         vendor_uuid = OrderService._to_uuid(vendor_id)
-        order = db.query(Order).filter(
+        order = db.query(Order).options(
+            joinedload(Order.beneficiary_profile),
+            joinedload(Order.vendor_profile),
+            joinedload(Order.items),
+        ).filter(
             Order.id == order_uuid,
             Order.vendor_id == vendor_uuid,
-            Order.is_active
+            Order.is_active,
         ).first()
 
         if not order:
             return None
 
-        if order.status != OrderStatusEnum.pending:
-            raise ValueError("Only pending orders can be updated")
+        if order.status not in (OrderStatusEnum.pending, OrderStatusEnum.processing):
+            raise ValueError(f"Pesanan dengan status '{order.status}' tidak dapat diubah")
 
         if data.status == "completed":
+            WalletService.release_to_vendor(db=db, order=order)
             order.status = OrderStatusEnum.completed
-            
-            # Add order amount to vendor wallet (net amount after admin fee)
-            vendor = db.query(VendorProfile).filter(VendorProfile.user_id == vendor_uuid).first()
-            if vendor:
-                # Calculate net amount (assuming 1% admin fee)
-                admin_fee_percentage = Decimal("0.01")
-                admin_fee = order.total_amount * admin_fee_percentage
-                net_amount = order.total_amount - admin_fee
-                
-                vendor.wallet_balance += net_amount
-                db.add(vendor)
-                logger.info(f"Added {net_amount} to vendor {vendor_id} wallet. New balance: {vendor.wallet_balance}")
-                
+            order.confirmed_by_vendor_id = vendor_uuid
+            logger.info("Order completed via dashboard: order=%s vendor=%s", order_id, vendor_id)
+
         elif data.status == "cancelled":
+            WalletService.refund_hold(db=db, order=order)
             order.status = OrderStatusEnum.cancelled
             # Restore stock
             for item in order.items:
                 product = db.query(Product).filter(Product.id == item.product_id).first()
                 if product:
                     product.stock_quantity += item.quantity
+            logger.info("Order cancelled via dashboard: order=%s vendor=%s", order_id, vendor_id)
+
+        elif data.status == "processing":
+            order.status = OrderStatusEnum.processing
 
         db.commit()
         db.refresh(order)
-        logger.info(f"Order {order_id} status updated to {data.status}")
         return order

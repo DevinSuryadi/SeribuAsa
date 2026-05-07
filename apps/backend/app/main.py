@@ -4,6 +4,7 @@ from uuid import UUID
 import logging
 
 from app.api import auth, donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users, cart, vendor_wallet, admin, subscriptions
+from app.api import wallet as wallet_api
 from app.database import IS_SQLITE, SessionLocal, init_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
 from app.config import settings
@@ -58,6 +59,7 @@ app.include_router(reports.router, prefix="/api/v1")
 app.include_router(vendor_wallet.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(subscriptions.router, prefix="/api/v1")
+app.include_router(wallet_api.router, prefix="/api/v1")
 
 
 def _seed_demo_profiles() -> None:
@@ -164,6 +166,7 @@ def api_v1_root():
             "vouchers": "/api/v1/vouchers",
             "products": "/api/v1/products",
             "orders": "/api/v1/orders",
+            "wallet": "/api/v1/wallet",
             "fies": "/api/v1/fies",
             "nutrition": "/api/v1/nutrition",
             "recommendations": "/api/v1/recommendations",

@@ -21,6 +21,7 @@ from app.schemas.order import (
     OrderListResponse,
     OrderStatusUpdate,
     OrderQueryParams,
+    ConfirmPickupRequest,
 )
 import logging
 
@@ -179,7 +180,9 @@ async def update_order_status(
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
-    """Update order status (vendor only: pending -> completed/cancelled)"""
+    """Update order status (vendor only: pending → completed/cancelled)"""
+    if current_user.role != "vendor":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor only")
     try:
         order = OrderService.update_order_status(db, order_id, current_user.user_id, data)
         if not order:
@@ -187,3 +190,94 @@ async def update_order_status(
         return OrderResponse.model_validate(order)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# NEW: QR Pickup endpoints
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.get("/{order_id}/pickup-qr", response_model=dict)
+async def get_pickup_qr(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Get QR code data for a pending order (beneficiary only).
+    Returns QR value + order summary to display in app.
+    """
+    if current_user.role != "beneficiary":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Beneficiary only")
+
+    order = OrderService.get_order_by_id(db, order_id, current_user.user_id, "beneficiary")
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pesanan tidak ditemukan")
+    if order.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"QR hanya tersedia untuk pesanan pending. Status saat ini: {order.status}",
+        )
+    if not order.pickup_qr_code:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="QR code tidak ditemukan untuk pesanan ini")
+
+    items_summary = [
+        {"name": item.product.name if item.product else str(item.product_id), "quantity": item.quantity, "price": float(item.price)}
+        for item in order.items
+    ]
+
+    return {
+        "order_id":          str(order.id),
+        "qr_code":           order.pickup_qr_code,
+        "qr_value":          f"NUTRIGUARD:ORDER:{order.pickup_qr_code}",
+        "total_amount":      float(order.total_amount),
+        "pickup_expires_at": order.pickup_expires_at,
+        "cancel_deadline":   order.cancel_deadline,
+        "vendor_name":       order.vendor_profile.store_name if order.vendor_profile else None,
+        "items":             items_summary,
+        "status":            order.status,
+    }
+
+
+@router.post("/{order_id}/confirm-pickup", response_model=OrderResponse)
+async def confirm_pickup(
+    order_id: str,
+    data: ConfirmPickupRequest,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Vendor confirms pickup by submitting the QR code scanned from beneficiary's phone.
+    Releases escrow: deducts beneficiary wallet, credits vendor wallet.
+    """
+    if current_user.role != "vendor":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor only")
+    try:
+        order = OrderService.confirm_pickup_qr(db, data.qr_code, current_user.user_id)
+        return OrderResponse.model_validate(order)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("Confirm pickup error: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Konfirmasi pickup gagal")
+
+
+@router.post("/{order_id}/cancel", response_model=OrderResponse)
+async def cancel_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """
+    Beneficiary cancels their own pending order within 30-minute window.
+    Refunds the held wallet balance.
+    """
+    if current_user.role != "beneficiary":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Beneficiary only")
+    try:
+        order = OrderService.cancel_order(db, order_id, current_user.user_id)
+        return OrderResponse.model_validate(order)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("Cancel order error: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Pembatalan pesanan gagal")

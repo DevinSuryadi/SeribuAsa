@@ -18,26 +18,25 @@ from uuid import UUID
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
-from app.models.cart import VoucherTransaction, VoucherTransactionTypeEnum
-from app.models.donation import Donation, DonationStatusEnum, Voucher, VoucherStatusEnum
+from app.models.donation import Donation, DonationStatusEnum
 from app.models.nutrition import FIESSurvey
 from app.models.user import BeneficiaryProfile, DonorProfile
+from app.services.wallet_service import WalletService
 
 logger = logging.getLogger(__name__)
 
 CENT = Decimal("0.01")
 BASE_EQUAL_SHARE_RATIO = Decimal("0.40")
 PRIORITY_BONUS = {
-    "severe": Decimal("2.0"),
-    "moderate": Decimal("1.0"),
-    "food_secure": Decimal("0.0"),
+    "severe":       Decimal("2.0"),
+    "moderate":     Decimal("1.0"),
+    "food_secure":  Decimal("0.0"),
 }
 CLASSIFICATION_RANK = {
-    "severe": 3,
-    "moderate": 2,
-    "food_secure": 1,
+    "severe":       3,
+    "moderate":     2,
+    "food_secure":  1,
 }
-VOUCHER_VALIDITY_MONTHS = 3
 
 
 @dataclass
@@ -123,7 +122,7 @@ class DonationAllocationService:
             "donation_id": str(donation.id),
             "amount": float(donation.amount or Decimal("0")),
             "transaction_id": donation.midtrans_transaction_id,
-            "voucher_created": bool(allocations),
+            "wallet_credited": bool(allocations),
             "allocated_beneficiaries": len(allocations),
             "allocations": allocations,
             "impact": impact,
@@ -212,10 +211,7 @@ class DonationAllocationService:
             donation.amount,
             candidates,
         )
-        expiry_date = DonationAllocationService._add_months(
-            allocated_at.date(),
-            VOUCHER_VALIDITY_MONTHS,
-        )
+        expiry_days = 90  # 3 months
 
         created_allocations: list[dict] = []
         for candidate in candidates:
@@ -223,38 +219,25 @@ class DonationAllocationService:
             if allocation_amount is None or allocation_amount <= 0:
                 continue
 
-            voucher = Voucher(
-                code=DonationAllocationService._generate_voucher_code(),
+            # ── NEW: credit e-wallet directly via WalletService ──────────────
+            allocation = WalletService.credit(
+                db=db,
                 beneficiary_id=candidate.beneficiary.user_id,
+                amount=allocation_amount,
                 donation_id=donation.id,
-                balance=allocation_amount,
-                allocated_date=allocated_at,
-                expiry_date=expiry_date,
-                status=VoucherStatusEnum.active,
-            )
-            db.add(voucher)
-            db.flush()
-
-            db.add(
-                VoucherTransaction(
-                    voucher_id=voucher.id,
-                    transaction_type=VoucherTransactionTypeEnum.allocated,
-                    amount=allocation_amount,
-                )
+                description=f"Alokasi donasi #{str(donation.id)[:8]}",
             )
 
-            current_balance = Decimal(candidate.beneficiary.vouchers_balance or Decimal("0"))
-            candidate.beneficiary.vouchers_balance = current_balance + allocation_amount
+            expires_at = allocation.expires_at
 
             created_allocations.append(
                 {
-                    "beneficiary_id": str(candidate.beneficiary.user_id),
-                    "voucher_id": str(voucher.id),
-                    "voucher_code": voucher.code,
-                    "amount": float(allocation_amount),
+                    "beneficiary_id":         str(candidate.beneficiary.user_id),
+                    "wallet_allocation_id":   str(allocation.id),
+                    "amount":                 float(allocation_amount),
                     "priority_classification": candidate.survey.classification,
-                    "priority_score": candidate.survey.score,
-                    "expiry_date": expiry_date.isoformat(),
+                    "priority_score":         candidate.survey.score,
+                    "expiry_date":            expires_at.date().isoformat(),
                 }
             )
 
@@ -351,7 +334,7 @@ class DonationAllocationService:
         units = int(amount // 500000)
         children_helped = len(allocations)
         days_of_support = units * 1000
-        months_of_support = VOUCHER_VALIDITY_MONTHS if allocations else 0
+        months_of_support = 3 if allocations else 0  # 90-day allocation expiry
 
         if children_helped <= 0:
             message = "Donasi berhasil, tetapi belum ada penerima yang memenuhi syarat alokasi bulan ini."
@@ -364,15 +347,11 @@ class DonationAllocationService:
             )
 
         return {
-            "children_helped": children_helped,
-            "months_of_support": months_of_support,
-            "days_of_support": days_of_support,
-            "message": message,
+            "children_helped":    children_helped,
+            "months_of_support":  months_of_support,
+            "days_of_support":    days_of_support,
+            "message":            message,
         }
-
-    @staticmethod
-    def _generate_voucher_code() -> str:
-        return f"VCH-{datetime.utcnow().year}-{uuid.uuid4().hex[:6].upper()}"
 
     @staticmethod
     def _to_cents(amount: Decimal) -> int:

@@ -20,14 +20,11 @@ import {
   TrendingUp,
   Loader2,
 } from "lucide-react";
-import {
-  getLatestFIESStatus,
-  getLatestNutritionMeasurement,
-} from "@/services/nutrition";
+import { getLatestFIESStatus, getLatestNutritionMeasurement } from "@/services/nutrition";
 import { formatIDR, formatDate } from "@/lib/format";
 import { useStaggerChildren } from "@/hooks/useStaggerChildren";
 import { toast } from "sonner";
-import type { FIESStatus, NutritionData, VoucherTransaction } from "@/types";
+import type { FIESStatus, NutritionData } from "@/types";
 import foto from "@/assets/hero-beneficiaryDashboard.svg";
 
 interface QuickAction {
@@ -72,9 +69,7 @@ function StatusCard({
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11 ${iconWrapClass}`}
       >
-        <Icon
-          className={`h-[17px] w-[17px] sm:h-[18px] sm:w-[18px] ${iconClass}`}
-        />
+        <Icon className={`h-[17px] w-[17px] sm:h-[18px] sm:w-[18px] ${iconClass}`} />
       </div>
 
       <div className="min-w-0 flex-1">
@@ -110,11 +105,7 @@ const getFiesLabel = (classification?: string | null) => {
 
   const normalized = classification.toLowerCase();
 
-  if (
-    normalized === "low" ||
-    normalized === "mild" ||
-    normalized === "food_secure"
-  ) {
+  if (normalized === "low" || normalized === "mild" || normalized === "food_secure") {
     return "Baik";
   }
 
@@ -169,8 +160,7 @@ export default function BeneficiaryDashboard() {
       setFiesStatus(fiesData);
       setNutritionData(nutritionMeasure);
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Gagal memuat data";
+      const errorMessage = err instanceof Error ? err.message : "Gagal memuat data";
 
       setError(errorMessage);
 
@@ -198,8 +188,7 @@ export default function BeneficiaryDashboard() {
     const now = new Date();
 
     return (
-      surveyDate.getFullYear() === now.getFullYear() &&
-      surveyDate.getMonth() === now.getMonth()
+      surveyDate.getFullYear() === now.getFullYear() && surveyDate.getMonth() === now.getMonth()
     );
   }, [fiesStatus]);
 
@@ -227,9 +216,7 @@ export default function BeneficiaryDashboard() {
           </div>
 
           <div className="flex-1">
-            <h3 className="mb-1 font-semibold text-red-800">
-              Gagal memuat data
-            </h3>
+            <h3 className="mb-1 font-semibold text-red-800">Gagal memuat data</h3>
 
             <p className="mb-3 text-sm text-red-600">{error || voucherError}</p>
 
@@ -325,10 +312,7 @@ export default function BeneficiaryDashboard() {
     return classification.charAt(0).toUpperCase() + classification.slice(1);
   };
 
-  const userDisplayName =
-    user?.fullName?.split(" ")[0] ||
-    user?.email?.split("@")[0] ||
-    "Penerima";
+  const userDisplayName = user?.fullName?.split(" ")[0] || user?.email?.split("@")[0] || "Penerima";
 
   const fiesValue = getFiesLabel(fiesStatus?.classification);
   const nutritionValue = getNutritionLabel(nutritionData?.classification);
@@ -386,8 +370,7 @@ export default function BeneficiaryDashboard() {
               </h2>
 
               <p className="mt-2 max-w-[300px] text-[11.5px] font-medium leading-[17px] text-slate-600 sm:text-xs sm:leading-[18px] lg:text-[13px] lg:leading-5">
-                Gunakan voucher untuk membeli bahan makanan bergizi bagi
-                keluarga Anda.
+                Gunakan voucher untuk membeli bahan makanan bergizi bagi keluarga Anda.
               </p>
             </div>
 
@@ -406,9 +389,7 @@ export default function BeneficiaryDashboard() {
               <p className="text-[9.5px] font-bold uppercase tracking-wide text-emerald-600">
                 E-Voucher
               </p>
-              <p className="text-[15px] font-black leading-tight text-emerald-800">
-                Nutrisi
-              </p>
+              <p className="text-[15px] font-black leading-tight text-emerald-800">Nutrisi</p>
             </div>
           </div>
         </section>
@@ -422,9 +403,7 @@ export default function BeneficiaryDashboard() {
             title="Status Survei FIES"
             value={fiesValue}
             description={
-              fiesStatus?.survey_date
-                ? formatDate(fiesStatus.survey_date)
-                : "Isi survei bulanan"
+              fiesStatus?.survey_date ? formatDate(fiesStatus.survey_date) : "Isi survei bulanan"
             }
             linkLabel="Lihat survei"
             href="/dashboard/survei-fies"
@@ -487,9 +466,7 @@ export default function BeneficiaryDashboard() {
                     key={action.label}
                     to={action.href}
                     className={`group flex min-h-[44px] items-center gap-2.5 px-2.5 py-2 transition-all duration-200 hover:bg-emerald-50/60 sm:min-h-[49px] sm:px-3 ${
-                      index !== quickActions.length - 1
-                        ? "border-b border-slate-200/80"
-                        : ""
+                      index !== quickActions.length - 1 ? "border-b border-slate-200/80" : ""
                     }`}
                   >
                     <div
@@ -560,7 +537,7 @@ export default function BeneficiaryDashboard() {
               </div>
             ) : (
               <div className="mt-2 min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
-                {transactions.slice(0, 6).map((t: VoucherTransaction) => {
+                {transactions.slice(0, 6).map((t: any) => {
                   const isCredit = (t.amount || 0) > 0;
 
                   return (
@@ -641,10 +618,7 @@ export default function BeneficiaryDashboard() {
           {/* Desktop */}
           <div className="hidden xl:flex xl:items-center xl:justify-between xl:gap-4">
             {shoppingSteps.map((step, index) => (
-              <div
-                key={step.number}
-                className="flex min-w-0 flex-1 items-center gap-4"
-              >
+              <div key={step.number} className="flex min-w-0 flex-1 items-center gap-4">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[15px] font-black ${step.circleClass}`}

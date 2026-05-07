@@ -20,7 +20,8 @@ from app.models import (  # noqa: F401
     Donation, Voucher, VoucherRedemption,
     Category, Product, Order, OrderItem,
     NutritionMeasurement, FIESSurvey, Settlement, AuditLog,
-    Withdrawal
+    Withdrawal,
+    WalletAllocation, WalletTransaction,
 )
 
 # this is the Alembic Config object, which provides

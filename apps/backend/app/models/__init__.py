@@ -52,6 +52,10 @@ from app.models.cart import (
     VoucherAllowedCategory,
     VoucherTransactionTypeEnum
 )
+from app.models.wallet import (
+    WalletAllocation,
+    WalletTransaction,
+)
 
 __all__ = [
     # Base
@@ -104,4 +108,8 @@ __all__ = [
     "BillingHistory",
     "SubscriptionStatusEnum",
     "BillingStatusEnum",
+
+    # E-Wallet models (new)
+    "WalletAllocation",
+    "WalletTransaction",
 ]

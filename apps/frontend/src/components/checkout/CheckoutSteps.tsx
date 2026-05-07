@@ -8,7 +8,7 @@ interface CheckoutStepsProps {
 
 const STEPS: { number: CheckoutStep; label: string; description: string }[] = [
   { number: 1, label: "Tinjau", description: "Keranjang" },
-  { number: 2, label: "Voucher", description: "Terapkan" },
+  { number: 2, label: "Dompet", description: "Nutrisi" },
   { number: 3, label: "Konfirmasi", description: "Pesanan" },
   { number: 4, label: "Selesai", description: "Sukses" },
 ];
