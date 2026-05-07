@@ -4,9 +4,6 @@ import { Toaster } from "sonner";
 import Index from "./pages/Index";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-import Donasi from "./pages/Donasi";
-import Tentang from "./pages/Tentang";
-import Dampak from "./pages/Dampak";
 import Privasi from "./pages/Privasi";
 import Syarat from "./pages/Syarat";
 import Kontak from "./pages/Kontak";
@@ -33,6 +30,9 @@ import { useAuth } from "./contexts/AuthContext";
 import ScrollToTop from "./components/ScrollToTop";
 
 // Heavy pages → lazy-loaded
+const Donasi = lazy(() => import("./pages/Donasi"));
+const Tentang = lazy(() => import("./pages/Tentang"));
+const Dampak = lazy(() => import("./pages/Dampak"));
 const DonorDampak = lazy(() => import("./pages/dashboard/DonorDampak"));
 const PemantauanGizi = lazy(() => import("./pages/dashboard/PemantauanGizi"));
 const KatalogPangan = lazy(() => import("./pages/dashboard/KatalogPangan"));
@@ -87,9 +87,30 @@ function App() {
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/donasi" element={<Donasi />} />
-        <Route path="/tentang" element={<Tentang />} />
-        <Route path="/dampak" element={<Dampak />} />
+        <Route
+          path="/donasi"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Donasi />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/tentang"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Tentang />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/dampak"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Dampak />
+            </Suspense>
+          }
+        />
         <Route path="/lupa-sandi" element={<LupaSandi />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/privasi" element={<Privasi />} />
@@ -391,12 +412,6 @@ function App() {
               <DonationSuccess />
             </ProtectedRoute>
           }
-        />
-
-        {/* Redirect legacy /dashboard/vouchers → /dashboard/dompet-nutrisi */}
-        <Route
-          path="/dashboard/vouchers"
-          element={<Navigate to="/dashboard/dompet-nutrisi" replace />}
         />
 
         {/* Catch all */}
