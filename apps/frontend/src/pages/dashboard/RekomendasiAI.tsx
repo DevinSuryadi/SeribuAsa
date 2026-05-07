@@ -86,7 +86,7 @@ function RecommendationCard({ rec, index }: { rec: Recommendation; index: number
 
         <div className="grid gap-3">
           <div>
-            <h3 className="text-base font-bold tracking-[-0.02em] text-[#17231d] sm:text-lg">
+            <h3 className="text-base font-semibold tracking-[-0.02em] text-[#17231d] sm:text-lg">
               {rec.title}
             </h3>
 
@@ -209,7 +209,7 @@ const RekomendasiAI = () => {
                 AI Powered
               </div>
 
-              <h2 className="text-xl font-bold tracking-[-0.04em] text-[#17231d] sm:text-2xl lg:text-[26px] lg:leading-[1.08]">
+              <h2 className="text-xl font-semibold tracking-[-0.04em] text-[#17231d] sm:text-2xl lg:text-[26px] lg:leading-[1.08]">
                 Analisis Gizi Cerdas
               </h2>
 
@@ -220,7 +220,7 @@ const RekomendasiAI = () => {
                 </strong>{' '}
                 dan{' '}
                 <strong className="font-bold text-[#165c3c]">panduan WHO</strong>,
-                disesuaikan kondisi anak Anda.
+                disesuaikan dengan kondisi anak Anda.
               </p>
 
               <div className="mt-4 flex flex-col gap-2 sm:flex-row">
