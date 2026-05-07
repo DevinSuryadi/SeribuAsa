@@ -3,7 +3,7 @@ Base Model for all SQLAlchemy models
 Provides common fields and functionality
 """
 from datetime import datetime
-from sqlalchemy import Column, DateTime, Boolean, Uuid as UUID
+from sqlalchemy import Column, DateTime, Boolean, Uuid as UUID, text
 import uuid
 from app.database import Base
 
@@ -20,7 +20,7 @@ class BaseModel(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = Column(DateTime, server_default=text('now()'), nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     
     # Soft delete flag
