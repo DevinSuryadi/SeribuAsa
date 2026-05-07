@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -135,7 +135,7 @@ const OrderCard = memo(function OrderCard({
   const items = Array.isArray(order.items) ? order.items : [];
 
   return (
-    <div className="group rounded-2xl border border-border bg-card hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
+    <div className="group rounded-2xl border border-border bg-card hover:shadow-md hover:-translate-y-0.5 transition-[box-shadow,transform] duration-200 overflow-hidden">
       {/* Header bar */}
       <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border/60 bg-secondary/20">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -144,14 +144,14 @@ const OrderCard = memo(function OrderCard({
             #{order.id?.slice(0, 8).toUpperCase()}
           </span>
           <Badge variant="outline" className={`text-[10px] border gap-0.5 flex-shrink-0 ${sc.cls}`}>
-            <StatusIcon className="h-2.5 w-2.5" />
+            <StatusIcon className="h-2.5 w-2.5" aria-hidden="true" />
             {sc.label}
           </Badge>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {order.vendor_store_name && (
             <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground">
-              <Store className="h-3 w-3" />
+              <Store className="h-3 w-3" aria-hidden="true" />
               {order.vendor_store_name}
             </div>
           )}
@@ -169,7 +169,7 @@ const OrderCard = memo(function OrderCard({
                 key={i}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary text-xs text-muted-foreground border border-border"
               >
-                <Package className="h-2.5 w-2.5 flex-shrink-0" />
+                <Package className="h-2.5 w-2.5 flex-shrink-0" aria-hidden="true" />
                 <span className="truncate max-w-[120px]">{item.product_name || "Produk"}</span>
                 <span className="text-muted-foreground/60">×{item.quantity}</span>
               </span>
@@ -216,7 +216,7 @@ const OrderCard = memo(function OrderCard({
                 className="h-8 px-3 text-xs gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                 onClick={() => onShowQr(order.id)}
               >
-                <QrCode className="h-3 w-3" />
+                <QrCode className="h-3 w-3" aria-hidden="true" />
                 <span className="hidden sm:inline">Tampilkan QR</span>
               </Button>
             )}
@@ -230,7 +230,7 @@ const OrderCard = memo(function OrderCard({
               {isReordering ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <RotateCcw className="h-3 w-3" />
+                <RotateCcw className="h-3 w-3" aria-hidden="true" />
               )}
               <span className="hidden sm:inline">Pesan Lagi</span>
             </Button>
@@ -240,15 +240,14 @@ const OrderCard = memo(function OrderCard({
               onClick={() => onOrderClick(order.id)}
             >
               Detail
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-3 w-3" aria-hidden="true" />
             </Button>
           </div>
         </div>
       </div>
     </div>
   );
-}
-
+});
 
 // ── Skeleton ───────────────────────────────────────────────────
 function OrderCardSkeleton() {
@@ -364,211 +363,219 @@ function OrderHistoryPage() {
   const hasActiveFilter = !!(filters.status || filters.date_from || filters.date_to);
 
   return (
-    <DashboardLayout
-      title="Riwayat Pesanan Belanja"
-      subtitle="Status dan detail pengiriman barang yang Anda beli"
-    >
-      {/* Full-width container — no max-w constraint */}
-      <div className="space-y-6">
-        {/* ── Empty State ── */}
-        {orders.length === 0 && !isLoading && (
-          <div className="rounded-2xl border border-dashed border-border bg-card text-center py-16 px-8">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mx-auto mb-4">
-              <ReceiptText className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Belum Ada Pesanan Belanja</h2>
-            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-2">
-              Riwayat pembelian barang akan muncul di sini setelah Anda checkout dari katalog.
-            </p>
-            <p className="text-xs text-muted-foreground/70 max-w-sm mx-auto mb-6">
-              Untuk melihat perubahan saldo voucher, kunjungi menu <strong>Dompet Nutrisi</strong>
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Button onClick={() => navigate("/dashboard/katalog")} className="gap-2">
-                <ShoppingCart className="h-4 w-4" /> Mulai Berbelanja
-              </Button>
-              <Button
-                onClick={() => navigate("/dashboard/dompet-nutrisi")}
-                variant="outline"
-                className="gap-2"
-              >
-                <Wallet className="h-4 w-4" /> Lihat Dompet Voucher
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Main Content ── */}
-        {(isLoading || orders.length > 0) && (
-          <div className="space-y-6">
-            {/* KPI row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
-                    <Package className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={loadOrders}
-                    disabled={isLoading}
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                  Total Pesanan
-                </p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-16" />
-                ) : (
-                  <>
-                    <p className="text-2xl font-bold text-foreground">{pagination.total}</p>
-                    <p className="text-[11px] text-green-600 font-semibold mt-0.5">
-                      {successCount} terkirim
-                    </p>
-                  </>
-                )}
+    <div>
+      <DashboardLayout
+        title="Riwayat Pesanan Belanja"
+        subtitle="Status dan detail pengiriman barang yang Anda beli"
+      >
+        {/* Full-width container — no max-w constraint */}
+        <div className="space-y-6">
+          {/* ── Empty State ── */}
+          {orders.length === 0 && !isLoading && (
+            <div className="rounded-2xl border border-dashed border-border bg-card text-center py-16 px-8">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mx-auto mb-4">
+                <ReceiptText className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
               </div>
-
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 mb-3">
-                  <Wallet className="h-4 w-4 text-purple-600" />
-                </div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                  Total Belanja
-                </p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-36" />
-                ) : (
-                  <p className="text-2xl font-bold text-foreground">{formatIDR(totalBelanja)}</p>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card p-5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50 mb-3">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                </div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                  Hemat via Voucher
-                </p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-32" />
-                ) : (
-                  <p className="text-2xl font-bold text-green-600">{formatIDR(totalVoucher)}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Active filter chips */}
-            {hasActiveFilter && (
-              <div className="rounded-xl border border-border bg-card p-3 flex flex-wrap items-center gap-2">
-                <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-semibold text-muted-foreground">Filter Aktif:</span>
-                {filters.status && (
-                  <button
-                    type="button"
-                    onClick={() => clearFilter("status")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100"
-                  >
-                    Status: {statusMap[filters.status]?.label || filters.status}
-                    <X size={10} />
-                  </button>
-                )}
-                {filters.date_from && (
-                  <button
-                    type="button"
-                    onClick={() => clearFilter("date_from")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary text-foreground text-xs font-medium hover:bg-secondary/80"
-                  >
-                    Dari: {filters.date_from} <X size={10} />
-                  </button>
-                )}
-                {filters.date_to && (
-                  <button
-                    type="button"
-                    onClick={() => clearFilter("date_to")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary text-foreground text-xs font-medium hover:bg-secondary/80"
-                  >
-                    Sampai: {filters.date_to} <X size={10} />
-                  </button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={clearAllFilters}
-                  className="h-7 px-2 text-xs ml-auto"
-                >
-                  Reset semua
+              <h2 className="text-xl font-bold text-foreground mb-2">Belum Ada Pesanan Belanja</h2>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-2">
+                Riwayat pembelian barang akan muncul di sini setelah Anda checkout dari katalog.
+              </p>
+              <p className="text-xs text-muted-foreground/70 max-w-sm mx-auto mb-6">
+                Untuk melihat perubahan saldo voucher, kunjungi menu <strong>Dompet Nutrisi</strong>
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Button asChild className="gap-2">
+                  <Link to="/dashboard/katalog">
+                    <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Mulai Berbelanja
+                  </Link>
+                </Button>
+                <Button variant="outline" className="gap-2" asChild>
+                  <Link to="/dashboard/dompet-nutrisi">
+                    <Wallet className="h-4 w-4" aria-hidden="true" /> Lihat Dompet Voucher
+                  </Link>
                 </Button>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Filters sidebar + Orders list */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-1 lg:sticky lg:top-24 h-fit self-start">
-                <OrderFiltersPanel onFiltersChange={handleFiltersChange} isLoading={isLoading} />
+          {/* ── Main Content ── */}
+          {(isLoading || orders.length > 0) && (
+            <div className="space-y-6">
+              {/* KPI row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
+                      <Package className="h-4 w-4 text-blue-600" aria-hidden="true" />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={loadOrders}
+                      disabled={isLoading}
+                    >
+                      <RefreshCw
+                        className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
+                        aria-label="Refresh orders"
+                      />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                    Total Pesanan
+                  </p>
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <>
+                      <p className="text-2xl font-bold text-foreground">{pagination.total}</p>
+                      <p className="text-[11px] text-green-600 font-semibold mt-0.5">
+                        {successCount} terkirim
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 mb-3">
+                    <Wallet className="h-4 w-4 text-purple-600" aria-hidden="true" />
+                  </div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                    Total Belanja
+                  </p>
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-36" />
+                  ) : (
+                    <p className="text-2xl font-bold text-foreground">{formatIDR(totalBelanja)}</p>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50 mb-3">
+                    <TrendingUp className="h-4 w-4 text-green-600" aria-hidden="true" />
+                  </div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                    Hemat via Voucher
+                  </p>
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-32" />
+                  ) : (
+                    <p className="text-2xl font-bold text-green-600">{formatIDR(totalVoucher)}</p>
+                  )}
+                </div>
               </div>
 
-              <div className="lg:col-span-3 space-y-3">
-                {isLoading
-                  ? Array.from({ length: 4 }).map((_, i) => <OrderCardSkeleton key={i} />)
-                  : orders.map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        onOrderClick={handleOrderClick}
-                        onReorder={handleReorder}
-                        reorderingId={reorderingOrderId}
-                        onShowQr={handleShowQr}
-                      />
-                    ))}
+              {/* Active filter chips */}
+              {hasActiveFilter && (
+                <div className="rounded-xl border border-border bg-card p-3 flex flex-wrap items-center gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold text-muted-foreground">Filter Aktif:</span>
+                  {filters.status && (
+                    <button
+                      type="button"
+                      onClick={() => clearFilter("status")}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      Status: {statusMap[filters.status]?.label || filters.status}
+                      <X size={10} aria-hidden="true" />
+                    </button>
+                  )}
+                  {filters.date_from && (
+                    <button
+                      type="button"
+                      onClick={() => clearFilter("date_from")}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary text-foreground text-xs font-medium hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      Dari: {filters.date_from} <X size={10} aria-hidden="true" />
+                    </button>
+                  )}
+                  {filters.date_to && (
+                    <button
+                      type="button"
+                      onClick={() => clearFilter("date_to")}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary text-foreground text-xs font-medium hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      Sampai: {filters.date_to} <X size={10} aria-hidden="true" />
+                    </button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={clearAllFilters}
+                    className="h-7 px-2 text-xs ml-auto"
+                  >
+                    Reset semua
+                  </Button>
+                </div>
+              )}
 
-                {/* Pagination */}
-                {pagination.total_pages > 1 && (
-                  <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-                    <p className="text-sm text-muted-foreground">
-                      Halaman {pagination.page} dari {pagination.total_pages}
-                      <span className="ml-1 text-muted-foreground/60">
-                        ({pagination.total} pesanan)
-                      </span>
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => setFilters((prev) => ({ ...prev, page: prev.page - 1 }))}
-                        disabled={pagination.page === 1 || isLoading}
-                        variant="outline"
-                        size="sm"
-                      >
-                        ← Sebelumnya
-                      </Button>
-                      <Button
-                        onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
-                        disabled={pagination.page === pagination.total_pages || isLoading}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Berikutnya →
-                      </Button>
+              {/* Filters sidebar + Orders list */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-1 lg:sticky lg:top-24 h-fit self-start">
+                  <OrderFiltersPanel onFiltersChange={handleFiltersChange} isLoading={isLoading} />
+                </div>
+
+                <div className="lg:col-span-3 space-y-3">
+                  {isLoading
+                    ? Array.from({ length: 4 }).map((_, i) => <OrderCardSkeleton key={i} />)
+                    : orders.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          onOrderClick={handleOrderClick}
+                          onReorder={handleReorder}
+                          reorderingId={reorderingOrderId}
+                          onShowQr={handleShowQr}
+                        />
+                      ))}
+
+                  {/* Pagination */}
+                  {pagination.total_pages > 1 && (
+                    <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+                      <p className="text-sm text-muted-foreground">
+                        Halaman {pagination.page} dari {pagination.total_pages}
+                        <span className="ml-1 text-muted-foreground/60">
+                          ({pagination.total} pesanan)
+                        </span>
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => setFilters((prev) => ({ ...prev, page: prev.page - 1 }))}
+                          disabled={pagination.page === 1 || isLoading}
+                          variant="outline"
+                          size="sm"
+                        >
+                          ← Sebelumnya
+                        </Button>
+                        <Button
+                          onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
+                          disabled={pagination.page === pagination.total_pages || isLoading}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Berikutnya →
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
+          )}
+        </div>
+      </DashboardLayout>
 
-    {/* QR Pickup Modal */}
-    <OrderQrModal
-      orderId={qrOrderId}
-      open={!!qrOrderId}
-      onClose={() => setQrOrderId(null)}
-      onCancelled={() => { setQrOrderId(null); loadOrders(); }}
-    />
+      {/* QR Pickup Modal */}
+      <OrderQrModal
+        orderId={qrOrderId}
+        open={!!qrOrderId}
+        onClose={() => setQrOrderId(null)}
+        onCancelled={() => {
+          setQrOrderId(null);
+          loadOrders();
+        }}
+      />
+    </div>
   );
 }
 
