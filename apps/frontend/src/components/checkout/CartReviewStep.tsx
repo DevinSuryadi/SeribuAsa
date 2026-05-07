@@ -9,7 +9,7 @@ interface CartReviewStepProps {
   onUpdateQuantity: (itemId: string, quantity: number) => Promise<void>;
   onRemoveItem: (itemId: string) => Promise<void>;
   onClearCart: () => Promise<void>;
-  voucherBalance: number;
+  walletBalance: number;
 }
 
 /**
@@ -22,11 +22,10 @@ export function CartReviewStep({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
-  voucherBalance,
+  walletBalance,
 }: CartReviewStepProps) {
   const totalAmount = items.reduce((sum, item) => sum + Number(item.subtotal), 0);
-  const eligibleAmount = totalAmount; // Simplified - backend determines eligibility
-  const maxVoucher = Math.min(voucherBalance, eligibleAmount);
+  const canAfford = walletBalance >= totalAmount;
 
   return (
     <div className="space-y-6">
@@ -51,10 +50,8 @@ export function CartReviewStep({
         <div>
           <CartSummary
             totalAmount={totalAmount}
-            eligibleAmount={eligibleAmount}
-            ineligibleAmount={0}
-            voucherBalance={voucherBalance}
-            maxVoucherApplicable={maxVoucher}
+            walletBalance={walletBalance}
+            canAfford={canAfford}
             isLoading={isLoading}
           />
         </div>
