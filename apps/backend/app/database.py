@@ -38,13 +38,13 @@ def _create_postgres_engine(url: str):
 
 
 def _build_engine():
-    """Build the database engine, falling back to SQLite if PostgreSQL is unreachable."""
+    """Build the database engine. SQLite is only used for testing/development."""
     global IS_SQLITE
 
     if IS_SQLITE:
         return _create_sqlite_engine(DATABASE_URL)
 
-    # Try to connect to PostgreSQL
+    # Production: require PostgreSQL connection
     pg_engine = _create_postgres_engine(DATABASE_URL)
     try:
         with pg_engine.connect() as conn:
@@ -52,13 +52,12 @@ def _build_engine():
         logger.info("Connected to PostgreSQL database successfully")
         return pg_engine
     except Exception as exc:
-        logger.warning(
-            "PostgreSQL unreachable (%s). Falling back to in-memory SQLite.",
-            exc,
-        )
         pg_engine.dispose()
-        IS_SQLITE = True
-        return _create_sqlite_engine()
+        logger.error("PostgreSQL connection failed: %s", exc)
+        raise RuntimeError(
+            f"PostgreSQL is unreachable ({exc}). "
+            "Please check DATABASE_URL and ensure the database is available."
+        ) from exc
 
 
 engine = _build_engine()
