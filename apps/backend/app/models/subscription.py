@@ -4,7 +4,7 @@ Subscription Models
 - Subscription: User subscriptions
 - BillingHistory: Payment history for subscriptions
 """
-from sqlalchemy import Column, String, DateTime, Date, Enum, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB
+from sqlalchemy import Column, String, DateTime, Date, Enum, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB, Boolean
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
@@ -42,7 +42,7 @@ class SubscriptionPlan(BaseModel):
     features = Column(JSONB, default=list)
     
     # Plan status
-    is_active = Column(String(10), default="true")  # "true" or "false"
+    is_active = Column(Boolean, default=True, nullable=False)
     
     # Relationships
     subscriptions = relationship("Subscription", back_populates="plan")
