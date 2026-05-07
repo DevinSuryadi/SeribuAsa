@@ -2,8 +2,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import type { ElementType } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useVoucherData } from "@/hooks/useVoucherData";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { getWalletBalance, getWalletTransactions } from "@/services/wallet";
 import { Button } from "@/components/ui/button";
 import {
   Wallet,
@@ -124,18 +124,33 @@ export default function BeneficiaryDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const {
-    data: balance,
-    transactions,
-    loading: voucherLoading,
-    error: voucherError,
-    refetch: refetchVouchers,
-  } = useVoucherData();
+  const [walletBalance, setWalletBalance] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [walletError, setWalletError] = useState<string | null>(null);
 
   const [fiesStatus, setFiesStatus] = useState<FIESStatus | null>(null);
   const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchWalletData = useCallback(async () => {
+    if (!user?.id) return;
+    setWalletLoading(true);
+    setWalletError(null);
+    try {
+      const [balanceData, txData] = await Promise.all([
+        getWalletBalance(),
+        getWalletTransactions(),
+      ]);
+      setWalletBalance(balanceData);
+      setTransactions(txData.items || []);
+    } catch (err: any) {
+      setWalletError(err.message || "Gagal memuat data dompet");
+    } finally {
+      setWalletLoading(false);
+    }
+  }, [user?.id]);
 
   const gridRef = useStaggerChildren({ stagger: 0.08 });
 
@@ -175,11 +190,11 @@ export default function BeneficiaryDashboard() {
   useEffect(() => {
     if (user) {
       fetchAdditionalData();
+      fetchWalletData();
     }
-  }, [user, fetchAdditionalData]);
+  }, [user, fetchAdditionalData, fetchWalletData]);
 
-  const totalBalance = balance?.total_balance ?? 0;
-  const activeVouchers = balance?.active_vouchers?.length ?? 0;
+  const totalBalance = walletBalance?.wallet_available ?? 0;
 
   const hasFiesThisMonth = useMemo(() => {
     if (!fiesStatus?.survey_date) return false;
@@ -192,7 +207,7 @@ export default function BeneficiaryDashboard() {
     );
   }, [fiesStatus]);
 
-  const isLoading = authLoading || voucherLoading || dataLoading;
+  const isLoading = authLoading || walletLoading || dataLoading;
 
   if (isLoading) {
     return (
@@ -207,7 +222,7 @@ export default function BeneficiaryDashboard() {
     );
   }
 
-  if (error || voucherError) {
+  if (error || walletError) {
     return (
       <DashboardLayout title="Beranda" subtitle="Penerima Manfaat">
         <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4">
@@ -218,13 +233,13 @@ export default function BeneficiaryDashboard() {
           <div className="flex-1">
             <h3 className="mb-1 font-semibold text-red-800">Gagal memuat data</h3>
 
-            <p className="mb-3 text-sm text-red-600">{error || voucherError}</p>
+            <p className="mb-3 text-sm text-red-600">{error || walletError}</p>
 
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                refetchVouchers();
+                fetchWalletData();
                 fetchAdditionalData();
               }}
               className="border-red-300 text-red-700 hover:bg-red-50"
@@ -346,7 +361,7 @@ export default function BeneficiaryDashboard() {
                 </p>
 
                 <p className="mt-0.5 text-[11.5px] font-semibold text-slate-500 sm:text-xs">
-                  {activeVouchers} voucher aktif
+                  Saldo Dompet Nutrisi
                 </p>
               </div>
             </div>
