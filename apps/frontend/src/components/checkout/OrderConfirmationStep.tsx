@@ -114,29 +114,22 @@ export function OrderConfirmationStep({
               </span>
             </div>
 
-            {orderSummary.applied_voucher && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Voucher:</span>
-                <span className="font-medium text-green-600">
-                  -Rp {orderSummary.applied_voucher.applied_amount.toLocaleString("id-ID")}
-                </span>
-              </div>
-            )}
+            <div className="flex justify-between">
+              <span className="text-gray-600">Bayar dengan Dompet:</span>
+              <span className="font-medium text-emerald-600">
+                -Rp {orderSummary.cart_total.toLocaleString("id-ID")}
+              </span>
+            </div>
           </div>
 
           <div className="pt-4">
             <div className="flex justify-between mb-2">
               <span className="font-bold text-gray-900">Total Pembayaran:</span>
-              <span className="text-2xl font-bold text-blue-600">
-                Rp {orderSummary.cash_amount.toLocaleString("id-ID")}
-              </span>
+              <span className="text-2xl font-bold text-emerald-600">Rp 0 (Dompet Nutrisi)</span>
             </div>
-            {orderSummary.applied_voucher && (
-              <p className="text-xs text-gray-600 mt-2">
-                Sisa Voucher: Rp{" "}
-                {orderSummary.applied_voucher.remaining_balance.toLocaleString("id-ID")}
-              </p>
-            )}
+            <p className="text-xs text-gray-600 mt-2">
+              Pembayaran penuh menggunakan saldo Dompet Nutrisi
+            </p>
           </div>
 
           {/* Vendor Count Info */}
