@@ -6,11 +6,7 @@
 import { useState, useCallback } from "react";
 import type { CheckoutStep, CartItemData, CheckoutState, OrderSummary } from "@/types/checkout";
 import { getCart, updateCartItem, removeCartItem, clearCart } from "@/services/cart";
-import {
-  validateVoucher,
-  checkProductEligibility,
-  getVoucherBalance,
-} from "@/services/vouchers";
+import { getWalletBalance } from "@/services/wallet";
 import { createOrder } from "@/services/orders";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -19,11 +15,8 @@ export function useCheckoutFlow() {
   const [state, setState] = useState<CheckoutState>({
     currentStep: 1,
     cartItems: [],
-    appliedVoucher: null,
-    validatedVoucher: null,
-    eligibilityData: null,
     orderSummary: null,
-    voucherBalance: 0,
+    walletBalance: 0,
     isLoading: false,
     isSubmitting: false,
     error: null,
@@ -128,93 +121,19 @@ export function useCheckoutFlow() {
     }
   }, [loadCartItems]);
 
-  const loadVoucherBalance = useCallback(async () => {
+  const loadWalletBalance = useCallback(async () => {
     if (!user) return;
     try {
-      const balanceData = await getVoucherBalance(user.id);
+      const balanceData = await getWalletBalance();
       setState((prev) => ({
         ...prev,
-        voucherBalance: Number(balanceData.total_balance || 0),
+        walletBalance: Number(balanceData.wallet_available || 0),
       }));
     } catch (err: any) {
       // Don't set error state, just log it - balance loading shouldn't block checkout
-      console.error("Failed to load voucher balance:", err);
+      console.error("Failed to load wallet balance:", err);
     }
   }, [user]);
-
-  // ============================================
-  // Voucher Management
-  // ============================================
-
-  const validateVoucherCode = useCallback(async (code: string, amount: number) => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
-    try {
-      const result = await validateVoucher({ code, amount });
-      setState((prev) => ({
-        ...prev,
-        validatedVoucher: result,
-        isLoading: false,
-      }));
-      return result;
-    } catch (err: any) {
-      setState((prev) => ({
-        ...prev,
-        error: err.message || "Invalid voucher code",
-        isLoading: false,
-      }));
-      throw err;
-    }
-  }, []);
-
-  const applyVoucher = useCallback(
-    (voucherId: string, appliedAmount: number, code: string, remainingBalance: number) => {
-      setState((prev) => ({
-        ...prev,
-        appliedVoucher: {
-          voucher_id: voucherId,
-          code,
-          applied_amount: appliedAmount,
-          remaining_balance: remainingBalance,
-        },
-        validatedVoucher: null,
-        error: null,
-      }));
-    },
-    []
-  );
-
-  const removeAppliedVoucher = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      appliedVoucher: null,
-      error: null,
-    }));
-  }, []);
-
-  // ============================================
-  // Eligibility Check
-  // ============================================
-
-  const checkEligibility = useCallback(async () => {
-    if (state.cartItems.length === 0) return;
-
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
-    try {
-      const productIds = state.cartItems.map((item) => item.product_id);
-      const result = await checkProductEligibility(productIds);
-      setState((prev) => ({
-        ...prev,
-        eligibilityData: result,
-        isLoading: false,
-      }));
-    } catch (err: any) {
-      setState((prev) => ({
-        ...prev,
-        error: err.message || "Failed to check eligibility",
-        isLoading: false,
-      }));
-    }
-  }, [state.cartItems]);
 
   // ============================================
   // Order Summary
@@ -222,8 +141,6 @@ export function useCheckoutFlow() {
 
   const getOrderSummary = useCallback((): OrderSummary => {
     const cartTotal = state.cartItems.reduce((sum, item) => sum + Number(item.subtotal), 0);
-    const voucherDiscount = state.appliedVoucher?.applied_amount || 0;
-    const cashAmount = Math.max(0, cartTotal - voucherDiscount);
 
     // Group by vendor - use vendor_id from item if available
     const groupedByVendor: { [key: string]: CartItemData[] } = {};
@@ -236,13 +153,10 @@ export function useCheckoutFlow() {
 
     return {
       cart_total: cartTotal,
-      voucher_discount: voucherDiscount,
-      cash_amount: cashAmount,
       items: state.cartItems,
       grouped_by_vendor: groupedByVendor,
-      applied_voucher: state.appliedVoucher || null,
     };
-  }, [state.cartItems, state.appliedVoucher]);
+  }, [state.cartItems]);
 
   // ============================================
   // Validation
@@ -252,7 +166,7 @@ export function useCheckoutFlow() {
     switch (state.currentStep) {
       case 1: // Cart Review
         return state.cartItems.length > 0;
-      case 2: // Voucher Redemption
+      case 2: // Wallet Balance Review
         return state.cartItems.length > 0;
       case 3: // Order Confirmation
         return state.cartItems.length > 0;
@@ -315,13 +229,12 @@ export function useCheckoutFlow() {
               quantity: item.quantity,
               price: Number(item.price),
             })),
-            voucher_codes: state.appliedVoucher ? [state.appliedVoucher.code] : [],
             notes: undefined,
           };
 
           const orderIdempotencyKey = `checkout-${vendorId}-${orderData.items
             .map((i) => `${i.product_id}:${i.quantity}:${i.price}`)
-            .join("|")}-${orderData.voucher_codes.join(",")}`;
+            .join("|")}`;
 
           const orderResult = await createOrder(orderData, {
             idempotencyKey: orderIdempotencyKey,
@@ -357,7 +270,7 @@ export function useCheckoutFlow() {
       }));
       throw err;
     }
-  }, [user, state.cartItems, state.appliedVoucher]);
+  }, [user, state.cartItems]);
 
   const clearError = useCallback(() => {
     setState((prev) => ({ ...prev, error: null }));
@@ -381,14 +294,8 @@ export function useCheckoutFlow() {
     removeItem,
     clearAllItems,
 
-    // Voucher operations
-    loadVoucherBalance,
-    validateVoucherCode,
-    applyVoucher,
-    removeAppliedVoucher,
-
-    // Eligibility
-    checkEligibility,
+    // Wallet operations
+    loadWalletBalance,
 
     // Order operations
     getOrderSummary,
