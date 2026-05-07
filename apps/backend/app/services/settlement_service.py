@@ -2,7 +2,7 @@
 Settlement Service
 Business logic for settlement management
 """
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import date
 from typing import Optional, List, Dict, Any
@@ -28,7 +28,9 @@ class SettlementService:
         is_admin: bool,
         params: SettlementQueryParams,
     ) -> List[Settlement]:
-        query = db.query(Settlement).filter(Settlement.is_active)
+        query = db.query(Settlement).filter(Settlement.is_active).options(
+            joinedload(Settlement.vendor_profile),
+        )
 
         if not is_admin:
             query = query.filter(Settlement.vendor_id == vendor_id)
@@ -67,6 +69,8 @@ class SettlementService:
         query = db.query(Settlement).filter(
             Settlement.id == settlement_id,
             Settlement.is_active,
+        ).options(
+            joinedload(Settlement.vendor_profile),
         )
 
         if not is_admin:

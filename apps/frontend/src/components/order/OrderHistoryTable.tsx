@@ -1,7 +1,6 @@
-import { format } from "date-fns";
-import { id as idLocale } from "date-fns/locale";
 import { CalendarDays, ChevronRight, Package, RotateCcw, Store } from "lucide-react";
 import type { Order, OrderStatus } from "@/types/orders";
+import { formatDate } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
@@ -114,11 +113,7 @@ export function OrderHistoryTable({
               </div>
               <div className="inline-flex items-center gap-2 sm:justify-end">
                 <CalendarDays size={14} className="text-gray-400" />
-                <span>
-                  {isDateValid
-                    ? format(createdAt, "dd MMM yyyy", { locale: idLocale })
-                    : "Tanggal tidak tersedia"}
-                </span>
+                <span>{isDateValid ? formatDate(createdAt) : "Tanggal tidak tersedia"}</span>
               </div>
               {order.vendor_store_name && (
                 <div className="inline-flex items-center gap-2 sm:col-span-2">

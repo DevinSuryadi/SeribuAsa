@@ -2,7 +2,7 @@
 Product Service
 Business logic for category and product management
 """
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 import logging
 
@@ -39,7 +39,10 @@ class ProductService:
         params: ProductQueryParams,
         include_unapproved: bool = False,
     ) -> List[Product]:
-        query = db.query(Product).filter(Product.is_active)
+        query = db.query(Product).filter(Product.is_active).options(
+            joinedload(Product.category),
+            joinedload(Product.vendor_profile),
+        )
         if not include_unapproved:
             query = query.filter(Product.approval_status == "approved")
 
@@ -92,6 +95,9 @@ class ProductService:
         query = db.query(Product).filter(
             Product.id == product_id,
             Product.is_active
+        ).options(
+            joinedload(Product.category),
+            joinedload(Product.vendor_profile),
         )
         if not include_unapproved:
             query = query.filter(Product.approval_status == "approved")

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, type ComponentType } from "react";
+import { useState, useEffect, useMemo, useCallback, memo, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -58,6 +58,80 @@ const categoryIcons: Record<string, ComponentType<{ className?: string }>> = {
   Buah: Apple,
   Snack: Package,
 };
+
+// ── ProductCard ────────────────────────────────────────────────
+const ProductCard = memo(function ProductCard({
+  product,
+  onSelect,
+  onAddToCart,
+  addingToCart,
+}: {
+  product: Product;
+  onSelect: (p: Product) => void;
+  onAddToCart: (id: string) => void;
+  addingToCart: boolean;
+}) {
+  const ProductIcon = product.category_name
+    ? categoryIcons[product.category_name] || Package
+    : Package;
+
+  return (
+    <Card className="overflow-hidden flex flex-col transition-all hover:shadow-md group">
+      <button
+        className="aspect-[4/3] bg-secondary/30 flex items-center justify-center relative overflow-hidden"
+        onClick={() => onSelect(product)}
+        aria-label={`Lihat detail ${product.name}`}
+      >
+        <span className="group-hover:scale-110 transition-transform rounded-full bg-white/80 p-4">
+          <ProductIcon className="h-10 w-10 text-primary" />
+        </span>
+        {product.stock_quantity <= 20 && (
+          <Badge variant="destructive" className="absolute top-2 right-2 text-[10px]">
+            Sisa {product.stock_quantity}
+          </Badge>
+        )}
+      </button>
+
+      <CardContent className="p-3 flex-1 flex flex-col">
+        <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-tight">
+          {product.name}
+        </h3>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+          <MapPin className="h-3 w-3" /> {product.vendor_store_name || "Vendor"}
+        </div>
+
+        <div className="mt-auto pt-2">
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Harga Voucher</span>
+            <span className="text-sm font-bold text-primary">
+              {formatIDR(product.voucher_price)}
+            </span>
+          </div>
+        </div>
+      </CardContent>
+
+      <CardFooter className="p-3 pt-0">
+        <Button
+          size="sm"
+          className="w-full gap-1.5"
+          onClick={() => onAddToCart(product.id)}
+          disabled={addingToCart || product.stock_quantity <= 0}
+        >
+          {addingToCart ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : product.stock_quantity <= 0 ? (
+            "Stok Habis"
+          ) : (
+            <>
+              <Plus className="h-3.5 w-3.5" />
+              Tambah
+            </>
+          )}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+});
 
 const KatalogPangan = () => {
   const { user } = useAuth();
@@ -344,70 +418,15 @@ const KatalogPangan = () => {
 
         {/* Product Grid */}
         <div ref={gridRef} className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {paginatedProducts.map((product) => {
-            const ProductIcon = product.category_name
-              ? categoryIcons[product.category_name] || Package
-              : Package;
-            return (
-              <Card
-                key={product.id}
-                className="overflow-hidden flex flex-col transition-all hover:shadow-md group"
-              >
-                <button
-                  className="aspect-[4/3] bg-secondary/30 flex items-center justify-center relative overflow-hidden"
-                  onClick={() => setSelectedProduct(product)}
-                  aria-label={`Lihat detail ${product.name}`}
-                >
-                  <span className="group-hover:scale-110 transition-transform rounded-full bg-white/80 p-4">
-                    <ProductIcon className="h-10 w-10 text-primary" />
-                  </span>
-                  {product.stock_quantity <= 20 && (
-                    <Badge variant="destructive" className="absolute top-2 right-2 text-[10px]">
-                      Sisa {product.stock_quantity}
-                    </Badge>
-                  )}
-                </button>
-
-                <CardContent className="p-3 flex-1 flex flex-col">
-                  <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-tight">
-                    {product.name}
-                  </h3>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                    <MapPin className="h-3 w-3" /> {product.vendor_store_name || "Vendor"}
-                  </div>
-
-                  <div className="mt-auto pt-2">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">Harga Voucher</span>
-                      <span className="text-sm font-bold text-primary">
-                        {formatIDR(product.voucher_price)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-
-                <CardFooter className="p-3 pt-0">
-                  <Button
-                    size="sm"
-                    className="w-full gap-1.5"
-                    onClick={() => addToCartHandler(product.id)}
-                    disabled={addingToCart || product.stock_quantity <= 0}
-                  >
-                    {addingToCart ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : product.stock_quantity <= 0 ? (
-                      "Stok Habis"
-                    ) : (
-                      <>
-                        <Plus className="h-3.5 w-3.5" />
-                        Tambah
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
-              </Card>
-            );
-          })}
+          {paginatedProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onSelect={setSelectedProduct}
+              onAddToCart={addToCartHandler}
+              addingToCart={addingToCart}
+            />
+          ))}
         </div>
 
         {/* Pagination */}

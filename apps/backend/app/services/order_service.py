@@ -2,7 +2,7 @@
 Order Service
 Business logic for order processing with atomic transactions
 """
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from typing import Optional, List
 from decimal import Decimal
@@ -203,7 +203,10 @@ class OrderService:
 
     @staticmethod
     def get_orders(db: Session, user_id: str, role: str, params: OrderQueryParams, vendor_id: Optional[str] = None) -> List[Order]:
-        query = db.query(Order).filter(Order.is_active)
+        query = db.query(Order).filter(Order.is_active).options(
+            joinedload(Order.vendor_profile),
+            joinedload(Order.items),
+        )
         user_uuid = OrderService._to_uuid(user_id)
         vendor_uuid = OrderService._to_uuid(vendor_id) if vendor_id else None
 
@@ -223,7 +226,10 @@ class OrderService:
     def get_order_by_id(db: Session, order_id: str, user_id: str, role: str) -> Optional[Order]:
         order_uuid = OrderService._to_uuid(order_id)
         user_uuid = OrderService._to_uuid(user_id)
-        query = db.query(Order).filter(Order.id == order_uuid)
+        query = db.query(Order).filter(Order.id == order_uuid).options(
+            joinedload(Order.vendor_profile),
+            joinedload(Order.items),
+        )
 
         if role == "beneficiary":
             query = query.filter(Order.beneficiary_id == user_uuid)
@@ -256,8 +262,8 @@ class OrderService:
             if vendor:
                 # Calculate net amount (assuming 1% admin fee)
                 admin_fee_percentage = Decimal("0.01")
-                admin_fee = order.cash_amount * admin_fee_percentage
-                net_amount = order.cash_amount - admin_fee
+                admin_fee = order.total_amount * admin_fee_percentage
+                net_amount = order.total_amount - admin_fee
                 
                 vendor.wallet_balance += net_amount
                 db.add(vendor)
