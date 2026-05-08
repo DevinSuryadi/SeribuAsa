@@ -1,0 +1,210 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                   ACTIVITY PAGE MERGER - QUICK REFERENCE                   ║
+║                                                                            ║
+║                   DompetNutrisi + OrderHistoryPage → ActivityPage          ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ WHAT ARE WE MERGING?                                                   ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+DOMPETNUTRISI.TSX (Wallet/Voucher Balance)
+├─ Route: /dashboard/dompet-nutrisi
+├─ Shows: Balance, Allocations, Transactions
+├─ Size: 473 lines
+└─ API: 3 calls (parallel fetch)
+
+ORDERHISTORYPAGE.TSX (Purchase Orders)
+├─ Route: /dashboard/orders
+├─ Shows: Orders, Filters, Pagination, KPIs
+├─ Size: 582 lines
+└─ API: 1 call (reactive on filters)
+
+RESULT: Single unified Activity Dashboard
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ QUICK COMPARISON                                                        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+              WALLET              │          ORDERS
+─────────────────────────────────────────────────────────────────────────
+Hero Balance Card                  │ KPI Stats (3-card grid)
+Allocations with progress bars     │ Order list with status
+Transaction history (20 items)     │ Filters (status, date range)
+Manual refresh button              │ Reactive filters
+No pagination UI                   │ Pagination UI
+Balance + Held + Total             │ Count + Total Spend + Savings
+No modal                           │ QR Pickup Modal
+Action: Refresh                    │ Actions: Filter, Paginate, QR, Reorder
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ RECOMMENDED APPROACH: TABBED INTERFACE                                  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+ROUTE: /dashboard/activity
+
+LAYOUT:
+┌─────────────────────────────────┐
+│  [Wallet Tab] [Orders Tab] ◄────► Active Tab State
+├─────────────────────────────────┤
+│                                 │
+│  WALLET TAB CONTENT             │  ORDERS TAB CONTENT
+│  ├─ Hero Card                   │  ├─ KPI Stats
+│  ├─ Allocations                 │  ├─ Filter Chips
+│  ├─ Categories                  │  ├─ Filters Sidebar
+│  └─ Transactions                │  └─ Order Cards
+│                                 │
+├─────────────────────────────────┤
+│  OrderQrModal (portal)          │ ◄────► Persistent across tabs
+│                                 │
+└─────────────────────────────────┘
+
+BENEFITS:
+✅ Single route & menu item
+✅ Clear separation of concerns
+✅ Mobile-friendly
+✅ Modal persists across tab switches
+✅ Minimal refactoring needed
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 4-PHASE IMPLEMENTATION TIMELINE                                         ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+PHASE 1: CREATE TABBED PAGE (2 days)
+├─ Create: pages/dashboard/activity/ActivityPage.tsx
+├─ Copy logic from DompetNutrisi → Wallet Tab
+├─ Copy logic from OrderHistoryPage → Orders Tab
+├─ Add Tab UI (useState for activeTab)
+├─ Lift modal state to parent
+└─ Status: Feature complete, single route works
+
+PHASE 2: REFACTOR ROUTES (1 day)
+├─ Add new route: /dashboard/activity
+├─ Add redirects:
+│  ├─ /dashboard/dompet-nutrisi → /dashboard/activity?tab=wallet
+│  └─ /dashboard/orders → /dashboard/activity?tab=orders
+├─ Update DashboardLayout navigation menu
+└─ Status: Backward compatible, smooth migration path
+
+PHASE 3: OPTIMIZE (1 day)
+├─ Memoize DompetNutrisi sections (React.memo)
+├─ Extract shared configs (statusMap, txTypeConfig)
+├─ Deduplicate Tailwind classes
+├─ Performance audit (render times, bundle size)
+└─ Status: Optimized, ready for production
+
+PHASE 4: TEST & DEPLOY (1 day)
+├─ Manual testing (mobile + desktop)
+├─ Test all filters & pagination
+├─ Test QR modal & reorder action
+├─ Automated tests (if applicable)
+├─ Performance monitoring
+└─ Status: Ready for production release
+
+TOTAL: 5-6 days
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 6 CRITICAL DECISIONS                                                    ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+[ ] 1. ROUTE STRATEGY
+    [ ] Keep both routes separate
+    [✓] Keep old routes + redirects (RECOMMENDED)
+    [ ] Deprecate immediately
+
+[ ] 2. LAYOUT APPROACH
+    [✓] Tabbed interface (RECOMMENDED)
+    [ ] Sectioned (vertical stack)
+    [ ] Sidebar toggle
+
+[ ] 3. STATE MANAGEMENT
+    [✓] Keep useState hooks (RECOMMENDED)
+    [ ] Move to Context/Reducer
+    [ ] Use Zustand
+
+[ ] 4. FILE ORGANIZATION
+    [✓] Single file (quick win, RECOMMENDED)
+    [ ] Sub-components folder (scalable)
+    [ ] Feature extraction (highest complexity)
+
+[ ] 5. DATA FETCHING
+    [✓] Lazy load based on active tab (RECOMMENDED)
+    [ ] Fetch both on mount
+    [ ] Combined endpoint
+
+[ ] 6. BACKWARD COMPATIBILITY
+    [✓] Keep old routes for 2+ releases (RECOMMENDED)
+    [ ] Immediate deprecation
+    [ ] No support for old routes
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ KEY FILES                                                               ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+PAGES TO MERGE:
+├─ apps/frontend/src/pages/dashboard/DompetNutrisi.tsx (473 LOC)
+└─ apps/frontend/src/pages/dashboard/orders/OrderHistoryPage.tsx (582 LOC)
+
+SUPPORTING COMPONENTS:
+├─ apps/frontend/src/components/order/OrderFiltersPanel.tsx
+├─ apps/frontend/src/components/order/OrderQrModal.tsx
+└─ apps/frontend/src/components/dashboard/DashboardLayout.tsx
+
+SERVICES:
+├─ apps/frontend/src/services/wallet.ts
+└─ apps/frontend/src/services/orders.ts
+
+TYPES:
+└─ apps/frontend/src/types/orders.ts
+
+ROUTING:
+└─ apps/frontend/src/App.tsx (lines 203-209, 355-374)
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ SUCCESS CRITERIA                                                        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+[ ] ✓ All existing features preserved and working
+[ ] ✓ Mobile responsiveness maintained
+[ ] ✓ Performance not degraded (< 5% slower)
+[ ] ✓ QR modal works across tab switches
+[ ] ✓ Filters & pagination function normally
+[ ] ✓ Reorder action adds to cart correctly
+[ ] ✓ No console errors or warnings
+[ ] ✓ Old routes redirect seamlessly
+[ ] ✓ Unit tests pass (>80% coverage)
+[ ] ✓ E2E tests pass (happy path scenarios)
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ RISK MITIGATION                                                         ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+RISK: Breaking existing bookmarks/links
+→ MITIGATION: Keep old routes + redirects for 2+ releases
+
+RISK: Increased component complexity
+→ MITIGATION: Start with single file, refactor if >1000 LOC
+
+RISK: Modal closing when switching tabs
+→ MITIGATION: Lift modal state to ActivityPage parent
+
+RISK: Performance degradation
+→ MITIGATION: Memoize sections, lazy load, performance monitoring
+
+RISK: Regression in existing features
+→ MITIGATION: Automated tests for critical paths
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ NEXT STEPS                                                              ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+1. READ: ANALYSIS_EXECUTIVE_SUMMARY.txt (10 min) ← START HERE
+2. REVIEW: With team to confirm approach (30 min)
+3. PLAN: Create tickets based on 4-phase roadmap
+4. EXECUTE: Follow Phase 1-4 implementation plan
+5. TEST: Mobile, desktop, filters, actions, modals
+6. DEPLOY: Gradual rollout with monitoring
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ DOCUMENTATION                                                           ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

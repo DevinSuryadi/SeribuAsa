@@ -1,0 +1,201 @@
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃                     ANALYSIS DOCUMENTATION INDEX                         ┃
+┃                                                                          ┃
+┃               DompetNutrisi + OrderHistoryPage Merger Study              ┃
+┃                                                                          ┃
+┃                     Generated: May 7, 2026                               ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+
+FILES IN THIS PACKAGE
+═════════════════════════════════════════════════════════════════════════════
+
+1. ⭐ QUICK_REFERENCE.txt (11.8 KB) - START HERE
+   ├─ One-page executive cheat sheet
+   ├─ Comparison table
+   ├─ 4-phase timeline
+   ├─ 6 critical decisions with checkboxes
+   ├─ Success criteria
+   └─ Next steps
+
+2. 📋 ANALYSIS_EXECUTIVE_SUMMARY.txt (8.3 KB) - FOR STAKEHOLDERS
+   ├─ Scope & findings
+   ├─ Data structure comparison
+   ├─ Architectural compatibility
+   ├─ Recommended approach (tabbed)
+   ├─ 4-phase implementation plan
+   ├─ 6 critical decisions
+   ├─ Risk mitigation
+   ├─ Success criteria
+   └─ File references
+
+3. 📖 ANALYSIS_README.md (7.9 KB) - NAVIGATION GUIDE
+   ├─ Document overview
+   ├─ How to use each document
+   ├─ Reading paths by audience
+   ├─ Quick recommendations
+   ├─ File locations
+   └─ Common questions
+
+4. 🔧 ANALYSIS_DETAILED.md (8.0 KB) - TECHNICAL DEEP DIVE
+   ├─ DompetNutrisi complete analysis
+   ├─ OrderHistoryPage complete analysis
+   ├─ Common patterns & utilities
+   ├─ Data flow comparison
+   ├─ Merger considerations
+   └─ Implementation roadmap
+
+5. 📊 ANALYSIS_STRUCTURED.md (9.3 KB) - STRUCTURED FINDINGS
+   ├─ Quick reference comparison table
+   ├─ Data models comparison
+   ├─ UI layout patterns
+   ├─ State management patterns
+   ├─ Component reusability analysis
+   ├─ API call patterns
+   ├─ Merge implications
+   ├─ Icon & color mapping
+   └─ Critical decisions checklist
+
+6. 🏗️ ANALYSIS_VISUAL_GUIDE.md (9.0 KB) - ARCHITECTURE & DIAGRAMS
+   ├─ Current component tree
+   ├─ Proposed merged structure
+   ├─ Data flow diagrams
+   ├─ Component dependencies
+   ├─ State lifting diagram
+   ├─ URL routing strategy
+   ├─ Modal persistence
+   ├─ Performance checklist
+   ├─ Error handling strategy
+   └─ File organization options
+
+
+TOTAL PACKAGE SIZE: ~53.2 KB (6 documents)
+TOTAL CONTENT: ~150 sections across all documents
+
+
+READING GUIDE BY ROLE
+═════════════════════════════════════════════════════════════════════════════
+
+👨‍💼 Product Manager / Stakeholder (30 min)
+   1. QUICK_REFERENCE.txt (10 min)
+   2. ANALYSIS_EXECUTIVE_SUMMARY.txt (15 min)
+   3. ANALYSIS_VISUAL_GUIDE.md - Section 2 only (5 min)
+
+👨‍💻 Frontend Developer (90 min)
+   1. QUICK_REFERENCE.txt (10 min)
+   2. ANALYSIS_EXECUTIVE_SUMMARY.txt (15 min)
+   3. ANALYSIS_DETAILED.md (30 min)
+   4. ANALYSIS_VISUAL_GUIDE.md (25 min)
+   5. ANALYSIS_STRUCTURED.md - Critical Decisions (10 min)
+
+🏛️ Tech Lead / Architect (2 hours)
+   1. All documents in order
+   2. Focus on:
+      - ANALYSIS_VISUAL_GUIDE.md for architecture
+      - ANALYSIS_STRUCTURED.md for decisions
+      - ANALYSIS_DETAILED.md for code specifics
+
+✅ QA / Tester (60 min)
+   1. ANALYSIS_EXECUTIVE_SUMMARY.txt - Success Criteria (10 min)
+   2. ANALYSIS_STRUCTURED.md - Component analysis (20 min)
+   3. ANALYSIS_VISUAL_GUIDE.md - Error handling (15 min)
+   4. QUICK_REFERENCE.txt - Risk mitigation (15 min)
+
+📚 Documentation / Technical Writer (90 min)
+   1. ANALYSIS_README.md (full, 20 min)
+   2. ANALYSIS_EXECUTIVE_SUMMARY.txt (full, 20 min)
+   3. ANALYSIS_DETAILED.md (full, 30 min)
+   4. ANALYSIS_VISUAL_GUIDE.md (full, 20 min)
+
+
+CONTENT SECTIONS BY TOPIC
+═════════════════════════════════════════════════════════════════════════════
+
+NEED TO UNDERSTAND...                    FIND IN...
+
+Current Architecture
+├─ DompetNutrisi structure               ANALYSIS_DETAILED.md (Sec 1)
+├─ OrderHistoryPage structure            ANALYSIS_DETAILED.md (Sec 2)
+├─ Component tree                        ANALYSIS_VISUAL_GUIDE.md (Sec 1-2)
+└─ Dependencies                          ANALYSIS_VISUAL_GUIDE.md (Sec 4)
+
+Data & APIs
+├─ Wallet data model                     ANALYSIS_STRUCTURED.md (Data Models)
+├─ Order data model                      ANALYSIS_DETAILED.md (Sec 2)
+├─ API call patterns                     ANALYSIS_STRUCTURED.md (API Patterns)
+└─ Data flow                             ANALYSIS_VISUAL_GUIDE.md (Sec 3)
+
+State Management
+├─ Current state in each page            ANALYSIS_DETAILED.md (State Mgmt)
+├─ Differences                           ANALYSIS_STRUCTURED.md (State Patterns)
+├─ Proposed lifting                      ANALYSIS_VISUAL_GUIDE.md (Sec 5)
+└─ Modal persistence                     ANALYSIS_VISUAL_GUIDE.md (Sec 7)
+
+UI & UX
+├─ Current layouts                       ANALYSIS_STRUCTURED.md (UI Patterns)
+├─ Status/icon configurations            ANALYSIS_STRUCTURED.md (Icon Mapping)
+├─ Proposed tabbed layout                ANALYSIS_VISUAL_GUIDE.md (Sec 2)
+└─ Responsive behavior                   ANALYSIS_DETAILED.md (Styling Notes)
+
+Decisions & Planning
+├─ Merger approach options               ANALYSIS_DETAILED.md (Sec 5)
+├─ Route strategy                        ANALYSIS_VISUAL_GUIDE.md (Sec 6)
+├─ File organization                     ANALYSIS_VISUAL_GUIDE.md (Sec 10)
+├─ Critical decisions                    ANALYSIS_STRUCTURED.md (Critical Decisions)
+└─ Implementation phases                 ANALYSIS_EXECUTIVE_SUMMARY.txt (Sec 5)
+
+Risk & Testing
+├─ Risk mitigation                       ANALYSIS_EXECUTIVE_SUMMARY.txt (Sec 7)
+├─ Success criteria                      ANALYSIS_EXECUTIVE_SUMMARY.txt (Sec 8)
+├─ Error handling                        ANALYSIS_VISUAL_GUIDE.md (Sec 9)
+├─ Performance optimization              ANALYSIS_VISUAL_GUIDE.md (Sec 8)
+└─ Test strategy                         QUICK_REFERENCE.txt (Next Steps)
+
+Next Steps
+├─ For team review                       ANALYSIS_README.md (Next Steps)
+├─ For implementation                    ANALYSIS_EXECUTIVE_SUMMARY.txt (Sec 5-6)
+├─ Roadmap                               QUICK_REFERENCE.txt (4-Phase Timeline)
+└─ Critical path                         ANALYSIS_STRUCTURED.md (Recommended Approach)
+
+
+QUICK LOOKUP TABLE
+═════════════════════════════════════════════════════════════════════════════
+
+Question                           Answer Location
+─────────────────────────────────────────────────────────────────────────
+What are we merging?               QUICK_REFERENCE.txt (top)
+How long will this take?           QUICK_REFERENCE.txt (Phase Table)
+What's the recommended approach?   ANALYSIS_EXECUTIVE_SUMMARY.txt (Sec 4)
+What are critical decisions?       QUICK_REFERENCE.txt (6 Decisions)
+How will routing work?             ANALYSIS_VISUAL_GUIDE.md (Sec 6)
+What files do we touch?            ANALYSIS_EXECUTIVE_SUMMARY.txt (Sec 8)
+What's the risk?                   ANALYSIS_EXECUTIVE_SUMMARY.txt (Sec 7)
+How do we test?                    ANALYSIS_EXECUTIVE_SUMMARY.txt (Sec 8)
+What's the component tree?         ANALYSIS_VISUAL_GUIDE.md (Sec 1-2)
+How should we organize files?      ANALYSIS_VISUAL_GUIDE.md (Sec 10)
+What about performance?            ANALYSIS_VISUAL_GUIDE.md (Sec 8)
+What's the data structure?         ANALYSIS_STRUCTURED.md (Data Models)
+How do we handle the modal?        ANALYSIS_VISUAL_GUIDE.md (Sec 7)
+What are success criteria?         QUICK_REFERENCE.txt (Success Criteria)
+Where's the detailed analysis?     ANALYSIS_DETAILED.md (all sections)
+
+
+RECOMMENDED READING ORDER
+═════════════════════════════════════════════════════════════════════════════
+
+FOR DECISION MAKERS (30 minutes):
+   1. QUICK_REFERENCE.txt (what, how long, what approach)
+   2. ANALYSIS_EXECUTIVE_SUMMARY.txt (full context)
+   → Ready to make decisions
+
+FOR DEVELOPERS (2 hours):
+   1. QUICK_REFERENCE.txt (overview)
+   2. ANALYSIS_DETAILED.md (code specifics)
+   3. ANALYSIS_VISUAL_GUIDE.md (architecture)
+   4. ANALYSIS_STRUCTURED.md (decisions)
+   → Ready to implement
+
+FOR ARCHITECTS (3 hours):
+   1. All documents in order
+   2. Deep focus on ANALYSIS_VISUAL_GUIDE.md
+   3. Review ANA

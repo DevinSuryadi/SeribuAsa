@@ -1,0 +1,204 @@
+================================================================================
+ACTIVITY PAGE MERGER - EXECUTIVE SUMMARY
+================================================================================
+
+PROJECT: Merge DompetNutrisi.tsx (Wallet) + OrderHistoryPage.tsx (Orders)
+INTO: Single unified Activity Dashboard
+
+================================================================================
+KEY FINDINGS
+================================================================================
+
+1. SCOPE OF MERGER
+   - DompetNutrisi.tsx: 473 lines | Shows wallet balance + transaction history
+   - OrderHistoryPage.tsx: 582 lines | Shows purchase order history + filters
+   - Both at beneficiary role | Both use DashboardLayout wrapper
+   - Combined: 1,055 lines → Mergeable into 800-900 lines post-refactoring
+
+2. DATA STRUCTURE DIFFERENCES
+   ┌─────────────────┬─────────────────────────┬─────────────────────┐
+   │ ASPECT          │ WALLET (Dompet)         │ ORDERS              │
+   ├─────────────────┼─────────────────────────┼─────────────────────┤
+   │ Primary Data    │ Balance + Transactions  │ Orders + Metadata   │
+   │ API Calls       │ 3 parallel (all-or-one)│ 1 reactive (filter) │
+   │ Pagination      │ 20 items (no UI)       │ 10 items + UI       │
+   │ Filters         │ None (manual refresh)  │ Status + date range │
+   │ KPI Display     │ Inline (3 values)      │ 3-card grid         │
+   │ Sub-components  │ 0 (all inline)         │ 3 (Filters/QR/Card)│
+   │ Memoization     │ None                   │ OrderCard memoized  │
+   │ Modal           │ None                   │ QR Pickup Modal     │
+   └─────────────────┴─────────────────────────┴─────────────────────┘
+
+3. ARCHITECTURAL COMPATIBILITY
+   ✅ Both use same UI framework (Tailwind + Lucide icons)
+   ✅ Both use same shared utilities (formatIDR, formatDate)
+   ✅ Both use same component library (Badge, Button, Skeleton)
+   ✅ Both use similar error/loading patterns
+   ✅ Both are lazy-loaded in routing
+   ⚠️  Different state management patterns (parallel vs reactive)
+   ⚠️  Different data fetching strategies
+   ❌ No shared sub-components (OrderCard is order-specific)
+
+4. RECOMMENDED MERGER APPROACH: TABBED INTERFACE
+   
+   Benefits:
+   + Single route (/dashboard/activity)
+   + Clear separation of concerns (tabs)
+   + Mobile-friendly
+   + Modal persistence across tabs (lift to parent)
+   + Minimal refactoring needed
+   - Requires tab state management
+   - Slightly more complex than sectioned approach
+   
+   Alternative: Sectioned (vertical stack, simpler but less clear)
+
+5. IMPLEMENTATION PHASES
+   
+   Phase 1: Create Tabbed Activity Page (2 days)
+   └─ Extract logic from both pages into ActivityPage
+     └─ Maintain current file structure, add tab UI
+   
+   Phase 2: Refactor Routes (1 day)
+   └─ Add /dashboard/activity route
+   └─ Redirect old routes with query params
+   └─ Update navigation menu
+   
+   Phase 3: Optimize (1 day)
+   └─ Memoize DompetNutrisi sections (like OrderCard)
+   └─ Extract shared configs (statusMap, txTypeConfig)
+   └─ Performance audit
+   
+   Phase 4: Deploy & Test (1 day)
+   └─ Mobile/desktop testing
+   └─ Filter/pagination testing
+   └─ Action testing (QR, Reorder, etc.)
+   
+   TOTAL EFFORT: 5-6 days (conservative)
+
+6. CRITICAL DECISIONS NEEDED
+   
+   [1] Route Strategy: Keep both routes or consolidate?
+       → RECOMMENDED: Keep old routes, add redirects
+   
+   [2] Layout: Tabs, sections, or sidebar?
+       → RECOMMENDED: Tabs (cleanest, most maintainable)
+   
+   [3] State: Keep useState or refactor to Context/Reducer?
+       → RECOMMENDED: Keep useState (sufficient complexity)
+   
+   [4] File Organization: Single large file or split into sub-components?
+       → RECOMMENDED: Start with single file (900 LOC is manageable)
+   
+   [5] Data Fetching: Fetch both tabs on mount or lazy-load?
+       → RECOMMENDED: Lazy load based on active tab (performance)
+
+7. RISK MITIGATION
+   
+   Risk: Breaking existing bookmarks/links
+   → Mitigate: Keep old routes + redirects for 2+ releases
+   
+   Risk: Increased complexity in merged component
+   → Mitigate: Start with single file, refactor if >1000 LOC
+   
+   Risk: Modal closing when switching tabs
+   → Mitigate: Lift modal state to ActivityPage parent
+   
+   Risk: Performance degradation
+   → Mitigate: Implement memoization + lazy loading + performance monitoring
+   
+   Risk: Regression in existing features
+   → Mitigate: Automated tests for filters, pagination, actions, QR, reorder
+
+8. SUCCESS CRITERIA
+   
+   ✓ All existing features preserved and working
+   ✓ Mobile responsiveness maintained
+   ✓ Performance not degraded (< 5% slower)
+   ✓ QR modal works across tab switches
+   ✓ Filters & pagination function normally
+   ✓ Reorder action adds to cart correctly
+   ✓ No console errors or warnings
+   ✓ Old routes redirect seamlessly
+   ✓ Unit tests pass (>80% coverage)
+   ✓ E2E tests pass (happy path scenarios)
+
+================================================================================
+FILE REFERENCES (ABSOLUTE PATHS)
+================================================================================
+
+PAGES TO MERGE:
+• D:\ppl1\Project-PPL1\apps\frontend\src\pages\dashboard\DompetNutrisi.tsx
+• D:\ppl1\Project-PPL1\apps\frontend\src\pages\dashboard\orders\OrderHistoryPage.tsx
+
+SUPPORTING COMPONENTS:
+• D:\ppl1\Project-PPL1\apps\frontend\src\components\order\OrderFiltersPanel.tsx
+• D:\ppl1\Project-PPL1\apps\frontend\src\components\order\OrderQrModal.tsx
+• D:\ppl1\Project-PPL1\apps\frontend\src\components\dashboard\DashboardLayout.tsx
+
+SERVICES & TYPES:
+• D:\ppl1\Project-PPL1\apps\frontend\src\services\wallet.ts
+• D:\ppl1\Project-PPL1\apps\frontend\src\services\orders.ts
+• D:\ppl1\Project-PPL1\apps\frontend\src\types\orders.ts
+
+UTILITIES:
+• D:\ppl1\Project-PPL1\apps\frontend\src\lib\format.ts
+
+ROUTING:
+• D:\ppl1\Project-PPL1\apps\frontend\src\App.tsx (lines 203-209, 355-374)
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. REVIEW this analysis with team
+   → Confirm merger approach (tabbed vs sectioned vs sidebar)
+   → Confirm route strategy (keep vs redirect vs deprecate)
+   
+2. PLAN the work
+   → Create epic/user story with phases
+   → Assign story points (8-10 for full implementation)
+   → Schedule sprint cycles
+   
+3. SETUP environment
+   → Create feature branch (feature/activity-dashboard-merger)
+   → Create new directory: src/pages/dashboard/activity/
+   → Setup test environment for regression testing
+   
+4. IMPLEMENTATION
+   → Follow Phase 1-4 roadmap above
+   → Daily standup on progress
+   → Code review after Phase 1 (before Phase 2 routing changes)
+   
+5. TESTING & QA
+   → Manual testing on mobile + desktop
+   → Automated test coverage for critical paths
+   → Performance profiling (Network, CPU, rendering)
+   
+6. COMMUNICATION
+   → Notify stakeholders when routes change
+   → Update documentation/wiki with new URL
+   → Monitor usage metrics post-launch
+
+================================================================================
+APPENDICES AVAILABLE
+================================================================================
+
+Detailed Analysis Available In:
+1. analysis.md - Full technical breakdown of both pages
+2. summary.md - Structured findings with comparison tables
+3. visual_guide.md - Architecture diagrams and component trees
+
+Key Sections:
+• Data models and types
+• UI layout patterns
+• State management comparison
+• Component reusability analysis
+• API call patterns
+• Icon & color palette mapping
+• Performance optimization checklist
+• Error handling strategy
+• File organization recommendations
+
+================================================================================
+END OF EXECUTIVE SUMMARY
+================================================================================
