@@ -1,7 +1,8 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, donations, vouchers, products, orders, fies, nutrition, recommendations, settlements, reports, users, cart, vendor_wallet, admin, subscriptions
+from app.api import auth, donations, vouchers, admin
 from app.api import wallet as wallet_api
 from app.database import IS_SQLITE, SessionLocal, init_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
@@ -40,20 +41,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
-app.include_router(users.router, prefix="/api/v1")
 app.include_router(donations.router, prefix="/api/v1")
 app.include_router(vouchers.router, prefix="/api/v1")
-app.include_router(cart.router, prefix="/api/v1")
-app.include_router(products.router, prefix="/api/v1")
-app.include_router(orders.router, prefix="/api/v1")
-app.include_router(fies.router, prefix="/api/v1")
-app.include_router(nutrition.router, prefix="/api/v1")
-app.include_router(recommendations.router, prefix="/api/v1")
-app.include_router(settlements.router, prefix="/api/v1")
-app.include_router(reports.router, prefix="/api/v1")
-app.include_router(vendor_wallet.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
-app.include_router(subscriptions.router, prefix="/api/v1")
 app.include_router(wallet_api.router, prefix="/api/v1")
 
 
