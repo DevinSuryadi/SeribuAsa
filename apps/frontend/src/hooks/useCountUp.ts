@@ -15,14 +15,19 @@ interface CountUpOptions {
 
 export function useCountUp(options: CountUpOptions) {
   const { end, duration = 2, prefix = '', suffix = '', decimals = 0, separator = '.' } = options;
-  const [display, setDisplay] = useState(`${prefix}0${suffix}`);
+  const [display, setDisplay] = useState(() => {
+    const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      return `${prefix}${formatNumber(end, decimals, separator)}${suffix}`;
+    }
+    return `${prefix}0${suffix}`;
+  });
   const ref = useRef<HTMLElement>(null);
   const counterRef = useRef({ value: 0 });
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) {
-      setDisplay(`${prefix}${formatNumber(end, decimals, separator)}${suffix}`);
       return;
     }
     if (!ref.current) return;

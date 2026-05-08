@@ -2,16 +2,13 @@ import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   QrCode,
-  Store,
   ShoppingBag,
   CheckCircle2,
   XCircle,
   Search,
   Package,
-  AlertCircle,
   RefreshCw,
   Wallet,
   Loader2,

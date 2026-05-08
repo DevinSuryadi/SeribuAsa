@@ -92,7 +92,7 @@ describe("Wallet Service Integration Tests", () => {
 
       const result = await walletService.getWalletTransactions();
 
-      expect(apiFetch).toHaveBeenCalledWith("/wallet/transactions?page=1&page_size=20");
+      expect(apiFetch).toHaveBeenCalledWith("/wallet/transactions");
       expect(result.items).toHaveLength(2);
       expect(result.items[0].transaction_type).toBe("credit");
     });

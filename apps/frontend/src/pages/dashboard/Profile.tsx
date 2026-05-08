@@ -75,6 +75,7 @@ const Profile = () => {
   // Update form data when profile loads
   useEffect(() => {
     if (profileData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditFormData({
         fullName: profileData.full_name || user?.fullName || "",
         phone: profileData.phone || "",

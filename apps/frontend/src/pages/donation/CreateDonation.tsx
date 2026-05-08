@@ -110,7 +110,7 @@ export default function CreateDonation() {
         return;
       }
       
-      // @ts-ignore
+      // @ts-expect-error - window.snap is injected by midtrans script
       window.snap.pay(snapToken, {
         onSuccess: async function (result: any) {
           try {

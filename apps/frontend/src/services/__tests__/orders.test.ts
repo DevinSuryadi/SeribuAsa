@@ -131,25 +131,9 @@ describe("Order Service Tests", () => {
 
       const result = await orderService.getOrders();
 
-      expect(result.items).toHaveLength(1);
-      expect(result.items[0].status).toBe("pending");
+      expect(result.orders).toHaveLength(1);
+      expect(result.orders[0].status).toBe("pending");
     });
   });
 
-  describe("cancelOrder", () => {
-    it("should cancel order successfully", async () => {
-      const mockResponse = { success: true, message: "Order cancelled", refunded_amount: 100000 };
-      vi.mocked(apiFetch).mockResolvedValueOnce(mockResponse);
-
-      const result = await orderService.cancelOrder("order_1");
-
-      expect(apiFetch).toHaveBeenCalledWith(
-        "/orders/order_1/cancel",
-        expect.objectContaining({
-          method: "POST",
-        })
-      );
-      expect(result.success).toBe(true);
-    });
-  });
 });

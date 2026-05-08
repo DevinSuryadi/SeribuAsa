@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base
 from app.models import FIESSurvey  # noqa: F401
-from app.models.donation import Donation, DonationStatusEnum, DonationTypeEnum, Voucher
+from app.models.donation import Donation, DonationStatusEnum, DonationTypeEnum
 from app.models.wallet import WalletAllocation
 from app.models.user import BeneficiaryProfile, DonorProfile, UserProfile
 from app.services.donation_allocation_service import DonationAllocationService
