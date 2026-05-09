@@ -22,7 +22,7 @@ import {
   CreditCard,
   Sparkles,
   ShoppingCart,
-  Receipt,
+  // Receipt icon removed — Riwayat Pesanan merged into Dompet & Aktivitas
   QrCode,
 } from "lucide-react";
 
@@ -46,8 +46,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Ringkasan", href: "/dashboard/beneficiary", icon: LayoutDashboard },
     { label: "Katalog Pangan", href: "/dashboard/katalog", icon: Package },
     { label: "Keranjang", href: "/dashboard/cart", icon: ShoppingCart },
-    { label: "Riwayat Pesanan", href: "/dashboard/orders", icon: Receipt },
-    { label: "Dompet Nutrisi", href: "/dashboard/dompet-nutrisi", icon: Wallet },
+    { label: "Dompet & Aktivitas", href: "/dashboard/dompet-nutrisi", icon: Wallet },
     { label: "Survei FIES", href: "/dashboard/survei-fies", icon: ClipboardList },
     { label: "Pemantauan Gizi", href: "/dashboard/pemantauan-gizi", icon: Activity },
     { label: "Rekomendasi AI", href: "/dashboard/rekomendasi-ai", icon: Sparkles },
@@ -110,7 +109,7 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-border bg-card">
+      <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-border bg-card sticky top-0 h-screen">
         <div className="flex h-16 items-center gap-2 border-b border-border px-4">
           <Link to="/" className="flex items-center gap-2">
             <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", colorClass)}>
@@ -119,7 +118,7 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
             <span className="font-bold text-foreground">SeribuAsa</span>
           </Link>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {navItems.map((item) => {
             const active = location.pathname === item.href;
             return (
@@ -187,7 +186,7 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 p-3 space-y-1">
+            <nav className="flex-1 overflow-y-auto p-3 space-y-1">
               {navItems.map((item) => {
                 const active = location.pathname === item.href;
                 return (

@@ -6,7 +6,6 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -193,135 +192,157 @@ const Profile = () => {
       title="Profil Saya"
       subtitle="Kelola informasi pribadi dan pengaturan akun Anda."
     >
-      <div className="space-y-6 max-w-4xl mx-auto">
-        {/* Profile Info */}
-        <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 gap-4">
-            <div>
-              <CardTitle className="text-lg">Informasi Pribadi</CardTitle>
-              <CardDescription>Kelola data profil Anda</CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 w-full sm:w-auto"
-              onClick={() => setShowEditModal(true)}
-            >
-              <Edit className="h-4 w-4" /> Edit
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
-                <User className="h-8 w-8 text-primary" />
-              </div>
-              <div>
-                <div className="text-lg font-semibold text-foreground">{resolvedName}</div>
-                <div className="text-sm text-muted-foreground">{user?.email || "-"}</div>
-                <Badge className="mt-1 capitalize">{displayValues.role}</Badge>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex items-start gap-3">
-                <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <div className="text-xs text-muted-foreground">Email</div>
-                  <div className="text-sm font-medium text-foreground">{user?.email || "-"}</div>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <div className="text-xs text-muted-foreground">Nomor HP</div>
-                  <div className="text-sm font-medium text-foreground">{displayValues.phone}</div>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <div className="text-xs text-muted-foreground">Tanggal Lahir</div>
-                  <div className="text-sm font-medium text-foreground">
-                    {displayValues.dateOfBirth}
+      <div className="space-y-6 w-full pb-10">
+        {/* Profile Header */}
+        <div className="relative overflow-hidden rounded-[2rem] bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="h-36 bg-gradient-to-r from-green-500 via-emerald-400 to-teal-400"></div>
+          
+          <div className="px-6 sm:px-10 pb-8 relative">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 -mt-14">
+              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5">
+                <div className="h-28 w-28 rounded-3xl bg-white p-2 shadow-xl ring-1 ring-black/5">
+                  <div className="h-full w-full rounded-2xl bg-green-50 flex items-center justify-center text-green-600">
+                    <User size={48} />
                   </div>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <div className="text-xs text-muted-foreground">Jenis Kelamin</div>
-                  <div className="text-sm font-medium text-foreground">{displayValues.gender}</div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Address */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-primary" /> Alamat
-            </CardTitle>
-            <CardDescription>Alamat terdaftar Anda</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg border border-border p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{resolvedName}</span>
-                    <Badge variant="secondary" className="text-[10px]">
-                      Utama
+                <div className="text-center sm:text-left pb-2">
+                  <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{resolvedName}</h2>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-2">
+                    <span className="text-sm font-medium text-gray-500 flex items-center gap-1.5">
+                      <Mail size={16} /> {user?.email || "-"}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300 hidden sm:block"></span>
+                    <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-0 px-3 py-1 font-semibold rounded-full shadow-sm">
+                      {displayValues.role}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{displayValues.address}</p>
-                  {!profileData?.address && !profileLoading && (
-                    <p className="text-sm text-foreground mt-2 text-muted-foreground italic">
-                      Silakan lengkapi profil Anda untuk menambahkan alamat.
-                    </p>
-                  )}
                 </div>
               </div>
+              <Button 
+                onClick={() => setShowEditModal(true)} 
+                className="bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm rounded-xl gap-2 font-semibold h-11 px-5 transition-all active:scale-95"
+              >
+                <Edit size={18} /> Edit Profil
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Account Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pengaturan Akun</CardTitle>
-            <CardDescription>Kelola pengaturan akun Anda</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <div className="text-sm font-medium text-foreground">Role Akun</div>
-                  <div className="text-xs text-muted-foreground capitalize">
-                    {displayValues.role}
-                  </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Info - 2 cols */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Personal Info Bento */}
+            <div className="rounded-[2rem] bg-white p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-green-100 text-green-600">
+                  <User size={20} />
                 </div>
-                <Badge variant="outline" className="capitalize">
-                  {resolvedRole || "-"}
-                </Badge>
+                Informasi Pribadi
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 transition-all hover:bg-green-50 hover:border-green-200 group">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 group-hover:text-green-600 transition-colors">Nomor HP</p>
+                  <p className="text-base font-semibold text-gray-900 flex items-center gap-2.5">
+                    <Phone size={18} className="text-gray-400 group-hover:text-green-500 transition-colors" /> 
+                    {displayValues.phone}
+                  </p>
+                </div>
+                
+                <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 transition-all hover:bg-green-50 hover:border-green-200 group">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 group-hover:text-green-600 transition-colors">Tanggal Lahir</p>
+                  <p className="text-base font-semibold text-gray-900 flex items-center gap-2.5">
+                    <Calendar size={18} className="text-gray-400 group-hover:text-green-500 transition-colors" /> 
+                    {displayValues.dateOfBirth}
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 transition-all hover:bg-green-50 hover:border-green-200 group sm:col-span-2 md:col-span-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 group-hover:text-green-600 transition-colors">Jenis Kelamin</p>
+                  <p className="text-base font-semibold text-gray-900 flex items-center gap-2.5">
+                    <User size={18} className="text-gray-400 group-hover:text-green-500 transition-colors" /> 
+                    {displayValues.gender}
+                  </p>
+                </div>
               </div>
             </div>
-            <Separator />
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => setShowPasswordModal(true)}
-            >
-              <Lock className="h-4 w-4" /> Ubah Kata Sandi
-            </Button>
-            <Button variant="destructive" className="w-full gap-2" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" /> Keluar dari Akun
-            </Button>
-          </CardContent>
-        </Card>
+
+            {/* Address Bento */}
+            <div className="rounded-[2rem] bg-white p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-100 text-emerald-600">
+                  <MapPin size={20} />
+                </div>
+                Alamat Terdaftar
+              </h3>
+              
+              <div className="p-6 rounded-3xl bg-gradient-to-br from-green-50/80 to-emerald-50/80 border border-green-100 relative overflow-hidden group">
+                <MapPin className="absolute -right-6 -bottom-6 w-32 h-32 text-green-200/40 group-hover:scale-110 group-hover:text-green-200/60 transition-transform duration-500" />
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="font-bold text-green-900 text-lg">{resolvedName}</span>
+                    <span className="px-3 py-1 rounded-full bg-white text-green-700 text-xs font-bold border border-green-200 shadow-sm">Utama</span>
+                  </div>
+                  <p className="text-green-800/90 leading-relaxed font-medium">
+                    {displayValues.address && displayValues.address !== "Belum diatur" ? displayValues.address : <span className="italic text-green-600/70">Alamat belum diatur</span>}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar - 1 col */}
+          <div className="space-y-6">
+            {/* Security Bento */}
+            <div className="rounded-[2rem] bg-white p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-100 text-blue-600">
+                  <Lock size={20} />
+                </div>
+                Keamanan
+              </h3>
+              
+              <p className="text-sm font-medium text-gray-500 mb-6">Pastikan akun Anda tetap aman dengan memperbarui kata sandi secara berkala.</p>
+              
+              <button 
+                onClick={() => setShowPasswordModal(true)}
+                className="w-full bg-gray-50 hover:bg-gray-100 hover:border-gray-300 active:scale-[0.98] text-gray-700 border border-gray-200 rounded-2xl flex items-center justify-between p-4 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-white shadow-sm border border-gray-100">
+                    <Lock size={18} className="text-gray-600" />
+                  </div>
+                  <span className="font-semibold">Ubah Kata Sandi</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Danger Zone Bento */}
+            <div className="rounded-[2rem] bg-white p-8 border border-red-50 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
+              <h3 className="text-xl font-bold text-red-600 mb-4 flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-red-100 text-red-600">
+                  <LogOut size={20} />
+                </div>
+                Sesi Akun
+              </h3>
+              
+              <p className="text-sm font-medium text-gray-500 mb-6">Keluar dari perangkat ini untuk mengakhiri sesi Anda saat ini.</p>
+              
+              <button 
+                onClick={handleSignOut}
+                className="w-full bg-red-50 hover:bg-red-100 hover:border-red-200 active:scale-[0.98] text-red-700 border border-red-100 rounded-2xl flex items-center justify-between p-4 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-white shadow-sm border border-red-100">
+                    <LogOut size={18} className="text-red-600" />
+                  </div>
+                  <span className="font-semibold">Keluar dari Akun</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Edit Profile Modal */}
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
@@ -330,39 +351,48 @@ const Profile = () => {
               <DialogTitle>Edit Profil</DialogTitle>
               <DialogDescription>Perbarui informasi pribadi Anda</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <Label htmlFor="fullName">Nama Lengkap</Label>
+                <Label htmlFor="fullName" className="text-xs font-semibold uppercase tracking-wide">
+                  Nama Lengkap
+                </Label>
                 <Input
                   id="fullName"
                   value={editFormData.fullName}
                   onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                  className="mt-1.5"
+                  className="mt-1"
+                  placeholder="Nama lengkap Anda"
                 />
               </div>
               <div>
-                <Label htmlFor="phone">Nomor HP</Label>
+                <Label htmlFor="phone" className="text-xs font-semibold uppercase tracking-wide">
+                  Nomor HP
+                </Label>
                 <Input
                   id="phone"
                   type="tel"
                   placeholder="08xx xxxx xxxx"
                   value={editFormData.phone}
                   onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                  className="mt-1.5"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="address">Alamat</Label>
+                <Label htmlFor="address" className="text-xs font-semibold uppercase tracking-wide">
+                  Alamat
+                </Label>
                 <textarea
                   id="address"
                   value={editFormData.address}
                   onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
-                  className="w-full mt-1.5 px-3 py-2 border border-input rounded-md bg-background min-h-[80px]"
+                  className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background min-h-[70px] text-sm"
                   placeholder="Masukkan alamat"
                 />
               </div>
               <div>
-                <Label htmlFor="dob">Tanggal Lahir</Label>
+                <Label htmlFor="dob" className="text-xs font-semibold uppercase tracking-wide">
+                  Tanggal Lahir
+                </Label>
                 <Input
                   id="dob"
                   type="date"
@@ -370,16 +400,18 @@ const Profile = () => {
                   onChange={(e) =>
                     setEditFormData({ ...editFormData, dateOfBirth: e.target.value })
                   }
-                  className="mt-1.5"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="gender">Jenis Kelamin</Label>
+                <Label htmlFor="gender" className="text-xs font-semibold uppercase tracking-wide">
+                  Jenis Kelamin
+                </Label>
                 <select
                   id="gender"
                   value={editFormData.gender}
                   onChange={(e) => setEditFormData({ ...editFormData, gender: e.target.value })}
-                  className="w-full mt-1.5 px-3 py-2 border border-input rounded-md bg-background"
+                  className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background text-sm"
                 >
                   <option value="">Pilih Jenis Kelamin</option>
                   <option value="male">Laki-laki</option>
@@ -387,12 +419,19 @@ const Profile = () => {
                 </select>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setShowEditModal(false)}>
                 Batal
               </Button>
               <Button onClick={handleEditProfile} disabled={isSubmitting}>
-                {isSubmitting ? "Menyimpan..." : "Simpan"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -405,9 +444,14 @@ const Profile = () => {
               <DialogTitle>Ubah Kata Sandi</DialogTitle>
               <DialogDescription>Perbarui kata sandi akun Anda</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <Label htmlFor="currentPassword">Kata Sandi Saat Ini</Label>
+                <Label
+                  htmlFor="currentPassword"
+                  className="text-xs font-semibold uppercase tracking-wide"
+                >
+                  Kata Sandi Saat Ini
+                </Label>
                 <Input
                   id="currentPassword"
                   type="password"
@@ -415,11 +459,16 @@ const Profile = () => {
                   onChange={(e) =>
                     setPasswordFormData({ ...passwordFormData, currentPassword: e.target.value })
                   }
-                  className="mt-1.5"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="newPassword">Kata Sandi Baru</Label>
+                <Label
+                  htmlFor="newPassword"
+                  className="text-xs font-semibold uppercase tracking-wide"
+                >
+                  Kata Sandi Baru
+                </Label>
                 <Input
                   id="newPassword"
                   type="password"
@@ -428,11 +477,16 @@ const Profile = () => {
                   onChange={(e) =>
                     setPasswordFormData({ ...passwordFormData, newPassword: e.target.value })
                   }
-                  className="mt-1.5"
+                  className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="confirmPassword">Konfirmasi Kata Sandi</Label>
+                <Label
+                  htmlFor="confirmPassword"
+                  className="text-xs font-semibold uppercase tracking-wide"
+                >
+                  Konfirmasi Kata Sandi
+                </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -440,16 +494,23 @@ const Profile = () => {
                   onChange={(e) =>
                     setPasswordFormData({ ...passwordFormData, confirmPassword: e.target.value })
                   }
-                  className="mt-1.5"
+                  className="mt-1"
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setShowPasswordModal(false)}>
                 Batal
               </Button>
               <Button onClick={handleChangePassword} disabled={isSubmitting}>
-                {isSubmitting ? "Mengubah..." : "Ubah Kata Sandi"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Mengubah...
+                  </>
+                ) : (
+                  "Ubah Kata Sandi"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

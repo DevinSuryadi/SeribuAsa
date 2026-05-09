@@ -35,6 +35,7 @@ import { addToCart, getCart } from "@/services/cart";
 import { getWalletBalance } from "@/services/wallet";
 import { useStaggerChildren } from "@/hooks/useStaggerChildren";
 import { toast } from "sonner";
+import { ProductAvatarLarge } from "@/components/product/ProductAvatar";
 
 type Product = {
   id: string;
@@ -48,6 +49,7 @@ type Product = {
   unit: string;
   description: string | null;
   vendor_id: string;
+  images?: string[] | null;
 };
 
 const categoryIcons: Record<string, ComponentType<{ className?: string }>> = {
@@ -59,6 +61,116 @@ const categoryIcons: Record<string, ComponentType<{ className?: string }>> = {
   Snack: Package,
 };
 
+// ── ModalProductDetail ─────────────────────────────────────────
+const ModalProductDetail = memo(function ModalProductDetail({
+  product,
+  onAddToCart,
+  isLoading,
+}: {
+  product: Product;
+  onAddToCart: (quantity: number) => void;
+  isLoading: boolean;
+}) {
+  const [quantity, setQuantity] = useState(1);
+
+  const handleQuantityChange = (value: number) => {
+    const newValue = Math.max(1, Math.min(value, product.stock_quantity));
+    setQuantity(newValue);
+  };
+
+  const totalPrice = product.voucher_price * quantity;
+  const hasStock = product.stock_quantity > 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="aspect-video w-full rounded-xl overflow-hidden">
+        <ProductAvatarLarge
+          images={product.images}
+          categoryName={product.category_name}
+          name={product.name}
+          className="h-full w-full"
+        />
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        {product.description || "Tidak ada deskripsi"}
+      </p>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Harga Voucher</div>
+          <div className="text-2xl font-bold text-primary">{formatIDR(product.voucher_price)}</div>
+        </div>
+        <Badge variant={product.stock_quantity > 20 ? "secondary" : "destructive"}>
+          Stok: {product.stock_quantity}
+        </Badge>
+      </div>
+
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <MapPin className="h-4 w-4" /> {product.vendor_store_name || "Vendor"}
+      </div>
+
+      {/* Quantity Selector */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Jumlah</label>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleQuantityChange(quantity - 1)}
+            disabled={quantity <= 1 || isLoading}
+          >
+            −
+          </Button>
+          <Input
+            type="number"
+            min="1"
+            max={product.stock_quantity}
+            value={quantity}
+            onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
+            className="w-16 text-center"
+            disabled={isLoading}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleQuantityChange(quantity + 1)}
+            disabled={quantity >= product.stock_quantity || isLoading}
+          >
+            +
+          </Button>
+          <span className="text-sm text-muted-foreground ml-auto">
+            Maks: {product.stock_quantity}
+          </span>
+        </div>
+      </div>
+
+      {/* Total Price */}
+      <div className="rounded-lg bg-primary/10 p-3 flex items-center justify-between">
+        <span className="text-sm font-medium">Total:</span>
+        <span className="text-lg font-bold text-primary">{formatIDR(totalPrice)}</span>
+      </div>
+
+      <Button
+        className="w-full gap-2"
+        onClick={() => onAddToCart(quantity)}
+        disabled={!hasStock || isLoading}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Menambahkan...
+          </>
+        ) : (
+          <>
+            <Plus className="h-4 w-4" /> Tambah ke Keranjang
+          </>
+        )}
+      </Button>
+    </div>
+  );
+});
+
 // ── ProductCard ────────────────────────────────────────────────
 const ProductCard = memo(function ProductCard({
   product,
@@ -69,25 +181,32 @@ const ProductCard = memo(function ProductCard({
   product: Product;
   onSelect: (p: Product) => void;
   onAddToCart: (id: string) => void;
-  addingToCart: boolean;
+  addingToCart: string | null;
 }) {
-  const ProductIcon = product.category_name
-    ? categoryIcons[product.category_name] || Package
-    : Package;
+  const isLoading = addingToCart === product.id;
+  const hasStock = product.stock_quantity > 0;
 
   return (
     <Card className="overflow-hidden flex flex-col transition-all hover:shadow-md group">
       <button
-        className="aspect-[4/3] bg-secondary/30 flex items-center justify-center relative overflow-hidden"
+        className="relative overflow-hidden"
         onClick={() => onSelect(product)}
         aria-label={`Lihat detail ${product.name}`}
       >
-        <span className="group-hover:scale-110 transition-transform rounded-full bg-white/80 p-4">
-          <ProductIcon className="h-10 w-10 text-primary" />
-        </span>
-        {product.stock_quantity <= 20 && (
+        <ProductAvatarLarge
+          images={product.images}
+          categoryName={product.category_name}
+          name={product.name}
+          className="aspect-[4/3] w-full group-hover:scale-105 transition-transform duration-300"
+        />
+        {product.stock_quantity <= 20 && hasStock && (
           <Badge variant="destructive" className="absolute top-2 right-2 text-[10px]">
             Sisa {product.stock_quantity}
+          </Badge>
+        )}
+        {!hasStock && (
+          <Badge variant="destructive" className="absolute top-2 right-2 text-[10px]">
+            Stok Habis
           </Badge>
         )}
       </button>
@@ -115,11 +234,14 @@ const ProductCard = memo(function ProductCard({
           size="sm"
           className="w-full gap-1.5"
           onClick={() => onAddToCart(product.id)}
-          disabled={addingToCart || product.stock_quantity <= 0}
+          disabled={isLoading || !hasStock}
         >
-          {addingToCart ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : product.stock_quantity <= 0 ? (
+          {isLoading ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Menambahkan...
+            </>
+          ) : !hasStock ? (
             "Stok Habis"
           ) : (
             <>
@@ -145,9 +267,13 @@ const KatalogPangan = () => {
   const [error, setError] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [cartItemCount, setCartItemCount] = useState(0);
-  const [addingToCart, setAddingToCart] = useState(false);
+  const [addingToCart, setAddingToCart] = useState<string | null>(null); // track which product is loading
   const [currentPage, setCurrentPage] = useState(1);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Local state untuk cart items yang sedang di-add dengan quantity
+  const [pendingCartItems, setPendingCartItems] = useState<Map<string, number>>(new Map());
+
   const itemsPerPage = 12;
   const gridRef = useStaggerChildren({ stagger: 0.05 });
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -235,28 +361,74 @@ const KatalogPangan = () => {
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   const addToCartHandler = useCallback(
-    async (productId: string) => {
-      if (addingToCart) return;
-      setAddingToCart(true);
-      try {
-        const product = products.find((p) => p.id === productId);
-        if (!product) return;
+    async (productId: string, quantity: number = 1) => {
+      if (addingToCart || quantity <= 0) return;
 
+      // Find product for optimistic update
+      const product = products.find((p) => p.id === productId);
+      if (!product || product.stock_quantity < quantity) {
+        toast.error("Stok tidak cukup");
+        return;
+      }
+
+      // Store original state for rollback
+      const originalStock = product.stock_quantity;
+      const originalCartCount = cartItemCount;
+      const originalPendingItems = new Map(pendingCartItems);
+
+      setAddingToCart(productId);
+      try {
+        // 1. Optimistic update: update local state immediately
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === productId
+              ? { ...p, stock_quantity: Math.max(0, p.stock_quantity - quantity) }
+              : p
+          )
+        );
+
+        // 2. Increment cart count
+        setCartItemCount((prev) => prev + quantity);
+
+        // 3. Track pending cart item (for UI feedback)
+        setPendingCartItems((prev) => {
+          const updated = new Map(prev);
+          updated.set(productId, (updated.get(productId) || 0) + quantity);
+          return updated;
+        });
+
+        // 4. Make API call in background
         await addToCart({
           product_id: productId,
-          quantity: 1,
+          quantity: quantity,
         });
-        setCartItemCount((prev) => prev + 1);
-        toast.success("Ditambahkan ke keranjang");
+
+        // 5. Clear pending item after successful add
+        setPendingCartItems((prev) => {
+          const updated = new Map(prev);
+          updated.delete(productId);
+          return updated;
+        });
+
+        toast.success(`${quantity} item ditambahkan ke keranjang`);
       } catch (err: any) {
+        // Rollback on error - restore original state
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, stock_quantity: originalStock } : p))
+        );
+        setCartItemCount(originalCartCount);
+        setPendingCartItems(originalPendingItems);
+
+        const errorMsg = err.message || "Coba lagi";
         toast.error("Gagal menambahkan ke keranjang", {
-          description: err.message || "Coba lagi",
+          description: errorMsg,
         });
+        console.error("Add to cart error:", err);
       } finally {
-        setAddingToCart(false);
+        setAddingToCart(null);
       }
     },
-    [products, addingToCart]
+    [products, addingToCart, cartItemCount, pendingCartItems]
   );
 
   if (loading) {
@@ -425,6 +597,7 @@ const KatalogPangan = () => {
               onSelect={setSelectedProduct}
               onAddToCart={addToCartHandler}
               addingToCart={addingToCart}
+              pendingQuantity={pendingCartItems.get(product.id) || 0}
             />
           ))}
         </div>
@@ -496,44 +669,15 @@ const KatalogPangan = () => {
                     {selectedProduct.vendor_store_name || "Vendor"}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div className="aspect-video bg-secondary/30 rounded-lg flex items-center justify-center text-6xl">
-                    {(() => {
-                      const SelectedIcon = selectedProduct.category_name
-                        ? categoryIcons[selectedProduct.category_name] || Package
-                        : Package;
-                      return <SelectedIcon className="h-16 w-16 text-primary" />;
-                    })()}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedProduct.description || "Tidak ada deskripsi"}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Harga Voucher</div>
-                      <div className="text-2xl font-bold text-primary">
-                        {formatIDR(selectedProduct.voucher_price)}
-                      </div>
-                    </div>
-                    <Badge
-                      variant={selectedProduct.stock_quantity > 20 ? "secondary" : "destructive"}
-                    >
-                      Stok: {selectedProduct.stock_quantity}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" /> {selectedProduct.vendor_store_name || "Vendor"}
-                  </div>
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => {
-                      addToCartHandler(selectedProduct!.id);
-                      setSelectedProduct(null);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" /> Tambah ke Keranjang
-                  </Button>
-                </div>
+                <ModalProductDetail
+                  product={selectedProduct}
+                  onAddToCart={(quantity) => {
+                    addToCartHandler(selectedProduct.id, quantity);
+                    // Don't close modal immediately - let user see confirmation
+                    setTimeout(() => setSelectedProduct(null), 800);
+                  }}
+                  isLoading={addingToCart === selectedProduct.id}
+                />
               </>
             )}
           </DialogContent>
