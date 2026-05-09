@@ -340,9 +340,9 @@ class SettlementScheduler:
         from sqlalchemy.orm import joinedload
         try:
             db = SettlementScheduler.db_session_factory()
-            now_iso = datetime.utcnow().isoformat()
+            now_dt = datetime.utcnow()
 
-            # Find pending orders with expired QR (pickup_expires_at is stored as ISO string)
+            # Find pending orders with expired QR
             expired_orders = (
                 db.query(Order)
                 .options(
@@ -353,7 +353,7 @@ class SettlementScheduler:
                 .filter(
                     Order.status == OrderStatusEnum.pending,
                     Order.pickup_expires_at is not None,
-                    Order.pickup_expires_at < now_iso,
+                    Order.pickup_expires_at < now_dt,
                     Order.is_active,
                 )
                 .all()

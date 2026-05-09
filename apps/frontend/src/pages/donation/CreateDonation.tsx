@@ -141,9 +141,16 @@ export default function CreateDonation() {
           toast.error("Pembayaran gagal diproses!", { id: "error" });
           setLoading(false);
         },
-        onClose: function () {
-          toast.info("Anda menutup pop-up pembayaran sebelum menyelesaikannya.", { id: "close" });
+        onClose: async function () {
+          toast.info("Pembayaran dibatalkan.", { id: "close" });
+          try {
+            const api = await import("@/services/api");
+            await api.apiFetch(`/donations/${donation.id}/cancel`, { method: "POST" });
+          } catch (e) {
+            console.error("Failed to cancel donation:", e);
+          }
           setLoading(false);
+          setAmount("");
         }
       });
     } catch (err) {

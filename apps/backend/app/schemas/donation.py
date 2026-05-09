@@ -20,6 +20,7 @@ class DonationStatusEnum(str, Enum):
     success = "success"
     failed = "failed"
     refunded = "refunded"
+    cancelled = "cancelled"
 
 
 class PaymentMethodEnum(str, Enum):

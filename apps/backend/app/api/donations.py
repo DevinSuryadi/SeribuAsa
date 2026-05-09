@@ -9,7 +9,7 @@ from datetime import date
 
 from app.database import get_db, SessionLocal
 from app.services.donation_service import DonationService
-from app.middleware.auth import get_current_user, AuthenticatedUser
+from app.middleware.auth import get_current_user, AuthenticatedUser, RequireRole
 from app.schemas.donation import (
     DonationCreate,
     DonationResponse,
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/donations", tags=["donations"])
 async def create_donation(
     donation_data: DonationCreate,
     db: Session = Depends(get_db),
-    current_user: AuthenticatedUser = Depends(get_current_user)
+    current_user: AuthenticatedUser = Depends(RequireRole(["donor", "admin", "corporate_donor"]))
 ):
     """Create new donation"""
     logger.info(f"[DONATION] Attempting to create donation for user {current_user.user_id}")
@@ -162,7 +162,27 @@ async def get_payment_link(
     donation = DonationService.get_donation_by_id(db, donation_id, current_user.user_id)
     if not donation:
         raise HTTPException(status_code=404, detail="Donation not found")
+
+@router.post("/{donation_id}/cancel", response_model=DonationResponse)
+async def cancel_donation(
+    donation_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Cancel a pending donation"""
+    donation = DonationService.get_donation_by_id(db, donation_id, current_user.user_id)
+    if not donation:
+        raise HTTPException(status_code=404, detail="Donation not found")
         
+    if donation.status != DonationStatusEnum.pending:
+        raise HTTPException(status_code=400, detail="Only pending donations can be cancelled")
+        
+    donation.status = DonationStatusEnum.cancelled
+    db.commit()
+    db.refresh(donation)
+    
+    return donation
+
     from app.models.user import DonorProfile
     donor_profile = db.query(DonorProfile).filter(DonorProfile.user_id == current_user.user_id).first()
     donor_name = donor_profile.user_profile.full_name if donor_profile and donor_profile.user_profile else "Donor"

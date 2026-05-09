@@ -23,6 +23,7 @@ class DonationStatusEnum(str, enum.Enum):
     success = "success"
     failed = "failed"
     refunded = "refunded"
+    cancelled = "cancelled"
 
 
 # Enum for voucher status
