@@ -1,13 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Button } from "@/components/ui/button";
-import { QrCode, Clock, Store, ShoppingBag, X, RefreshCw, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import {
+  QrCode,
+  Clock,
+  Store,
+  ShoppingBag,
+  X,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getOrderPickupQr, cancelOrder } from "@/services/wallet";
 import { formatIDR } from "@/lib/format";
-
-
 interface OrderItem {
   name: string;
   quantity: number;
@@ -129,7 +136,10 @@ export default function OrderQrModal({ orderId, open, onClose, onCancelled }: Pr
           <div className="flex h-44 w-44 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 to-slate-800">
             <div className="grid grid-cols-7 gap-0.5 p-2 opacity-90">
               {Array.from({ length: 49 }, (_, i) => {
-                const isActive = [0,1,2,3,4,5,6,7,14,42,43,44,45,46,47,48,6,13,20,27,34,41,10,11,12,21,22,23,30,31,32].includes(i);
+                const isActive = [
+                  0, 1, 2, 3, 4, 5, 6, 7, 14, 42, 43, 44, 45, 46, 47, 48, 6, 13, 20, 27, 34, 41, 10,
+                  11, 12, 21, 22, 23, 30, 31, 32,
+                ].includes(i);
                 const charCode = value.charCodeAt(i % value.length) || 0;
                 const show = (charCode + i) % 3 !== 0 || isActive;
                 return (
@@ -155,7 +165,7 @@ export default function OrderQrModal({ orderId, open, onClose, onCancelled }: Pr
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v: boolean) => !v && onClose()}>
       <DialogContent className="max-w-sm gap-0 overflow-hidden rounded-3xl border-0 p-0 shadow-2xl">
         {/* Header */}
         <div className="bg-gradient-to-br from-emerald-600 to-teal-700 px-6 pb-5 pt-6 text-white">
@@ -203,7 +213,9 @@ export default function OrderQrModal({ orderId, open, onClose, onCancelled }: Pr
                 <ul className="space-y-1">
                   {qrData.items.map((item, i) => (
                     <li key={i} className="flex justify-between text-sm">
-                      <span className="text-slate-700">{item.name} ×{item.quantity}</span>
+                      <span className="text-slate-700">
+                        {item.name} ×{item.quantity}
+                      </span>
                       <span className="font-semibold text-slate-900">
                         {formatIDR(item.price * item.quantity)}
                       </span>
@@ -220,11 +232,15 @@ export default function OrderQrModal({ orderId, open, onClose, onCancelled }: Pr
 
               {/* QR Expiry countdown */}
               {qrCountdown && (
-                <div className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold
-                  ${qrCountdown.urgent ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
-                  {qrCountdown.urgent
-                    ? <AlertTriangle className="h-4 w-4 shrink-0" />
-                    : <Clock className="h-4 w-4 shrink-0" />}
+                <div
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold
+                  ${qrCountdown.urgent ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}
+                >
+                  {qrCountdown.urgent ? (
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <Clock className="h-4 w-4 shrink-0" />
+                  )}
                   <span>
                     QR berlaku: <span className="font-black">{qrCountdown.text}</span>
                   </span>
