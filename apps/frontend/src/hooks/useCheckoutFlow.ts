@@ -1,13 +1,13 @@
 /**
  * useCheckoutFlow Hook
- * Manages checkout flow state, validation, and API orchestration
+ * 2-step checkout: Step 1 = Cart Review, Step 2 = Order Confirmation
  */
 
 import { useState, useCallback } from "react";
 import type { CheckoutStep, CartItemData, CheckoutState, OrderSummary } from "@/types/checkout";
 import { getCart, updateCartItem, removeCartItem, clearCart } from "@/services/cart";
 import { getWalletBalance } from "@/services/wallet";
-import { createOrder } from "@/services/orders";
+import { checkoutMultiVendor } from "@/services/orders";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useCheckoutFlow() {
@@ -20,39 +20,20 @@ export function useCheckoutFlow() {
     isLoading: false,
     isSubmitting: false,
     error: null,
-    orderId: null,
+    orderIds: [],
   });
 
-  // ============================================
-  // Type-Safe Helper Functions
-  // ============================================
-
-  const extractVendorId = useCallback((item: CartItemData): string => {
-    return (item as any).vendor_id || "";
-  }, []);
-
-  const getNextStep = useCallback((current: CheckoutStep): CheckoutStep => {
-    if (current < 4) return (current + 1) as CheckoutStep;
-    return current;
-  }, []);
-
-  const getPreviousStep = useCallback((current: CheckoutStep): CheckoutStep => {
-    if (current > 1) return (current - 1) as CheckoutStep;
-    return current;
-  }, []);
-
-  // ============================================
-  // Step Navigation
-  // ============================================
+  // ── Helpers ────────────────────────────────────────────────────
+  const extractVendorId = useCallback(
+    (item: CartItemData): string => item.vendor_id || "",
+    []
+  );
 
   const setCurrentStep = useCallback((step: CheckoutStep) => {
     setState((prev) => ({ ...prev, currentStep: step }));
   }, []);
 
-  // ============================================
-  // Cart Management
-  // ============================================
-
+  // ── Cart Operations ────────────────────────────────────────────
   const loadCartItems = useCallback(async () => {
     if (!user) return;
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
@@ -63,10 +44,10 @@ export function useCheckoutFlow() {
         cartItems: cartData.items || [],
         isLoading: false,
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       setState((prev) => ({
         ...prev,
-        error: err.message || "Failed to load cart",
+        error: err instanceof Error ? err.message : "Gagal memuat keranjang",
         isLoading: false,
       }));
     }
@@ -78,10 +59,10 @@ export function useCheckoutFlow() {
       try {
         await updateCartItem(itemId, { quantity });
         await loadCartItems();
-      } catch (err: any) {
+      } catch (err: unknown) {
         setState((prev) => ({
           ...prev,
-          error: err.message || "Failed to update quantity",
+          error: err instanceof Error ? err.message : "Gagal update jumlah",
           isLoading: false,
         }));
       }
@@ -95,10 +76,10 @@ export function useCheckoutFlow() {
       try {
         await removeCartItem(itemId);
         await loadCartItems();
-      } catch (err: any) {
+      } catch (err: unknown) {
         setState((prev) => ({
           ...prev,
-          error: err.message || "Failed to remove item",
+          error: err instanceof Error ? err.message : "Gagal hapus item",
           isLoading: false,
         }));
       }
@@ -111,16 +92,14 @@ export function useCheckoutFlow() {
     try {
       await clearCart();
       await loadCartItems();
-    } catch (err: any) {
-      setState((prev) => ({
-        ...prev,
-        error: err.message || "Failed to clear cart",
-        isLoading: false,
-      }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengosongkan keranjang";
+      setState((prev) => ({ ...prev, error: msg, isLoading: false }));
       throw err;
     }
   }, [loadCartItems]);
 
+  // ── Wallet ─────────────────────────────────────────────────────
   const loadWalletBalance = useCallback(async () => {
     if (!user) return;
     try {
@@ -129,20 +108,15 @@ export function useCheckoutFlow() {
         ...prev,
         walletBalance: Number(balanceData.wallet_available || 0),
       }));
-    } catch (err: any) {
-      // Don't set error state, just log it - balance loading shouldn't block checkout
-      console.error("Failed to load wallet balance:", err);
+    } catch {
+      // Balance loading failure shouldn't block checkout
     }
   }, [user]);
 
-  // ============================================
-  // Order Summary
-  // ============================================
-
+  // ── Order Summary ──────────────────────────────────────────────
   const getOrderSummary = useCallback((): OrderSummary => {
     const cartTotal = state.cartItems.reduce((sum, item) => sum + Number(item.subtotal), 0);
 
-    // Group by vendor - use vendor_id from item if available
     const groupedByVendor: { [key: string]: CartItemData[] } = {};
     state.cartItems.forEach((item) => {
       const vendorId = extractVendorId(item);
@@ -151,123 +125,71 @@ export function useCheckoutFlow() {
       groupedByVendor[vendorId].push(item);
     });
 
-    return {
-      cart_total: cartTotal,
-      items: state.cartItems,
-      grouped_by_vendor: groupedByVendor,
-    };
-  }, [state.cartItems]);
+    return { cart_total: cartTotal, items: state.cartItems, grouped_by_vendor: groupedByVendor };
+  }, [state.cartItems, extractVendorId]);
 
-  // ============================================
-  // Validation
-  // ============================================
-
+  // ── Validation ─────────────────────────────────────────────────
   const canProceedToNextStep = useCallback((): boolean => {
     switch (state.currentStep) {
-      case 1: // Cart Review
+      case 1: // Cart Review — must have items and enough balance
+        return (
+          state.cartItems.length > 0 &&
+          state.walletBalance >=
+            state.cartItems.reduce((sum, item) => sum + Number(item.subtotal), 0)
+        );
+      case 2: // Order Confirmation
         return state.cartItems.length > 0;
-      case 2: // Wallet Balance Review
-        return state.cartItems.length > 0;
-      case 3: // Order Confirmation
-        return state.cartItems.length > 0;
-      case 4: // Success
-        return !!state.orderId;
       default:
         return false;
     }
-  }, [state.currentStep, state.cartItems, state.orderId]);
+  }, [state.currentStep, state.cartItems, state.walletBalance]);
 
   const validateCurrentStep = useCallback((): boolean => {
-    switch (state.currentStep) {
-      case 1:
-        return state.cartItems.length > 0;
-      case 2:
-        return state.cartItems.length > 0;
-      case 3:
-        return state.cartItems.length > 0;
-      default:
-        return true;
-    }
-  }, [state.currentStep, state.cartItems]);
+    return state.cartItems.length > 0;
+  }, [state.cartItems]);
 
-  // ============================================
-  // Order Submission
-  // ============================================
-
-  const submitOrder = useCallback(async (): Promise<string> => {
-    if (!user) throw new Error("User not authenticated");
-    if (state.cartItems.length === 0) throw new Error("Cart is empty");
+  // ── Order Submission ───────────────────────────────────────────
+  /**
+   * Creates one order per vendor group. Returns ALL created order IDs.
+   * Cart is cleared after all orders are successfully created.
+   */
+  const submitOrder = useCallback(async (): Promise<string[]> => {
+    if (!user) throw new Error("Anda harus login untuk melanjutkan");
+    if (state.cartItems.length === 0) throw new Error("Keranjang kosong");
 
     setState((prev) => ({ ...prev, isSubmitting: true, error: null }));
 
     try {
-      // Group items by vendor - use vendor_id from item if available
-      const groupedByVendor: { [key: string]: CartItemData[] } = {};
-      state.cartItems.forEach((item) => {
-        const vendorId = extractVendorId(item);
-        if (!vendorId) return;
-        if (!groupedByVendor[vendorId]) groupedByVendor[vendorId] = [];
-        groupedByVendor[vendorId].push(item);
-      });
+      const cartItemIds = state.cartItems.map((item) => item.id);
+      const voucherAmount = state.cartItems.reduce((sum, item) => sum + Number(item.subtotal), 0);
 
-      if (Object.keys(groupedByVendor).length === 0) {
-        throw new Error(
-          "Vendor tidak ditemukan pada item keranjang. Silakan refresh dan coba lagi."
-        );
-      }
+      // Simple hash to keep key length reasonable while guaranteeing uniqueness per checkout state
+      const rawKey = cartItemIds.sort().join("|");
+      const shortHash = Array.from(rawKey).reduce((hash, char) => 0 | (31 * hash + char.charCodeAt(0)), 0).toString(36);
+      const idempotencyKey = `checkout-multi-${shortHash}-${cartItemIds.length}-${Date.now()}`;
 
-      // Create orders for each vendor FIRST
-      const orderIds: string[] = [];
-      const orderCreationErrors: string[] = [];
+      const result = await checkoutMultiVendor(
+        {
+          cart_item_ids: cartItemIds,
+          voucher_amount: voucherAmount,
+        },
+        { idempotencyKey }
+      );
 
-      for (const [vendorId, items] of Object.entries(groupedByVendor)) {
-        try {
-          const orderData = {
-            vendor_id: vendorId,
-            items: items.map((item) => ({
-              product_id: item.product_id,
-              quantity: item.quantity,
-              price: Number(item.price),
-            })),
-            notes: undefined,
-          };
+      const createdIds = result.orders.map((order) => order.id);
 
-          const orderIdempotencyKey = `checkout-${vendorId}-${orderData.items
-            .map((i) => `${i.product_id}:${i.quantity}:${i.price}`)
-            .join("|")}`;
-
-          const orderResult = await createOrder(orderData, {
-            idempotencyKey: orderIdempotencyKey,
-          });
-          orderIds.push(orderResult.id);
-        } catch (err: any) {
-          orderCreationErrors.push(`${vendorId}: ${err.message}`);
-        }
-      }
-
-      // If any orders failed to create, throw error
-      if (orderCreationErrors.length > 0) {
-        throw new Error(`Order creation failed for: ${orderCreationErrors.join(", ")}`);
-      }
-
-      // Clear cart after successful order
-      await clearCart();
-
-      const firstOrderId = orderIds[0];
+      // Clear local cart state manually since backend cleared it
       setState((prev) => ({
         ...prev,
-        orderId: firstOrderId,
+        cartItems: [],
+        orderIds: createdIds,
         isSubmitting: false,
       }));
 
-      return firstOrderId;
-    } catch (err: any) {
-      const errorMsg = err.message || "Failed to submit order";
-      setState((prev) => ({
-        ...prev,
-        error: errorMsg,
-        isSubmitting: false,
-      }));
+      return createdIds;
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Gagal membuat pesanan";
+      setState((prev) => ({ ...prev, error: errorMsg, isSubmitting: false }));
       throw err;
     }
   }, [user, state.cartItems]);
@@ -277,35 +199,18 @@ export function useCheckoutFlow() {
   }, []);
 
   return {
-    // State
     ...state,
-
-    // Helper functions
     extractVendorId,
-    getNextStep,
-    getPreviousStep,
-
-    // Step navigation
     setCurrentStep,
-
-    // Cart operations
     loadCartItems,
     updateQty,
     removeItem,
     clearAllItems,
-
-    // Wallet operations
     loadWalletBalance,
-
-    // Order operations
     getOrderSummary,
     submitOrder,
-
-    // Validation
     canProceedToNextStep,
     validateCurrentStep,
-
-    // Error handling
     clearError,
   };
 }

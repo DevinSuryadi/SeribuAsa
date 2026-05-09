@@ -36,14 +36,12 @@ export function CartList({
   const [error, setError] = useState<string | null>(null);
 
   const handleClearCart = async () => {
-    if (!window.confirm("Are you sure you want to clear your entire cart?")) return;
-
     setIsClearing(true);
     setError(null);
     try {
       await onClearCart();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to clear cart");
+      setError(err instanceof Error ? err.message : "Gagal mengosongkan keranjang");
     } finally {
       setIsClearing(false);
     }
@@ -62,15 +60,15 @@ export function CartList({
   return (
     <div className="space-y-4">
       {error && (
-        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-destructive/5 border border-destructive/30">
           <div className="flex-1">
-            <p className="text-sm font-medium text-red-900">Error</p>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
+            <p className="text-sm font-medium text-destructive">Error</p>
+            <p className="text-sm text-destructive/80 mt-1">{error}</p>
           </div>
           <button
             onClick={() => setError(null)}
-            className="flex-shrink-0 text-red-600 hover:text-red-700 transition-colors"
-            aria-label="Dismiss error"
+            className="flex-shrink-0 text-destructive hover:text-destructive/80 transition-colors"
+            aria-label="Tutup pesan error"
           >
             <X size={18} />
           </button>
@@ -113,11 +111,11 @@ export function CartList({
 
       {/* Clear Cart Button */}
       {items.length > 0 && (
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-4 border-t border-border">
           <button
             onClick={handleClearCart}
             disabled={isClearing || isLoading}
-            className="w-full py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2 text-sm font-medium text-destructive hover:text-destructive/80 hover:bg-destructive/5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isClearing ? "Menghapus..." : "Kosongkan Keranjang"}
           </button>

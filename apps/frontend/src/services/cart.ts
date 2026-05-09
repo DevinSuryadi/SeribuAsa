@@ -39,6 +39,14 @@ export async function clearCart() {
 }
 
 // ============================================
+// Wallet Balance
+// ============================================
+
+export async function getWalletBalance() {
+  return apiFetch("/wallet/balance");
+}
+
+// ============================================
 // Stock Validation
 // ============================================
 

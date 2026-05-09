@@ -1,34 +1,44 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Home, ShoppingCart, Loader2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Home,
+  ShoppingCart,
+  Loader2,
+  QrCode,
+  Package,
+  Store,
+  Sparkles,
+} from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { getOrder } from "@/services/orders";
+import { formatIDR } from "@/lib/format";
 
 /**
- * CheckoutSuccess - Order confirmation page
+ * CheckoutSuccess — Shown after a successful order submission.
+ * Polished with design tokens, real payment totals, and QR Pickup CTA.
  */
 export function CheckoutSuccess() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (orderId) {
-      loadOrder();
-    }
-  }, [orderId]);
+    if (orderId) loadOrder();
+  }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOrder = async () => {
     try {
       if (orderId) {
-        const orderData = await getOrder(orderId);
-        setOrder(orderData);
+        const data = await getOrder(orderId);
+        setOrder(data as Record<string, unknown>);
       }
-    } catch (err: any) {
-      setError(err.message || "Gagal memuat detail pesanan");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal memuat detail pesanan");
     } finally {
       setLoading(false);
     }
@@ -36,151 +46,222 @@ export function CheckoutSuccess() {
 
   if (loading) {
     return (
-      <DashboardLayout title="Konfirmasi Pesanan" subtitle="">
-        <div className="text-center py-12">
-          <Loader2 size={32} className="animate-spin mx-auto text-blue-600 mb-4" />
-          <p className="text-gray-600">Memproses pesanan Anda...</p>
+      <DashboardLayout title="Memproses Pesanan" subtitle="">
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" aria-label="Memuat..." />
+          <p className="text-sm text-muted-foreground">Memproses pesanan Anda...</p>
         </div>
       </DashboardLayout>
     );
   }
 
+  const items = Array.isArray(order?.items) ? (order.items as Record<string, unknown>[]) : [];
+  const totalAmount = Number(order?.cart_total ?? order?.total_amount ?? 0);
+  const voucherUsed = Number(order?.voucher_used ?? order?.voucher_discount ?? 0);
+  const cashPaid = Number(order?.cash_paid ?? 0);
+  const status = String(order?.status ?? "pending");
+
   return (
-    <DashboardLayout title="Pesanan Berhasil" subtitle="">
-      <div className="max-w-2xl mx-auto">
-        {/* Success Animation */}
-        <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-green-100 rounded-full mb-4">
-            <CheckCircle2 size={48} className="text-green-600" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Pesanan Dikonfirmasi!</h1>
-          <p className="text-gray-600 mb-6">
-            Terima kasih telah berbelanja. Pesanan Anda telah berhasil dibuat.
-          </p>
-        </div>
+    <DashboardLayout title="Pesanan Berhasil 🎉" subtitle="">
+      <div className="space-y-6">
+        {/* ── 2-Column Layout ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
-        {/* Order Details */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-6 mb-8">
-          {/* Order ID */}
-          <div className="border-b border-gray-200 pb-4">
-            <p className="text-sm text-gray-600 mb-1">Nomor Pesanan</p>
-            <p className="text-2xl font-bold text-gray-900">ORD-{orderId?.slice(0, 8)}</p>
-          </div>
-
-          {/* Order Summary */}
-          {order && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-bold text-gray-900 mb-3">Ringkasan Pesanan</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Barang:</span>
-                    <span className="font-medium">{order.items?.length || 0} produk</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Harga:</span>
-                    <span className="font-medium">
-                      Rp {(order.total_amount || 0).toLocaleString("id-ID")}
-                    </span>
-                  </div>
-                  {order.voucher_used > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Diskon Voucher:</span>
-                      <span className="font-medium text-green-600">
-                        -Rp {(order.voucher_used || 0).toLocaleString("id-ID")}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between pt-2 border-t border-gray-200">
-                    <span className="font-bold text-gray-900">Total Bayar:</span>
-                    <span className="font-bold text-blue-600">
-                      Rp {(order.cash_paid || 0).toLocaleString("id-ID")}
-                    </span>
-                  </div>
+          {/* LEFT — Hero + Next Steps + CTAs (2/5) */}
+          <div className="lg:col-span-2 space-y-5">
+            {/* Hero banner */}
+            <div
+              className="relative overflow-hidden rounded-3xl p-8 text-center shadow-xl shadow-emerald-900/10"
+              style={{ background: "linear-gradient(135deg, #0f766e 0%, #059669 50%, #047857 100%)" }}
+            >
+              <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+              <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-teal-300/10 blur-2xl pointer-events-none" />
+              <div className="relative z-10">
+                <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm mb-4 mx-auto animate-in zoom-in-50 duration-500">
+                  <CheckCircle2 className="h-10 w-10 text-white" aria-hidden="true" />
+                </div>
+                <h1 className="text-2xl font-extrabold text-white mb-2">Pesanan Dikonfirmasi!</h1>
+                <p className="text-white/80 text-sm mb-5">
+                  Pesanan berhasil dibuat dan sedang diproses vendor.
+                </p>
+                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
+                  <Sparkles className="h-4 w-4 text-yellow-300" aria-hidden="true" />
+                  <span className="text-white font-mono text-sm font-bold">
+                    ORD-{orderId?.slice(0, 8).toUpperCase()}
+                  </span>
                 </div>
               </div>
+            </div>
 
-              {/* Order Items */}
-              {order.items && order.items.length > 0 && (
-                <div>
-                  <h4 className="font-bold text-gray-900 mb-3">Produk</h4>
-                  <div className="space-y-2">
-                    {order.items.map((item: any, index: number) => (
-                      <div key={index} className="flex justify-between text-sm">
-                        <span className="text-gray-700">
-                          {item.product_name} × {item.quantity}
-                        </span>
-                        <span className="text-gray-900">
-                          Rp {Number(item.subtotal).toLocaleString("id-ID")}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+            {/* Next Steps */}
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h3 className="font-bold text-foreground mb-4">Langkah Selanjutnya</h3>
+              <ol className="space-y-4">
+                {[
+                  {
+                    step: 1,
+                    title: "Tunggu Konfirmasi Vendor",
+                    desc: "Vendor akan mengonfirmasi pesanan dalam 24 jam.",
+                    color: "bg-blue-600",
+                  },
+                  {
+                    step: 2,
+                    title: "Ambil QR Pickup",
+                    desc: "QR Code tersedia di tab Pesanan Saya setelah dikonfirmasi.",
+                    color: "bg-emerald-600",
+                  },
+                  {
+                    step: 3,
+                    title: "Tunjukkan ke Vendor",
+                    desc: "Kunjungi vendor, scan QR, dan ambil produk Anda.",
+                    color: "bg-purple-600",
+                  },
+                ].map((item) => (
+                  <li key={item.step} className="flex items-start gap-4">
+                    <div
+                      className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${item.color} text-white text-sm font-black`}
+                    >
+                      {item.step}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* CTAs */}
+            <div className="flex flex-col gap-2.5">
+              <Button
+                className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 h-11"
+                onClick={() => navigate("/dashboard/dompet-nutrisi?tab=pesanan")}
+              >
+                <QrCode className="h-4 w-4" aria-hidden="true" />
+                Lihat QR Pickup
+              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => navigate("/dashboard/katalog")}
+                >
+                  <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+                  Belanja Lagi
+                </Button>
+                <Button variant="ghost" asChild>
+                  <Link to="/dashboard/beneficiary" className="gap-1.5">
+                    <Home className="h-4 w-4" aria-hidden="true" />
+                    Dashboard
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT — Order Detail (3/5) */}
+          <div className="lg:col-span-3 space-y-4">
+
+        {/* ── Order Items ── */}
+        {order && (
+          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+            {/* Header */}
+            <div className="flex items-center gap-2.5 px-5 py-3 bg-secondary/40 border-b border-border">
+              <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <span className="text-sm font-semibold text-foreground">Produk Dipesan</span>
+              {order.vendor_store_name && (
+                <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Store className="h-3.5 w-3.5" aria-hidden="true" />
+                  {String(order.vendor_store_name)}
                 </div>
               )}
+            </div>
 
-              {/* Status */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-900">
-                  <span className="font-bold">Status:</span> {order.status || "Pending"}
+            {/* Items */}
+            <div className="p-5">
+              {items.length > 0 ? (
+                <div className="space-y-3">
+                  {items.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 pb-3 border-b border-border/50 last:border-0 last:pb-0"
+                    >
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-secondary">
+                        <Package className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {String(item.product_name ?? "Produk")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          × {Number(item.quantity ?? 1)}
+                        </p>
+                      </div>
+                      <p className="text-sm font-bold text-foreground flex-shrink-0">
+                        {formatIDR(Number(item.subtotal ?? 0))}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Detail item tidak tersedia
                 </p>
-                <p className="text-xs text-blue-700 mt-2">
-                  Vendor akan mengonfirmasi pesanan Anda dalam 24 jam
-                </p>
+              )}
+            </div>
+
+            {/* Totals */}
+            <div className="border-t border-border bg-secondary/20 p-5 space-y-2">
+              {totalAmount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Belanja</span>
+                  <span className="font-semibold text-foreground">{formatIDR(totalAmount)}</span>
+                </div>
+              )}
+              {voucherUsed > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Diskon Voucher</span>
+                  <span className="font-semibold text-emerald-600">-{formatIDR(voucherUsed)}</span>
+                </div>
+              )}
+              {cashPaid > 0 && (
+                <div className="flex justify-between text-sm pt-2 border-t border-border">
+                  <span className="font-bold text-foreground">Bayar Tunai</span>
+                  <span className="font-bold text-foreground">{formatIDR(cashPaid)}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t border-border">
+                <span className="font-bold text-foreground">Dibayar via Dompet</span>
+                <span className="text-lg font-black text-emerald-600">
+                  {formatIDR(totalAmount - voucherUsed)}
+                </span>
               </div>
             </div>
-          )}
 
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-700">{error}</p>
+            {/* Status */}
+            <div className="px-5 pb-5">
+              <div className="flex items-center gap-2 mt-4">
+                <span className="text-sm text-muted-foreground">Status:</span>
+                <Badge
+                  variant="outline"
+                  className="bg-amber-50 text-amber-700 border-amber-200 capitalize"
+                >
+                  {status}
+                </Badge>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Next Steps */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
-          <h3 className="font-bold text-gray-900 mb-4">Langkah Selanjutnya</h3>
-          <ol className="space-y-3 text-sm text-gray-700">
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
-                1
-              </span>
-              <span>Tunggu vendor mengonfirmasi pesanan Anda (24 jam)</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
-                2
-              </span>
-              <span>Ambil produk di lokasi vendor sesuai jadwal yang disepakati</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
-                3
-              </span>
-              <span>Voucher akan ditukar saat checkout di vendor</span>
-            </li>
-          </ol>
-        </div>
+        {error && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 justify-center">
-          <Button
-            variant="outline"
-            onClick={() => navigate("/dashboard/beneficiary")}
-            className="flex items-center gap-2"
-          >
-            <Home size={18} />
-            Kembali ke Dashboard
-          </Button>
-          <Button
-            onClick={() => navigate("/dashboard/katalog")}
-            className="flex items-center gap-2"
-          >
-            <ShoppingCart size={18} />
-            Lanjutkan Belanja
-          </Button>
-        </div>
+          </div>{/* right col */}
+        </div>{/* grid */}
       </div>
     </DashboardLayout>
   );

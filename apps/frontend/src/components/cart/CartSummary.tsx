@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle2, Wallet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatIDR } from "@/lib/format";
 
 interface CartSummaryProps {
   totalAmount: number;
@@ -9,7 +10,7 @@ interface CartSummaryProps {
 }
 
 /**
- * CartSummary component showing total amounts and wallet balance
+ * CartSummary — shows total, wallet balance and affordability status.
  */
 export function CartSummary({
   totalAmount,
@@ -17,76 +18,79 @@ export function CartSummary({
   canAfford,
   isLoading = false,
 }: CartSummaryProps) {
+  const remainder = Math.max(0, walletBalance - totalAmount);
+  const shortfall = Math.max(0, totalAmount - walletBalance);
+
   if (isLoading) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4 animate-pulse">
-        <Skeleton className="h-6 w-32" />
-        <div className="space-y-3 pb-4 border-b border-gray-200">
+      <div className="rounded-2xl border border-border bg-card p-6 space-y-4 animate-pulse">
+        <Skeleton className="h-5 w-32" />
+        <div className="space-y-3 pb-4 border-b border-border">
           <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-4/5" />
         </div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-        </div>
-        <div className="pt-4 border-t border-gray-200">
-          <Skeleton className="h-6 w-2/3" />
+        <Skeleton className="h-16 w-full rounded-xl" />
+        <div className="pt-4 border-t border-border">
+          <Skeleton className="h-5 w-2/3" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
-      {/* Header */}
-      <h2 className="text-lg font-bold text-gray-900">Ringkasan Pesanan</h2>
+    <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
+      <h2 className="text-base font-bold text-foreground">Ringkasan Pesanan</h2>
 
-      {/* Amount Breakdown */}
-      <div className="space-y-3 pb-4 border-b border-gray-200">
+      {/* Amount */}
+      <div className="pb-4 border-b border-border">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Total:</span>
-          <span className="font-medium text-gray-900">
-            Rp {totalAmount.toLocaleString("id-ID")}
-          </span>
+          <span className="text-muted-foreground">Total Belanja</span>
+          <span className="font-bold text-foreground">{formatIDR(totalAmount)}</span>
         </div>
       </div>
 
-      {/* Wallet Info */}
+      {/* Wallet status */}
       <div
-        className={`${canAfford ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"} border rounded-lg p-4 space-y-2`}
+        className={`rounded-xl border p-4 space-y-2 transition-colors ${
+          canAfford
+            ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800"
+            : "bg-destructive/5 border-destructive/30"
+        }`}
       >
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Wallet size={16} className={canAfford ? "text-emerald-600" : "text-red-600"} />
-            <span className="text-sm font-medium text-gray-900">Saldo Dompet:</span>
+            <Wallet
+              className={`h-4 w-4 ${canAfford ? "text-emerald-600" : "text-destructive"}`}
+              aria-hidden="true"
+            />
+            <span className="text-sm font-medium text-foreground">Saldo Dompet</span>
           </div>
-          <span className={`font-bold ${canAfford ? "text-emerald-600" : "text-red-600"}`}>
-            Rp {walletBalance.toLocaleString("id-ID")}
+          <span className={`font-bold text-sm ${canAfford ? "text-emerald-600" : "text-destructive"}`}>
+            {formatIDR(walletBalance)}
           </span>
         </div>
 
         {canAfford ? (
-          <div className="flex items-center gap-2 text-xs text-emerald-700">
-            <CheckCircle2 size={14} />
-            <span>Saldo mencukupi untuk pesanan ini</span>
+          <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+            Saldo mencukupi untuk pesanan ini
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-xs text-red-700">
-            <AlertCircle size={14} />
-            <span>Kekurangan: Rp {(totalAmount - walletBalance).toLocaleString("id-ID")}</span>
+          <div className="flex items-center gap-1.5 text-xs text-destructive">
+            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+            Kekurangan {formatIDR(shortfall)} — kurangi item atau top-up saldo
           </div>
         )}
       </div>
 
-      {/* Total After Wallet */}
-      <div className="pt-4 border-t border-gray-200 space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Sisa Setelah Bayar:</span>
-          <span className="text-lg font-bold text-gray-900">
-            Rp {Math.max(0, walletBalance - totalAmount).toLocaleString("id-ID")}
-          </span>
+      {/* Remainder */}
+      {canAfford && (
+        <div className="pt-4 border-t border-border">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Sisa Saldo Setelah Bayar</span>
+            <span className="font-bold text-foreground">{formatIDR(remainder)}</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -19,7 +19,9 @@ from uuid import UUID
 
 from app.models.product import Order, OrderItem, OrderStatusEnum, Product
 from app.models.user import BeneficiaryProfile, UserProfile, VendorProfile
-from app.schemas.order import OrderCreate, OrderStatusUpdate, OrderQueryParams
+from app.models.cart import CartItem
+from app.models.wallet import WalletTransaction
+from app.schemas.order import OrderCreate, OrderItemCreate, OrderStatusUpdate, OrderQueryParams
 from app.services.wallet_service import WalletService
 
 logger = logging.getLogger(__name__)
@@ -169,6 +171,151 @@ class OrderService:
             raise
 
     # ──────────────────────────────────────────────────────────────────────────
+    # CHECKOUT FROM CART — Multi-vendor split order checkout
+    # ──────────────────────────────────────────────────────────────────────────
+    @staticmethod
+    def checkout_from_cart(db: Session, beneficiary_id: str, cart_item_ids: List[UUID], voucher_amount: Decimal) -> tuple[list[Order], Decimal]:
+        """
+        Checkout from cart, splitting into multiple orders per vendor.
+        Returns: (list_of_orders, total_amount)
+        """
+        try:
+            beneficiary_uuid = OrderService._to_uuid(beneficiary_id)
+            
+            # 1. Fetch cart items
+            query = db.query(CartItem, Product).join(
+                Product, CartItem.product_id == Product.id
+            ).filter(
+                CartItem.beneficiary_id == beneficiary_uuid
+            )
+            
+            if cart_item_ids:
+                query = query.filter(CartItem.id.in_(cart_item_ids))
+                
+            cart_data = query.all()
+            
+            if not cart_data:
+                raise ValueError("Keranjang kosong atau item tidak ditemukan")
+
+            # 2. Group by vendor
+            vendor_groups = {}
+            total_grand_amount = Decimal(0)
+            
+            for cart_item, product in cart_data:
+                if not product.is_active or product.approval_status != "approved":
+                    raise ValueError(f"Produk {product.name} tidak tersedia")
+                if product.stock_quantity < cart_item.quantity:
+                    raise ValueError(f"Stok {product.name} tidak cukup")
+                    
+                vendor_id = product.vendor_id
+                if vendor_id not in vendor_groups:
+                    vendor_groups[vendor_id] = {
+                        "items": [],
+                        "total_amount": Decimal(0)
+                    }
+                
+                item_price = Decimal(str(product.price))
+                item_subtotal = item_price * cart_item.quantity
+                
+                vendor_groups[vendor_id]["items"].append({
+                    "product": product,
+                    "cart_item": cart_item,
+                    "order_item_create": OrderItemCreate(
+                        product_id=product.id,
+                        quantity=cart_item.quantity,
+                        price=item_price
+                    )
+                })
+                vendor_groups[vendor_id]["total_amount"] += item_subtotal
+                total_grand_amount += item_subtotal
+
+            # 3. Create orders per vendor
+            beneficiary = db.query(BeneficiaryProfile).filter(
+                BeneficiaryProfile.user_id == beneficiary_uuid
+            ).first()
+            
+            if not beneficiary:
+                raise ValueError("Profil penerima tidak ditemukan")
+            created_orders = []
+            now = datetime.utcnow()
+            
+            for vendor_id, group in vendor_groups.items():
+                total_amount = group["total_amount"]
+                
+                # Hold balance for this specific vendor's order
+                held = WalletService.hold(
+                    db=db,
+                    beneficiary=beneficiary,
+                    amount=total_amount,
+                    description=f"Pemesanan multi-vendor ({len(group['items'])} item)"
+                )
+                
+                if not held:
+                    raise ValueError(f"Gagal menahan saldo untuk transaksi toko")
+
+                qr_code = uuid_lib.uuid4().hex.upper()[:24]
+
+                order = Order(
+                    beneficiary_id=beneficiary_uuid,
+                    vendor_id=vendor_id,
+                    total_amount=total_amount,
+                    voucher_used=total_amount,
+                    cash_paid=Decimal(0),
+                    status=OrderStatusEnum.pending,
+                    payment_status="paid",
+                    notes="Split order dari keranjang",
+                    pickup_qr_code=qr_code,
+                    pickup_expires_at=now + timedelta(hours=QR_EXPIRY_HOURS),
+                    cancel_deadline=now + timedelta(minutes=CANCEL_WINDOW_MINS),
+                )
+                db.add(order)
+                db.flush()
+
+                # Link WalletTransaction
+                wallet_tx = db.query(WalletTransaction).filter_by(
+                    beneficiary_id=beneficiary_uuid,
+                    transaction_type="hold",
+                    order_id=None,
+                ).order_by(WalletTransaction.created_at.desc()).first()
+                if wallet_tx:
+                    wallet_tx.order_id = order.id
+
+                for item_data in group["items"]:
+                    item_create = item_data["order_item_create"]
+                    product = item_data["product"]
+                    db.add(OrderItem(
+                        order_id=order.id,
+                        product_id=item_create.product_id,
+                        quantity=item_create.quantity,
+                        price=item_create.price,
+                        subtotal=item_create.price * item_create.quantity,
+                    ))
+                    # Deduct stock
+                    product.stock_quantity -= item_create.quantity
+                
+                db.flush()
+                created_orders.append(order)
+
+            # 5. Hapus item dari cart
+            if cart_item_ids:
+                db.query(CartItem).filter(CartItem.id.in_(cart_item_ids)).delete(synchronize_session=False)
+            else:
+                db.query(CartItem).filter(CartItem.beneficiary_id == beneficiary_uuid).delete(synchronize_session=False)
+
+            db.commit()
+            
+            # Refresh all created orders
+            for order in created_orders:
+                db.refresh(order)
+                
+            return created_orders, total_grand_amount
+
+        except Exception as e:
+            db.rollback()
+            logger.error("Multi-order checkout failed: %s", str(e))
+            raise
+
+    # ──────────────────────────────────────────────────────────────────────────
     # CONFIRM PICKUP VIA QR — vendor scans QR code → releases escrow
     # ──────────────────────────────────────────────────────────────────────────
     @staticmethod
@@ -203,10 +350,9 @@ class OrderService:
             if order.status != OrderStatusEnum.pending:
                 raise ValueError(f"Status pesanan tidak valid: {order.status}")
 
-            # Check QR expiry (stored as ISO string)
+            # Check QR expiry
             if order.pickup_expires_at:
-                expires_at = datetime.fromisoformat(order.pickup_expires_at)
-                if datetime.utcnow() > expires_at:
+                if datetime.utcnow() > order.pickup_expires_at:
                     raise ValueError("QR code sudah kadaluarsa (lebih dari 24 jam). Silakan buat pesanan baru.")
 
             # Release escrow: debit beneficiary, credit vendor
@@ -261,8 +407,7 @@ class OrderService:
 
             # Check cancel deadline
             if order.cancel_deadline:
-                deadline = datetime.fromisoformat(order.cancel_deadline)
-                if datetime.utcnow() > deadline:
+                if datetime.utcnow() > order.cancel_deadline:
                     raise ValueError(
                         "Batas waktu pembatalan sudah lewat (30 menit setelah pesanan dibuat)."
                     )

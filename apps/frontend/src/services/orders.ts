@@ -40,6 +40,29 @@ export async function createOrder(
   });
 }
 
+export interface MultiOrderCheckoutResponse {
+  orders: OrderCreateResponse[];
+  total_orders_created: number;
+  total_voucher_used: number;
+  total_cash_paid: number;
+}
+
+export async function checkoutMultiVendor(
+  data: {
+    cart_item_ids: string[];
+    voucher_amount: number;
+  },
+  options?: { idempotencyKey?: string }
+): Promise<MultiOrderCheckoutResponse> {
+  return apiFetch("/orders/checkout", {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": options?.idempotencyKey || makeIdempotencyKey(),
+    },
+    body: JSON.stringify(data),
+  });
+}
+
 export async function getOrders(params?: {
   page?: number;
   page_size?: number;

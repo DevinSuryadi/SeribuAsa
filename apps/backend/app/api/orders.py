@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
 import hashlib
 import json
+from decimal import Decimal
 
 from app.database import get_db
 from app.services.order_service import OrderService
@@ -22,6 +23,8 @@ from app.schemas.order import (
     OrderStatusUpdate,
     OrderQueryParams,
     ConfirmPickupRequest,
+    MultiOrderCheckoutRequest,
+    MultiOrderCheckoutResponse
 )
 from app.utils.cache import get_app_cache
 import logging
@@ -118,6 +121,117 @@ async def create_order(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create order",
+        )
+
+
+@router.post("/checkout", response_model=MultiOrderCheckoutResponse, status_code=status.HTTP_201_CREATED)
+async def checkout_cart_multi_vendor(
+    data: MultiOrderCheckoutRequest,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Checkout from cart, supporting multiple vendors (splits into multiple orders)"""
+    if current_user.role != "beneficiary":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only beneficiaries can checkout from cart",
+        )
+
+    if not idempotency_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing Idempotency-Key header",
+        )
+
+    request_hash = hashlib.sha256(
+        json.dumps(data.model_dump(mode="json"), sort_keys=True).encode("utf-8")
+    ).hexdigest()
+
+    idem_state, idem_record = IdempotencyService.begin(
+        endpoint="orders:checkout",
+        user_id=current_user.user_id,
+        idempotency_key=idempotency_key,
+        request_hash=request_hash,
+    )
+
+    if idem_state == "replay" and idem_record:
+        return MultiOrderCheckoutResponse(**idem_record.response_body)
+
+    if idem_state == "processing":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Checkout request is already being processed",
+        )
+
+    if idem_state == "conflict":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Idempotency key already used with different payload",
+        )
+
+    try:
+        orders, total_amount = OrderService.checkout_from_cart(
+            db=db,
+            beneficiary_id=current_user.user_id,
+            cart_item_ids=data.cart_item_ids,
+            voucher_amount=data.voucher_amount
+        )
+        
+        response_data = MultiOrderCheckoutResponse(
+            orders=[OrderResponse.model_validate(o) for o in orders],
+            total_orders_created=len(orders),
+            total_voucher_used=total_amount,
+            total_cash_paid=Decimal(0)
+        )
+        
+        response_payload = response_data.model_dump(mode="json")
+
+        IdempotencyService.complete(
+            endpoint="orders:checkout",
+            user_id=current_user.user_id,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            status_code=status.HTTP_201_CREATED,
+            response_body=response_payload,
+        )
+        
+        # Invalidate admin stats cache
+        cache.invalidate_namespace("stats")
+        
+        return response_data
+
+    except ValueError as e:
+        IdempotencyService.abort(
+            endpoint="orders:checkout",
+            user_id=current_user.user_id,
+            idempotency_key=idempotency_key,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except SQLAlchemyError as e:
+        IdempotencyService.abort(
+            endpoint="orders:checkout",
+            user_id=current_user.user_id,
+            idempotency_key=idempotency_key,
+        )
+        logger.error("Order checkout database error: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process checkout",
+        )
+    except Exception as e:
+        IdempotencyService.abort(
+            endpoint="orders:checkout",
+            user_id=current_user.user_id,
+            idempotency_key=idempotency_key,
+        )
+        logger.error("Order checkout error: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process checkout",
         )
 
 
