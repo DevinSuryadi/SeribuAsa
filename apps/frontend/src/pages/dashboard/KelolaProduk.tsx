@@ -32,6 +32,8 @@ import {
   Clock,
   Tag,
   ScanSearch,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import { formatIDR } from "@/lib/format";
 import {
@@ -41,12 +43,14 @@ import {
   deleteProduct,
   getCategories,
 } from "@/services/products";
+import { uploadImage } from "@/services/upload";
 import type { VendorProduct } from "@/types/vendor";
 import type { Category } from "@/services/products";
 import { toast } from "sonner";
 import { ErrorState } from "@/components/dashboard/ErrorState";
 import { ListItemSkeleton } from "@/components/dashboard/LoadingSkeleton";
 import { productApprovalConfig } from "@/lib/status-config";
+import { ProductAvatar } from "@/components/product/ProductAvatar";
 
 interface ProductFormState {
   name: string;
@@ -55,6 +59,7 @@ interface ProductFormState {
   voucherPrice: string;
   stock: string;
   unit: string;
+  images: string[];
 }
 
 const DEFAULT_FORM: ProductFormState = {
@@ -64,6 +69,7 @@ const DEFAULT_FORM: ProductFormState = {
   voucherPrice: "",
   stock: "",
   unit: "pcs",
+  images: [],
 };
 
 type StatusFilter = "all" | "approved" | "pending" | "rejected";
@@ -136,6 +142,7 @@ const KelolaProduk = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImg, setUploadingImg] = useState(false);
   const [form, setForm] = useState<ProductFormState>(DEFAULT_FORM);
 
   const setField =
@@ -205,6 +212,7 @@ const KelolaProduk = () => {
         voucherPrice: String(product.voucher_price),
         stock: String(product.stock),
         unit: product.unit || "pcs",
+        images: product.images || [],
       });
     } else {
       setEditingProduct(null);
@@ -254,6 +262,7 @@ const KelolaProduk = () => {
         voucher_price: voucherPriceNum,
         stock_quantity: parseInt(form.stock) || 0,
         unit: form.unit,
+        images: form.images.length > 0 ? form.images : undefined,
       };
 
       if (editingProduct) {
@@ -506,9 +515,13 @@ const KelolaProduk = () => {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-indigo-50">
-                          <Package className="h-[18px] w-[18px] text-indigo-600" />
-                        </div>
+                        <ProductAvatar
+                          images={product.images}
+                          categoryName={categoryLabel}
+                          name={product.name}
+                          className="h-10 w-10 rounded-[13px]"
+                          emojiSize="text-lg"
+                        />
 
                         <div className="min-w-0">
                           <p className="truncate text-[13px] font-black leading-tight text-slate-900">
@@ -617,6 +630,66 @@ const KelolaProduk = () => {
           </DialogHeader>
 
           <div className="grid gap-4 pt-1">
+            {/* Image Upload Area */}
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm font-bold text-slate-700">Foto Produk</Label>
+              <div className="flex flex-wrap gap-3">
+                {form.images.map((img, idx) => (
+                  <div key={idx} className="relative h-20 w-20 rounded-xl border bg-slate-50 overflow-hidden shadow-sm">
+                    <img src={img} alt="Product" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}
+                      className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                
+                {form.images.length < 3 && (
+                  <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                    {uploadingImg ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
+                        <ImagePlus className="h-5 w-5 mb-1" />
+                        <span className="text-[9px] font-bold">Upload</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingImg}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 2 * 1024 * 1024) {
+                          toast.error("Ukuran maksimal gambar adalah 2MB");
+                          return;
+                        }
+                        
+                        setUploadingImg(true);
+                        try {
+                          const { url, error } = await uploadImage(file);
+                          if (error) throw new Error(error);
+                          if (url) {
+                            setForm(prev => ({ ...prev, images: [...prev.images, url] }));
+                          }
+                        } catch (err: any) {
+                          toast.error(err.message || "Gagal upload gambar");
+                        } finally {
+                          setUploadingImg(false);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Label className="mb-2 block text-sm font-bold text-slate-700">
