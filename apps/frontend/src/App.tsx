@@ -9,6 +9,7 @@ import Syarat from "./pages/Syarat";
 import Kontak from "./pages/Kontak";
 import LupaSandi from "./pages/auth/LupaSandi";
 import ResetPassword from "./pages/auth/ResetPassword";
+import Onboarding from "./pages/auth/Onboarding";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DonorDashboard from "./pages/dashboard/DonorDashboard";
 import BeneficiaryDashboard from "./pages/dashboard/BeneficiaryDashboard";
@@ -43,7 +44,7 @@ const SurveiFIES = lazy(() => import("./pages/dashboard/SurveiFIES"));
 const DompetNutrisi = lazy(() => import("./pages/dashboard/DompetNutrisi"));
 const RekomendasiAI = lazy(() => import("./pages/dashboard/RekomendasiAI"));
 const CartManagement = lazy(() => import("./pages/dashboard/cart/CartManagement"));
-const OrderHistoryPage = lazy(() => import("./pages/dashboard/orders/OrderHistoryPage"));
+// OrderHistoryPage merged into DompetNutrisi — see /dashboard/dompet-nutrisi?tab=pesanan
 const OrderDetailPage = lazy(() => import("./pages/dashboard/orders/OrderDetailPage"));
 const CheckoutPage = lazy(() => import("./pages/checkout/CheckoutPage"));
 const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
@@ -72,6 +73,7 @@ function DashboardRedirect() {
   if (userRole === "beneficiary") return <Navigate to="/dashboard/beneficiary" replace />;
   if (userRole === "vendor") return <Navigate to="/dashboard/vendor" replace />;
   if (userRole === "admin") return <Navigate to="/dashboard/admin" replace />;
+  if (userRole === "unassigned") return <Navigate to="/onboarding" replace />;
 
   return <Navigate to="/" replace />;
 }
@@ -86,6 +88,14 @@ function App() {
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute allowedRoles={["unassigned"]}>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/donasi"
           element={
@@ -352,15 +362,10 @@ function App() {
           path="/dashboard/vouchers"
           element={<Navigate to="/dashboard/dompet-nutrisi" replace />}
         />
+        {/* /dashboard/orders redirects to unified Dompet & Aktivitas page */}
         <Route
           path="/dashboard/orders"
-          element={
-            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
-              <Suspense fallback={<PageLoader />}>
-                <OrderHistoryPage />
-              </Suspense>
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/dashboard/dompet-nutrisi?tab=pesanan" replace />}
         />
         <Route
           path="/dashboard/orders/:orderId"
@@ -400,7 +405,7 @@ function App() {
         <Route
           path="/donation/create"
           element={
-            <ProtectedRoute allowedRoles={["donor", "admin", "beneficiary", "vendor"]}>
+            <ProtectedRoute allowedRoles={["donor", "admin", "corporate_donor"]}>
               <CreateDonation />
             </ProtectedRoute>
           }
