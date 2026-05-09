@@ -110,7 +110,7 @@ class GoogleAuthService:
         return None
 
     @staticmethod
-    def _create_role_profile(db: Session, user_id: UUID, full_name: str, role: str) -> None:
+    def create_role_profile(db: Session, user_id: UUID, full_name: str, role: str) -> None:
         if role in ("donor", "corporate_donor"):
             db.add(
                 DonorProfile(
@@ -177,9 +177,7 @@ class GoogleAuthService:
 
         resolved_role = GoogleAuthService.get_existing_role(db, user_id)
         if not resolved_role:
-            role_to_create = GoogleAuthService.resolve_signup_role(preferred_role, None)
-            GoogleAuthService._create_role_profile(db, user_id, normalized_full_name or fallback_name, role_to_create)
-            resolved_role = role_to_create
+            resolved_role = "unassigned"
             profile_created = True
 
         if not profile.full_name:

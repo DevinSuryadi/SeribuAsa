@@ -5,9 +5,7 @@ Schemas for Google OAuth authentication with Supabase.
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
 from uuid import UUID
-
-GoogleRole = Literal["donor", "corporate_donor", "beneficiary", "vendor"]
-
+GoogleRole = Literal["donor", "corporate_donor", "beneficiary", "vendor", "unassigned"]
 
 class GoogleTokenExchangeRequest(BaseModel):
     """Request payload for Google ID token exchange via Supabase."""
@@ -18,8 +16,11 @@ class GoogleTokenExchangeRequest(BaseModel):
 
 class GoogleSyncRequest(BaseModel):
     """Request payload for syncing profile after OAuth login in frontend."""
-    role: Optional[GoogleRole] = Field(default=None, description="Preferred role for first login")
     full_name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+
+class OnboardingRequest(BaseModel):
+    """Request payload for completing onboarding."""
+    role: Literal["donor", "beneficiary", "vendor"] = Field(..., description="Selected role during onboarding")
 
 
 class GoogleAuthUser(BaseModel):

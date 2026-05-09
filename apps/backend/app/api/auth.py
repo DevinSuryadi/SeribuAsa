@@ -12,6 +12,7 @@ from app.schemas.auth import (
     GoogleSyncRequest,
     GoogleAuthResponse,
     GoogleAuthUser,
+    OnboardingRequest,
 )
 from app.services.google_auth_service import google_auth_service
 from app.services.supabase_auth import supabase_auth
@@ -111,7 +112,7 @@ async def exchange_google_token(
         email = user_data.get("email")
         full_name = google_auth_service.resolve_full_name(user_data, data.full_name)
         requested_role = google_auth_service.resolve_signup_role(
-            data.role,
+            None,
             (user_data.get("user_metadata") or {}).get("role"),
         )
 
@@ -183,7 +184,7 @@ async def sync_google_profile(
         email = token_data.get("email")
         full_name = google_auth_service.resolve_full_name(token_data, data.full_name)
         requested_role = google_auth_service.resolve_signup_role(
-            data.role,
+            None,
             (token_data.get("user_metadata") or {}).get("role"),
         )
 
@@ -225,4 +226,55 @@ async def sync_google_profile(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Google profile sync failed",
+        ) from exc
+
+
+@router.post("/complete-onboarding", response_model=GoogleAuthResponse)
+async def complete_onboarding(
+    data: OnboardingRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    try:
+        token_data = await _resolve_google_sync_token_data(credentials.credentials)
+
+        raw_user_id = token_data.get("id")
+        if not raw_user_id:
+            raise HTTPException(status_code=400, detail="Supabase token does not contain user ID")
+        user_id = UUID(str(raw_user_id))
+
+        resolved_role = google_auth_service.get_existing_role(db, user_id)
+        if resolved_role:
+            raise HTTPException(status_code=400, detail=f"User already has a role: {resolved_role}")
+
+        # Finalize role creation
+        from app.models.user import UserProfile
+        profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+        if not profile:
+            raise HTTPException(status_code=404, detail="User profile not found")
+
+        google_auth_service.create_role_profile(db, user_id, profile.full_name or "User", data.role)
+        db.commit()
+
+        cache.invalidate("auth", str(user_id))
+
+        return _build_google_response(
+            token_data={},
+            user_id=user_id,
+            email=token_data.get("email"),
+            full_name=profile.full_name,
+            role=data.role,
+            profile_created=False,
+            include_tokens=False,
+        )
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.error("Onboarding failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Onboarding failed",
         ) from exc

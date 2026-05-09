@@ -1,17 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Heart, Users, Store } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/logo.svg";
-
-type Role = "donor" | "beneficiary" | "vendor";
-
-const roles: { id: Role; label: string; icon: React.ElementType; desc: string }[] = [
-  { id: "donor", label: "Donatur", icon: Heart, desc: "Bantu nutrisi" },
-  { id: "beneficiary", label: "Penerima", icon: Users, desc: "Terima dukungan" },
-  { id: "vendor", label: "Vendor", icon: Store, desc: "Jual pangan" },
-];
 
 function GoogleIcon() {
   return (
@@ -56,7 +48,6 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleRole, setGoogleRole] = useState<Role>("donor");
   const { signIn, signInWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -123,7 +114,7 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    const { error } = await signInWithGoogle(googleRole);
+    const { error } = await signInWithGoogle();
 
     if (error) {
       toast.error("Login Google gagal", { description: error });
@@ -498,32 +489,6 @@ export default function Login() {
               </>
             )}
           </button>
-          <div style={{ marginTop: 12 }}>
-            <div className="grid grid-cols-3 gap-2">
-              {roles.map((r) => {
-                const Icon = r.icon;
-                const isSelected = googleRole === r.id;
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => setGoogleRole(r.id)}
-                    className={`p-2 rounded-lg border-2 transition ${
-                      isSelected
-                        ? "border-green-600 bg-green-50"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}
-                  >
-                    <Icon
-                      className={`w-5 h-5 mx-auto mb-1 ${isSelected ? "text-green-600" : "text-gray-400"}`}
-                    />
-                    <p className="text-xs font-medium text-gray-900">{r.label}</p>
-                    <p className="text-xs text-gray-500">{r.desc}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
         {/* Register Link */}

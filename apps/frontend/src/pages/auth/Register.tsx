@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Heart, Users, Store } from "lucide-react";
+import { Eye, EyeOff, Heart, Users, Store, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -227,9 +227,9 @@ export default function Register() {
       />
 
       <div
-        className="w-full max-w-md bg-white p-6 sm:p-8 relative z-10 overflow-y-auto max-h-[92vh] hide-scrollbar"
+        className="w-full max-w-[460px] bg-white p-5 sm:p-6 relative z-10 overflow-y-auto max-h-[95vh] hide-scrollbar"
         style={{
-          borderRadius: "28px",
+          borderRadius: "24px",
           boxShadow: "0 24px 48px -12px rgba(22,163,74,0.15), 0 0 24px 0 rgba(0,0,0,0.04)",
           border: "1px solid rgba(22,163,74,0.1)",
         }}
@@ -245,16 +245,16 @@ export default function Register() {
               src={logo}
               alt="SeribuAsa Logo"
               style={{
-                width: 90,
-                height: 90,
+                width: 60,
+                height: 60,
                 objectFit: "contain",
-                marginBottom: -15,
+                marginBottom: -5,
                 filter: "drop-shadow(0 4px 8px rgba(22,163,74,0.2))",
               }}
             />
             <h1
               style={{
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: 800,
                 margin: 0,
                 color: "#346A43",
@@ -266,10 +266,35 @@ export default function Register() {
           </div>
         </Link>
 
+        {/* Title */}
+        <div className="text-center mb-4">
+          <h2
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              color: "#111",
+              margin: "0 0 4px 0",
+              letterSpacing: "-0.5px",
+            }}
+          >
+            Buat Akun Baru
+          </h2>
+          <p
+            style={{
+              fontSize: 12,
+              color: "#666",
+              margin: 0,
+              lineHeight: 1.5,
+            }}
+          >
+            Bergabunglah untuk mulai memberi dampak
+          </p>
+        </div>
+
         {/* Form */}
         <form
           onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          style={{ display: "flex", flexDirection: "column", gap: "10px" }}
         >
           {/* Role Selection */}
           <div>
@@ -476,77 +501,78 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Email */}
-          <div>
-            <label
-              style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                color: "#333",
-                display: "block",
-                marginBottom: "4px",
-              }}
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "12px",
-                border: "1.5px solid #eee",
-                fontSize: "13px",
-                outline: "none",
-                background: "#fafafa",
-                boxSizing: "border-box",
-              }}
-              placeholder="nama@email.com"
-              disabled={loading}
-            />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            {/* Email */}
+            <div>
+              <label
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  color: "#333",
+                  display: "block",
+                  marginBottom: "4px",
+                }}
+              >
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  borderRadius: "10px",
+                  border: "1.5px solid #eee",
+                  fontSize: "12px",
+                  outline: "none",
+                  background: "#fafafa",
+                  boxSizing: "border-box",
+                }}
+                placeholder="nama@email.com"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Address */}
+            <div>
+              <label
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  color: "#333",
+                  display: "block",
+                  marginBottom: "4px",
+                }}
+              >
+                Alamat (opsional)
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  borderRadius: "10px",
+                  border: "1.5px solid #eee",
+                  fontSize: "12px",
+                  outline: "none",
+                  background: "#fafafa",
+                  boxSizing: "border-box",
+                }}
+                placeholder="Alamat"
+                disabled={loading}
+              />
+            </div>
           </div>
 
-          {/* Address */}
-          <div>
-            <label
-              style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                color: "#333",
-                display: "block",
-                marginBottom: "4px",
-              }}
-            >
-              Alamat (opsional)
-            </label>
-            <textarea
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "12px",
-                border: "1.5px solid #eee",
-                fontSize: "13px",
-                outline: "none",
-                background: "#fafafa",
-                boxSizing: "border-box",
-                minHeight: "60px",
-                resize: "none",
-              }}
-              placeholder="Masukkan alamat"
-              disabled={loading}
-            />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             {/* Password */}
             <div>
               <label
                 style={{
-                  fontSize: "12px",
+                  fontSize: "11px",
                   fontWeight: 600,
                   color: "#333",
                   display: "block",
@@ -562,10 +588,10 @@ export default function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "10px 32px 10px 12px",
-                    borderRadius: "12px",
+                    padding: "8px 32px 8px 12px",
+                    borderRadius: "10px",
                     border: "1.5px solid #eee",
-                    fontSize: "13px",
+                    fontSize: "12px",
                     outline: "none",
                     background: "#fafafa",
                     boxSizing: "border-box",
@@ -596,7 +622,7 @@ export default function Register() {
             <div>
               <label
                 style={{
-                  fontSize: "12px",
+                  fontSize: "11px",
                   fontWeight: 600,
                   color: "#333",
                   display: "block",
@@ -612,10 +638,10 @@ export default function Register() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "10px 32px 10px 12px",
-                    borderRadius: "12px",
+                    padding: "8px 32px 8px 12px",
+                    borderRadius: "10px",
                     border: "1.5px solid #eee",
-                    fontSize: "13px",
+                    fontSize: "12px",
                     outline: "none",
                     background: "#fafafa",
                     boxSizing: "border-box",
@@ -642,6 +668,23 @@ export default function Register() {
                 </button>
               </div>
             </div>
+
+            {/* Password Rules */}
+            {password.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", gridColumn: "1 / -1" }}>
+                {passwordRequirements.map((req, idx) => {
+                  const isValid = req.regex.test(password);
+                  return (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10.5px", color: isValid ? "#16a34a" : "#666", fontWeight: isValid ? 600 : 400 }}>
+                      <div style={{ width: "14px", height: "14px", borderRadius: "50%", background: isValid ? "#dcfce7" : "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {isValid ? <Check size={10} color="#16a34a" /> : <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#94a3b8" }} />}
+                      </div>
+                      {req.label}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}

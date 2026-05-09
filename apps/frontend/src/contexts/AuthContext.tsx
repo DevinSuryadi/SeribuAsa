@@ -30,8 +30,9 @@ type UserRole =
   | "admin"
   | "government"
   | "corporate_donor"
+  | "unassigned"
   | null;
-type GoogleSignInRole = Exclude<UserRole, "admin" | "government" | null>;
+type GoogleSignInRole = Exclude<UserRole, "admin" | "government" | "unassigned" | null>;
 
 interface AuthUser {
   id: string;
@@ -46,7 +47,7 @@ interface AuthContextType {
   loading: boolean;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInWithGoogle: (role?: GoogleSignInRole) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   signUp: (
     email: string,
     password: string,
@@ -68,6 +69,7 @@ const KNOWN_ROLES = new Set([
   "admin",
   "government",
   "corporate_donor",
+  "unassigned",
 ]);
 const PROFILE_ROLES = new Set(["donor", "beneficiary", "vendor", "corporate_donor"]);
 
@@ -150,16 +152,11 @@ function isGoogleSession(currentSession: Session): boolean {
 async function syncGoogleProfile(
   currentSession: Session
 ): Promise<{ role: UserRole; fullName: string | null }> {
-  const preferredRole = localStorage.getItem(GOOGLE_ROLE_KEY);
   const metadataFullName = resolveFullNameFromMetadata(
     currentSession.user.user_metadata,
     currentSession.user.email
   );
   const body: Record<string, string> = {};
-
-  if (preferredRole && isProfileRole(preferredRole)) {
-    body.role = preferredRole;
-  }
   if (metadataFullName) {
     body.full_name = metadataFullName;
   }
@@ -179,7 +176,6 @@ async function syncGoogleProfile(
   }
 
   const data = await response.json();
-  localStorage.removeItem(GOOGLE_ROLE_KEY);
 
   const roleCandidate = data?.user?.role;
   const resolvedRole: UserRole = isKnownRole(roleCandidate) ? roleCandidate : null;
@@ -430,10 +426,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async (role: GoogleSignInRole = "donor") => {
+  const signInWithGoogle = async () => {
     try {
       localStorage.removeItem(AUTH_KEY);
-      localStorage.setItem(GOOGLE_ROLE_KEY, role);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",

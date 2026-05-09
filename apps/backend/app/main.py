@@ -3,8 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 import logging
 
-from app.api import auth, donations, vouchers, admin
+from app.api import auth, donations, vouchers, admin, orders, cart, products, fies, nutrition, recommendations, reports, settlements, subscriptions, users
 from app.api import wallet as wallet_api
+from app.api import vendor_wallet as vendor_wallet_api
 from app.database import IS_SQLITE, SessionLocal, init_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
 from app.config import settings
@@ -47,8 +48,19 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(donations.router, prefix="/api/v1")
 app.include_router(vouchers.router, prefix="/api/v1")
+app.include_router(orders.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(wallet_api.router, prefix="/api/v1")
+app.include_router(cart.router, prefix="/api/v1")
+app.include_router(products.router, prefix="/api/v1")
+app.include_router(fies.router, prefix="/api/v1")
+app.include_router(nutrition.router, prefix="/api/v1")
+app.include_router(recommendations.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1")
+app.include_router(settlements.router, prefix="/api/v1")
+app.include_router(subscriptions.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
+app.include_router(vendor_wallet_api.router, prefix="/api/v1")
 
 
 def _seed_demo_profiles() -> None:
