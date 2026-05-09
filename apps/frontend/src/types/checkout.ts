@@ -1,9 +1,9 @@
 /**
  * Checkout Flow Types
- * TypeScript interfaces for checkout page state and data
  */
 
-export type CheckoutStep = 1 | 2 | 3 | 4;
+/** Simplified 2-step checkout: 1=Cart Review, 2=Confirm Order */
+export type CheckoutStep = 1 | 2 | 3;
 
 export interface CartItemData {
   id: string;
@@ -14,6 +14,8 @@ export interface CartItemData {
   subtotal: number;
   created_at: string;
   vendor_id: string;
+  category_name?: string;
+  product_images?: string[];
 }
 
 export interface OrderSummary {
@@ -28,11 +30,11 @@ export interface CheckoutState {
   currentStep: CheckoutStep;
   cartItems: CartItemData[];
   orderSummary: OrderSummary | null;
-  walletBalance: number; // Available wallet balance from API
+  walletBalance: number;
   isLoading: boolean;
   isSubmitting: boolean;
   error: string | null;
-  orderId: string | null;
+  orderIds: string[];   // all created order IDs (one per vendor)
 }
 
 export interface CheckoutContextType extends CheckoutState {
@@ -42,7 +44,7 @@ export interface CheckoutContextType extends CheckoutState {
   removeCartItem: (itemId: string) => Promise<void>;
   loadWalletBalance: () => Promise<void>;
   getOrderSummary: () => OrderSummary;
-  submitOrder: () => Promise<string>;
+  submitOrder: () => Promise<string[]>;
   canProceedToNextStep: () => boolean;
   validateCurrentStep: () => boolean;
   clearError: () => void;

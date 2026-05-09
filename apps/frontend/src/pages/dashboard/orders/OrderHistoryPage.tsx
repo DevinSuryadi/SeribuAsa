@@ -28,6 +28,7 @@ import {
   Store,
   QrCode,
 } from "lucide-react";
+import { ProductAvatar } from "@/components/product/ProductAvatar";
 import { OrderFiltersPanel } from "@/components/order/OrderFiltersPanel";
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -167,9 +168,15 @@ const OrderCard = memo(function OrderCard({
             {items.slice(0, 4).map((item: OrderItem, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary text-xs text-muted-foreground border border-border"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-secondary text-xs text-muted-foreground border border-border"
               >
-                <Package className="h-2.5 w-2.5 flex-shrink-0" aria-hidden="true" />
+                <ProductAvatar
+                  images={item.product_images}
+                  categoryName={item.category_name || "Produk"}
+                  name={item.product_name || "Produk"}
+                  className="h-3.5 w-3.5 rounded-full flex-shrink-0"
+                  emojiSize="text-[8px]"
+                />
                 <span className="truncate max-w-[120px]">{item.product_name || "Produk"}</span>
                 <span className="text-muted-foreground/60">×{item.quantity}</span>
               </span>
@@ -519,15 +526,15 @@ function OrderHistoryPage() {
                   {isLoading
                     ? Array.from({ length: 4 }).map((_, i) => <OrderCardSkeleton key={i} />)
                     : orders.map((order) => (
-                        <OrderCard
-                          key={order.id}
-                          order={order}
-                          onOrderClick={handleOrderClick}
-                          onReorder={handleReorder}
-                          reorderingId={reorderingOrderId}
-                          onShowQr={handleShowQr}
-                        />
-                      ))}
+                      <OrderCard
+                        key={order.id}
+                        order={order}
+                        onOrderClick={handleOrderClick}
+                        onReorder={handleReorder}
+                        reorderingId={reorderingOrderId}
+                        onShowQr={handleShowQr}
+                      />
+                    ))}
 
                   {/* Pagination */}
                   {pagination.total_pages > 1 && (

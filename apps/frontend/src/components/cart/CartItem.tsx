@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Trash2, Plus, Minus, Loader2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Trash2, Plus, Minus, Loader2, Package } from "lucide-react";
+import { formatIDR } from "@/lib/format";
 
 interface CartItemProps {
   id: string;
@@ -11,11 +11,12 @@ interface CartItemProps {
   onUpdateQuantity: (itemId: string, quantity: number) => Promise<void>;
   onRemove: (itemId: string) => Promise<void>;
   isLoading?: boolean;
+  categoryName?: string;
+  images?: string[];
 }
 
-/**
- * CartItem component for displaying and managing individual cart items
- */
+import { ProductAvatar } from "@/components/product/ProductAvatar";
+
 export function CartItem({
   id,
   productName,
@@ -25,19 +26,16 @@ export function CartItem({
   onUpdateQuantity,
   onRemove,
   isLoading = false,
+  categoryName,
+  images = [],
 }: CartItemProps) {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleQuantityChange = async (newQuantity: number) => {
-    if (newQuantity < 1 || newQuantity > 100) return;
-
+  const handleQty = async (newQty: number) => {
+    if (newQty < 1 || newQty > 100 || isUpdating) return;
     setIsUpdating(true);
-    setError(null);
     try {
-      await onUpdateQuantity(id, newQuantity);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update quantity");
+      await onUpdateQuantity(id, newQty);
     } finally {
       setIsUpdating(false);
     }
@@ -45,81 +43,74 @@ export function CartItem({
 
   const handleRemove = async () => {
     setIsUpdating(true);
-    setError(null);
     try {
       await onRemove(id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove item");
     } finally {
       setIsUpdating(false);
     }
   };
 
+  const busy = isUpdating || isLoading;
+
   return (
-    <div className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow animate-in fade-in slide-in-from-left duration-300">
-      <div className="flex-1">
-        <h3 className="font-medium text-gray-900">{productName}</h3>
-        <p className="text-sm text-gray-600 mt-1">
-          Rp {price.toLocaleString("id-ID")} × {quantity} =
-          <span className="font-medium text-gray-900"> Rp {subtotal.toLocaleString("id-ID")}</span>
+    <div className="group flex items-center gap-4 p-4 rounded-2xl border border-border/80 bg-card hover:border-border hover:shadow-sm transition-all duration-200">
+      {/* Product icon */}
+      <ProductAvatar 
+        images={images} 
+        categoryName={categoryName || "Produk"} 
+        name={productName} 
+        className="h-12 w-12 rounded-xl flex-shrink-0" 
+      />
+
+      {/* Name + price */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground truncate">{productName}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {formatIDR(price)} / satuan
         </p>
-        {error && (
-          <div className="flex items-start gap-2 mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-            <p className="flex-1">{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="flex-shrink-0 text-red-600 hover:text-red-700 transition-colors"
-              aria-label="Dismiss error"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
       </div>
 
-      <div className="flex items-center gap-3 ml-4">
-        {/* Quantity Controls */}
-        <div className="flex items-center border border-gray-300 rounded-lg">
-          <button
-            onClick={() => handleQuantityChange(quantity - 1)}
-            disabled={isUpdating || isLoading || quantity <= 1}
-            className="p-2.5 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
-            aria-label="Decrease quantity"
-          >
-            {isUpdating ? (
-              <Loader2 size={16} className="text-gray-600 animate-spin" />
-            ) : (
-              <Minus size={16} className="text-gray-600" />
-            )}
-          </button>
-          <span className="px-3 py-2 text-sm font-medium text-gray-900 min-w-[3rem] text-center">
-            {quantity}
-          </span>
-          <button
-            onClick={() => handleQuantityChange(quantity + 1)}
-            disabled={isUpdating || isLoading || quantity >= 100}
-            className="p-2.5 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
-            aria-label="Increase quantity"
-          >
-            {isUpdating ? (
-              <Loader2 size={16} className="text-gray-600 animate-spin" />
-            ) : (
-              <Plus size={16} className="text-gray-600" />
-            )}
-          </button>
-        </div>
-
-        {/* Remove Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRemove}
-          disabled={isUpdating || isLoading}
-          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+      {/* Qty stepper */}
+      <div className="flex items-center gap-0.5 rounded-xl border border-border overflow-hidden bg-secondary/30 flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => handleQty(quantity - 1)}
+          disabled={busy || quantity <= 1}
+          className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Kurangi"
         >
-          {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-        </Button>
+          <Minus className="h-3 w-3" aria-hidden="true" />
+        </button>
+        <span className="w-8 text-center text-sm font-bold text-foreground">
+          {busy ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : quantity}
+        </span>
+        <button
+          type="button"
+          onClick={() => handleQty(quantity + 1)}
+          disabled={busy || quantity >= 100}
+          className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Tambah"
+        >
+          <Plus className="h-3 w-3" aria-hidden="true" />
+        </button>
       </div>
+
+      {/* Subtotal */}
+      <div className="text-right flex-shrink-0 w-24 hidden sm:block">
+        <p className="text-sm font-black text-foreground">{formatIDR(subtotal)}</p>
+        <p className="text-[10px] text-muted-foreground">{quantity} × {formatIDR(price)}</p>
+      </div>
+
+      {/* Remove */}
+      <button
+        type="button"
+        onClick={handleRemove}
+        disabled={busy}
+        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30"
+        aria-label={`Hapus ${productName}`}
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
     </div>
   );
 }

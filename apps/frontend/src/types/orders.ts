@@ -18,6 +18,8 @@ export interface OrderItem {
   quantity: number;
   price: number;
   subtotal: number;
+  category_name?: string;
+  product_images?: string[];
 }
 
 export interface Order {
