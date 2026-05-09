@@ -33,6 +33,8 @@ class CartItemResponse(BaseModel):
     subtotal: Decimal
     voucher_price: Decimal = Decimal(0)
     category_id: Optional[str] = None
+    category_name: Optional[str] = None
+    product_images: Optional[List[str]] = None
     is_eligible: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

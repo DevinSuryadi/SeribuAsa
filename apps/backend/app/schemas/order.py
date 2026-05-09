@@ -26,6 +26,8 @@ class OrderItemResponse(BaseModel):
     price: Decimal
     subtotal: Decimal
     product_name: Optional[str] = None
+    category_name: Optional[str] = None
+    product_images: Optional[List[str]] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -102,3 +104,18 @@ class OrderQueryParams(BaseModel):
     search: Optional[str]  = None
     start_date: Optional[str] = None
     end_date: Optional[str]   = None
+
+
+# ============================================
+# Multi-Vendor Checkout
+# ============================================
+class MultiOrderCheckoutRequest(BaseModel):
+    cart_item_ids: List[UUID] = Field(default_factory=list, description="List of cart item IDs to checkout. Empty means all items.")
+    voucher_amount: Decimal = Field(default=Decimal(0), ge=0)
+
+
+class MultiOrderCheckoutResponse(BaseModel):
+    orders: List[OrderResponse]
+    total_orders_created: int
+    total_voucher_used: Decimal
+    total_cash_paid: Decimal

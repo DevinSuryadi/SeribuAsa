@@ -63,6 +63,7 @@ class ProductCreate(BaseModel):
     voucher_price: Decimal = Field(..., ge=0)
     stock_quantity: int = Field(default=0, ge=0)
     unit: str = Field(default="pcs", max_length=50)
+    images: Optional[List[str]] = None
 
     def model_post_init(self, __context) -> None:
         if self.voucher_price > self.price:
@@ -77,6 +78,7 @@ class ProductUpdate(BaseModel):
     voucher_price: Optional[Decimal] = Field(None, ge=0)
     stock_quantity: Optional[int] = Field(None, ge=0)
     unit: Optional[str] = Field(None, max_length=50)
+    images: Optional[List[str]] = None
 
 
 class ProductListResponse(BaseModel):

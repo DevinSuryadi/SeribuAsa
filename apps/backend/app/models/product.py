@@ -163,6 +163,19 @@ class OrderItem(BaseModel):
         """Calculate subtotal from quantity and price"""
         return self.quantity * self.price
 
+    @property
+    def product_name(self) -> str | None:
+        return self.product.name if self.product else None
+
+    @property
+    def category_name(self) -> str | None:
+        return self.product.category.name if self.product and self.product.category else None
+
+    @property
+    def product_images(self) -> list:
+        return self.product.images if self.product else []
+
+
 
 # ============================================
 # Indexes for performance
