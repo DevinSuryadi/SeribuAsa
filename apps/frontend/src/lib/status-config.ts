@@ -44,6 +44,11 @@ export const orderStatusConfig: Record<OrderStatus, StatusConfig> = {
 
 // Settlement Status
 export const settlementStatusConfig: Record<SettlementStatus, StatusConfig> = {
+  pending: {
+    label: "Menunggu",
+    className: "bg-amber-100 text-amber-700 border-amber-200",
+    icon: Clock,
+  },
   calculating: {
     label: "Menghitung",
     className: "bg-secondary text-muted-foreground border-border",

@@ -41,6 +41,7 @@ export interface VendorProduct {
   category: string;
   approval_status: ProductApprovalStatus;
   created_at: string;
+  images?: string[];
 }
 
 export interface VendorWallet {
@@ -69,5 +70,5 @@ export interface BankAccount {
 // Type Aliases
 export type OrderStatus = "pending" | "processing" | "completed" | "cancelled";
 export type ProductApprovalStatus = "pending" | "approved" | "rejected";
-export type SettlementStatus = "calculating" | "ready" | "processing" | "completed" | "failed";
+export type SettlementStatus = "pending" | "calculating" | "ready" | "processing" | "completed" | "failed";
 export type VendorStatus = "active" | "inactive" | "pending";

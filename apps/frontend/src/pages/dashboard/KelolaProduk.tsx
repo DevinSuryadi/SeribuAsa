@@ -25,7 +25,6 @@ import {
   Search,
   Edit,
   Trash2,
-  Package,
   Loader2,
   ShoppingBag,
   CheckCircle,

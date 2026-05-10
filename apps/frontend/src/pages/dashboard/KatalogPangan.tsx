@@ -52,14 +52,7 @@ type Product = {
   images?: string[] | null;
 };
 
-const categoryIcons: Record<string, ComponentType<{ className?: string }>> = {
-  Pokok: Wheat,
-  Protein: Egg,
-  Susu: Milk,
-  Sayuran: Carrot,
-  Buah: Apple,
-  Snack: Package,
-};
+
 
 // ── ModalProductDetail ─────────────────────────────────────────
 const ModalProductDetail = memo(function ModalProductDetail({
@@ -182,6 +175,7 @@ const ProductCard = memo(function ProductCard({
   onSelect: (p: Product) => void;
   onAddToCart: (id: string) => void;
   addingToCart: string | null;
+  pendingQuantity: number;
 }) {
   const isLoading = addingToCart === product.id;
   const hasStock = product.stock_quantity > 0;
@@ -321,7 +315,7 @@ const KatalogPangan = () => {
         setProducts((productsData.items || []) as unknown as Product[]);
         const catNames = (catsData || []).map((c: any) => c.name);
         setCategories(["Semua", ...catNames]);
-        setBalance(parseFloat(balanceData.wallet_available || 0));
+        setBalance(Number(balanceData.wallet_available || 0));
         setCartItemCount((cartData.items || []).length);
         setLastUpdated(new Date());
         setLoading(false);

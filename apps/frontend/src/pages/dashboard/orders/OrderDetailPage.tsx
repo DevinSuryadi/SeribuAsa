@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   CalendarDays,
@@ -102,7 +102,7 @@ function OrderDetailPage() {
       setIsLoading(true);
       try {
         const response = await getOrder(orderId);
-        setOrder((response as Record<string, unknown>) || null);
+        setOrder((response as unknown as Record<string, unknown>) || null);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "Gagal memuat detail pesanan");
         navigate("/dashboard/dompet-nutrisi?tab=pesanan");
@@ -249,7 +249,7 @@ function OrderDetailPage() {
                 <span className="text-sm font-semibold text-foreground">
                   Produk Dipesan ({items.length} item)
                 </span>
-                {order.vendor_store_name && (
+                {Boolean(order.vendor_store_name) && (
                   <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Store className="h-3.5 w-3.5" aria-hidden="true" />
                     {String(order.vendor_store_name)}
@@ -360,7 +360,7 @@ function OrderDetailPage() {
                   </div>
                 )}
 
-                {order.vendor_store_name && (
+                {Boolean(order.vendor_store_name) && (
                   <div className="flex flex-col gap-0.5">
                     <span className="text-muted-foreground flex items-center gap-1">
                       <Store className="h-3 w-3" />

@@ -31,11 +31,10 @@ describe("Order Service Tests", () => {
             subtotal: 100000,
           },
         ],
-        total_amount: 100000,
-        voucher_used: 100000,
-        cash_paid: 0,
+        cart_total: 100000,
+        voucher_discount: 100000,
+        cash_amount: 0,
         status: "pending",
-        pickup_qr_code: "ABC123XYZ",
         created_at: "2024-01-01T00:00:00Z",
       };
 
@@ -74,8 +73,7 @@ describe("Order Service Tests", () => {
 
       expect(result.id).toBe("order_1");
       expect(result.status).toBe("pending");
-      expect(result.total_amount).toBe(100000);
-      expect(result.pickup_qr_code).toBe("ABC123XYZ");
+      expect(result.cart_total).toBe(100000);
     });
 
     it("should handle empty items", async () => {

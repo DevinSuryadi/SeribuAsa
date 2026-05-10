@@ -140,7 +140,7 @@ describe("Wallet Service Integration Tests", () => {
           method: "POST",
         })
       );
-      expect(result.success).toBe(true);
+      expect((result as any).success).toBe(true);
     });
   });
 });

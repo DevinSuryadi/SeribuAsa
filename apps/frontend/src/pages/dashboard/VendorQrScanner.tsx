@@ -336,7 +336,7 @@ export default function VendorQrScanner() {
                         aria-label="Kode QR Pickup"
                       />
                       <Button
-                        onClick={handleSearch}
+                        onClick={() => handleSearch()}
                         disabled={searching || !qrInput.trim()}
                         className="shrink-0 gap-1.5 bg-emerald-600 hover:bg-emerald-700 h-11 px-5"
                       >
