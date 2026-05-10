@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Plus, Minus, Loader2, Package } from "lucide-react";
+import { Trash2, Plus, Minus, Loader2 } from "lucide-react";
 import { formatIDR } from "@/lib/format";
 
 interface CartItemProps {
@@ -55,19 +55,17 @@ export function CartItem({
   return (
     <div className="group flex items-center gap-4 p-4 rounded-2xl border border-border/80 bg-card hover:border-border hover:shadow-sm transition-all duration-200">
       {/* Product icon */}
-      <ProductAvatar 
-        images={images} 
-        categoryName={categoryName || "Produk"} 
-        name={productName} 
-        className="h-12 w-12 rounded-xl flex-shrink-0" 
+      <ProductAvatar
+        images={images}
+        categoryName={categoryName || "Produk"}
+        name={productName}
+        className="h-12 w-12 rounded-xl flex-shrink-0"
       />
 
       {/* Name + price */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">{productName}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {formatIDR(price)} / satuan
-        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">{formatIDR(price)} / satuan</p>
       </div>
 
       {/* Qty stepper */}
@@ -98,7 +96,9 @@ export function CartItem({
       {/* Subtotal */}
       <div className="text-right flex-shrink-0 w-24 hidden sm:block">
         <p className="text-sm font-black text-foreground">{formatIDR(subtotal)}</p>
-        <p className="text-[10px] text-muted-foreground">{quantity} × {formatIDR(price)}</p>
+        <p className="text-[10px] text-muted-foreground">
+          {quantity} × {formatIDR(price)}
+        </p>
       </div>
 
       {/* Remove */}

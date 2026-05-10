@@ -111,7 +111,7 @@ export function CartManagement() {
       updatedItems[itemIndex] = {
         ...item,
         quantity,
-        subtotal: newSubtotal.toString(),
+        subtotal: newSubtotal,
       };
       setCartItems(updatedItems);
 

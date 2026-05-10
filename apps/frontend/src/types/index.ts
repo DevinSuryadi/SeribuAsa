@@ -13,7 +13,8 @@ export type UserRole =
   | "vendor"
   | "admin"
   | "corporate_donor"
-  | "government";
+  | "government"
+  | "unassigned";
 
 export interface User {
   id: string;

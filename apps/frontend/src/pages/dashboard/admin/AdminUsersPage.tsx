@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/services/api";
-import { formatDateTime, statusClass, shortId } from "./adminUtils";
+import { formatDateTime, shortId } from "./adminUtils";
 import { toast } from "sonner";
 import {
   Users,
@@ -53,32 +53,59 @@ type CountMap = Record<string, number>;
 
 const PAGE_SIZE = 20;
 
-const roleTabs: Array<{ value: UserRoleFilter; label: string; icon: React.ElementType; color: string; bg: string }> = [
-  { value: "all",          label: "Semua",      icon: Users,    color: "text-slate-600",  bg: "bg-slate-100" },
-  { value: "beneficiary",  label: "Penerima",   icon: Shield,   color: "text-emerald-600",bg: "bg-emerald-100" },
-  { value: "donor",        label: "Donatur",    icon: Heart,    color: "text-rose-600",   bg: "bg-rose-100" },
-  { value: "vendor",       label: "Vendor",     icon: Store,    color: "text-indigo-600", bg: "bg-indigo-100" },
-  { value: "user",         label: "User Biasa", icon: User,     color: "text-slate-500",  bg: "bg-slate-100" },
+const roleTabs: Array<{
+  value: UserRoleFilter;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  bg: string;
+}> = [
+  { value: "all", label: "Semua", icon: Users, color: "text-slate-600", bg: "bg-slate-100" },
+  {
+    value: "beneficiary",
+    label: "Penerima",
+    icon: Shield,
+    color: "text-emerald-600",
+    bg: "bg-emerald-100",
+  },
+  { value: "donor", label: "Donatur", icon: Heart, color: "text-rose-600", bg: "bg-rose-100" },
+  { value: "vendor", label: "Vendor", icon: Store, color: "text-indigo-600", bg: "bg-indigo-100" },
+  { value: "user", label: "User Biasa", icon: User, color: "text-slate-500", bg: "bg-slate-100" },
 ];
 
 const statusTabs: Array<{ value: ApprovalFilter; label: string; dot: string }> = [
-  { value: "all",      label: "Semua",         dot: "bg-slate-400" },
-  { value: "pending",  label: "Menunggu",      dot: "bg-amber-400" },
-  { value: "approved", label: "Disetujui",     dot: "bg-emerald-500" },
-  { value: "rejected", label: "Ditolak",       dot: "bg-rose-500" },
+  { value: "all", label: "Semua", dot: "bg-slate-400" },
+  { value: "pending", label: "Menunggu", dot: "bg-amber-400" },
+  { value: "approved", label: "Disetujui", dot: "bg-emerald-500" },
+  { value: "rejected", label: "Ditolak", dot: "bg-rose-500" },
 ];
 
-const roleLabelMap: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  user:         { label: "User",      icon: User,   color: "text-slate-600",   bg: "bg-slate-100" },
-  beneficiary:  { label: "Penerima",  icon: Shield, color: "text-emerald-700", bg: "bg-emerald-100" },
-  donor:        { label: "Donatur",   icon: Heart,  color: "text-rose-700",    bg: "bg-rose-100" },
-  vendor:       { label: "Vendor",    icon: Store,  color: "text-indigo-700",  bg: "bg-indigo-100" },
+const roleLabelMap: Record<
+  string,
+  { label: string; icon: React.ElementType; color: string; bg: string }
+> = {
+  user: { label: "User", icon: User, color: "text-slate-600", bg: "bg-slate-100" },
+  beneficiary: { label: "Penerima", icon: Shield, color: "text-emerald-700", bg: "bg-emerald-100" },
+  donor: { label: "Donatur", icon: Heart, color: "text-rose-700", bg: "bg-rose-100" },
+  vendor: { label: "Vendor", icon: Store, color: "text-indigo-700", bg: "bg-indigo-100" },
 };
 
 const statusBadge: Record<string, { label: string; cls: string; dot: string }> = {
-  pending:  { label: "Pending",   cls: "bg-amber-50 text-amber-700 ring-amber-200",   dot: "bg-amber-400" },
-  approved: { label: "Approved",  cls: "bg-emerald-50 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
-  rejected: { label: "Rejected",  cls: "bg-rose-50 text-rose-700 ring-rose-200",      dot: "bg-rose-500" },
+  pending: {
+    label: "Pending",
+    cls: "bg-amber-50 text-amber-700 ring-amber-200",
+    dot: "bg-amber-400",
+  },
+  approved: {
+    label: "Approved",
+    cls: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    dot: "bg-emerald-500",
+  },
+  rejected: {
+    label: "Rejected",
+    cls: "bg-rose-50 text-rose-700 ring-rose-200",
+    dot: "bg-rose-500",
+  },
 };
 
 // ── Row Component ────────────────────────────────────────────────────────────
@@ -98,26 +125,34 @@ function UserRow({
   const RoleIcon = roleInfo.icon;
   const statusInfo = statusBadge[item.approval_status] ?? statusBadge.pending;
   const isMutating = mutatingId === item.user_id;
-  const canApprove = (item.role === "beneficiary" || item.role === "vendor");
+  const canApprove = item.role === "beneficiary" || item.role === "vendor";
 
   return (
     <tr className="group border-b border-border/50 hover:bg-slate-50/60 transition-colors">
       {/* User Info */}
       <td className="py-3.5 pl-5 pr-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${roleInfo.bg}`}>
+          <div
+            className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${roleInfo.bg}`}
+          >
             <RoleIcon className={`h-4 w-4 ${roleInfo.color}`} />
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-sm text-foreground truncate max-w-[180px]">{item.full_name}</div>
-            <div className="text-[11px] font-mono text-muted-foreground/70 mt-0.5">{shortId(item.user_id)}</div>
+            <div className="font-semibold text-sm text-foreground truncate max-w-[180px]">
+              {item.full_name}
+            </div>
+            <div className="text-[11px] font-mono text-muted-foreground/70 mt-0.5">
+              {shortId(item.user_id)}
+            </div>
           </div>
         </div>
       </td>
 
       {/* Role */}
       <td className="py-3.5 px-3">
-        <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${roleInfo.bg} ${roleInfo.color}`}>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${roleInfo.bg} ${roleInfo.color}`}
+        >
           <RoleIcon className="h-3 w-3" />
           {roleInfo.label}
         </span>
@@ -125,7 +160,9 @@ function UserRow({
 
       {/* Status */}
       <td className="py-3.5 px-3">
-        <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ring-1 ${statusInfo.cls}`}>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ring-1 ${statusInfo.cls}`}
+        >
           <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${statusInfo.dot}`} />
           {statusInfo.label}
         </span>
@@ -203,17 +240,20 @@ function UserRow({
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminUsersPage() {
-  const [items, setItems]       = useState<AdminUserItem[]>([]);
-  const [counts, setCounts]     = useState<{ roles: CountMap; statuses: CountMap }>({ roles: {}, statuses: {} });
-  const [loading, setLoading]   = useState(true);
+  const [items, setItems] = useState<AdminUserItem[]>([]);
+  const [counts, setCounts] = useState<{ roles: CountMap; statuses: CountMap }>({
+    roles: {},
+    statuses: {},
+  });
+  const [loading, setLoading] = useState(true);
   const [mutatingId, setMutatingId] = useState<string | null>(null);
-  const [error, setError]       = useState<string | null>(null);
-  const [roleFilter, setRoleFilter]     = useState<UserRoleFilter>("all");
+  const [error, setError] = useState<string | null>(null);
+  const [roleFilter, setRoleFilter] = useState<UserRoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<ApprovalFilter>("all");
-  const [searchTerm, setSearchTerm]     = useState("");
-  const [page, setPage]         = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal]       = useState(0);
+  const [total, setTotal] = useState(0);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -227,23 +267,30 @@ export default function AdminUsersPage() {
 
   const loadCounts = useCallback(async () => {
     try {
-      const roleKeys: UserRoleFilter[]    = ["all", "user", "beneficiary", "donor", "vendor"];
-      const statusKeys: ApprovalFilter[]  = ["all", "pending", "approved", "rejected"];
+      const roleKeys: UserRoleFilter[] = ["all", "user", "beneficiary", "donor", "vendor"];
+      const statusKeys: ApprovalFilter[] = ["all", "pending", "approved", "rejected"];
       const [roleResults, statusResults] = await Promise.all([
-        Promise.all(roleKeys.map(async (role) => {
-          const p = new URLSearchParams({ page: "1", page_size: "1" });
-          if (role !== "all") p.set("role", role);
-          const d = (await apiFetch(`/admin/users?${p}`)) as AdminUserListResponse;
-          return [role, d.total ?? 0] as const;
-        })),
-        Promise.all(statusKeys.map(async (status) => {
-          const p = new URLSearchParams({ page: "1", page_size: "1" });
-          if (status !== "all") p.set("status", status);
-          const d = (await apiFetch(`/admin/users?${p}`)) as AdminUserListResponse;
-          return [status, d.total ?? 0] as const;
-        })),
+        Promise.all(
+          roleKeys.map(async (role) => {
+            const p = new URLSearchParams({ page: "1", page_size: "1" });
+            if (role !== "all") p.set("role", role);
+            const d = (await apiFetch(`/admin/users?${p}`)) as AdminUserListResponse;
+            return [role, d.total ?? 0] as const;
+          })
+        ),
+        Promise.all(
+          statusKeys.map(async (status) => {
+            const p = new URLSearchParams({ page: "1", page_size: "1" });
+            if (status !== "all") p.set("status", status);
+            const d = (await apiFetch(`/admin/users?${p}`)) as AdminUserListResponse;
+            return [status, d.total ?? 0] as const;
+          })
+        ),
       ]);
-      setCounts({ roles: Object.fromEntries(roleResults), statuses: Object.fromEntries(statusResults) });
+      setCounts({
+        roles: Object.fromEntries(roleResults),
+        statuses: Object.fromEntries(statusResults),
+      });
     } catch {
       setCounts({ roles: {}, statuses: {} });
     }
@@ -265,10 +312,14 @@ export default function AdminUsersPage() {
     }
   }, [queryString]);
 
-  useEffect(() => { void Promise.all([loadUsers(), loadCounts()]); }, [loadUsers, loadCounts]);
+  useEffect(() => {
+    void Promise.all([loadUsers(), loadCounts()]);
+  }, [loadUsers, loadCounts]);
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [roleFilter, statusFilter, searchTerm]);
+  useEffect(() => {
+    setPage(1);
+  }, [roleFilter, statusFilter, searchTerm]);
 
   const updateApproval = async (userId: string, approvalStatus: ApprovalStatus) => {
     try {
@@ -294,7 +345,6 @@ export default function AdminUsersPage() {
       subtitle="Manajemen akun, role, dan persetujuan pengguna platform."
     >
       <div className="space-y-5">
-
         {/* Pending Alert Banner */}
         {pendingCount > 0 && (
           <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3.5 shadow-sm">
@@ -302,13 +352,17 @@ export default function AdminUsersPage() {
               <AlertCircle className="h-4 w-4 text-amber-600" />
             </div>
             <p className="text-sm font-semibold text-amber-800 flex-1">
-              Ada <span className="font-extrabold">{pendingCount}</span> akun menunggu persetujuan — beneficiary & vendor baru.
+              Ada <span className="font-extrabold">{pendingCount}</span> akun menunggu persetujuan —
+              beneficiary & vendor baru.
             </p>
             <Button
               size="sm"
               variant="outline"
               className="border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 h-8 text-xs rounded-xl"
-              onClick={() => { setStatusFilter("pending"); setRoleFilter("all"); }}
+              onClick={() => {
+                setStatusFilter("pending");
+                setRoleFilter("all");
+              }}
             >
               Lihat Semua
             </Button>
@@ -334,7 +388,9 @@ export default function AdminUsersPage() {
                 >
                   <TabIcon className="h-3.5 w-3.5" />
                   {tab.label}
-                  <span className={`ml-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${active ? "bg-white/60" : "bg-secondary"}`}>
+                  <span
+                    className={`ml-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${active ? "bg-white/60" : "bg-secondary"}`}
+                  >
                     {counts.roles[tab.value] ?? 0}
                   </span>
                 </button>
@@ -361,7 +417,9 @@ export default function AdminUsersPage() {
                     <span className={`h-1.5 w-1.5 rounded-full ${tab.dot}`} />
                     {tab.label}
                     {counts.statuses[tab.value] !== undefined && (
-                      <span className={`rounded px-1 text-[10px] font-bold ${active ? "bg-white/20" : "bg-secondary"}`}>
+                      <span
+                        className={`rounded px-1 text-[10px] font-bold ${active ? "bg-white/20" : "bg-secondary"}`}
+                      >
                         {counts.statuses[tab.value]}
                       </span>
                     )}
@@ -399,7 +457,8 @@ export default function AdminUsersPage() {
         {/* Summary row */}
         <div className="flex items-center justify-between px-1">
           <p className="text-xs text-muted-foreground">
-            Menampilkan <span className="font-semibold text-foreground">{items.length}</span> dari <span className="font-semibold text-foreground">{total}</span> pengguna
+            Menampilkan <span className="font-semibold text-foreground">{items.length}</span> dari{" "}
+            <span className="font-semibold text-foreground">{total}</span> pengguna
           </p>
           <p className="text-xs text-muted-foreground">
             Halaman {page} / {totalPages}
@@ -410,7 +469,10 @@ export default function AdminUsersPage() {
         {loading ? (
           <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border/40 animate-pulse">
+              <div
+                key={i}
+                className="flex items-center gap-4 px-5 py-4 border-b border-border/40 animate-pulse"
+              >
                 <div className="h-9 w-9 rounded-xl bg-secondary flex-shrink-0" />
                 <div className="flex-1 space-y-1.5">
                   <div className="h-3.5 w-36 bg-secondary rounded-md" />
@@ -427,7 +489,12 @@ export default function AdminUsersPage() {
             <AlertCircle className="h-8 w-8 text-rose-400 mx-auto mb-3" />
             <p className="text-sm font-semibold text-rose-700 mb-1">Gagal memuat pengguna</p>
             <p className="text-xs text-rose-500 mb-4">{error}</p>
-            <Button size="sm" variant="outline" className="border-rose-300 text-rose-700 rounded-xl" onClick={() => void loadUsers()}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-rose-300 text-rose-700 rounded-xl"
+              onClick={() => void loadUsers()}
+            >
               Coba Lagi
             </Button>
           </div>
@@ -444,12 +511,24 @@ export default function AdminUsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-slate-50/60">
-                  <th className="py-3 pl-5 pr-4 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Pengguna</th>
-                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Role</th>
-                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Status</th>
-                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Kontak</th>
-                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Bergabung</th>
-                  <th className="py-3 pl-3 pr-5 text-right text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Aksi</th>
+                  <th className="py-3 pl-5 pr-4 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Pengguna
+                  </th>
+                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                    Kontak
+                  </th>
+                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
+                    Bergabung
+                  </th>
+                  <th className="py-3 pl-3 pr-5 text-right text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Aksi
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -511,7 +590,6 @@ export default function AdminUsersPage() {
             )}
           </div>
         )}
-
       </div>
     </DashboardLayout>
   );

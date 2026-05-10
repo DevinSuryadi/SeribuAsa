@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Wallet,
-  QrCode,
   Flame,
   Loader2,
   AlertCircle,
@@ -267,11 +266,7 @@ const DompetNutrisi = () => {
 
           {/* Tab: Riwayat Saldo */}
           <TabsContent value="saldo" className="mt-6 focus-visible:outline-none">
-            <WalletTab
-              transactions={transactions}
-              allocations={allocations}
-              onRefresh={fetchAll}
-            />
+            <WalletTab transactions={transactions} allocations={allocations} onRefresh={fetchAll} />
           </TabsContent>
 
           {/* Tab: Info Dompet */}

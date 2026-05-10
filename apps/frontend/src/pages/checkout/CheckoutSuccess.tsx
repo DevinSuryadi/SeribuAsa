@@ -35,7 +35,7 @@ export function CheckoutSuccess() {
     try {
       if (orderId) {
         const data = await getOrder(orderId);
-        setOrder(data as Record<string, unknown>);
+        setOrder(data as unknown as Record<string, unknown>);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal memuat detail pesanan");
@@ -66,13 +66,14 @@ export function CheckoutSuccess() {
       <div className="space-y-6">
         {/* ── 2-Column Layout ── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-
           {/* LEFT — Hero + Next Steps + CTAs (2/5) */}
           <div className="lg:col-span-2 space-y-5">
             {/* Hero banner */}
             <div
               className="relative overflow-hidden rounded-3xl p-8 text-center shadow-xl shadow-emerald-900/10"
-              style={{ background: "linear-gradient(135deg, #0f766e 0%, #059669 50%, #047857 100%)" }}
+              style={{
+                background: "linear-gradient(135deg, #0f766e 0%, #059669 50%, #047857 100%)",
+              }}
             >
               <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
               <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-teal-300/10 blur-2xl pointer-events-none" />
@@ -162,106 +163,113 @@ export function CheckoutSuccess() {
 
           {/* RIGHT — Order Detail (3/5) */}
           <div className="lg:col-span-3 space-y-4">
-
-        {/* ── Order Items ── */}
-        {order && (
-          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-            {/* Header */}
-            <div className="flex items-center gap-2.5 px-5 py-3 bg-secondary/40 border-b border-border">
-              <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              <span className="text-sm font-semibold text-foreground">Produk Dipesan</span>
-              {order.vendor_store_name && (
-                <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Store className="h-3.5 w-3.5" aria-hidden="true" />
-                  {String(order.vendor_store_name)}
-                </div>
-              )}
-            </div>
-
-            {/* Items */}
-            <div className="p-5">
-              {items.length > 0 ? (
-                <div className="space-y-3">
-                  {items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-3 pb-3 border-b border-border/50 last:border-0 last:pb-0"
-                    >
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-secondary">
-                        <Package className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {String(item.product_name ?? "Produk")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          × {Number(item.quantity ?? 1)}
-                        </p>
-                      </div>
-                      <p className="text-sm font-bold text-foreground flex-shrink-0">
-                        {formatIDR(Number(item.subtotal ?? 0))}
-                      </p>
+            {/* ── Order Items ── */}
+            {order && (
+              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+                {/* Header */}
+                <div className="flex items-center gap-2.5 px-5 py-3 bg-secondary/40 border-b border-border">
+                  <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-sm font-semibold text-foreground">Produk Dipesan</span>
+                  {order.vendor_store_name != null && (
+                    <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Store className="h-3.5 w-3.5" aria-hidden="true" />
+                      {String(order.vendor_store_name)}
                     </div>
-                  ))}
+                  )}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Detail item tidak tersedia
-                </p>
-              )}
-            </div>
 
-            {/* Totals */}
-            <div className="border-t border-border bg-secondary/20 p-5 space-y-2">
-              {totalAmount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total Belanja</span>
-                  <span className="font-semibold text-foreground">{formatIDR(totalAmount)}</span>
+                {/* Items */}
+                <div className="p-5">
+                  {items.length > 0 ? (
+                    <div className="space-y-3">
+                      {items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 pb-3 border-b border-border/50 last:border-0 last:pb-0"
+                        >
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-secondary">
+                            <Package
+                              className="h-3.5 w-3.5 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {String(item.product_name ?? "Produk")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              × {Number(item.quantity ?? 1)}
+                            </p>
+                          </div>
+                          <p className="text-sm font-bold text-foreground flex-shrink-0">
+                            {formatIDR(Number(item.subtotal ?? 0))}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Detail item tidak tersedia
+                    </p>
+                  )}
                 </div>
-              )}
-              {voucherUsed > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Diskon Voucher</span>
-                  <span className="font-semibold text-emerald-600">-{formatIDR(voucherUsed)}</span>
+
+                {/* Totals */}
+                <div className="border-t border-border bg-secondary/20 p-5 space-y-2">
+                  {totalAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Belanja</span>
+                      <span className="font-semibold text-foreground">
+                        {formatIDR(totalAmount)}
+                      </span>
+                    </div>
+                  )}
+                  {voucherUsed > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Diskon Voucher</span>
+                      <span className="font-semibold text-emerald-600">
+                        -{formatIDR(voucherUsed)}
+                      </span>
+                    </div>
+                  )}
+                  {cashPaid > 0 && (
+                    <div className="flex justify-between text-sm pt-2 border-t border-border">
+                      <span className="font-bold text-foreground">Bayar Tunai</span>
+                      <span className="font-bold text-foreground">{formatIDR(cashPaid)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-2 border-t border-border">
+                    <span className="font-bold text-foreground">Dibayar via Dompet</span>
+                    <span className="text-lg font-black text-emerald-600">
+                      {formatIDR(totalAmount - voucherUsed)}
+                    </span>
+                  </div>
                 </div>
-              )}
-              {cashPaid > 0 && (
-                <div className="flex justify-between text-sm pt-2 border-t border-border">
-                  <span className="font-bold text-foreground">Bayar Tunai</span>
-                  <span className="font-bold text-foreground">{formatIDR(cashPaid)}</span>
+
+                {/* Status */}
+                <div className="px-5 pb-5">
+                  <div className="flex items-center gap-2 mt-4">
+                    <span className="text-sm text-muted-foreground">Status:</span>
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-50 text-amber-700 border-amber-200 capitalize"
+                    >
+                      {status}
+                    </Badge>
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-between pt-2 border-t border-border">
-                <span className="font-bold text-foreground">Dibayar via Dompet</span>
-                <span className="text-lg font-black text-emerald-600">
-                  {formatIDR(totalAmount - voucherUsed)}
-                </span>
               </div>
-            </div>
+            )}
 
-            {/* Status */}
-            <div className="px-5 pb-5">
-              <div className="flex items-center gap-2 mt-4">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <Badge
-                  variant="outline"
-                  className="bg-amber-50 text-amber-700 border-amber-200 capitalize"
-                >
-                  {status}
-                </Badge>
+            {error && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+                <p className="text-sm text-destructive">{error}</p>
               </div>
-            </div>
+            )}
           </div>
-        )}
-
-        {error && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-            <p className="text-sm text-destructive">{error}</p>
-          </div>
-        )}
-
-          </div>{/* right col */}
-        </div>{/* grid */}
+          {/* right col */}
+        </div>
+        {/* grid */}
       </div>
     </DashboardLayout>
   );

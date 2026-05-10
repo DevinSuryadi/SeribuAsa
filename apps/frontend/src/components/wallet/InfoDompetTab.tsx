@@ -37,25 +37,6 @@ const allowedCategories = [
   },
 ];
 
-const faqItems = [
-  {
-    q: "Bagaimana cara menggunakan saldo dompet?",
-    a: "Pilih produk di Katalog Pangan, masukkan ke keranjang, lalu checkout. Saldo akan otomatis terpakai saat pesanan dikonfirmasi.",
-  },
-  {
-    q: "Apa itu sistem FIFO?",
-    a: "First In First Out — saldo dari donasi yang lebih lama akan dikonsumsi lebih dahulu sebelum saldo yang baru masuk.",
-  },
-  {
-    q: "Mengapa ada saldo 'ditahan'?",
-    a: "Saat Anda memiliki pesanan aktif yang belum diambil, saldo senilai pesanan tersebut ditahan sementara. Saldo akan dikembalikan jika pesanan dibatalkan.",
-  },
-  {
-    q: "Apa yang terjadi jika saldo kadaluarsa?",
-    a: "Saldo yang kadaluarsa akan dikembalikan ke pool donasi untuk dialokasikan ke penerima lain yang membutuhkan.",
-  },
-];
-
 export function InfoDompetTab() {
   return (
     <div className="space-y-8">
@@ -86,7 +67,9 @@ export function InfoDompetTab() {
         <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
           <span className="text-xl flex-shrink-0">⚠️</span>
           <div>
-            <p className="text-sm font-semibold text-amber-800 mb-1">Produk yang Tidak Diperbolehkan</p>
+            <p className="text-sm font-semibold text-amber-800 mb-1">
+              Produk yang Tidak Diperbolehkan
+            </p>
             <p className="text-[12px] text-amber-700 leading-relaxed">
               Makanan olahan (mie instan, snack kemasan), junk food, minuman bersoda, minuman
               beralkohol, rokok, dan produk non-pangan tidak dapat dibeli menggunakan saldo dompet.
@@ -121,10 +104,26 @@ export function InfoDompetTab() {
         <h2 className="text-base font-bold text-foreground mb-4">Cara Kerja E-Wallet Nutrisi</h2>
         <div className="space-y-4">
           {[
-            { step: "1", title: "Donatur Berdonasi", desc: "Donatur menyalurkan dana ke platform SeribuAsa." },
-            { step: "2", title: "Admin Mengalokasikan", desc: "Admin memverifikasi penerima manfaat dan mengalokasikan saldo ke dompet Anda." },
-            { step: "3", title: "Anda Berbelanja", desc: "Gunakan saldo untuk membeli bahan pangan bergizi di Katalog Pangan." },
-            { step: "4", title: "Vendor Menyiapkan", desc: "Vendor menyiapkan paket dan Anda mengambil dengan scan QR Code." },
+            {
+              step: "1",
+              title: "Donatur Berdonasi",
+              desc: "Donatur menyalurkan dana ke platform SeribuAsa.",
+            },
+            {
+              step: "2",
+              title: "Admin Mengalokasikan",
+              desc: "Admin memverifikasi penerima manfaat dan mengalokasikan saldo ke dompet Anda.",
+            },
+            {
+              step: "3",
+              title: "Anda Berbelanja",
+              desc: "Gunakan saldo untuk membeli bahan pangan bergizi di Katalog Pangan.",
+            },
+            {
+              step: "4",
+              title: "Vendor Menyiapkan",
+              desc: "Vendor menyiapkan paket dan Anda mengambil dengan scan QR Code.",
+            },
           ].map((item) => (
             <div key={item.step} className="flex items-start gap-4">
               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-sm font-black">

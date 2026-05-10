@@ -180,7 +180,7 @@ export default function Register() {
     }
 
     setGoogleLoading(true);
-    const { error } = await signInWithGoogle(role);
+    const { error } = await signInWithGoogle();
 
     if (error) {
       toast.error("Registrasi Google gagal", { description: error });
@@ -671,13 +671,52 @@ export default function Register() {
 
             {/* Password Rules */}
             {password.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", gridColumn: "1 / -1" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "4px",
+                  gridColumn: "1 / -1",
+                }}
+              >
                 {passwordRequirements.map((req, idx) => {
                   const isValid = req.regex.test(password);
                   return (
-                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10.5px", color: isValid ? "#16a34a" : "#666", fontWeight: isValid ? 600 : 400 }}>
-                      <div style={{ width: "14px", height: "14px", borderRadius: "50%", background: isValid ? "#dcfce7" : "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        {isValid ? <Check size={10} color="#16a34a" /> : <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#94a3b8" }} />}
+                    <div
+                      key={idx}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        fontSize: "10.5px",
+                        color: isValid ? "#16a34a" : "#666",
+                        fontWeight: isValid ? 600 : 400,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "14px",
+                          height: "14px",
+                          borderRadius: "50%",
+                          background: isValid ? "#dcfce7" : "#f1f5f9",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isValid ? (
+                          <Check size={10} color="#16a34a" />
+                        ) : (
+                          <div
+                            style={{
+                              width: "4px",
+                              height: "4px",
+                              borderRadius: "50%",
+                              background: "#94a3b8",
+                            }}
+                          />
+                        )}
                       </div>
                       {req.label}
                     </div>

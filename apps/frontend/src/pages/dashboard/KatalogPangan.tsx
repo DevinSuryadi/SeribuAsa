@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, memo, type ComponentType } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -22,12 +22,6 @@ import {
   RefreshCw,
   AlertCircle,
   Loader2,
-  Wheat,
-  Egg,
-  Milk,
-  Carrot,
-  Apple,
-  Package,
 } from "lucide-react";
 import { formatIDR } from "@/lib/format";
 import { getProducts, getCategories } from "@/services/products";
@@ -51,8 +45,6 @@ type Product = {
   vendor_id: string;
   images?: string[] | null;
 };
-
-
 
 // ── ModalProductDetail ─────────────────────────────────────────
 const ModalProductDetail = memo(function ModalProductDetail({

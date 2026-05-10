@@ -124,10 +124,7 @@ const OrderRow = memo(function OrderRow({
         <span className="text-[11px] font-mono text-muted-foreground truncate">
           #{order.id?.slice(0, 8).toUpperCase()}
         </span>
-        <Badge
-          variant="outline"
-          className={`mt-0.5 text-[9px] border gap-0.5 w-fit ${sc.cls}`}
-        >
+        <Badge variant="outline" className={`mt-0.5 text-[9px] border gap-0.5 w-fit ${sc.cls}`}>
           <StatusIcon className="h-2 w-2" aria-hidden="true" />
           {sc.label}
         </Badge>
@@ -245,8 +242,6 @@ export function OrdersTab() {
   const [reorderingOrderId, setReorderingOrderId] = useState<string | null>(null);
   const [qrOrderId, setQrOrderId] = useState<string | null>(null);
 
-  const handleShowQr = useCallback((id: string) => setQrOrderId(id), []);
-
   const loadOrders = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -336,14 +331,14 @@ export function OrdersTab() {
         {isLoading
           ? Array.from({ length: 6 }).map((_, i) => <OrderRowSkeleton key={i} />)
           : orders.map((order) => (
-            <OrderRow
-              key={order.id}
-              order={order}
-              onOrderClick={handleOrderClick}
-              onReorder={handleReorder}
-              reorderingId={reorderingOrderId}
-            />
-          ))}
+              <OrderRow
+                key={order.id}
+                order={order}
+                onOrderClick={handleOrderClick}
+                onReorder={handleReorder}
+                reorderingId={reorderingOrderId}
+              />
+            ))}
       </div>
 
       {/* ── Pagination ── */}
