@@ -26,16 +26,16 @@ export default function LupaSandi() {
 
   if (sent) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-        <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-8 text-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 mx-auto mb-4">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-8">
+        <div className="w-full max-w-sm sm:max-w-md rounded-2xl bg-white shadow-lg p-6 sm:p-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-100 mx-auto mb-4">
             <CheckCircle className="w-6 h-6 text-green-600" />
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Email Terkirim!</h2>
           <p className="text-sm text-gray-500 mb-6">
             Silakan cek inbox email <strong className="text-gray-700">{email}</strong> untuk tautan reset kata sandi.
           </p>
-          <Link to="/login" className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-700 font-medium">
+          <Link to="/login" className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-700 font-semibold">
             <ArrowLeft size={14} /> Kembali ke Masuk
           </Link>
         </div>
@@ -44,29 +44,17 @@ export default function LupaSandi() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-8">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-8">
+      <div className="w-full max-w-sm sm:max-w-md rounded-2xl bg-white shadow-lg p-6 sm:p-8">
+
         {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <img 
-            src={logo} 
-            alt="Logo" 
-            style={{ 
-              width: 100, 
-              height: 100, 
-              objectFit: 'contain',
-              marginTop: -10,
-            }} 
+        <div className="flex flex-col items-center mb-6">
+          <img
+            src={logo}
+            alt="Logo SeribuAsa"
+            className="w-20 h-20 object-contain"
           />
-          <h1 
-            className="text-xl font-bold" 
-            style={{ 
-              marginTop: -20,
-              color: "#346A43"
-            }}
-          >
-            SeribuAsa
-          </h1>
+          <h1 className="text-xl font-bold -mt-4" style={{ color: '#346A43' }}>SeribuAsa</h1>
         </div>
 
         <div className="text-center mb-6">
@@ -83,14 +71,14 @@ export default function LupaSandi() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-green-500 transition bg-gray-50 focus:bg-white"
+              className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-green-500 transition bg-gray-50 focus:bg-white"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-10 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 text-white hover:bg-green-700 shadow-sm"
+            className="w-full h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 text-white hover:bg-green-700 shadow-sm"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             Kirim Tautan Reset

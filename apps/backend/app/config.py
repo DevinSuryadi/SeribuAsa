@@ -9,16 +9,12 @@ from typing import Optional
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-ENV_FILES = (
-    str(BACKEND_DIR / ".env"),
-    str(PROJECT_ROOT / ".env"),
-    ".env",
-)
 
+# In Docker the path is short (/app/app/config.py) so parents[3] doesn't exist.
+# Fall back to the highest available parent (filesystem root) when running in containers.
+_parents = Path(__file__).resolve().parents
+PROJECT_ROOT = _parents[3] if len(_parents) > 3 else _parents[-1]
 
-BACKEND_DIR = Path(__file__).resolve().parents[1]
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ENV_FILES = (
     str(BACKEND_DIR / ".env"),
     str(PROJECT_ROOT / ".env"),

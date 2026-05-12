@@ -67,98 +67,35 @@ const Donasi = () => {
   const gridRef = useStaggerChildren({ stagger: 0.15 });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', position: 'relative', overflow: 'hidden' }}>
-
-      {/* Background */}
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 0,
-        background: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 65%)',
-        pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'fixed',
-        top: -60,
-        left: -100,
-        width: 500,
-        height: 500,
-        borderRadius: '50%',
-        background: 'rgba(34,197,94,0.06)',
-        filter: 'blur(70px)',
-        zIndex: 0,
-        pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        right: -80,
-        width: 420,
-        height: 420,
-        borderRadius: '50%',
-        background: 'rgba(74,222,128,0.06)',
-        filter: 'blur(70px)',
-        zIndex: 0,
-        pointerEvents: 'none',
-      }} />
+    <div className="min-h-screen bg-white relative overflow-hidden">
+      <div className="fixed inset-0 z-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 100% 50% at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 65%)' }}
+      />
+      <div className="fixed -top-16 -left-24 w-96 h-96 rounded-full pointer-events-none z-0"
+        style={{ background: 'rgba(34,197,94,0.06)', filter: 'blur(70px)' }}
+      />
 
       <Navbar />
 
-      <main style={{ paddingTop: 120, paddingBottom: 80, position: 'relative', zIndex: 1 }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+      <main className="pt-24 md:pt-28 pb-16 md:pb-20 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Header */}
-          <div ref={titleRef} style={{ textAlign: 'center', marginBottom: 48 }}>
-            <h1 style={{
-              fontSize: 'clamp(28px, 4vw, 48px)',
-              fontWeight: 800,
-              color: '#111',
-              letterSpacing: '-1px',
-              margin: 0,
-            }}>
+          <div ref={titleRef} className="text-center mb-10 md:mb-12">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">
               Paket Donasi
             </h1>
-            <p style={{
-              marginTop: 12,
-              fontSize: 15,
-              color: '#888',
-              maxWidth: 440,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              lineHeight: 1.7,
-            }}>
+            <p className="mt-3 text-sm sm:text-base text-gray-400 max-w-sm mx-auto leading-relaxed">
               Pilih cara Anda berkontribusi untuk nutrisi anak Indonesia.
             </p>
-
-            {/* Toggle */}
-            <div style={{
-              marginTop: 24,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: 4,
-              borderRadius: 999,
-              border: '1px solid rgba(0,0,0,0.09)',
-              background: 'rgba(255,255,255,0.8)',
-              backdropFilter: 'blur(8px)',
-            }}>
+            <div className="mt-6 inline-flex items-center gap-1 p-1 rounded-full border border-gray-200 bg-white/80 backdrop-blur-md">
               {['Bulanan', 'Sekali Donasi'].map((label) => {
                 const active = label === 'Bulanan' ? isMonthly : !isMonthly;
                 return (
                   <button
                     key={label}
                     onClick={() => setIsMonthly(label === 'Bulanan')}
-                    style={{
-                      padding: '7px 18px',
-                      borderRadius: 999,
-                      fontSize: 13,
-                      fontWeight: 500,
-                      border: 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      background: active ? '#16a34a' : 'transparent',
-                      color: active ? 'white' : '#666',
-                    }}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${active ? 'bg-green-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                   >
                     {label}
                   </button>
@@ -168,129 +105,43 @@ const Donasi = () => {
           </div>
 
           {/* Plans grid */}
-          <div
-            ref={gridRef}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: 20,
-              maxWidth: 960,
-              margin: '0 auto',
-            }}
-          >
+          <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
             {plans.map((plan) => (
               <div
                 key={plan.id}
-                style={{
-                  position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: 16,
-                  border: plan.popular ? '1.5px solid #16a34a' : '1px solid rgba(0,0,0,0.08)',
-                  background: 'rgba(255,255,255,0.85)',
-                  backdropFilter: 'blur(12px)',
-                  padding: '28px 24px 24px',
-                  boxShadow: plan.popular ? '0 4px 24px rgba(22,163,74,0.1)' : '0 1px 4px rgba(0,0,0,0.04)',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = plan.popular
-                    ? '0 8px 32px rgba(22,163,74,0.15)'
-                    : '0 8px 28px rgba(0,0,0,0.09)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = plan.popular
-                    ? '0 4px 24px rgba(22,163,74,0.1)'
-                    : '0 1px 4px rgba(0,0,0,0.04)';
-                }}
+                className={`relative flex flex-col rounded-2xl border bg-white/85 backdrop-blur-md p-6 transition-all duration-200 hover:-translate-y-1 ${plan.popular ? 'border-green-500 shadow-lg shadow-green-100' : 'border-gray-100 shadow-sm hover:shadow-md'}`}
               >
                 {plan.popular && (
-                  <div style={{
-                    position: 'absolute',
-                    top: -12,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    padding: '3px 14px',
-                    borderRadius: 999,
-                    background: '#16a34a',
-                    color: 'white',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                    letterSpacing: '0.03em',
-                  }}>
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs font-semibold px-4 py-1 rounded-full whitespace-nowrap">
                     Paling Populer
                   </div>
                 )}
-
-                <div style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: 'rgba(34,197,94,0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 14,
-                }}>
-                  <plan.icon style={{ width: 22, height: 22, color: '#16a34a' }} />
+                <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center mb-4">
+                  <plan.icon className="w-5 h-5 text-green-600" />
                 </div>
-
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{plan.name}</div>
-                <div style={{ marginTop: 4, fontSize: 13, color: '#999', lineHeight: 1.5 }}>{plan.desc}</div>
-
-                <div style={{ margin: '18px 0', paddingBottom: 18, borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                <div className="text-base font-bold text-gray-900">{plan.name}</div>
+                <div className="mt-1 text-sm text-gray-400 leading-relaxed">{plan.desc}</div>
+                <div className="my-4 pb-4 border-b border-gray-100">
                   {plan.price > 0 ? (
                     <>
-                      <span style={{ fontSize: 28, fontWeight: 800, color: '#111', letterSpacing: '-0.5px' }}>
-                        {formatIDR(plan.price)}
-                      </span>
-                      <span style={{ fontSize: 13, color: '#aaa', marginLeft: 4 }}>
-                        {isMonthly ? plan.period : ''}
-                      </span>
+                      <span className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{formatIDR(plan.price)}</span>
+                      <span className="text-sm text-gray-400 ml-1">{isMonthly ? plan.period : ''}</span>
                     </>
                   ) : (
-                    <span style={{ fontSize: 22, fontWeight: 700, color: '#111' }}>Hubungi Kami</span>
+                    <span className="text-xl font-bold text-gray-900">Hubungi Kami</span>
                   )}
                 </div>
-
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 20px', display: 'flex', flexDirection: 'column', gap: 9, flex: 1 }}>
+                <ul className="flex flex-col gap-2 mb-5 flex-1">
                   {plan.features.map((f) => (
-                    <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#666' }}>
-                      <Check style={{ width: 14, height: 14, color: '#16a34a', flexShrink: 0, marginTop: 1 }} />
+                    <li key={f} className="flex items-start gap-2 text-sm text-gray-500">
+                      <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
                       {f}
                     </li>
                   ))}
                 </ul>
-
                 <Link
                   to={plan.price > 0 ? `/donation/checkout?plan=${plan.id}&type=${isMonthly ? 'monthly' : 'once'}` : '/kontak'}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 7,
-                    padding: '11px 20px',
-                    borderRadius: 10,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                    transition: 'all 0.15s ease',
-                    background: plan.popular ? '#16a34a' : 'transparent',
-                    color: plan.popular ? 'white' : '#444',
-                    border: plan.popular ? 'none' : '1px solid rgba(0,0,0,0.12)',
-                    boxShadow: plan.popular ? '0 2px 10px rgba(22,163,74,0.2)' : 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = plan.popular ? '#15803d' : 'rgba(0,0,0,0.03)';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = plan.popular ? '#16a34a' : 'transparent';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-5 rounded-xl text-sm font-semibold transition-all duration-150 hover:-translate-y-0.5 ${plan.popular ? 'bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-200' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 >
                   {plan.price > 0 ? 'Pilih Paket' : 'Hubungi Tim'}
                   <ArrowRight size={14} strokeWidth={2.5} />
@@ -300,91 +151,38 @@ const Donasi = () => {
           </div>
 
           {/* Custom donation */}
-          <div style={{
-            maxWidth: 420,
-            margin: '48px auto 0',
-            borderRadius: 16,
-            border: '1px solid rgba(0,0,0,0.08)',
-            background: 'rgba(255,255,255,0.85)',
-            backdropFilter: 'blur(12px)',
-            padding: '28px 24px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-          }}>
-            <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>Donasi Jumlah Lainnya</div>
-              <div style={{ marginTop: 4, fontSize: 13, color: '#999' }}>Masukkan jumlah donasi sesuai keinginan Anda</div>
+          <div className="max-w-md mx-auto mt-12 rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md p-6 shadow-sm">
+            <div className="text-center mb-5">
+              <div className="text-base font-bold text-gray-900">Donasi Jumlah Lainnya</div>
+              <div className="mt-1 text-sm text-gray-400">Masukkan jumlah donasi sesuai keinginan Anda</div>
             </div>
-
-            <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>
-              Jumlah (IDR)
-            </label>
+            <label className="block text-sm font-medium text-gray-600 mb-1.5">Jumlah (IDR)</label>
             <input
               type="number"
               placeholder="Contoh: 100000"
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: 9,
-                border: '1px solid rgba(0,0,0,0.12)',
-                fontSize: 14,
-                color: '#111',
-                outline: 'none',
-                boxSizing: 'border-box',
-                background: 'rgba(255,255,255,0.9)',
-                transition: 'border-color 0.15s ease',
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = '#16a34a')}
-              onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)')}
+              className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none bg-white transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
             />
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+            <div className="flex flex-wrap gap-2 mt-3">
               {quickAmounts.map((amt) => (
                 <button
                   key={amt}
                   onClick={() => setCustomAmount(String(amt))}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: 999,
-                    border: customAmount === String(amt) ? '1px solid #16a34a' : '1px solid rgba(0,0,0,0.1)',
-                    background: customAmount === String(amt) ? 'rgba(34,197,94,0.07)' : 'transparent',
-                    color: customAmount === String(amt) ? '#16a34a' : '#666',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${customAmount === String(amt) ? 'border-green-500 bg-green-50 text-green-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
                 >
                   {formatIDR(amt)}
                 </button>
               ))}
             </div>
-
             <Link
               to={customAmount ? `/donation/checkout?amount=${customAmount}&type=${isMonthly ? 'monthly' : 'once'}` : '#'}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                marginTop: 16,
-                padding: '12px',
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 600,
-                textDecoration: 'none',
-                cursor: customAmount ? 'pointer' : 'not-allowed',
-                background: customAmount ? '#16a34a' : 'rgba(0,0,0,0.06)',
-                color: customAmount ? 'white' : '#bbb',
-                transition: 'all 0.15s ease',
-                boxShadow: customAmount ? '0 2px 10px rgba(22,163,74,0.2)' : 'none',
-              }}
+              className={`flex items-center justify-center w-full mt-4 py-3 rounded-xl text-sm font-semibold transition-all ${customAmount ? 'bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-200' : 'bg-gray-100 text-gray-300 cursor-not-allowed pointer-events-none'}`}
             >
               Donasi Sekarang
             </Link>
           </div>
-          
+
         </div>
       </main>
       <Footer />

@@ -32,94 +32,40 @@ const ResetPassword = () => {
     }
   };
 
-  const cardStyle = {
-    width: '100%',
-    maxWidth: 420,
-    borderRadius: 16,
-    border: '1px solid rgba(0,0,0,0.08)',
-    background: 'rgba(255,255,255,0.85)',
-    backdropFilter: 'blur(12px)',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-    padding: '36px 32px',
-  };
-
   if (success) {
     return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', background: '#fff', padding: '0 24px',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 65%)',
-        }} />
-        <div style={{ ...cardStyle, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-          <CheckCircle style={{ width: 48, height: 48, color: '#16a34a', margin: '0 auto 16px' }} />
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#111', marginBottom: 8 }}>
-            Kata Sandi Diperbarui!
-          </div>
-          <p style={{ fontSize: 14, color: '#888', margin: 0 }}>
-            Anda akan diarahkan ke halaman masuk...
-          </p>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-8">
+        <div className="w-full max-w-sm sm:max-w-md rounded-2xl border border-gray-100 bg-white shadow-lg p-6 sm:p-8 text-center">
+          <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
+          <div className="text-lg font-bold text-gray-900 mb-2">Kata Sandi Diperbarui!</div>
+          <p className="text-sm text-gray-400">Anda akan diarahkan ke halaman masuk...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: '#fff', padding: '0 24px',
-      position: 'relative', overflow: 'hidden',
-    }}>
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 65%)',
-      }} />
-      <div style={{
-        position: 'absolute', top: -60, left: -100, pointerEvents: 'none',
-        width: 400, height: 400, borderRadius: '50%',
-        background: 'rgba(34,197,94,0.06)', filter: 'blur(80px)',
-      }} />
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-8">
+      <div className="w-full max-w-sm sm:max-w-md rounded-2xl border border-gray-100 bg-white shadow-lg p-6 sm:p-8">
 
-      <div style={{ ...cardStyle, position: 'relative', zIndex: 1 }}>
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div className="flex flex-col items-center mb-8">
-          <img 
-            src={logo} 
-            alt="Logo" 
-            style={{ 
-              width: 100, 
-              height: 100, 
-              objectFit: 'contain',
-              marginTop: -10,
-            }} 
+        <div className="flex flex-col items-center mb-6">
+          <img
+            src={logo}
+            alt="Logo SeribuAsa"
+            className="w-20 h-20 object-contain"
           />
-          <h1 
-            className="text-xl font-bold" 
-            style={{ 
-              marginTop: -20,
-              color: "#346A43"
-            }}
-          >
-            SeribuAsa
-          </h1>
-        </div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#111', letterSpacing: '-0.3px' }}>
-            Reset Kata Sandi
-          </div>
-          <p style={{ marginTop: 4, fontSize: 13, color: '#888' }}>
-            Masukkan kata sandi baru Anda
-          </p>
+          <h1 className="text-xl font-bold -mt-4" style={{ color: '#346A43' }}>SeribuAsa</h1>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="text-center mb-6">
+          <div className="text-lg font-bold text-gray-900">Reset Kata Sandi</div>
+          <p className="mt-1 text-sm text-gray-400">Masukkan kata sandi baru Anda</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>
-              Kata Sandi Baru
-            </label>
+            <label className="text-sm font-medium text-gray-600 block mb-1.5">Kata Sandi Baru</label>
             <input
               id="password"
               type="password"
@@ -128,48 +74,20 @@ const ResetPassword = () => {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: '100%', height: 42, padding: '0 12px', borderRadius: 8,
-                border: '1px solid rgba(0,0,0,0.12)', fontSize: 14, color: '#111',
-                outline: 'none', boxSizing: 'border-box', background: '#fafafa',
-                transition: 'all 0.15s ease',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#16a34a';
-                e.currentTarget.style.background = 'white';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)';
-                e.currentTarget.style.background = '#fafafa';
-              }}
+              className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 outline-none bg-gray-50 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 transition"
             />
           </div>
 
           {error && (
-            <p style={{ fontSize: 13, color: '#ef4444', margin: 0 }}>{error}</p>
+            <p className="text-sm text-red-500">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: '100%', padding: '12px', borderRadius: 9, border: 'none',
-              fontSize: 14, fontWeight: 600,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              background: loading ? 'rgba(0,0,0,0.06)' : '#16a34a',
-              color: loading ? '#bbb' : 'white',
-              transition: 'all 0.15s ease',
-              boxShadow: loading ? 'none' : '0 2px 10px rgba(22,163,74,0.2)',
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) e.currentTarget.style.background = '#15803d';
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) e.currentTarget.style.background = '#16a34a';
-            }}
+            className={`w-full h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${loading ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700 shadow-sm hover:-translate-y-0.5'}`}
           >
-            {loading && <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} />}
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             Perbarui Kata Sandi
           </button>
         </form>

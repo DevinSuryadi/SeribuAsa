@@ -193,12 +193,12 @@ function CheckoutPage() {
 
         {/* Actions */}
         {!flow.isLoading && (
-          <div className="flex items-center justify-between pt-6 border-t border-border">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-border">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowCancelDialog(true)}
-              className="gap-1.5"
+              className="gap-1.5 w-full sm:w-auto"
             >
               <ArrowLeft className="h-4 w-4" />
               Kembali ke Keranjang
@@ -207,7 +207,7 @@ function CheckoutPage() {
             <Button
               onClick={handleConfirmOrder}
               disabled={flow.isSubmitting || flow.cartItems.length === 0 || !!stockError}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 min-w-[180px] h-10 font-semibold shadow-sm shadow-emerald-900/20"
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 w-full sm:min-w-[180px] h-11 font-semibold shadow-sm shadow-emerald-900/20"
             >
               {flow.isSubmitting ? (
                 <>

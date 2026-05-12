@@ -16,21 +16,18 @@ export default function Masuk() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Email validation with regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       toast.error("Email tidak valid", { description: "Masukkan email dengan format yang benar (contoh: nama@email.com)" })
       return
     }
 
-    // Password validation
     if (password.length < 6) {
       toast.error("Password terlalu pendek", { description: "Password minimal 6 karakter" })
       return
     }
 
     setLoading(true)
-
     const { error } = await signIn(email, password)
 
     if (error) {
@@ -43,68 +40,55 @@ export default function Masuk() {
     navigate("/dashboard")
   }
 
-
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-8">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-8">
+      <div className="w-full max-w-sm sm:max-w-md rounded-2xl bg-white shadow-lg p-6 sm:p-8">
+
         {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-            <img 
-              src={logo} 
-              alt="Logo" 
-              style={{ 
-              width: 100, 
-              height: 100, 
-              objectFit: 'contain',
-              marginTop: -10, 
-              }} 
-            />
-          <h1 className="text-xl font-bold mt-2 "
-              style={{
-                marginTop: -23,
-                marginBottom: -17,
-                color: '#346A43'
-              }}> SeribuAsa </h1>
+        <div className="flex flex-col items-center mb-6">
+          <img
+            src={logo}
+            alt="Logo SeribuAsa"
+            className="w-20 h-20 object-contain"
+          />
+          <h1 className="text-xl font-bold -mt-4" style={{ color: '#346A43' }}>SeribuAsa</h1>
         </div>
 
         {/* Title */}
-        <h2 className="text-2xl font-semibold text-center mb-1">Masuk ke Akun</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-center text-gray-900 mb-1">Masuk ke Akun</h2>
         <p className="text-sm text-gray-500 text-center mb-6">Masukkan email dan kata sandi Anda</p>
-
-
 
         {/* Form */}
         <form className="space-y-4" onSubmit={handleSubmit}>
           {/* Email */}
           <div>
-            <label className="text-sm font-medium">Email</label>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@contoh.com"
               required
-              className="w-full mt-1 border rounded-md px-3 py-2 focus:outline-none focus:ring focus:ring-green-300"
+              className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-green-500 transition bg-gray-50 focus:bg-white"
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="text-sm font-medium">Kata Sandi</label>
-            <div className="relative mt-1">
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">Kata Sandi</label>
+            <div className="relative">
               <input
                 type={showPw ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full border rounded-md px-3 py-2 pr-10 focus:outline-none focus:ring focus:ring-green-300"
+                className="w-full h-11 px-3 pr-11 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-green-500 transition bg-gray-50 focus:bg-white"
               />
               <button
                 type="button"
                 onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-2.5 text-gray-500"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
               >
                 {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -113,7 +97,7 @@ export default function Masuk() {
 
           {/* Forgot password */}
           <p className="text-right">
-            <Link to="/lupa-sandi" className="text-sm text-green-600 hover:underline">
+            <Link to="/lupa-sandi" className="text-sm text-green-600 hover:underline font-medium">
               Lupa kata sandi?
             </Link>
           </p>
@@ -122,7 +106,7 @@ export default function Masuk() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full h-11 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
           >
             {loading ? (
               <>
@@ -138,7 +122,7 @@ export default function Masuk() {
         {/* Register */}
         <p className="text-sm text-center text-gray-500 mt-6">
           Belum punya akun?{" "}
-          <Link to="/register" className="text-green-600 font-medium">
+          <Link to="/register" className="text-green-600 font-semibold hover:underline">
             Daftar sekarang
           </Link>
         </p>

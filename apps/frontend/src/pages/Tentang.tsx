@@ -14,9 +14,9 @@ const faqs = [
 ];
 
 const values = [
-  {title: 'Misi', desc: 'Menghapus kerawanan pangan melalui distribusi bantuan nutrisi yang tepat sasaran, terukur, dan transparan.' },
-  {title: 'Visi', desc: 'Indonesia di mana setiap anak, ibu hamil, dan keluarga rentan terjamin akses pangannya.' },
-  {title: 'Nilai', desc: 'Transparansi, keadilan distribusi, berbasis data, dan keberlanjutan dampak.' },
+  { title: 'Misi', desc: 'Menghapus kerawanan pangan melalui distribusi bantuan nutrisi yang tepat sasaran, terukur, dan transparan.' },
+  { title: 'Visi', desc: 'Indonesia di mana setiap anak, ibu hamil, dan keluarga rentan terjamin akses pangannya.' },
+  { title: 'Nilai', desc: 'Transparansi, keadilan distribusi, berbasis data, dan keberlanjutan dampak.' },
 ];
 
 const Tentang = () => {
@@ -30,144 +30,69 @@ const Tentang = () => {
   const contactRef = useScrollReveal({ y: 30 });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', position: 'relative', overflow: 'hidden' }}>
-
-      {/* Background */}
-      <div style={{
-        position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 65%)',
-      }} />
-      <div style={{
-        position: 'absolute', top: -60, left: -100, zIndex: 0, pointerEvents: 'none',
-        width: 500, height: 500, borderRadius: '50%',
-        background: 'rgba(34,197,94,0.06)', filter: 'blur(90px)',
-      }} />
-      <div style={{
-        position: 'absolute', bottom: 0, right: -80, zIndex: 0, pointerEvents: 'none',
-        width: 420, height: 420, borderRadius: '50%',
-        background: 'rgba(74,222,128,0.06)', filter: 'blur(80px)',
-      }} />
+    <div className="min-h-screen bg-white relative overflow-hidden">
+      <div className="absolute inset-0 z-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.08) 0%, transparent 65%)' }}
+      />
+      <div className="absolute -top-16 -left-24 w-96 h-96 rounded-full pointer-events-none z-0"
+        style={{ background: 'rgba(34,197,94,0.06)', filter: 'blur(90px)' }}
+      />
 
       <Navbar />
 
-      <main style={{ paddingTop: 120, paddingBottom: 80, position: 'relative', zIndex: 1 }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+      <main className="pt-24 md:pt-28 pb-16 md:pb-20 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Hero */}
-          <div ref={heroRef} style={{ textAlign: 'center', marginBottom: 72 }}>
-            <h1 style={{
-              fontSize: 'clamp(28px, 4vw, 52px)', fontWeight: 800, color: '#111',
-              letterSpacing: '-1.5px', margin: 0,
-            }}>
-              Tentang <span style={{ color: '#16a34a' }}>SeribuAsa</span>
+          <div ref={heroRef} className="text-center mb-14 md:mb-20">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight">
+              Tentang <span className="text-green-600">SeribuAsa</span>
             </h1>
-            <p style={{
-              marginTop: 16, fontSize: 16, color: '#888',
-              maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.75,
-            }}>
-              Platform digital yang memastikan setiap keluarga Indonesia mendapat
-              akses pangan bergizi yang layak dan terukur.
+            <p className="mt-4 text-sm sm:text-base text-gray-400 max-w-md mx-auto leading-relaxed">
+              Platform digital yang memastikan setiap keluarga Indonesia mendapat akses pangan bergizi yang layak dan terukur.
             </p>
           </div>
 
-          {/* Values */}
-          <div
-            ref={missionRef}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: 30, maxWidth: 900, margin: '0 auto 80px',
-            }}
-          >
+          {/* Values — 1 col mobile, 3 on md+ */}
+          <div ref={missionRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-3xl mx-auto mb-16 md:mb-20">
             {values.map((item) => (
               <div
                 key={item.title}
-                style={{
-                  borderRadius: 12,
-                  border: '1px solid rgba(0,0,0,0.08)',
-                  background: 'rgba(255,255,255,0.85)',
-                  backdropFilter: 'blur(12px)',
-                  padding: '28px 24px',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.09)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
+                className="rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
               >
-                <div style={{
-                  fontSize: 11, fontWeight: 700, color: '#16a34a',
-                  letterSpacing: '0.1em', marginBottom: 12,
-                }}>
-                </div>
-                <div style={{ fontSize: 25, fontWeight: 700, color: '#007800', marginBottom: 8 }}>
-                  {item.title}
-                </div>
-                <p style={{ fontSize: 14, color: '#888', lineHeight: 1.65, margin: 0 }}>
-                  {item.desc}
-                </p>
+                <div className="text-2xl font-bold text-green-700 mb-2">{item.title}</div>
+                <p className="text-sm text-gray-400 leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
 
           {/* FAQ */}
-          <div ref={faqRef} style={{ maxWidth: 680, margin: '0 auto 80px' }}>
-            <h2 style={{
-              fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 700, color: '#111',
-              textAlign: 'center', letterSpacing: '-0.5px', margin: '0 0 32px',
-            }}>
+          <div ref={faqRef} className="max-w-2xl mx-auto mb-16 md:mb-20">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center tracking-tight mb-8">
               Pertanyaan Umum
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="flex flex-col gap-2">
               {faqs.map((faq, i) => {
                 const key = `item-${i}`;
                 const isOpen = openFaq === key;
                 return (
-                  <div
-                    key={key}
-                    style={{
-                      borderRadius: 12,
-                      border: '1px solid rgba(0,0,0,0.08)',
-                      background: 'rgba(255,255,255,0.85)',
-                      backdropFilter: 'blur(8px)',
-                      overflow: 'hidden',
-                    }}
-                  >
+                  <div key={key} className="rounded-xl border border-gray-100 bg-white/85 backdrop-blur-md overflow-hidden">
                     <button
                       onClick={() => setOpenFaq(isOpen ? null : key)}
-                      style={{
-                        width: '100%', display: 'flex', alignItems: 'center',
-                        justifyContent: 'space-between', gap: 12,
-                        padding: '16px 20px', background: 'transparent',
-                        border: 'none', cursor: 'pointer', textAlign: 'left',
-                      }}
+                      className="w-full flex items-center justify-between gap-3 px-5 py-4 bg-transparent border-none cursor-pointer text-left"
                     >
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#111', lineHeight: 1.5 }}>
-                        {faq.q}
-                      </span>
+                      <span className="text-sm font-semibold text-gray-900 leading-snug">{faq.q}</span>
                       <ChevronDown
                         size={16}
-                        style={{
-                          color: '#16a34a', flexShrink: 0,
-                          transition: 'transform 0.2s ease',
-                          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                        }}
+                        className="text-green-600 shrink-0 transition-transform duration-200"
+                        style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
                       />
                     </button>
-                    <div style={{
-                      maxHeight: isOpen ? 300 : 0,
-                      overflow: 'hidden',
-                      transition: 'max-height 0.3s ease',
-                    }}>
-                      <div style={{
-                        padding: '14px 20px 16px',
-                        borderTop: '1px solid rgba(0,0,0,0.06)',
-                        fontSize: 13, color: '#777', lineHeight: 1.7,
-                      }}>
+                    <div
+                      className="overflow-hidden transition-all duration-300"
+                      style={{ maxHeight: isOpen ? 300 : 0 }}
+                    >
+                      <div className="px-5 pb-4 pt-3 border-t border-gray-100 text-sm text-gray-500 leading-relaxed">
                         {faq.a}
                       </div>
                     </div>
@@ -177,118 +102,61 @@ const Tentang = () => {
             </div>
           </div>
 
-          {/* Contact */}
-          <div ref={contactRef} style={{ maxWidth: 780, margin: '0 auto' }}>
-            <h2 style={{
-              fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 700, color: '#111',
-              textAlign: 'center', letterSpacing: '-0.5px', margin: '0 0 32px',
-            }}>
+          {/* Contact — stacks on mobile, side-by-side on md+ */}
+          <div ref={contactRef} className="max-w-3xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center tracking-tight mb-8">
               Hubungi Kami
             </h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 32 }}>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-8">
               {/* Info */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div className="flex flex-col gap-5">
                 {[
                   { icon: Mail, label: 'Email', value: 'info@seribuasa.id' },
                   { icon: Phone, label: 'Telepon', value: '(021) 1234-5678' },
                   { icon: MapPin, label: 'Alamat', value: 'Jl. Sudirman No. 123, Jakarta Pusat 10110' },
                 ].map((item) => (
-                  <div key={item.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: 10,
-                      background: 'rgba(34,197,94,0.08)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <item.icon style={{ width: 16, height: 16, color: '#16a34a' }} />
+                  <div key={item.label} className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                      <item.icon className="w-4 h-4 text-green-600" />
                     </div>
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#999', marginBottom: 2 }}>{item.label}</div>
-                      <div style={{ fontSize: 14, color: '#333' }}>{item.value}</div>
+                      <div className="text-xs font-semibold text-gray-400 mb-0.5">{item.label}</div>
+                      <div className="text-sm text-gray-700">{item.value}</div>
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Form */}
-              <div style={{
-                borderRadius: 12,
-                border: '1px solid rgba(0,0,0,0.08)',
-                background: 'rgba(255,255,255,0.85)',
-                backdropFilter: 'blur(12px)',
-                padding: 24,
-                display: 'flex', flexDirection: 'column', gap: 14,
-              }}>
+              <div className="rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md p-5 flex flex-col gap-4">
                 {[
                   { id: 'name', label: 'Nama', type: 'text', placeholder: 'Nama lengkap' },
                   { id: 'email', label: 'Email', type: 'email', placeholder: 'email@contoh.com' },
                 ].map((field) => (
                   <div key={field.id}>
-                    <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>
-                      {field.label}
-                    </label>
+                    <label className="block text-sm font-medium text-gray-600 mb-1.5">{field.label}</label>
                     <input
                       type={field.type}
                       placeholder={field.placeholder}
                       value={form[field.id as 'name' | 'email']}
                       onChange={(e) => setForm({ ...form, [field.id]: e.target.value })}
-                      style={{
-                        width: '100%', height: 40, padding: '0 12px', borderRadius: 6,
-                        border: '1px solid rgba(0,0,0,0.12)', fontSize: 14, color: '#111',
-                        outline: 'none', boxSizing: 'border-box', background: 'white',
-                        transition: 'border-color 0.15s ease',
-                      }}
-                      onFocus={(e) => (e.currentTarget.style.borderColor = '#16a34a')}
-                      onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)')}
+                      className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none bg-white transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
                     />
                   </div>
                 ))}
-
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: '#555', display: 'block', marginBottom: 6 }}>
-                    Pesan
-                  </label>
+                  <label className="block text-sm font-medium text-gray-600 mb-1.5">Pesan</label>
                   <textarea
                     placeholder="Tulis pesan Anda..."
                     rows={4}
                     value={form.msg}
                     onChange={(e) => setForm({ ...form, msg: e.target.value })}
-                    style={{
-                      width: '100%', padding: '8px 12px', borderRadius: 6,
-                      border: '1px solid rgba(0,0,0,0.12)', fontSize: 14, color: '#111',
-                      outline: 'none', boxSizing: 'border-box', background: 'white',
-                      resize: 'vertical', fontFamily: 'inherit',
-                      transition: 'border-color 0.15s ease',
-                    }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = '#16a34a')}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)')}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none bg-white transition focus:border-green-500 focus:ring-2 focus:ring-green-100 resize-y font-inherit"
                   />
                 </div>
-
                 <button
                   disabled={!filled}
-                  style={{
-                    width: '100%', padding: '10px', borderRadius: 8, border: 'none',
-                    fontSize: 14, fontWeight: 600,
-                    cursor: filled ? 'pointer' : 'not-allowed',
-                    background: filled ? '#16a34a' : 'rgba(0,0,0,0.06)',
-                    color: filled ? 'white' : '#bbb',
-                    transition: 'all 0.15s ease',
-                    boxShadow: filled ? '0 2px 10px rgba(22,163,74,0.2)' : 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (filled) {
-                      e.currentTarget.style.background = '#15803d';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (filled) {
-                      e.currentTarget.style.background = '#16a34a';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }
-                  }}
+                  className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${filled ? 'bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-200 hover:-translate-y-0.5' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
                 >
                   Kirim Pesan
                 </button>
