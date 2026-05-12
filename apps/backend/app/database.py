@@ -44,20 +44,23 @@ def _build_engine():
     if IS_SQLITE:
         return _create_sqlite_engine(DATABASE_URL)
 
-    # Production: require PostgreSQL connection
+    # Production: create PostgreSQL engine without eager connection test.
+    # pool_pre_ping=True ensures stale connections are recycled on use.
+    # This allows the app to start even if the DB is momentarily unreachable;
+    # requests will fail gracefully until the DB becomes available.
     pg_engine = _create_postgres_engine(DATABASE_URL)
     try:
         with pg_engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         logger.info("Connected to PostgreSQL database successfully")
-        return pg_engine
     except Exception as exc:
-        pg_engine.dispose()
-        logger.error("PostgreSQL connection failed: %s", exc)
-        raise RuntimeError(
-            f"PostgreSQL is unreachable ({exc}). "
-            "Please check DATABASE_URL and ensure the database is available."
-        ) from exc
+        # Log the error but do NOT crash the app — let it start and retry on requests.
+        logger.warning(
+            "PostgreSQL connection test failed at startup: %s. "
+            "The app will start anyway and retry connections on incoming requests.",
+            exc,
+        )
+    return pg_engine
 
 
 engine = _build_engine()
