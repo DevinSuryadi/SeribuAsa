@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NutriGuard API", version="1.0.0")
 
-# CORS configuration for local development.
+# CORS configuration.
 # Merge .env-configured origins with common frontend dev origins.
 configured_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
 DEV_ORIGINS = list(dict.fromkeys(configured_origins + [
@@ -33,16 +33,28 @@ DEV_ORIGINS = list(dict.fromkeys(configured_origins + [
     "http://0.0.0.0:3000",
 ]))
 
+# Regex covers:
+# - Local dev (http + https, any port)
+# - Any Vercel deployment (*.vercel.app)
+# - Any Railway deployment (*.up.railway.app)
+ALLOWED_ORIGIN_REGEX = (
+    r"https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?"
+    r"|https://[a-zA-Z0-9-]+-[a-zA-Z0-9-]+\.vercel\.app"
+    r"|https://[a-zA-Z0-9-]+\.vercel\.app"
+    r"|https://[a-zA-Z0-9-]+\.up\.railway\.app"
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=DEV_ORIGINS,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+):(\d+)",
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
     max_age=3600,
 )
+
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
