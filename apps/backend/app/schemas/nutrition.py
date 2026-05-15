@@ -98,3 +98,34 @@ class NutritionLatestMeasurementResponse(BaseModel):
     child_id: UUID
     child_name: str
     measurement: NutritionMeasurementResponse
+
+
+# ============================================
+# Stunting Risk Prediction Schemas
+# ============================================
+class DominantFactor(BaseModel):
+    name: str
+    label: str
+    value: float
+    contribution: float
+    direction: str  # "risk" | "protective"
+
+
+class StuntingRiskResponse(BaseModel):
+    id: Optional[UUID] = None
+    child_id: UUID
+    measurement_id: Optional[UUID] = None
+    risk_score: float
+    risk_level: str  # "low" | "medium" | "high"
+    horizon_months: int
+    model_version: str
+    dominant_factors: List[DominantFactor] = []
+    features: Optional[Dict[str, Any]] = None
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StuntingRiskWithChild(BaseModel):
+    child: ChildInfo
+    prediction: StuntingRiskResponse

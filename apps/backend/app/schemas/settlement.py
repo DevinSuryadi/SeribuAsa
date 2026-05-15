@@ -31,21 +31,12 @@ class SettlementResponse(BaseModel):
     total_redemptions: Decimal = Field(ge=0, decimal_places=2)
     admin_fee: Decimal = Field(ge=0, decimal_places=2)
     net_amount: Decimal = Field(ge=0, decimal_places=2)
-    status: Literal["calculating", "ready", "paid", "cancelled"] = "calculating"
+    status: Literal["calculating", "ready", "processing", "paid", "cancelled"] = "calculating"
     payout_date: Optional[date] = None
     bank_transfer_reference: Optional[str] = Field(default=None, max_length=255)
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-    @field_validator("net_amount", mode="before")
-    @classmethod
-    def validate_net_amount(cls, v, info):
-        if info.data.get("total_redemptions") is not None and info.data.get("admin_fee") is not None:
-            expected = info.data["total_redemptions"] - info.data["admin_fee"]
-            if Decimal(str(v)) != expected:
-                raise ValueError("net_amount must equal total_redemptions - admin_fee")
-        return v
 
 
 class SettlementDetailResponse(SettlementResponse):
@@ -132,7 +123,7 @@ class SettlementExportResponse(BaseModel):
 class SettlementQueryParams(BaseModel):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
-    status: Optional[Literal["calculating", "ready", "paid", "cancelled"]] = None
+    status: Optional[Literal["calculating", "ready", "processing", "paid", "cancelled"]] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
 

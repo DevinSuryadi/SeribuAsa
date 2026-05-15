@@ -1,21 +1,68 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../integrations/supabase/client';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2, CheckCircle, Check, X } from 'lucide-react';
 import logo from '@/assets/logo.svg'
+
+interface PasswordValidation {
+  minLength: boolean;
+  hasUppercase: boolean;
+  hasNumber: boolean;
+  hasSpecialChar: boolean;
+}
+
+const validatePassword = (password: string): PasswordValidation => {
+  return {
+    minLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+  };
+};
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
   const navigate = useNavigate();
 
+  // tokenValid is used by the conditional rendering in the return (Task 3.5 will add token gating UI)
+  void tokenValid;
+
+  const passwordsMatch = password === confirmPassword;
+  const passwordValidation = validatePassword(password);
+  const meetsStrengthRequirements = passwordValidation.minLength && passwordValidation.hasUppercase && passwordValidation.hasNumber && passwordValidation.hasSpecialChar;
+  const isFormValid = password.length > 0 && confirmPassword.length > 0 && passwordsMatch && meetsStrengthRequirements;
+
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && hash.includes('type=recovery')) {
-      // Supabase handles token exchange automatically
-    }
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setTokenValid(true);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      }
+    });
+
+    timeoutId = setTimeout(() => {
+      setTokenValid((current) => {
+        if (current === null) return false;
+        return current;
+      });
+    }, 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,14 +116,76 @@ const ResetPassword = () => {
             <input
               id="password"
               type="password"
-              placeholder="Min. 6 karakter"
+              placeholder="Min. 8 karakter"
               required
-              minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 outline-none bg-gray-50 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 transition"
             />
           </div>
+
+          {/* Password strength checklist */}
+          {password.length > 0 && (
+            <ul className="text-sm space-y-1">
+              <li className="flex items-center gap-1.5">
+                {passwordValidation.minLength ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <X className="w-4 h-4 text-gray-400" />
+                )}
+                <span className={passwordValidation.minLength ? 'text-green-600' : 'text-gray-400'}>
+                  Minimal 8 karakter
+                </span>
+              </li>
+              <li className="flex items-center gap-1.5">
+                {passwordValidation.hasUppercase ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <X className="w-4 h-4 text-gray-400" />
+                )}
+                <span className={passwordValidation.hasUppercase ? 'text-green-600' : 'text-gray-400'}>
+                  Huruf besar (A-Z)
+                </span>
+              </li>
+              <li className="flex items-center gap-1.5">
+                {passwordValidation.hasNumber ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <X className="w-4 h-4 text-gray-400" />
+                )}
+                <span className={passwordValidation.hasNumber ? 'text-green-600' : 'text-gray-400'}>
+                  Angka (0-9)
+                </span>
+              </li>
+              <li className="flex items-center gap-1.5">
+                {passwordValidation.hasSpecialChar ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <X className="w-4 h-4 text-gray-400" />
+                )}
+                <span className={passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-gray-400'}>
+                  Karakter khusus (!@#$%^&*...)
+                </span>
+              </li>
+            </ul>
+          )}
+
+          <div>
+            <label className="text-sm font-medium text-gray-600 block mb-1.5">Konfirmasi Kata Sandi Baru</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              placeholder="Masukkan ulang kata sandi"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm text-gray-900 outline-none bg-gray-50 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 transition"
+            />
+          </div>
+
+          {confirmPassword.length > 0 && !passwordsMatch && (
+            <p className="text-sm text-red-500">Kata sandi tidak cocok</p>
+          )}
 
           {error && (
             <p className="text-sm text-red-500">{error}</p>
@@ -84,8 +193,8 @@ const ResetPassword = () => {
 
           <button
             type="submit"
-            disabled={loading}
-            className={`w-full h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${loading ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700 shadow-sm hover:-translate-y-0.5'}`}
+            disabled={loading || !isFormValid}
+            className={`w-full h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${loading || !isFormValid ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700 shadow-sm hover:-translate-y-0.5'}`}
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             Perbarui Kata Sandi

@@ -45,7 +45,7 @@ interface VendorProfile {
   bank_account_holder?: string;
 }
 
-type ViewFilter = "all" | "paid" | "ready" | "pending";
+type ViewFilter = "all" | "paid" | "ready" | "processing" | "calculating";
 
 type StatCardProps = {
   title: string;
@@ -222,7 +222,7 @@ const VendorSettlement = () => {
     if (report?.summary?.pending_count) return report.summary.pending_count;
 
     return settlements.filter(
-      (s) => s.status === "ready" || s.status === "pending"
+      (s) => s.status === "ready" || s.status === "processing" || s.status === "calculating"
     ).length;
   }, [report, settlements]);
 
@@ -230,7 +230,7 @@ const VendorSettlement = () => {
     if (report?.summary?.pending_amount) return report.summary.pending_amount;
 
     return settlements
-      .filter((s) => s.status === "ready" || s.status === "pending")
+      .filter((s) => s.status === "ready" || s.status === "processing" || s.status === "calculating")
       .reduce((a, b) => a + (b.net_amount || 0), 0);
   }, [report, settlements]);
 
@@ -455,7 +455,7 @@ const VendorSettlement = () => {
                   { label: "Semua", value: "all" as ViewFilter },
                   { label: "Sudah Cair", value: "paid" as ViewFilter },
                   { label: "Siap Cair", value: "ready" as ViewFilter },
-                  { label: "Menunggu", value: "pending" as ViewFilter },
+                  { label: "Diproses", value: "processing" as ViewFilter },
                 ].map((item) => (
                   <button
                     key={item.value}

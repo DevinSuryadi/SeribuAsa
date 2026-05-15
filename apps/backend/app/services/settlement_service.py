@@ -42,7 +42,13 @@ class SettlementService:
         if params.end_date:
             query = query.filter(Settlement.period_start <= params.end_date)
 
-        return query.order_by(Settlement.period_end.desc()).all()
+        offset = (params.page - 1) * params.page_size
+        return (
+            query.order_by(Settlement.period_end.desc())
+            .offset(offset)
+            .limit(params.page_size)
+            .all()
+        )
 
     @staticmethod
     def get_settlements_count(

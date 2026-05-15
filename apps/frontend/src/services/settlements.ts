@@ -9,7 +9,7 @@ export interface Settlement {
   total_redemptions: number;
   admin_fee: number;
   net_amount: number;
-  status: "ready" | "paid" | "pending";
+  status: "calculating" | "ready" | "processing" | "paid" | "cancelled";
   payout_date?: string;
   bank_transfer_reference?: string;
   created_at: string;

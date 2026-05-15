@@ -10,6 +10,7 @@ from datetime import date, datetime
 from app.database import get_db
 from app.services.settlement_service import SettlementService
 from app.middleware.auth import get_current_user, AuthenticatedUser, RequireRole
+from app.models.nutrition import SettlementStatusEnum
 from app.schemas.settlement import (
     SettlementResponse,
     SettlementDetailResponse,
@@ -138,7 +139,7 @@ async def request_settlement_payout(
             detail=f"Cannot request payout for settlement with status: {settlement.status}",
         )
 
-    settlement.status = "processing"
+    settlement.status = SettlementStatusEnum.processing
     settlement.updated_at = datetime.now()
     db.add(settlement)
     db.commit()
@@ -172,10 +173,10 @@ async def mark_settlement_paid(
             detail="Settlement not found",
         )
 
-    if settlement.status != "ready":
+    if settlement.status not in ("ready", "processing"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Settlement must be in 'ready' status, current status: {settlement.status}",
+            detail=f"Settlement must be in 'ready' or 'processing' status, current status: {settlement.status}",
         )
 
     # Update settlement status
