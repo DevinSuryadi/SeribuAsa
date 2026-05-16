@@ -62,7 +62,7 @@ async def create_order(
     )
 
     if idem_state == "replay" and idem_record:
-        return OrderResponse(**idem_record.response_body)
+        return OrderResponse.model_validate(idem_record.response_body)
 
     if idem_state == "processing":
         raise HTTPException(
@@ -92,7 +92,7 @@ async def create_order(
         # Invalidate admin stats cache
         cache.invalidate_namespace("stats")
 
-        return OrderResponse(**response_payload)
+        return OrderResponse.model_validate(response_payload)
     except ValueError as e:
         IdempotencyService.abort(
             endpoint="orders:create",
@@ -156,7 +156,7 @@ async def checkout_cart_multi_vendor(
     )
 
     if idem_state == "replay" and idem_record:
-        return MultiOrderCheckoutResponse(**idem_record.response_body)
+        return MultiOrderCheckoutResponse.model_validate(idem_record.response_body)
 
     if idem_state == "processing":
         raise HTTPException(
