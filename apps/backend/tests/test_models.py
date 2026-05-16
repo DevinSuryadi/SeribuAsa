@@ -2,14 +2,13 @@
 Unit tests for database models
 Tests model creation, validation, and methods
 """
-import pytest
 from datetime import datetime, timedelta
 from uuid import uuid4
 from app.models.user import UserProfile, DonorProfile, GenderEnum
-from app.models.product import Product, Category, OrderStatusEnum, PaymentStatusEnum
-from app.models.wallet import WalletAllocation, WalletTransaction
+from app.models.product import Product
+from app.models.wallet import WalletAllocation
 from app.models.donation import Donation, DonationStatusEnum, DonationTypeEnum
-from app.models.nutrition import NutritionMeasurement, NutritionClassificationEnum
+from app.models.nutrition import NutritionMeasurement
 from app.models.subscription import SubscriptionPlan, Subscription, SubscriptionStatusEnum
 
 

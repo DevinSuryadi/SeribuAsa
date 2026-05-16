@@ -251,7 +251,7 @@ class OrderService:
                 )
                 
                 if not held:
-                    raise ValueError(f"Gagal menahan saldo untuk transaksi toko")
+                    raise ValueError("Gagal menahan saldo untuk transaksi toko")
 
                 qr_code = uuid_lib.uuid4().hex.upper()[:24]
 

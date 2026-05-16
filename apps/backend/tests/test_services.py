@@ -2,10 +2,8 @@
 Unit tests for business logic services
 Tests service methods and business logic
 """
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
-from datetime import datetime, timedelta
 
 from app.services.voucher_service import VoucherService
 from app.services.wallet_service import WalletService

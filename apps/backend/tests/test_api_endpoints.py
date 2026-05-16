@@ -2,8 +2,6 @@
 Unit tests for API endpoints
 Tests HTTP endpoints and request/response handling
 """
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from uuid import uuid4
 from datetime import datetime, timedelta
 

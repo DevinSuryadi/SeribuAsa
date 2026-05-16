@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from uuid import UUID, uuid4
+from uuid import uuid4
 from typing import Optional
 import logging
 
@@ -94,7 +94,6 @@ async def simulate_order_completion(
     _require_sandbox_mode()
 
     from app.models.product import Order, OrderStatusEnum
-    from app.services.wallet_service import WalletService
 
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:

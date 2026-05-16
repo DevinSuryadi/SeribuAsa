@@ -201,7 +201,7 @@ export default function VendorQrScanner() {
       setQrInput(code);
       setCameraMode(false);
       void handleSearch(code);
-    } catch (err) {
+    } catch {
       toast.error("Gagal membaca QR dari gambar. Pastikan gambar jelas.");
       setErrorMsg("Gambar QR tidak dapat dibaca");
       setStep("error");

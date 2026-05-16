@@ -27,7 +27,7 @@ from app.schemas.nutrition import (
     StuntingRiskWithChild,
 )
 from app.models.nutrition import NutritionMeasurement, StuntingRiskPrediction
-from app.models.user import Child, BeneficiaryProfile
+from app.models.user import Child
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,7 @@ def _to_uuid(value: str | UUID) -> UUID:
     """Normalize incoming ID values to UUID for UUID-backed columns."""
     if isinstance(value, UUID):
         return value
+    # pyrefly: ignore [unnecessary-type-conversion]
     return UUID(str(value))
 
 

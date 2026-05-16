@@ -6,13 +6,13 @@ import pytest
 from decimal import Decimal
 from datetime import datetime, timedelta
 from uuid import uuid4
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from sqlalchemy.orm import Session
 
 from app.services.donation_service import DonationService
 from app.models.donation import Donation, DonationAllocation
-from app.models.user import BeneficiaryProfile, DonorProfile
+from app.models.user import BeneficiaryProfile
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ class TestDonationServiceCreate:
             "description": "Donation for education"
         }
         
-        result = DonationService.create_donation(db=mock_db, **donation_data)
+        DonationService.create_donation(db=mock_db, **donation_data)
         
         assert mock_db.add.called
 
@@ -98,7 +98,7 @@ class TestDonationServiceCreate:
             "notes": "Additional notes"
         }
         
-        result = DonationService.create_donation(db=mock_db, **donation_data)
+        DonationService.create_donation(db=mock_db, **donation_data)
         
         assert mock_db.add.called
 
@@ -154,7 +154,7 @@ class TestDonationServiceAllocation:
             "amount": Decimal("100000")
         }
         
-        result = DonationService.allocate_donation(db=mock_db, **allocation_data)
+        DonationService.allocate_donation(db=mock_db, **allocation_data)
         
         assert mock_db.add.called
 
@@ -215,7 +215,7 @@ class TestDonationServiceUpdate:
         """Test updating donation status"""
         mock_db.query.return_value.filter.return_value.first.return_value = sample_donation
         
-        result = DonationService.update_donation_status(
+        DonationService.update_donation_status(
             db=mock_db,
             donation_id=sample_donation.id,
             status="processed"
@@ -280,7 +280,7 @@ class TestDonationServiceReporting:
 
     def test_get_donation_statistics(self, mock_db):
         """Test getting donation statistics"""
-        stats = {
+        {
             "total_donations": Decimal("5000000"),
             "total_count": 50,
             "average_amount": Decimal("100000"),
@@ -294,7 +294,7 @@ class TestDonationServiceReporting:
 
     def test_get_top_donors(self, mock_db):
         """Test getting top donors"""
-        donors = [
+        [
             {"donor_id": uuid4(), "total_donated": Decimal("1000000")},
             {"donor_id": uuid4(), "total_donated": Decimal("800000")},
             {"donor_id": uuid4(), "total_donated": Decimal("600000")}
@@ -306,7 +306,7 @@ class TestDonationServiceReporting:
 
     def test_get_allocation_statistics(self, mock_db):
         """Test getting allocation statistics"""
-        stats = {
+        {
             "total_allocated": Decimal("4500000"),
             "total_count": 45,
             "average_allocation": Decimal("100000")
@@ -364,7 +364,7 @@ class TestDonationServiceIntegration:
         
         mock_db.query.return_value.filter.return_value.first.return_value = sample_donation
         
-        donation = DonationService.create_donation(db=mock_db, **donation_data)
+        DonationService.create_donation(db=mock_db, **donation_data)
         assert mock_db.add.called
         
         # Allocate donation
@@ -374,7 +374,7 @@ class TestDonationServiceIntegration:
             "amount": Decimal("500000")
         }
         
-        allocation = DonationService.allocate_donation(db=mock_db, **allocation_data)
+        DonationService.allocate_donation(db=mock_db, **allocation_data)
         assert mock_db.add.called
         
         # Update status

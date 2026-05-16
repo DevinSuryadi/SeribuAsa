@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 
 test.describe('Admin Flow - Protected Routes', () => {
   test('admin dashboard redirects when not authenticated', async ({ page }) => {

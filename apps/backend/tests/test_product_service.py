@@ -6,12 +6,12 @@ import pytest
 from decimal import Decimal
 from datetime import datetime
 from uuid import uuid4
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from sqlalchemy.orm import Session
 
 from app.services.product_service import ProductService
-from app.models.product import Product, ProductCategory
+from app.models.product import Product
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ class TestProductServiceCreate:
             "vendor_id": uuid4()
         }
         
-        result = ProductService.create_product(
+        ProductService.create_product(
             db=mock_db,
             **product_data
         )
@@ -144,7 +144,7 @@ class TestProductServiceUpdate:
             "price": Decimal("60000")
         }
         
-        result = ProductService.update_product(
+        ProductService.update_product(
             db=mock_db,
             product_id=sample_product.id,
             **update_data
@@ -197,7 +197,7 @@ class TestProductServiceDelete:
         """Test deleting product successfully"""
         mock_db.query.return_value.filter.return_value.first.return_value = sample_product
         
-        result = ProductService.delete_product(db=mock_db, product_id=sample_product.id)
+        ProductService.delete_product(db=mock_db, product_id=sample_product.id)
         
         assert mock_db.delete.called or mock_db.add.called
 
@@ -268,7 +268,6 @@ class TestProductServiceStock:
         """Test increasing product stock"""
         mock_db.query.return_value.filter.return_value.first.return_value = sample_product
         
-        initial_stock = sample_product.stock
         ProductService.increase_stock(db=mock_db, product_id=sample_product.id, quantity=10)
         
         assert mock_db.add.called

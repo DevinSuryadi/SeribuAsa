@@ -6,12 +6,12 @@ import pytest
 from decimal import Decimal
 from datetime import datetime, timedelta
 from uuid import uuid4
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from sqlalchemy.orm import Session
 
 from app.services.wallet_service import WalletService
-from app.models.wallet import WalletAllocation, WalletTransaction
+from app.models.wallet import WalletAllocation
 from app.models.user import BeneficiaryProfile
 
 
@@ -59,7 +59,7 @@ class TestWalletServiceCredit:
         
         mock_db.query.return_value.filter.return_value.first.return_value = beneficiary
         
-        allocation = WalletService.credit(
+        WalletService.credit(
             db=mock_db,
             beneficiary_id=beneficiary.id,
             amount=amount
@@ -96,7 +96,7 @@ class TestWalletServiceCredit:
             beneficiary_id=beneficiary.id,
             amount=amount
         )
-        after_credit = datetime.utcnow()
+        datetime.utcnow()
         
         # Expiration should be 90 days from now
         assert allocation.expires_at is not None
