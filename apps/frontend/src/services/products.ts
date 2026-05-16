@@ -61,6 +61,7 @@ export async function createProduct(data: {
   voucher_price: number;
   stock_quantity?: number;
   unit?: string;
+  images?: string[];
 }): Promise<VendorProduct> {
   const res = await apiFetch("/products/", {
     method: "POST",
@@ -79,6 +80,7 @@ export async function updateProduct(
     voucher_price?: number;
     stock_quantity?: number;
     unit?: string;
+    images?: string[];
   }
 ): Promise<VendorProduct> {
   const res = await apiFetch(`/products/${id}`, {

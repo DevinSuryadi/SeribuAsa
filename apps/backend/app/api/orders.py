@@ -287,6 +287,9 @@ async def get_order(
         i_dict = OrderItemResponse.model_validate(item).model_dump()
         if item.product:
             i_dict["product_name"] = item.product.name
+            i_dict["product_images"] = item.product.images or []
+            if item.product.category:
+                i_dict["category_name"] = item.product.category.name
         items.append(OrderItemResponse(**i_dict))
     o_dict["items"] = items
 

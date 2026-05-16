@@ -37,3 +37,13 @@ supabase
 
 # Payment Gateway
 midtransclient==1.4.2
+
+# Machine Learning (runtime)
+# Stunting risk inference uses pure-python sigmoid + dot product on hardcoded
+# Logistic Regression coefficients (see app/services/stunting_risk_service.py).
+# Zero runtime ML deps — kept lean for serverless/Railway memory limits.
+#
+# Retraining (offline only, not deployed) requires:
+#   pip install numpy==1.26.4 scikit-learn==1.4.2 pandas==2.2.2
+#   python -m scripts.train_stunting_model
+# Output JSON gets committed to repo; service auto-loads it on next deploy.

@@ -25,6 +25,7 @@ class NutritionClassificationEnum(str, enum.Enum):
 class SettlementStatusEnum(str, enum.Enum):
     calculating = "calculating"
     ready = "ready"
+    processing = "processing"
     paid = "paid"
     cancelled = "cancelled"
 
@@ -218,9 +219,43 @@ class AuditLog(BaseModel):
 
 
 # ============================================
+# StuntingRiskPrediction - AI early-warning output
+# ============================================
+class RiskLevelEnum(str, enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class StuntingRiskPrediction(BaseModel):
+    __tablename__ = "stunting_risk_predictions"
+
+    child_id = Column(UUID(as_uuid=True), ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    measurement_id = Column(UUID(as_uuid=True), ForeignKey("nutrition_measurements.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Prediction output
+    risk_score = Column(Numeric(5, 4), nullable=False)  # probability 0..1
+    risk_level = Column(String(20), nullable=False, index=True)  # low|medium|high
+    horizon_months = Column(Integer, default=3, nullable=False)
+
+    # Snapshot of features used (for audit + UI explainability)
+    features = Column(JSONB, nullable=False)
+
+    # Top contributing factors: [{"name": "...", "contribution": 0.42}, ...]
+    dominant_factors = Column(JSONB, nullable=True)
+
+    # Model metadata
+    model_version = Column(String(50), nullable=False, default="logreg-v1")
+
+    def __repr__(self):
+        return f"<StuntingRiskPrediction child={self.child_id} level={self.risk_level} score={self.risk_score}>"
+
+
+# ============================================
 # Indexes for performance
 # ============================================
 Index("idx_nutrition_measurement_child_date", NutritionMeasurement.child_id, NutritionMeasurement.measurement_date)
 Index("idx_fies_survey_beneficiary_period", FIESSurvey.beneficiary_id, FIESSurvey.survey_year, FIESSurvey.survey_month)
 Index("idx_settlement_vendor_period", Settlement.vendor_id, Settlement.period_start)
 Index("idx_audit_log_user_entity", AuditLog.user_id, AuditLog.entity_type)
+Index("idx_stunting_risk_child_created", StuntingRiskPrediction.child_id, StuntingRiskPrediction.created_at)

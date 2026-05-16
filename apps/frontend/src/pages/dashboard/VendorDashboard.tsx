@@ -481,9 +481,12 @@ export default function VendorDashboard() {
                               <Button
                                 size="sm"
                                 className="h-8 rounded-lg bg-emerald-600 px-3 text-[11px] font-bold hover:bg-emerald-700"
-                                onClick={() => handleStatusUpdate(order.id, "completed")}
+                                asChild
                               >
-                                Selesai
+                                <Link to="/dashboard/scan-qr">
+                                  <QrCode className="mr-1 h-3 w-3" />
+                                  Scan QR
+                                </Link>
                               </Button>
 
                               <Button

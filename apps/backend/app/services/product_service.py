@@ -119,6 +119,7 @@ class ProductService:
             voucher_price=data.voucher_price,
             stock_quantity=data.stock_quantity,
             unit=data.unit,
+            images=data.images or [],
             approval_status="pending",
         )
         db.add(product)

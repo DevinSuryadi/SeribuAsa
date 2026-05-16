@@ -273,24 +273,30 @@ async function apiFetchWithRetry(
 }
 
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
-  const requestKey = getRequestKey(endpoint, options);
+  const method = (options.method || "GET").toUpperCase();
 
-  // If this request is already in-flight, return the existing promise
-  if (inflightRequests.has(requestKey)) {
-    console.log(`[API] Request dedup: ${requestKey} (reusing in-flight request)`);
-    return inflightRequests.get(requestKey)!;
+  // Only deduplicate idempotent GET requests — mutations (POST/PUT/DELETE)
+  // must always go through to avoid silently dropping different payloads.
+  if (method === "GET") {
+    const requestKey = getRequestKey(endpoint, options);
+
+    // If this GET request is already in-flight, return the existing promise
+    if (inflightRequests.has(requestKey)) {
+      console.log(`[API] Request dedup: ${requestKey} (reusing in-flight request)`);
+      return inflightRequests.get(requestKey)!;
+    }
+
+    // Create new request promise
+    const promise = apiFetchWithRetry(endpoint, options, 0).finally(() => {
+      inflightRequests.delete(requestKey);
+    });
+
+    inflightRequests.set(requestKey, promise);
+    return promise;
   }
 
-  // Create new request promise
-  const promise = apiFetchWithRetry(endpoint, options, 0).finally(() => {
-    // Clean up after request completes (success or failure)
-    inflightRequests.delete(requestKey);
-  });
-
-  // Store promise for deduplication
-  inflightRequests.set(requestKey, promise);
-
-  return promise;
+  // Mutations go through directly without dedup
+  return apiFetchWithRetry(endpoint, options, 0);
 }
 
 export { apiFetch, API_BASE_URL, ApiError };

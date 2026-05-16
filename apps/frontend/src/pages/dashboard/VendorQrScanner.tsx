@@ -86,6 +86,8 @@ const HOW_TO = [
   },
 ];
 
+const PLATFORM_FEE_RATE = 0.01; // 1% platform fee
+
 export default function VendorQrScanner() {
   const [step, setStep] = useState<ScanStep>("scan");
   const [qrInput, setQrInput] = useState("");
@@ -110,7 +112,7 @@ export default function VendorQrScanner() {
         method: "POST",
         body: JSON.stringify({ qr_code: code }),
       }) as OrderPreview;
-      setNetEarned((result.cart_total ?? 0) * 0.99);
+      setNetEarned((result.cart_total ?? 0) * (1 - PLATFORM_FEE_RATE));
       setOrder(result);
       setStep("success");
     } catch (err: unknown) {
@@ -143,7 +145,7 @@ export default function VendorQrScanner() {
         method: "POST",
         body: JSON.stringify({ qr_code: code }),
       }) as OrderPreview;
-      setNetEarned((result.cart_total ?? 0) * 0.99);
+      setNetEarned((result.cart_total ?? 0) * (1 - PLATFORM_FEE_RATE));
       setOrder(result);
       setStep("success");
       toast.success("Pickup berhasil dikonfirmasi! Dana masuk ke wallet Anda.");
@@ -436,7 +438,7 @@ export default function VendorQrScanner() {
                     </div>
                     <div className="text-right">
                       <span className="text-base font-black text-emerald-600">
-                        {formatIDR(order.cart_total * 0.99)}
+                        {formatIDR(order.cart_total * (1 - PLATFORM_FEE_RATE))}
                       </span>
                       <span className="ml-1.5 text-[10px] text-muted-foreground">setelah fee 1%</span>
                     </div>

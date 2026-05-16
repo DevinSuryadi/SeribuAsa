@@ -1,5 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import ErrorBoundary from "./components/ErrorBoundary";
+import NotFound from "./pages/NotFound";
 import { Toaster } from "sonner";
 import Index from "./pages/Index";
 import Login from "./pages/auth/Login";
@@ -80,9 +82,10 @@ function DashboardRedirect() {
 
 function App() {
   return (
-    <>
+    <ErrorBoundary>
       <Toaster position="top-right" richColors />
       <ScrollToTop />
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Index />} />
@@ -401,7 +404,14 @@ function App() {
         />
 
         {/* Donation flow routes */}
-        <Route path="/donation/checkout" element={<DonationCheckout />} />
+        <Route
+          path="/donation/checkout"
+          element={
+            <ProtectedRoute>
+              <DonationCheckout />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/donation/create"
           element={
@@ -419,10 +429,11 @@ function App() {
           }
         />
 
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
-    </>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

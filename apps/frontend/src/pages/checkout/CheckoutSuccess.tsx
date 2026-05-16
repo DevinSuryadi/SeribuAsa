@@ -101,20 +101,20 @@ export function CheckoutSuccess() {
                 {[
                   {
                     step: 1,
-                    title: "Tunggu Konfirmasi Vendor",
-                    desc: "Vendor akan mengonfirmasi pesanan dalam 24 jam.",
-                    color: "bg-blue-600",
-                  },
-                  {
-                    step: 2,
-                    title: "Ambil QR Pickup",
-                    desc: "QR Code tersedia di tab Pesanan Saya setelah dikonfirmasi.",
+                    title: "QR Pickup Tersedia",
+                    desc: "QR Code sudah siap di tab Pesanan Saya. Buka kapan saja.",
                     color: "bg-emerald-600",
                   },
                   {
+                    step: 2,
+                    title: "Kunjungi Vendor",
+                    desc: "Bawa QR ke toko vendor untuk mengambil produk Anda.",
+                    color: "bg-blue-600",
+                  },
+                  {
                     step: 3,
-                    title: "Tunjukkan ke Vendor",
-                    desc: "Kunjungi vendor, scan QR, dan ambil produk Anda.",
+                    title: "Scan & Selesai",
+                    desc: "Vendor scan QR Anda, produk diserahkan, transaksi selesai.",
                     color: "bg-purple-600",
                   },
                 ].map((item) => (

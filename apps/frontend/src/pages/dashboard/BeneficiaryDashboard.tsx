@@ -26,6 +26,7 @@ import { useStaggerChildren } from "@/hooks/useStaggerChildren";
 import { toast } from "sonner";
 import type { FIESStatus, NutritionData } from "@/types";
 import foto from "@/assets/hero-beneficiaryDashboard.svg";
+import StuntingRiskCard from "@/components/dashboard/StuntingRiskCard";
 
 interface QuickAction {
   label: string;
@@ -409,6 +410,31 @@ export default function BeneficiaryDashboard() {
           </div>
         </section>
 
+        {/* Wallet Expiry Warning */}
+        {walletBalance?.expiring_soon > 0 && (
+          <Link
+            to="/dashboard/dompet-nutrisi"
+            className="group flex items-center gap-2.5 rounded-[15px] border border-orange-200 bg-orange-50 px-3.5 py-2.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-100">
+              <AlertTriangle className="h-[17px] w-[17px] text-orange-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11.5px] font-bold text-orange-800 sm:text-xs">
+                Saldo Akan Kedaluwarsa
+              </p>
+              <p className="mt-0.5 text-[10.5px] font-medium leading-snug text-orange-600 sm:text-[11px]">
+                {formatIDR(walletBalance.expiring_soon)} akan expired
+                {walletBalance.earliest_expiry
+                  ? ` pada ${formatDate(walletBalance.earliest_expiry)}`
+                  : " dalam 7 hari"}
+                . Gunakan sebelum hangus!
+              </p>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 text-orange-400 transition-transform group-hover:translate-x-1" />
+          </Link>
+        )}
+
         {/* Status Cards */}
         <div
           ref={gridRef}
@@ -463,6 +489,8 @@ export default function BeneficiaryDashboard() {
             linkClass={hasFiesThisMonth ? "text-emerald-600" : "text-orange-500"}
           />
         </div>
+
+        <StuntingRiskCard />
 
         {/* Main Content */}
         <div className="grid grid-cols-1 gap-2.5 lg:gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">

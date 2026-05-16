@@ -373,8 +373,8 @@ const KatalogPangan = () => {
           )
         );
 
-        // 2. Increment cart count
-        setCartItemCount((prev) => prev + quantity);
+        // 2. Increment cart count (by 1 item, not quantity — backend merges existing items)
+        setCartItemCount((prev) => prev + 1);
 
         // 3. Track pending cart item (for UI feedback)
         setPendingCartItems((prev) => {

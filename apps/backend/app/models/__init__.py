@@ -36,7 +36,9 @@ from app.models.nutrition import (
     NutritionClassificationEnum,
     SettlementStatusEnum,
     Withdrawal,
-    WithdrawalStatusEnum
+    WithdrawalStatusEnum,
+    StuntingRiskPrediction,
+    RiskLevelEnum,
 )
 from app.models.subscription import (
     Subscription,
@@ -101,6 +103,8 @@ __all__ = [
     "SettlementStatusEnum",
     "Withdrawal",
     "WithdrawalStatusEnum",
+    "StuntingRiskPrediction",
+    "RiskLevelEnum",
     
     # Subscription models
     "Subscription",
