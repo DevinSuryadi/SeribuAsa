@@ -22,7 +22,7 @@ SUBSCRIPTION_PLANS = [
             "Sertifikat donasi digital",
             "Pemantauan gizi anak"
         ],
-        "is_active": "true"
+        "is_active": True
     },
     {
         "id": uuid.UUID("b2c3d4e5-f6a7-8901-bcde-f23456789012"),  # Deterministic UUID
@@ -38,7 +38,7 @@ SUBSCRIPTION_PLANS = [
             "Rekomendasi nutrisi AI",
             "Laporan dampak mendalam"
         ],
-        "is_active": "true"
+        "is_active": True
     }
 ]
 

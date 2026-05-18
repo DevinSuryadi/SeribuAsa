@@ -92,6 +92,9 @@ const getGenderLabel = (gender: string | null) => {
 
 const getInitial = (name: string) => name?.trim()?.charAt(0)?.toUpperCase() || "A";
 
+const formatShortMeasurementDate = (value: string) =>
+  new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short" }).format(new Date(value));
+
 const getLatestMeasurementFromList = (items: Measurement[] = []) =>
   [...items].sort(
     (a, b) =>
@@ -134,7 +137,7 @@ function ChildCard({
         <span className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-primary" />
       )}
 
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:p-4">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 p-3 sm:p-4">
         <div
           className={`
             flex h-10 w-10 items-center justify-center rounded-full border text-sm font-bold sm:h-12 sm:w-12
@@ -148,32 +151,32 @@ function ChildCard({
         </div>
 
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="max-w-[150px] truncate text-sm font-bold text-foreground min-[420px]:max-w-none">{child.full_name}</p>
+          <div className="flex min-w-0 flex-col gap-2 min-[420px]:flex-row min-[420px]:items-center">
+            <p className="min-w-0 truncate text-sm font-bold text-foreground">{child.full_name}</p>
             {cfg ? (
               <Badge
                 variant="outline"
-                className={`h-6 gap-1 rounded-full border px-2 text-[10px] ${cfg.bg} ${cfg.cls} ${cfg.border}`}
+                className={`h-auto w-fit max-w-full shrink-0 gap-1 rounded-full border px-2 py-1 text-[10px] leading-tight ${cfg.bg} ${cfg.cls} ${cfg.border}`}
               >
-                <StatusIcon className="h-3 w-3" />
-                {cfg.label}
+                <StatusIcon className="h-3 w-3 shrink-0" />
+                <span className="whitespace-normal text-left">{cfg.label}</span>
               </Badge>
             ) : (
               <Badge
                 variant="outline"
-                className="h-6 rounded-full border-border bg-secondary px-2 text-[10px] text-muted-foreground"
+                className="h-auto w-fit max-w-full rounded-full border-border bg-secondary px-2 py-1 text-[10px] leading-tight text-muted-foreground"
               >
                 Belum ada data
               </Badge>
             )}
           </div>
 
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-2 text-xs text-muted-foreground">
             {child.age_months} bulan · {getGenderLabel(child.gender)}
           </p>
         </div>
 
-        <div className="col-span-2 mt-1 rounded-xl bg-background/70 px-3 py-2 sm:col-span-1 sm:mt-0 sm:min-w-[140px] sm:text-right">
+        <div className="col-span-2 rounded-xl bg-background/70 px-3 py-2">
           <p className="text-[10px] font-medium text-muted-foreground">Pengukuran terakhir</p>
           <p className={`mt-0.5 text-xs font-bold ${latestMeasurement ? "text-primary" : "text-muted-foreground"}`}>
             {latestMeasurement
@@ -397,7 +400,8 @@ const PemantauanGizi = () => {
 
   const chartData = useMemo(() =>
     [...paginatedMeasurements].reverse().map((m) => ({
-      month: formatDate(m.measurement_date).split(" ")[0] || m.measurement_date,
+      dateLabel: formatShortMeasurementDate(m.measurement_date),
+      fullDate: formatDate(m.measurement_date),
       weight: parseFloat(m.weight.toString()),
       height: parseFloat(m.height.toString()),
       z_score: m.z_score_weight,
@@ -722,7 +726,7 @@ const PemantauanGizi = () => {
                         Grafik Tumbuh Kembang — {selectedChild.full_name}
                       </CardTitle>
                       <CardDescription className="text-xs">
-                        Perkembangan berat & tinggi badan dengan referensi WHO
+                        Perkembangan berat & tinggi badan berdasarkan tanggal pengukuran.
                       </CardDescription>
                     </div>
 
@@ -761,19 +765,22 @@ const PemantauanGizi = () => {
                             <span className="h-1.5 w-4 rounded-full bg-primary" />
                             Pengukuran
                           </span>
-                          <span className="flex items-center gap-1.5">
-                            <span className="h-1.5 w-4 rounded-full border-t border-dashed border-muted-foreground" />
-                            Referensi WHO
-                          </span>
                         </div>
                       </div>
 
                       <ResponsiveContainer width="100%" height={220}>
                         <LineChart data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                          <XAxis dataKey="month" tick={{ fill: "hsl(220,10%,46%)", fontSize: 11 }} />
+                          <XAxis
+                            dataKey="dateLabel"
+                            interval={0}
+                            tick={{ fill: "hsl(220,10%,46%)", fontSize: 11 }}
+                          />
                           <YAxis tick={{ fill: "hsl(220,10%,46%)", fontSize: 11 }} />
-                          <Tooltip contentStyle={{ background: "hsl(0,0%,100%)", border: "1px solid hsl(220,15%,90%)", borderRadius: 12 }} />
+                          <Tooltip
+                            labelFormatter={(_, items) => items?.[0]?.payload?.fullDate || ""}
+                            contentStyle={{ background: "hsl(0,0%,100%)", border: "1px solid hsl(220,15%,90%)", borderRadius: 12 }}
+                          />
                           <Line type="monotone" dataKey="weight" stroke="hsl(152,55%,33%)" strokeWidth={2.5} dot={{ fill: "hsl(152,55%,33%)", r: 4 }} activeDot={{ r: 6 }} />
                         </LineChart>
                       </ResponsiveContainer>
@@ -790,19 +797,22 @@ const PemantauanGizi = () => {
                             <span className="h-1.5 w-4 rounded-full bg-primary" />
                             Pengukuran
                           </span>
-                          <span className="flex items-center gap-1.5">
-                            <span className="h-1.5 w-4 rounded-full border-t border-dashed border-muted-foreground" />
-                            Referensi WHO
-                          </span>
                         </div>
                       </div>
 
                       <ResponsiveContainer width="100%" height={220}>
                         <LineChart data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                          <XAxis dataKey="month" tick={{ fill: "hsl(220,10%,46%)", fontSize: 11 }} />
+                          <XAxis
+                            dataKey="dateLabel"
+                            interval={0}
+                            tick={{ fill: "hsl(220,10%,46%)", fontSize: 11 }}
+                          />
                           <YAxis tick={{ fill: "hsl(220,10%,46%)", fontSize: 11 }} />
-                          <Tooltip contentStyle={{ background: "hsl(0,0%,100%)", border: "1px solid hsl(220,15%,90%)", borderRadius: 12 }} />
+                          <Tooltip
+                            labelFormatter={(_, items) => items?.[0]?.payload?.fullDate || ""}
+                            contentStyle={{ background: "hsl(0,0%,100%)", border: "1px solid hsl(220,15%,90%)", borderRadius: 12 }}
+                          />
                           <Line type="monotone" dataKey="height" stroke="hsl(152,55%,33%)" strokeWidth={2.5} dot={{ fill: "hsl(152,55%,33%)", r: 4 }} activeDot={{ r: 6 }} />
                         </LineChart>
                       </ResponsiveContainer>

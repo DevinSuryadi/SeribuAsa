@@ -336,6 +336,76 @@ def _serialize_prediction(record: StuntingRiskPrediction) -> dict:
     }
 
 
+@router.get("/risk/beneficiary/me")
+async def get_my_children_risk(
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Risk summary for all children of the authenticated beneficiary."""
+    beneficiary_uuid = _to_uuid(current_user.user_id)
+    children = (
+        db.query(Child).filter(Child.beneficiary_id == beneficiary_uuid).all()
+    )
+
+    summary = []
+    for child in children:
+        prediction = stunting_risk_service.get_latest_prediction(db, child.id)
+        if prediction is None:
+            stunting_risk_service.predict_for_child(db, child, persist=True)
+            prediction = stunting_risk_service.get_latest_prediction(db, child.id)
+        if prediction is None:
+            continue
+
+        today = date.today()
+        age_months = max(0, (today.year - child.date_of_birth.year) * 12 + (today.month - child.date_of_birth.month))
+        age_months = min(60, age_months)
+        summary.append(
+            StuntingRiskWithChild(
+                child=ChildInfo(
+                    id=child.id,
+                    full_name=child.full_name,
+                    date_of_birth=child.date_of_birth,
+                    age_months=age_months,
+                    gender=child.gender.value if child.gender else None,
+                ),
+                prediction=StuntingRiskResponse(**_serialize_prediction(prediction)),
+            ).model_dump()
+        )
+
+    return {"success": True, "data": summary}
+
+
+@router.get("/risk/high-risk")
+async def list_high_risk_children(
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(RequireRole(["admin", "government"])),
+):
+    """Dashboard feed for admins: latest medium/high risk cases."""
+    rows = stunting_risk_service.list_high_risk(db, limit=limit)
+    data = []
+    for prediction in rows:
+        child = db.query(Child).filter(Child.id == prediction.child_id).first()
+        if not child:
+            continue
+        today = date.today()
+        age_months = max(0, (today.year - child.date_of_birth.year) * 12 + (today.month - child.date_of_birth.month))
+        age_months = min(60, age_months)
+        data.append(
+            StuntingRiskWithChild(
+                child=ChildInfo(
+                    id=child.id,
+                    full_name=child.full_name,
+                    date_of_birth=child.date_of_birth,
+                    age_months=age_months,
+                    gender=child.gender.value if child.gender else None,
+                ),
+                prediction=StuntingRiskResponse(**_serialize_prediction(prediction)),
+            ).model_dump()
+        )
+    return {"success": True, "data": data}
+
+
 @router.get("/risk/{child_id}")
 async def get_child_risk(
     child_id: str,
@@ -422,70 +492,4 @@ async def get_risk_history(
         .all()
     )
     data = [StuntingRiskResponse(**_serialize_prediction(r)).model_dump() for r in rows]
-    return {"success": True, "data": data}
-
-
-@router.get("/risk/beneficiary/me")
-async def get_my_children_risk(
-    db: Session = Depends(get_db),
-    current_user: AuthenticatedUser = Depends(get_current_user),
-):
-    """Risk summary for all children of the authenticated beneficiary."""
-    beneficiary_uuid = _to_uuid(current_user.user_id)
-    children = (
-        db.query(Child).filter(Child.beneficiary_id == beneficiary_uuid).all()
-    )
-
-    summary = []
-    for child in children:
-        prediction = stunting_risk_service.get_latest_prediction(db, child.id)
-        if prediction is None:
-            continue
-        today = date.today()
-        age_months = max(0, (today.year - child.date_of_birth.year) * 12 + (today.month - child.date_of_birth.month))
-        age_months = min(60, age_months)
-        summary.append(
-            StuntingRiskWithChild(
-                child=ChildInfo(
-                    id=child.id,
-                    full_name=child.full_name,
-                    date_of_birth=child.date_of_birth,
-                    age_months=age_months,
-                    gender=child.gender.value if child.gender else None,
-                ),
-                prediction=StuntingRiskResponse(**_serialize_prediction(prediction)),
-            ).model_dump()
-        )
-
-    return {"success": True, "data": summary}
-
-
-@router.get("/risk/high-risk")
-async def list_high_risk_children(
-    limit: int = 50,
-    db: Session = Depends(get_db),
-    current_user: AuthenticatedUser = Depends(RequireRole(["admin", "government"])),
-):
-    """Dashboard feed for admins: latest medium/high risk cases."""
-    rows = stunting_risk_service.list_high_risk(db, limit=limit)
-    data = []
-    for prediction in rows:
-        child = db.query(Child).filter(Child.id == prediction.child_id).first()
-        if not child:
-            continue
-        today = date.today()
-        age_months = max(0, (today.year - child.date_of_birth.year) * 12 + (today.month - child.date_of_birth.month))
-        age_months = min(60, age_months)
-        data.append(
-            StuntingRiskWithChild(
-                child=ChildInfo(
-                    id=child.id,
-                    full_name=child.full_name,
-                    date_of_birth=child.date_of_birth,
-                    age_months=age_months,
-                    gender=child.gender.value if child.gender else None,
-                ),
-                prediction=StuntingRiskResponse(**_serialize_prediction(prediction)),
-            ).model_dump()
-        )
     return {"success": True, "data": data}

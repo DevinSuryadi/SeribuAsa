@@ -66,25 +66,6 @@ async def create_donation(
     
     logger.info(f"[DONATION] Created donation {donation.id}, type={donation_data.type}, is_subscription={donation_data.is_subscription}, plan_id={donation_data.plan_id}")
     
-    # Create Midtrans transaction
-    donor_name = donor_profile.user_profile.full_name if donor_profile.user_profile else "Donor"
-    try:
-        midtrans_tx = await MidtransService.create_transaction(
-            donation=donation,
-            donor_email=current_user.email,
-            donor_name=donor_name
-        )
-        # We can append midtrans data to response or use a different model
-        # For now, let's just log it. The client will need the snap token.
-        logger.info(f"[DONATION] Midtrans transaction created: {midtrans_tx}")
-        # To return the snap token, we would typically modify DonationResponse to include it.
-        # Since we use ConfigDict(from_attributes=True), we can attach it directly to the donation object before returning,
-        # or we could change the response model. Let's just attach it as midtrans_token attribute temporarily if the schema allows,
-        # but DonationResponse doesn't have snap_token. We'll return it in a custom way or rely on the frontend fetching it.
-        # For full compatibility, we'll return a custom response if needed, but for now we'll stick to DonationResponse.
-    except Exception as e:
-        logger.error(f"[DONATION] Failed to create Midtrans transaction: {e}")
-    
     # If this is a subscription donation, create subscription record
     if donation_data.is_subscription and donation_data.type == "subscription":
         logger.info(f"[DONATION] Creating subscription for donation {donation.id}")
@@ -109,11 +90,6 @@ async def create_donation(
     
     # Invalidate admin stats cache
     cache.invalidate_namespace("stats")
-    
-    # We return the dictionary with extra midtrans info if needed, but since response_model=DonationResponse, 
-    # it will filter out extra fields. We need to override the response type if we want to return the token directly.
-    # We will let the frontend call a separate endpoint for the snap token if they want, or we can change the response model.
-    # To keep schema compatibility, we will change response_model to PaymentResponse or similar if appropriate, but here we just return donation.
     
     return donation
 
@@ -162,6 +138,27 @@ async def get_payment_link(
     donation = DonationService.get_donation_by_id(db, donation_id, current_user.user_id)
     if not donation:
         raise HTTPException(status_code=404, detail="Donation not found")
+    if donation.status != DonationStatusEnum.pending:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Payment link is only available for pending donations. Current status: {donation.status.value}",
+        )
+
+    from app.models.user import DonorProfile
+    donor_profile = db.query(DonorProfile).filter(DonorProfile.user_id == current_user.user_id).first()
+    donor_name = donor_profile.user_profile.full_name if donor_profile and donor_profile.user_profile else "Donor"
+
+    try:
+        tx = await MidtransService.create_transaction(donation, current_user.email, donor_name)
+        return PaymentResponse(
+            donation_id=str(donation.id),
+            snap_token=tx.get("token"),
+            redirect_url=tx.get("redirect_url"),
+            payment_status=donation.status.value,
+            message="Payment link generated",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate payment link: {str(e)}")
 
 @router.post("/{donation_id}/cancel", response_model=DonationResponse)
 async def cancel_donation(
@@ -182,22 +179,6 @@ async def cancel_donation(
     db.refresh(donation)
     
     return donation
-
-    from app.models.user import DonorProfile
-    donor_profile = db.query(DonorProfile).filter(DonorProfile.user_id == current_user.user_id).first()
-    donor_name = donor_profile.user_profile.full_name if donor_profile and donor_profile.user_profile else "Donor"
-    
-    try:
-        tx = await MidtransService.create_transaction(donation, current_user.email, donor_name)
-        return PaymentResponse(
-            donation_id=str(donation.id),
-            snap_token=tx.get("token"),
-            redirect_url=tx.get("redirect_url"),
-            payment_status=donation.status.value,
-            message="Payment link generated"
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate payment link: {str(e)}")
 
 
 @router.get("/", response_model=DonationListResponse)

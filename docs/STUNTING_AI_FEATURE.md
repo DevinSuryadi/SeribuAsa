@@ -250,25 +250,25 @@ Test set (held-out, 2k samples):
 - Confusion matrix
 - Per-class classification report (`not_stunted`, `stunted`)
 
-Saved ke `stunting_model_metrics.json` untuk audit skripsi.
+Saved ke `apps/backend/ml/stunting/artifacts/stunting_model_metrics.json` untuk audit skripsi.
 
-### 4.4 Eksekusi: 2 Cara
+### 4.4 Eksekusi Lokal
 
-**A. Lokal (butuh install deps):**
+Notebook utama sekarang disimpan di `apps/backend/ml/stunting/train_stunting_model.ipynb`.
+Jalankan dari Antigravity/Jupyter lokal, bukan Colab. Cell export akan menulis:
+
+- artifact model: `apps/backend/ml/stunting/artifacts/stunting_model.json`
+- metrics/audit: `apps/backend/ml/stunting/artifacts/stunting_model_metrics.json`
+- runtime model: `apps/backend/app/services/stunting_model.json`
+
+Untuk script legacy lokal:
 ```bash
 cd apps/backend
 pip install numpy==1.26.4 scikit-learn==1.4.2 pandas==2.2.2
 python -m scripts.train_stunting_model --n-samples 10000 --seed 42
 ```
 
-**B. Colab (recommended — zero local deps):**
-1. Upload `colab/train_stunting_model.ipynb` ke Google Colab
-2. `Runtime → Run all` (~1 menit)
-3. Cell terakhir auto-download `stunting_model.json` + metrics
-4. Move `stunting_model.json` ke `apps/backend/app/services/`
-5. Restart backend → service auto-detect
-
-Detail di `colab/README.md`.
+Setelah export, restart backend agar `stunting_risk_service.py` memuat model runtime terbaru.
 
 ---
 
@@ -424,22 +424,21 @@ Spread sehat — tidak clipping ke ekstrem 0 atau 1.
 - ✅ Synthetic data generator (notebook + script)
 - ✅ Training pipeline dengan GridSearchCV + StandardScaler
 - ✅ JSON exporter
-- ✅ Colab package siap pakai
-- ✅ Hardcoded coefs terkalibrasi (high=0.88, medium=0.58, low=0.05)
+- ✅ Notebook lokal di `apps/backend/ml/stunting/train_stunting_model.ipynb`
+- ✅ Runtime model trained `logreg-v3-id-synthetic-calibrated`
 
 ### 8.2 Yang Belum / Optional
 
-- ⏳ Run training di Colab → generate `stunting_model.json` → commit
+- ⏳ Validasi ulang dengan data nyata Posyandu/Puskesmas saat tersedia
 - ⏳ Halaman admin list high-risk priority (endpoint ready, UI belum)
 - ⏳ Real-data retraining (skripsi cukup synthetic — future iteration)
 
 ### 8.3 Cara Train Sekarang
 
 ```bash
-# Buka colab/train_stunting_model.ipynb di Google Colab
-# Runtime → Run all
-# Download stunting_model.json
-# mv ke apps/backend/app/services/
+# Buka apps/backend/ml/stunting/train_stunting_model.ipynb di Antigravity/Jupyter lokal
+# Run cells sesuai kebutuhan
+# Cell export menulis artifact + runtime model
 # Restart backend
 ```
 
@@ -481,21 +480,22 @@ apps/backend/
 │   └── services/
 │       ├── stunting_risk_service.py         # Inference engine + auto-loader
 │       ├── stunting_model.json              # (generated, committed)
-│       ├── stunting_model_metrics.json      # (generated, optional commit)
 │       └── STUNTING_AI.md                   # Module-level reference
 ├── alembic/versions/
 │   └── add_stunting_risk_predictions_table.py  # DB migration
 └── scripts/
     └── train_stunting_model.py              # Local training (needs ML deps)
 
+apps/backend/ml/stunting/
+├── train_stunting_model.ipynb              # Local training notebook
+└── artifacts/
+    ├── stunting_model.json                 # Training copy
+    └── stunting_model_metrics.json         # Metrics/audit
+
 apps/frontend/src/
 ├── components/dashboard/StuntingRiskCard.tsx  # Widget UI
 ├── services/stunting-risk.ts                  # Typed API client
 └── pages/dashboard/RekomendasiAI.tsx          # Recommendation page
-
-colab/
-├── train_stunting_model.ipynb              # Colab notebook
-└── README.md                               # Colab usage guide
 
 docs/
 └── STUNTING_AI_FEATURE.md                  # (this file)

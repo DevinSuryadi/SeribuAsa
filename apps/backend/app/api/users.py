@@ -132,6 +132,11 @@ async def create_user_on_signup(
             )
             db.add(vendor_profile)
             logger.info(f"[SIGNUP] vendor_profile added for user {user_data.user_id}")
+
+        elif user_data.role in {"admin", "government"}:
+            # Admin/government users only need the base user_profile.
+            # Their authorization role comes from Supabase metadata/JWT.
+            logger.info(f"[SIGNUP] Base profile only for privileged role {user_data.role}")
         
         else:
             logger.warning(f"[SIGNUP] Unknown role: {user_data.role}")

@@ -58,4 +58,12 @@ export interface ImpactRegion {
 export type DonationStatus = "success" | "pending" | "failed" | "refunded";
 export type DonationType = "one_time" | "subscription";
 export type SubscriptionStatus = "active" | "paused" | "cancelled";
-export type PaymentMethod = "bank_transfer" | "credit_card" | "e_wallet" | "qris" | "midtrans";
+export type PaymentMethod =
+  | "bank_transfer"
+  | "credit_card"
+  | "e_wallet"
+  | "gopay"
+  | "midtrans"
+  | "qris"
+  | "va_bca"
+  | "va_mandiri";
