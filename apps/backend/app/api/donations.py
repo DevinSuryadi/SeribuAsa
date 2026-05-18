@@ -163,6 +163,22 @@ async def get_payment_link(
     if not donation:
         raise HTTPException(status_code=404, detail="Donation not found")
 
+    from app.models.user import DonorProfile
+    donor_profile = db.query(DonorProfile).filter(DonorProfile.user_id == current_user.user_id).first()
+    donor_name = donor_profile.user_profile.full_name if donor_profile and donor_profile.user_profile else "Donor"
+
+    try:
+        tx = await MidtransService.create_transaction(donation, current_user.email, donor_name)
+        return PaymentResponse(
+            donation_id=str(donation.id),
+            snap_token=tx.get("token"),
+            redirect_url=tx.get("redirect_url"),
+            payment_status=donation.status.value,
+            message="Payment link generated",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate payment link: {str(e)}")
+
 @router.post("/{donation_id}/cancel", response_model=DonationResponse)
 async def cancel_donation(
     donation_id: str,
@@ -182,22 +198,6 @@ async def cancel_donation(
     db.refresh(donation)
     
     return donation
-
-    from app.models.user import DonorProfile
-    donor_profile = db.query(DonorProfile).filter(DonorProfile.user_id == current_user.user_id).first()
-    donor_name = donor_profile.user_profile.full_name if donor_profile and donor_profile.user_profile else "Donor"
-    
-    try:
-        tx = await MidtransService.create_transaction(donation, current_user.email, donor_name)
-        return PaymentResponse(
-            donation_id=str(donation.id),
-            snap_token=tx.get("token"),
-            redirect_url=tx.get("redirect_url"),
-            payment_status=donation.status.value,
-            message="Payment link generated"
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate payment link: {str(e)}")
 
 
 @router.get("/", response_model=DonationListResponse)

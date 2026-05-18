@@ -32,7 +32,6 @@ type UserRole =
   | "corporate_donor"
   | "unassigned"
   | null;
-type GoogleSignInRole = Exclude<UserRole, "admin" | "government" | "unassigned" | null>;
 
 interface AuthUser {
   id: string;
@@ -71,7 +70,14 @@ const KNOWN_ROLES = new Set([
   "corporate_donor",
   "unassigned",
 ]);
-const PROFILE_ROLES = new Set(["donor", "beneficiary", "vendor", "corporate_donor"]);
+const BACKEND_SIGNUP_ROLES = new Set([
+  "donor",
+  "beneficiary",
+  "vendor",
+  "admin",
+  "government",
+  "corporate_donor",
+]);
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -91,25 +97,38 @@ function isKnownRole(value: unknown): value is Exclude<UserRole, null> {
   return typeof value === "string" && KNOWN_ROLES.has(value);
 }
 
-function isProfileRole(value: unknown): value is GoogleSignInRole {
-  return typeof value === "string" && PROFILE_ROLES.has(value);
+function isBackendSignupRole(value: unknown): value is Exclude<UserRole, "unassigned" | null> {
+  return typeof value === "string" && BACKEND_SIGNUP_ROLES.has(value);
+}
+
+async function getSessionMetadataRole(): Promise<UserRole> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const metadataRole =
+    sessionData?.session?.user?.user_metadata?.role ||
+    sessionData?.session?.user?.app_metadata?.role;
+
+  return isKnownRole(metadataRole) ? metadataRole : null;
 }
 
 async function getSessionRoleFallback(): Promise<UserRole> {
   const { data: sessionData } = await supabase.auth.getSession();
-  const metadataRole = sessionData?.session?.user?.user_metadata?.role;
+  const metadataRole =
+    sessionData?.session?.user?.user_metadata?.role ||
+    sessionData?.session?.user?.app_metadata?.role;
   if (isKnownRole(metadataRole)) {
     return metadataRole;
   }
   return resolveRoleFromEmail(sessionData?.session?.user?.email) || "donor";
 }
 
-function resolveProfileRoleForSession(currentSession: Session): GoogleSignInRole {
+function resolveBackendSignupRoleForSession(
+  currentSession: Session
+): Exclude<UserRole, "unassigned" | null> {
   const metadataRole = currentSession.user.user_metadata?.role;
-  if (isProfileRole(metadataRole)) return metadataRole;
+  if (isBackendSignupRole(metadataRole)) return metadataRole;
 
   const inferredRole = resolveRoleFromEmail(currentSession.user.email);
-  if (isProfileRole(inferredRole)) return inferredRole;
+  if (isBackendSignupRole(inferredRole)) return inferredRole;
 
   return "donor";
 }
@@ -190,7 +209,7 @@ async function syncGoogleProfile(
 async function ensureBackendProfileForSession(currentSession: Session): Promise<void> {
   if (isGoogleSession(currentSession)) return;
 
-  const roleToCreate = resolveProfileRoleForSession(currentSession);
+  const roleToCreate = resolveBackendSignupRoleForSession(currentSession);
 
   const existingResponse = await fetch(`${BACKEND_BASE_URL}/users/${currentSession.user.id}`, {
     method: "GET",
@@ -231,6 +250,11 @@ async function ensureBackendProfileForSession(currentSession: Session): Promise<
 
 async function getUserRole(userId: string): Promise<UserRole> {
   try {
+    const metadataRole = await getSessionMetadataRole();
+    if (metadataRole === "admin" || metadataRole === "government") {
+      return metadataRole;
+    }
+
     // Try to fetch from backend first (more reliable)
     const response = await fetch(`${BACKEND_BASE_URL}/users/${userId}`, {
       method: "GET",
@@ -590,6 +614,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: "vendor@nutriguard.id",
         fullName: "Vendor Demo",
         role: "vendor",
+      },
+      admin: {
+        id: "00000000-0000-0000-0000-000000000004",
+        email: "admin@nutriguard.id",
+        fullName: "Admin Demo",
+        role: "admin",
       },
     };
     const demoUser = demoUsers[role || "donor"];
