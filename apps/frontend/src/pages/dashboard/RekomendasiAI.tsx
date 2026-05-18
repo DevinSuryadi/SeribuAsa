@@ -206,7 +206,7 @@ const RekomendasiAI = () => {
             <div className="max-w-md">
               <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#d7e5d8] bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-[#2f6f4e] shadow-sm">
                 <Sparkles className="h-3 w-3" />
-                AI Powered
+                Berbasis AI
               </div>
 
               <h2 className="text-xl font-semibold tracking-[-0.04em] text-[#17231d] sm:text-2xl lg:text-[26px] lg:leading-[1.08]">
