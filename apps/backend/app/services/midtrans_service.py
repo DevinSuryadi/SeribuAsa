@@ -42,9 +42,10 @@ class MidtransService:
             raise ValueError("MIDTRANS_SERVER_KEY is not configured. Please set it in your .env file.")
 
         snap = MidtransService.get_snap_client()
+        order_id = f"DONATION-{donation.id}-{uuid.uuid4().hex[:8].upper()}"
         param = {
             "transaction_details": {
-                "order_id": f"DONATION-{donation.id}",
+                "order_id": order_id,
                 "gross_amount": int(donation.amount)
             },
             "customer_details": {
@@ -52,7 +53,10 @@ class MidtransService:
                 "email": donor_email
             }
         }
-        logger.info(f"Creating Midtrans transaction for donation {donation.id} with amount {donation.amount}")
+        logger.info(
+            f"Creating Midtrans transaction for donation {donation.id} "
+            f"with order {order_id} and amount {donation.amount}"
+        )
         transaction = await asyncio.to_thread(snap.create_transaction, param)
         return transaction
 
@@ -248,7 +252,11 @@ class MidtransService:
         if not order_id.startswith("DONATION-"):
             return {"status": "ignored", "message": "Not a donation order"}
             
+        # Order IDs are generated as DONATION-{donation_uuid}-{attempt_suffix}.
+        # Keep backward compatibility with the older DONATION-{donation_uuid} format.
         donation_id = order_id.replace("DONATION-", "")
+        if len(donation_id) > 36:
+            donation_id = donation_id[:36]
         
         from app.services.donation_service import DonationService
         

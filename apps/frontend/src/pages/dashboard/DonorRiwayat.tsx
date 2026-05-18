@@ -14,9 +14,14 @@ import {
   CheckCircle,
   Plus,
   Loader2,
+  CreditCard,
+  ExternalLink,
+  QrCode,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { formatIDR, formatDate } from "@/lib/format";
-import { getDonations, fixPendingDonations } from "@/services/donations";
+import { getDonations, getPaymentLink, simulatePayment } from "@/services/donations";
+import { loadMidtransScript } from "@/utils/midtrans";
 import {
   downloadDonationReceipt,
   exportDonationHistory,
@@ -28,6 +33,14 @@ import { ErrorState } from "@/components/dashboard/ErrorState";
 import { CardSkeletonGrid, ListItemSkeleton } from "@/components/dashboard/LoadingSkeleton";
 import { KpiCard, KpiCardGrid } from "@/components/dashboard/KpiCard";
 import { donationStatusConfig } from "@/lib/status-config";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type FilterKey = "all" | DonationStatus;
 
@@ -37,6 +50,25 @@ const filterTabs: { key: FilterKey; label: string }[] = [
   { key: "pending", label: "Menunggu" },
   { key: "failed", label: "Gagal" },
 ];
+
+type PendingPaymentInfo = {
+  donation_id: string;
+  snap_token?: string;
+  redirect_url?: string;
+  payment_status: string;
+  message?: string;
+};
+
+const paymentMethodLabel: Record<string, string> = {
+  bank_transfer: "Transfer Bank",
+  credit_card: "Kartu Kredit",
+  e_wallet: "E-Wallet",
+  gopay: "GoPay",
+  midtrans: "Midtrans",
+  qris: "QRIS",
+  va_bca: "Virtual Account BCA",
+  va_mandiri: "Virtual Account Mandiri",
+};
 
 const DonorRiwayat = () => {
   const navigate = useNavigate();
@@ -48,7 +80,10 @@ const DonorRiwayat = () => {
   const [statusFilter, setStatusFilter] = useState<FilterKey>("all");
   const [downloadingReceipt, setDownloadingReceipt] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [fixingPending, setFixingPending] = useState(false);
+  const [selectedPending, setSelectedPending] = useState<Donation | null>(null);
+  const [paymentInfo, setPaymentInfo] = useState<PendingPaymentInfo | null>(null);
+  const [loadingPaymentInfo, setLoadingPaymentInfo] = useState(false);
+  const [payingDonationId, setPayingDonationId] = useState<string | null>(null);
 
   const fetchDonations = useCallback(async () => {
     const controller = new AbortController();
@@ -86,20 +121,76 @@ const DonorRiwayat = () => {
     }
   };
 
-  const handleFixPending = async () => {
-    setFixingPending(true);
+  const openPendingPayment = async (donation: Donation) => {
+    setSelectedPending(donation);
+    setPaymentInfo(null);
+    setLoadingPaymentInfo(true);
     try {
-      const result = await fixPendingDonations();
-      if (result.fixed_count > 0) {
-        toast.success(`${result.fixed_count} donasi berhasil diupdate ke Sukses`);
-        await fetchDonations();
-      } else {
-        toast.info("Tidak ada donasi pending yang perlu diperbaiki");
-      }
+      const info = await getPaymentLink(donation.id);
+      setPaymentInfo({
+        donation_id: info.donation_id,
+        snap_token: info.snap_token,
+        redirect_url: info.redirect_url,
+        payment_status: "pending",
+      });
     } catch (err: any) {
-      toast.error("Gagal memperbaiki donasi", { description: err.message });
+      toast.error("Gagal menyiapkan pembayaran", { description: err.message });
     } finally {
-      setFixingPending(false);
+      setLoadingPaymentInfo(false);
+    }
+  };
+
+  const closePendingPayment = () => {
+    setSelectedPending(null);
+    setPaymentInfo(null);
+  };
+
+  const handleContinuePayment = async () => {
+    if (!selectedPending) return;
+
+    setPayingDonationId(selectedPending.id);
+    try {
+      const info = paymentInfo || await getPaymentLink(selectedPending.id);
+      if (!info.snap_token) {
+        toast.error("Token pembayaran belum tersedia");
+        return;
+      }
+
+      const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "SB-Mid-client-XXXXX";
+      const isLoaded = await loadMidtransScript(clientKey);
+      if (!isLoaded) {
+        toast.error("Gagal memuat layanan Midtrans");
+        return;
+      }
+
+      // @ts-expect-error - window.snap is injected by the Midtrans script.
+      window.snap.pay(info.snap_token, {
+        onSuccess: async () => {
+          try {
+            await simulatePayment(selectedPending.id);
+          } catch (error) {
+            console.error("Failed to confirm sandbox payment:", error);
+          }
+          toast.success("Pembayaran berhasil diselesaikan");
+          closePendingPayment();
+          await fetchDonations();
+        },
+        onPending: () => {
+          toast.info("Pembayaran masih menunggu penyelesaian");
+          closePendingPayment();
+          void fetchDonations();
+        },
+        onError: () => {
+          toast.error("Pembayaran gagal diproses");
+        },
+        onClose: () => {
+          toast.info("Popup pembayaran ditutup. Donasi tetap tersimpan sebagai pending.");
+        },
+      });
+    } catch (err: any) {
+      toast.error("Gagal membuka pembayaran", { description: err.message });
+    } finally {
+      setPayingDonationId(null);
     }
   };
 
@@ -212,22 +303,6 @@ const DonorRiwayat = () => {
               </button>
             ))}
           </div>
-          {donations.some((d) => d.status === "pending") && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 flex-shrink-0 border-amber-300 text-amber-700 hover:bg-amber-50"
-              onClick={handleFixPending}
-              disabled={fixingPending}
-            >
-              {fixingPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <CheckCircle className="h-3.5 w-3.5" />
-              )}
-              Verifikasi Pembayaran
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"
@@ -308,6 +383,17 @@ const DonorRiwayat = () => {
                           {sc.label}
                         </Badge>
                       </div>
+                      {d.status === "pending" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                          onClick={() => openPendingPayment(d)}
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          Bayar
+                        </Button>
+                      )}
                       {d.status === "success" && (
                         <Button
                           variant="ghost"
@@ -332,6 +418,111 @@ const DonorRiwayat = () => {
           )}
         </div>
       </div>
+
+      <Dialog open={!!selectedPending} onOpenChange={(open: boolean) => !open && closePendingPayment()}>
+        <DialogContent className="max-w-xl rounded-2xl p-0 overflow-hidden">
+          <div className="bg-amber-50 px-6 py-5 border-b border-amber-100">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-foreground">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100">
+                  <CreditCard className="h-4 w-4 text-amber-700" />
+                </span>
+                Lanjutkan Pembayaran
+              </DialogTitle>
+              <DialogDescription>
+                Donasi pending tetap memakai nominal, metode, dan nomor transaksi yang sama.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          {selectedPending && (
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-border bg-secondary/40 p-3">
+                  <div className="text-xs text-muted-foreground">Nominal</div>
+                  <div className="mt-1 font-bold text-foreground">{formatIDR(selectedPending.amount)}</div>
+                </div>
+                <div className="rounded-xl border border-border bg-secondary/40 p-3">
+                  <div className="text-xs text-muted-foreground">Metode</div>
+                  <div className="mt-1 font-bold text-foreground">
+                    {paymentMethodLabel[selectedPending.payment_method] || selectedPending.payment_method}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-secondary/40 p-3">
+                  <div className="text-xs text-muted-foreground">Jenis Donasi</div>
+                  <div className="mt-1 font-bold text-foreground">
+                    {selectedPending.type === "subscription" ? "Langganan" : "Satu Kali"}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-secondary/40 p-3">
+                  <div className="text-xs text-muted-foreground">Tanggal</div>
+                  <div className="mt-1 font-bold text-foreground">{formatDate(selectedPending.created_at)}</div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border p-3">
+                <div className="text-xs text-muted-foreground">ID Donasi</div>
+                <div className="mt-1 break-all font-mono text-xs text-foreground">{selectedPending.id}</div>
+              </div>
+
+              {selectedPending.payment_method === "qris" && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-amber-700">
+                      <QrCode className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-amber-900">QRIS</div>
+                      <p className="mt-1 text-sm text-amber-800">
+                        Kode QR pembayaran tersedia setelah token Midtrans disiapkan.
+                      </p>
+                      {paymentInfo?.redirect_url || paymentInfo?.snap_token ? (
+                        <div className="mt-3 inline-flex rounded-xl bg-white p-3 ring-1 ring-amber-200">
+                          <QRCodeSVG
+                            value={paymentInfo.redirect_url || paymentInfo.snap_token || selectedPending.id}
+                            size={148}
+                            level="M"
+                          />
+                        </div>
+                      ) : loadingPaymentInfo ? (
+                        <div className="mt-3 flex items-center gap-2 text-sm text-amber-800">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Menyiapkan kode pembayaran...
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!selectedPending.payment_method.includes("qris") && loadingPaymentInfo && (
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 p-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Menyiapkan tautan pembayaran...
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="px-6 pb-6">
+            <Button variant="outline" onClick={closePendingPayment} disabled={!!payingDonationId}>
+              Tutup
+            </Button>
+            <Button
+              className="gap-2 bg-rose-600 hover:bg-rose-700"
+              onClick={handleContinuePayment}
+              disabled={!paymentInfo?.snap_token || loadingPaymentInfo || !!payingDonationId}
+            >
+              {payingDonationId ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="h-4 w-4" />
+              )}
+              Buka Pembayaran
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
