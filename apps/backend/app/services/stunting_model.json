@@ -1,0 +1,152 @@
+{
+  "model_version": "logreg-v3-id-synthetic-calibrated",
+  "trained_at": "2026-05-18T08:44:44.601115+00:00",
+  "horizon_months": 3,
+  "feature_names": [
+    "age_months",
+    "is_male",
+    "weight_kg",
+    "height_cm",
+    "muac_cm",
+    "z_score_weight",
+    "z_score_height",
+    "delta_z_height",
+    "delta_z_weight",
+    "days_since_last",
+    "trend_score",
+    "fies_score"
+  ],
+  "model_feature_names": [
+    "age_months",
+    "is_male",
+    "muac_cm",
+    "z_score_weight",
+    "z_score_height",
+    "delta_z_height",
+    "delta_z_weight",
+    "days_since_last",
+    "trend_score",
+    "fies_score"
+  ],
+  "excluded_model_features": [
+    "height_cm",
+    "weight_kg"
+  ],
+  "coefficients_scaled": [
+    0.029265883134326303,
+    0.05316057303065144,
+    0.0,
+    0.0,
+    -0.05483851914310576,
+    -0.04984623396302272,
+    -5.144254624401153,
+    -1.2046576670660862,
+    0.1423308683575533,
+    0.017936686050036756,
+    -0.05242498488539164,
+    0.26401103812327853
+  ],
+  "intercept_scaled": -3.2934042415212317,
+  "feature_means": [
+    27.868725490196077,
+    0.5057843137254902,
+    0.0,
+    0.0,
+    13.514580392156862,
+    -0.8724963725490196,
+    -1.5128463725490195,
+    -0.047238823529411764,
+    -0.039719411764705885,
+    81.56127450980392,
+    -0.07823529411764706,
+    2.3264705882352943
+  ],
+  "feature_stds": [
+    12.20292163438086,
+    0.4999665405951933,
+    1.0,
+    1.0,
+    0.7379821988978069,
+    0.8467475875641247,
+    0.9294157577803224,
+    0.29944916918252773,
+    0.26214662020695306,
+    27.684142313435082,
+    0.5628680264723813,
+    1.5678401823432906
+  ],
+  "thresholds": {
+    "medium": 0.35,
+    "high": 0.65
+  },
+  "training": {
+    "n_samples": 15000,
+    "seed": 42,
+    "target_stunting_prevalence": 0.215,
+    "actual_future_stunting_rate": 0.215,
+    "best_C": 0.5,
+    "cv_best_auc": 0.9771886921376385
+  },
+  "feature_importance": [
+    {
+      "name": "z_score_height",
+      "coef_scaled": -5.144254624401153,
+      "abs": 5.144254624401153
+    },
+    {
+      "name": "delta_z_height",
+      "coef_scaled": -1.2046576670660862,
+      "abs": 1.2046576670660862
+    },
+    {
+      "name": "fies_score",
+      "coef_scaled": 0.26401103812327853,
+      "abs": 0.26401103812327853
+    },
+    {
+      "name": "delta_z_weight",
+      "coef_scaled": 0.1423308683575533,
+      "abs": 0.1423308683575533
+    },
+    {
+      "name": "muac_cm",
+      "coef_scaled": -0.05483851914310576,
+      "abs": 0.05483851914310576
+    },
+    {
+      "name": "is_male",
+      "coef_scaled": 0.05316057303065144,
+      "abs": 0.05316057303065144
+    },
+    {
+      "name": "trend_score",
+      "coef_scaled": -0.05242498488539164,
+      "abs": 0.05242498488539164
+    },
+    {
+      "name": "z_score_weight",
+      "coef_scaled": -0.04984623396302272,
+      "abs": 0.04984623396302272
+    },
+    {
+      "name": "age_months",
+      "coef_scaled": 0.029265883134326303,
+      "abs": 0.029265883134326303
+    },
+    {
+      "name": "days_since_last",
+      "coef_scaled": 0.017936686050036756,
+      "abs": 0.017936686050036756
+    },
+    {
+      "name": "weight_kg",
+      "coef_scaled": 0.0,
+      "abs": 0.0
+    },
+    {
+      "name": "height_cm",
+      "coef_scaled": 0.0,
+      "abs": 0.0
+    }
+  ]
+}

@@ -15,8 +15,9 @@ USAGE
 
 OUTPUTS (committed to git)
 --------------------------
-    apps/backend/app/services/stunting_model.json      — coef + threshold + meta
-    apps/backend/app/services/stunting_model_metrics.json — eval report
+    apps/backend/ml/stunting/artifacts/stunting_model.json          — training copy
+    apps/backend/ml/stunting/artifacts/stunting_model_metrics.json  — eval report
+    apps/backend/app/services/stunting_model.json                   — runtime copy
 
 DATA HANDLING
 -------------
@@ -81,9 +82,12 @@ FEATURE_NAMES: List[str] = [
     "fies_score",
 ]
 
-DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "app" / "services"
-MODEL_FILE = DEFAULT_OUTPUT_DIR / "stunting_model.json"
-METRICS_FILE = DEFAULT_OUTPUT_DIR / "stunting_model_metrics.json"
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+SERVICE_DIR = BACKEND_DIR / "app" / "services"
+ARTIFACT_DIR = BACKEND_DIR / "ml" / "stunting" / "artifacts"
+MODEL_FILE = ARTIFACT_DIR / "stunting_model.json"
+METRICS_FILE = ARTIFACT_DIR / "stunting_model_metrics.json"
+RUNTIME_MODEL_FILE = SERVICE_DIR / "stunting_model.json"
 
 THRESHOLD_MEDIUM = 0.35
 THRESHOLD_HIGH = 0.65
@@ -292,9 +296,10 @@ def export_model(
     metrics: Dict,
     cfg: CohortConfig,
 ) -> None:
-    """Dump model in two files:
-      stunting_model.json    — runtime artifact (coefs + scaler + thresholds)
-      stunting_model_metrics.json — evaluation report
+    """Dump model artifacts and deploy a runtime copy:
+      apps/backend/ml/stunting/artifacts/stunting_model.json
+      apps/backend/ml/stunting/artifacts/stunting_model_metrics.json
+      apps/backend/app/services/stunting_model.json
     """
     coef = model.coef_.flatten().tolist()
     intercept = float(model.intercept_[0])
@@ -332,11 +337,14 @@ def export_model(
         "feature_importance": feature_importance,
     }
 
-    DEFAULT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    SERVICE_DIR.mkdir(parents=True, exist_ok=True)
     MODEL_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    RUNTIME_MODEL_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     METRICS_FILE.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
     print(f"[save ] {MODEL_FILE.relative_to(Path.cwd()) if MODEL_FILE.is_relative_to(Path.cwd()) else MODEL_FILE}")
+    print(f"[save ] {RUNTIME_MODEL_FILE.relative_to(Path.cwd()) if RUNTIME_MODEL_FILE.is_relative_to(Path.cwd()) else RUNTIME_MODEL_FILE}")
     print(f"[save ] {METRICS_FILE.relative_to(Path.cwd()) if METRICS_FILE.is_relative_to(Path.cwd()) else METRICS_FILE}")
 
 

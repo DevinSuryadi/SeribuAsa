@@ -2,19 +2,18 @@
 Stunting Risk Prediction Service
 
 Implements early-warning AI for stunting risk over a 3-month horizon using
-a Logistic Regression model with hand-tuned coefficients calibrated against
-WHO height-for-age z-score conventions.
+a trained Logistic Regression model exported as JSON. The runtime keeps a
+small hardcoded fallback so the app can still start if the model artifact is
+missing or invalid.
 
 Pipeline:
   1) extract_features(child, measurements, fies)
   2) predict(features) -> {score, level, dominant_factors}
   3) save_prediction(db, ...)
 
-The LR coefficients live in MODEL_COEFFICIENTS below. They were chosen so
-that a child already at HAZ <= -2 with negative growth velocity falls into
-the "high" bucket, while a stable child at HAZ >= -1 falls into "low".
-Coefficients can be replaced with values learned offline without changing
-this module's interface.
+The active model is loaded from stunting_model.json at import time. Training
+artifacts live under apps/backend/ml/stunting, while this module only performs
+pure-Python inference: scaling, dot product, sigmoid, and factor attribution.
 """
 from __future__ import annotations
 
