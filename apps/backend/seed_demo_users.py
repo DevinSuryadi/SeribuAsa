@@ -25,8 +25,8 @@ from sqlalchemy.orm import Session  # noqa: E402
 load_dotenv()
 
 # Supabase configuration
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ydglsytahhjdoznvnfnc.supabase.co")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkZ2xzeXRhaGhqZG96bnZuZm5jIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTE5MzYyNiwiZXhwIjoyMDkwNzY5NjI2fQ.rPQJ7ktYpvxdQYWWZkHJz7m2Cwu3YvDypqzwBizRlis")
 
 # Demo user configuration
 DEMO_PASSWORD = "Demo123!"
