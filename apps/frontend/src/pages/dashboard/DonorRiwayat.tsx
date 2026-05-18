@@ -15,10 +15,8 @@ import {
   Plus,
   Loader2,
   CreditCard,
-  ExternalLink,
   QrCode,
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { formatIDR, formatDate } from "@/lib/format";
 import { getDonations, getPaymentLink, simulatePayment } from "@/services/donations";
 import { loadMidtransScript } from "@/utils/midtrans";
@@ -51,14 +49,6 @@ const filterTabs: { key: FilterKey; label: string }[] = [
   { key: "failed", label: "Gagal" },
 ];
 
-type PendingPaymentInfo = {
-  donation_id: string;
-  snap_token?: string;
-  redirect_url?: string;
-  payment_status: string;
-  message?: string;
-};
-
 const paymentMethodLabel: Record<string, string> = {
   bank_transfer: "Transfer Bank",
   credit_card: "Kartu Kredit",
@@ -81,8 +71,6 @@ const DonorRiwayat = () => {
   const [downloadingReceipt, setDownloadingReceipt] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [selectedPending, setSelectedPending] = useState<Donation | null>(null);
-  const [paymentInfo, setPaymentInfo] = useState<PendingPaymentInfo | null>(null);
-  const [loadingPaymentInfo, setLoadingPaymentInfo] = useState(false);
   const [payingDonationId, setPayingDonationId] = useState<string | null>(null);
 
   const fetchDonations = useCallback(async () => {
@@ -121,28 +109,12 @@ const DonorRiwayat = () => {
     }
   };
 
-  const openPendingPayment = async (donation: Donation) => {
+  const openPendingPayment = (donation: Donation) => {
     setSelectedPending(donation);
-    setPaymentInfo(null);
-    setLoadingPaymentInfo(true);
-    try {
-      const info = await getPaymentLink(donation.id);
-      setPaymentInfo({
-        donation_id: info.donation_id,
-        snap_token: info.snap_token,
-        redirect_url: info.redirect_url,
-        payment_status: "pending",
-      });
-    } catch (err: any) {
-      toast.error("Gagal menyiapkan pembayaran", { description: err.message });
-    } finally {
-      setLoadingPaymentInfo(false);
-    }
   };
 
   const closePendingPayment = () => {
     setSelectedPending(null);
-    setPaymentInfo(null);
   };
 
   const handleContinuePayment = async () => {
@@ -150,7 +122,7 @@ const DonorRiwayat = () => {
 
     setPayingDonationId(selectedPending.id);
     try {
-      const info = paymentInfo || await getPaymentLink(selectedPending.id);
+      const info = await getPaymentLink(selectedPending.id);
       if (!info.snap_token) {
         toast.error("Token pembayaran belum tersedia");
         return;
@@ -474,31 +446,10 @@ const DonorRiwayat = () => {
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-amber-900">QRIS</div>
                       <p className="mt-1 text-sm text-amber-800">
-                        Kode QR pembayaran tersedia setelah token Midtrans disiapkan.
+                        Kode QR akan muncul di halaman Midtrans setelah pembayaran dilanjutkan.
                       </p>
-                      {paymentInfo?.redirect_url || paymentInfo?.snap_token ? (
-                        <div className="mt-3 inline-flex rounded-xl bg-white p-3 ring-1 ring-amber-200">
-                          <QRCodeSVG
-                            value={paymentInfo.redirect_url || paymentInfo.snap_token || selectedPending.id}
-                            size={148}
-                            level="M"
-                          />
-                        </div>
-                      ) : loadingPaymentInfo ? (
-                        <div className="mt-3 flex items-center gap-2 text-sm text-amber-800">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Menyiapkan kode pembayaran...
-                        </div>
-                      ) : null}
                     </div>
                   </div>
-                </div>
-              )}
-
-              {!selectedPending.payment_method.includes("qris") && loadingPaymentInfo && (
-                <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 p-3 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Menyiapkan tautan pembayaran...
                 </div>
               )}
             </div>
@@ -511,14 +462,14 @@ const DonorRiwayat = () => {
             <Button
               className="gap-2 bg-rose-600 hover:bg-rose-700"
               onClick={handleContinuePayment}
-              disabled={!paymentInfo?.snap_token || loadingPaymentInfo || !!payingDonationId}
+              disabled={!!payingDonationId}
             >
               {payingDonationId ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <ExternalLink className="h-4 w-4" />
+                <CreditCard className="h-4 w-4" />
               )}
-              Buka Pembayaran
+              Bayar Sekarang
             </Button>
           </DialogFooter>
         </DialogContent>

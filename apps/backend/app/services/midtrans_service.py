@@ -42,7 +42,7 @@ class MidtransService:
             raise ValueError("MIDTRANS_SERVER_KEY is not configured. Please set it in your .env file.")
 
         snap = MidtransService.get_snap_client()
-        order_id = f"DONATION-{donation.id}-{uuid.uuid4().hex[:8].upper()}"
+        order_id = f"DON-{donation.id.hex}-{uuid.uuid4().hex[:6].upper()}"
         param = {
             "transaction_details": {
                 "order_id": order_id,
@@ -249,14 +249,18 @@ class MidtransService:
         fraud_status = status_response.get('fraud_status')
         transaction_id = status_response.get('transaction_id')
         
-        if not order_id.startswith("DONATION-"):
+        if not (order_id.startswith("DON-") or order_id.startswith("DONATION-")):
             return {"status": "ignored", "message": "Not a donation order"}
             
-        # Order IDs are generated as DONATION-{donation_uuid}-{attempt_suffix}.
+        # Current order IDs are DON-{donation_uuid_hex}-{attempt_suffix}.
         # Keep backward compatibility with the older DONATION-{donation_uuid} format.
-        donation_id = order_id.replace("DONATION-", "")
-        if len(donation_id) > 36:
-            donation_id = donation_id[:36]
+        if order_id.startswith("DON-"):
+            donation_hex = order_id.replace("DON-", "").split("-", 1)[0]
+            donation_id = str(UUID(donation_hex))
+        else:
+            donation_id = order_id.replace("DONATION-", "")
+            if len(donation_id) > 36:
+                donation_id = donation_id[:36]
         
         from app.services.donation_service import DonationService
         
