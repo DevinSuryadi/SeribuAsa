@@ -1,6 +1,6 @@
 {
   "model_version": "logreg-v3-id-synthetic-calibrated",
-  "trained_at": "2026-05-18T08:44:44.601115+00:00",
+  "trained_at": "2026-05-19T14:17:57.299141+00:00",
   "data_quality": {
     "n_samples": 15000,
     "future_stunting_rate": 0.215,
