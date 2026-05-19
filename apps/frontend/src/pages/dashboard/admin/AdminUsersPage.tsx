@@ -70,7 +70,6 @@ const roleTabs: Array<{
   },
   { value: "donor", label: "Donatur", icon: Heart, color: "text-rose-600", bg: "bg-rose-100" },
   { value: "vendor", label: "Vendor", icon: Store, color: "text-indigo-600", bg: "bg-indigo-100" },
-  { value: "user", label: "User Biasa", icon: User, color: "text-slate-500", bg: "bg-slate-100" },
 ];
 
 const statusTabs: Array<{ value: ApprovalFilter; label: string; dot: string }> = [
@@ -92,12 +91,12 @@ const roleLabelMap: Record<
 
 const statusBadge: Record<string, { label: string; cls: string; dot: string }> = {
   pending: {
-    label: "Pending",
+    label: "Menunggu",
     cls: "bg-amber-50 text-amber-700 ring-amber-200",
     dot: "bg-amber-400",
   },
   approved: {
-    label: "Approved",
+    label: "Disetujui",
     cls: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     dot: "bg-emerald-500",
   },
@@ -213,7 +212,7 @@ function UserRow({
                   title="Setujui akun ini"
                 >
                   <CheckCircle2 className="h-3 w-3 mr-1" />
-                  Approve
+                  Setuju
                 </Button>
                 <Button
                   size="sm"
@@ -224,7 +223,7 @@ function UserRow({
                   title="Tolak akun ini"
                 >
                   <XCircle className="h-3 w-3 mr-1" />
-                  Reject
+                  Tolak
                 </Button>
               </>
             )}
@@ -353,7 +352,7 @@ export default function AdminUsersPage() {
             </div>
             <p className="text-sm font-semibold text-amber-800 flex-1">
               Ada <span className="font-extrabold">{pendingCount}</span> akun menunggu persetujuan —
-              beneficiary & vendor baru.
+              penerima & vendor baru.
             </p>
             <Button
               size="sm"
@@ -448,7 +447,7 @@ export default function AdminUsersPage() {
                 disabled={loading}
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                Refresh
+                Muat Ulang
               </Button>
             </div>
           </div>

@@ -27,10 +27,10 @@ type AdminStats = {
 };
 
 const EXPORTS = [
-  { label: "Users",       endpoint: "/admin/export/users",       filename: "users.csv",       icon: Users,       color: "text-slate-600",   bg: "bg-slate-100",   ring: "ring-slate-200" },
-  { label: "Orders",      endpoint: "/admin/export/orders",      filename: "orders.csv",      icon: ShoppingCart, color: "text-blue-600",   bg: "bg-blue-100",    ring: "ring-blue-200" },
-  { label: "E-Wallet",    endpoint: "/admin/export/vouchers",    filename: "ewallet.csv",     icon: Wallet,      color: "text-emerald-600", bg: "bg-emerald-100", ring: "ring-emerald-200" },
-  { label: "Redemptions", endpoint: "/admin/export/redemptions", filename: "redemptions.csv", icon: BarChart3,   color: "text-purple-600",  bg: "bg-purple-100",  ring: "ring-purple-200" },
+  { label: "Pengguna",       endpoint: "/admin/export/users",       filename: "pengguna.csv",       icon: Users,       color: "text-slate-600",   bg: "bg-slate-100",   ring: "ring-slate-200" },
+  { label: "Pesanan",      endpoint: "/admin/export/orders",      filename: "pesanan.csv",      icon: ShoppingCart, color: "text-blue-600",   bg: "bg-blue-100",    ring: "ring-blue-200" },
+  { label: "Dompet Nutrisi",    endpoint: "/admin/export/vouchers",    filename: "dompet_nutrisi.csv",     icon: Wallet,      color: "text-emerald-600", bg: "bg-emerald-100", ring: "ring-emerald-200" },
+  { label: "Penukaran", endpoint: "/admin/export/redemptions", filename: "penukaran.csv", icon: BarChart3,   color: "text-purple-600",  bg: "bg-purple-100",  ring: "ring-purple-200" },
 ] as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -112,10 +112,10 @@ export default function AdminReportsPage() {
     return [
       { label: "Total Pengguna",    val: stats.users.total,                      sub: `${stats.users.donors}D · ${stats.users.beneficiaries}P · ${stats.users.vendors}V`,    icon: Users,        color: "text-slate-700",   bg: "bg-slate-50",   ring: "ring-slate-100" },
       { label: "Total Donasi",      val: formatIDR(stats.donations.total_amount), sub: `${stats.donations.success_count} berhasil`,                                         icon: Heart,        color: "text-rose-700",    bg: "bg-rose-50",    ring: "ring-rose-100" },
-      { label: "Saldo E-Wallet",    val: formatIDR(stats.vouchers.total_balance), sub: `${stats.vouchers.active_count} dompet aktif`,                                       icon: Wallet,       color: "text-emerald-700", bg: "bg-emerald-50", ring: "ring-emerald-100" },
+      { label: "Saldo Dompet Nutrisi",    val: formatIDR(stats.vouchers.total_balance), sub: `${stats.vouchers.active_count} dompet aktif`,                                       icon: Wallet,       color: "text-emerald-700", bg: "bg-emerald-50", ring: "ring-emerald-100" },
       { label: "Pesanan Selesai",   val: stats.orders.completed,                  sub: `dari ${stats.orders.total} total pesanan`,                                           icon: ShoppingCart, color: "text-blue-700",    bg: "bg-blue-50",    ring: "ring-blue-100" },
-      { label: "Produk Aktif",      val: stats.products.total,                    sub: `${stats.products.pending} pending review`,                                           icon: Package,      color: "text-indigo-700",  bg: "bg-indigo-50",  ring: "ring-indigo-100" },
-      { label: "Total Redemption",  val: formatIDR(stats.redemptions.total_amount), sub: `${stats.redemptions.total_count} transaksi`,                                      icon: TrendingUp,   color: "text-orange-700",  bg: "bg-orange-50",  ring: "ring-orange-100" },
+      { label: "Produk Aktif",      val: stats.products.total,                    sub: `${stats.products.pending} Menunggu Peninjauan`,                                           icon: Package,      color: "text-indigo-700",  bg: "bg-indigo-50",  ring: "ring-indigo-100" },
+      { label: "Total Penukaran",  val: formatIDR(stats.redemptions.total_amount), sub: `${stats.redemptions.total_count} transaksi`,                                      icon: TrendingUp,   color: "text-orange-700",  bg: "bg-orange-50",  ring: "ring-orange-100" },
     ];
   }, [stats]);
 
@@ -204,7 +204,7 @@ export default function AdminReportsPage() {
 
           {/* Regional */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <SectionHeader icon={Map} title="Regional Report" subtitle={regional ? `Periode ${fmtDate(regional.period?.start_date)} – ${fmtDate(regional.period?.end_date)}` : "Memuat…"} />
+            <SectionHeader icon={Map} title="Laporan Per Wilayah" subtitle={regional ? `Periode ${fmtDate(regional.period?.start_date)} – ${fmtDate(regional.period?.end_date)}` : "Memuat…"} />
             {!regional ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 rounded-xl bg-secondary animate-pulse" />)}
@@ -229,7 +229,7 @@ export default function AdminReportsPage() {
                 {/* Stunting + Budget */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl border border-border p-3">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Stunting Rate</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Tingkat Stunting</p>
                     <div className="text-2xl font-extrabold text-rose-600">{regional.stunting_rate.current.toFixed(1)}%</div>
                     <p className="text-[10px] text-muted-foreground">
                       Sebelumnya {regional.stunting_rate.previous.toFixed(1)}% · {regional.stunting_rate.trend}
@@ -237,7 +237,7 @@ export default function AdminReportsPage() {
                     <ProgressBar value={regional.stunting_rate.current} max={100} color="bg-rose-400" />
                   </div>
                   <div className="rounded-xl border border-border p-3">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Budget Utilization</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Realisasi Anggaran</p>
                     <div className="text-2xl font-extrabold text-blue-600">{regional.budget_utilization.percentage.toFixed(1)}%</div>
                     <p className="text-[10px] text-muted-foreground">
                       {formatIDR(regional.budget_utilization.utilized)} / {formatIDR(regional.budget_utilization.allocated)}
@@ -281,7 +281,7 @@ export default function AdminReportsPage() {
 
           {/* Demographics */}
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <SectionHeader icon={BarChart3} title="Demographics Report" subtitle="Distribusi data penerima manfaat" />
+            <SectionHeader icon={BarChart3} title="Laporan Demografi" subtitle="Distribusi data penerima manfaat" />
             {!demographics ? (
               <div className="space-y-3">
                 {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-10 rounded-xl bg-secondary animate-pulse" />)}
@@ -290,7 +290,7 @@ export default function AdminReportsPage() {
               <div className="space-y-5">
                 {[
                   { title: "Distribusi Usia",           items: demographics.age_distribution,    color: "bg-blue-500" },
-                  { title: "Distribusi Gender",          items: demographics.gender_distribution,  color: "bg-purple-500" },
+                  { title: "Distribusi Jenis Kelamin",          items: demographics.gender_distribution,  color: "bg-purple-500" },
                   { title: "Status Nutrisi",             items: demographics.nutrition_status,     color: "bg-emerald-500" },
                   { title: "Klasifikasi FIES",           items: demographics.fies_classification,  color: "bg-rose-500" },
                 ].map((section) => (
@@ -325,7 +325,7 @@ export default function AdminReportsPage() {
               <Download className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-base font-bold text-foreground">Export Data CSV</h2>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">Download laporan dari backend admin dalam format CSV.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Unduh laporan dalam format CSV.</p>
           </div>
           <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {EXPORTS.map((exp) => {
@@ -346,7 +346,7 @@ export default function AdminReportsPage() {
                     <p className="text-[10px] text-muted-foreground mt-0.5">{exp.filename}</p>
                   </div>
                   <div className={`flex items-center gap-1 text-[10px] font-semibold ${exp.color} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                    <Download className="h-3 w-3" /> Download
+                    <Download className="h-3 w-3" /> Unduh
                   </div>
                 </button>
               );

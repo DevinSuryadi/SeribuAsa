@@ -31,8 +31,8 @@ const PAGE_SIZE = 20;
 
 const statusConfig: Record<string, { label: string; dot: string; cls: string; icon: React.ElementType }> = {
   completed:  { label: "Selesai",  dot: "bg-emerald-500", cls: "bg-emerald-50 text-emerald-700 ring-emerald-200", icon: CheckCircle2 },
-  pending:    { label: "Pending",  dot: "bg-amber-400",   cls: "bg-amber-50 text-amber-700 ring-amber-200",       icon: Clock },
-  cancelled:  { label: "Dibatal", dot: "bg-rose-500",    cls: "bg-rose-50 text-rose-700 ring-rose-200",           icon: XCircle },
+  pending:    { label: "Menunggu",  dot: "bg-amber-400",   cls: "bg-amber-50 text-amber-700 ring-amber-200",       icon: Clock },
+  cancelled:  { label: "Dibatalkan", dot: "bg-rose-500",    cls: "bg-rose-50 text-rose-700 ring-rose-200",           icon: XCircle },
 };
 
 function OrderRow({ item }: { item: OrderItem }) {
@@ -148,7 +148,7 @@ export default function AdminOrdersPage() {
           {[
             { label: "Total Pesanan", val: stats.total,     icon: ShoppingCart, bg: "bg-slate-50",   ring: "ring-slate-100",   color: "text-slate-700" },
             { label: "Selesai",       val: stats.completed, icon: CheckCircle2, bg: "bg-emerald-50", ring: "ring-emerald-100", color: "text-emerald-700" },
-            { label: "Pending",       val: stats.pending,   icon: Clock,        bg: "bg-amber-50",   ring: "ring-amber-100",   color: "text-amber-700" },
+            { label: "Menunggu",       val: stats.pending,   icon: Clock,        bg: "bg-amber-50",   ring: "ring-amber-100",   color: "text-amber-700" },
             { label: "Dibatalkan",    val: stats.cancelled, icon: XCircle,      bg: "bg-rose-50",    ring: "ring-rose-100",    color: "text-rose-700" },
           ].map((s) => (
             <div key={s.label} className={`flex items-center gap-3 rounded-2xl ${s.bg} ring-1 ${s.ring} p-3.5`}>
@@ -181,7 +181,7 @@ export default function AdminOrdersPage() {
             </div>
             <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs gap-1.5 flex-shrink-0"
               onClick={() => void loadOrders()} disabled={loading}>
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Refresh
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Muat Ulang
             </Button>
           </div>
         </div>

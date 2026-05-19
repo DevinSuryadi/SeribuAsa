@@ -55,7 +55,7 @@ const PAGE_SIZE = 20;
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 const approvalConfig: Record<ApprovalStatus, { label: string; dot: string; cls: string }> = {
-  pending:  { label: "Pending",  dot: "bg-amber-400",   cls: "bg-amber-50 text-amber-700 ring-amber-200" },
+  pending:  { label: "Menunggu",  dot: "bg-amber-400",   cls: "bg-amber-50 text-amber-700 ring-amber-200" },
   approved: { label: "Disetujui", dot: "bg-emerald-500", cls: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
   rejected: { label: "Ditolak",  dot: "bg-rose-500",    cls: "bg-rose-50 text-rose-700 ring-rose-200" },
 };
@@ -134,12 +134,12 @@ function BeneficiaryRow({ item }: { item: EligibilityItem }) {
         {item.eligible_for_allocation ? (
           <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
             <CheckCircle2 className="h-3 w-3" />
-            Eligible
+            Layak
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold bg-rose-50 text-rose-700 ring-1 ring-rose-200">
             <XCircle className="h-3 w-3" />
-            Tidak Eligible
+            Tidak Layak
           </span>
         )}
       </td>
@@ -239,7 +239,7 @@ export default function AdminBeneficiariesPage() {
   return (
     <DashboardLayout
       title="Kelayakan Penerima"
-      subtitle="Monitor eligibility dan status alokasi E-Wallet untuk penerima manfaat."
+      subtitle="Monitor kelayakan dan status alokasi Dompet Nutrisi untuk penerima manfaat."
     >
       <div className="space-y-5">
 
@@ -248,8 +248,8 @@ export default function AdminBeneficiariesPage() {
           {[
             { label: "Total Penerima", val: stats.total,    icon: Users,        bg: "bg-slate-50",   ring: "ring-slate-100",   color: "text-slate-700" },
             { label: "Disetujui",      val: stats.approved, icon: Shield,       bg: "bg-emerald-50", ring: "ring-emerald-100", color: "text-emerald-700" },
-            { label: "Pending Review", val: stats.pending,  icon: AlertTriangle, bg: "bg-amber-50",  ring: "ring-amber-100",   color: "text-amber-700" },
-            { label: "Eligible Bulan Ini", val: stats.eligible, icon: CheckCircle2, bg: "bg-blue-50", ring: "ring-blue-100",  color: "text-blue-700" },
+            { label: "Menunggu Peninjauan", val: stats.pending,  icon: AlertTriangle, bg: "bg-amber-50",  ring: "ring-amber-100",   color: "text-amber-700" },
+            { label: "Memenuhi Syarat Bulan Ini", val: stats.eligible, icon: CheckCircle2, bg: "bg-blue-50", ring: "ring-blue-100",  color: "text-blue-700" },
             { label: "Belum Survey",   val: stats.noSurvey, icon: Activity,     bg: "bg-rose-50",    ring: "ring-rose-100",    color: "text-rose-700" },
           ].map((stat) => (
             <div key={stat.label} className={`flex items-center gap-3 rounded-2xl ${stat.bg} ring-1 ${stat.ring} p-3.5`}>
@@ -268,7 +268,7 @@ export default function AdminBeneficiariesPage() {
         <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-100 px-4 py-2.5">
           <Info className="h-4 w-4 text-blue-500 flex-shrink-0" />
           <p className="text-xs text-blue-700 font-medium">
-            Penerima <strong>eligible</strong> adalah akun berstatus <em>approved</em>, sudah mengisi survey FIES bulan ini, dan saldo E-Wallet masih tersedia untuk realokasi.
+            Penerima <strong>layak</strong> adalah akun berstatus <em>disetujui</em>, sudah mengisi survey FIES bulan ini, dan saldo Dompet Nutrisi masih tersedia untuk realokasi.
           </p>
         </div>
 
@@ -276,7 +276,7 @@ export default function AdminBeneficiariesPage() {
         <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           {/* Status + Eligibility filter */}
           <div className="flex items-center gap-1 p-3 border-b border-border/60 flex-wrap">
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1">Approval:</span>
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1">Persetujuan:</span>
             {(["all", "pending", "approved", "rejected"] as StatusFilter[]).map((f) => {
               const active = statusFilter === f;
               const counts: Record<string, number> = {
@@ -303,11 +303,11 @@ export default function AdminBeneficiariesPage() {
 
             <div className="w-px h-4 bg-border mx-1" />
 
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1">Eligible:</span>
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1">Kelayakan:</span>
             {([
               { val: "all" as EligibilityFilter,         label: "Semua" },
-              { val: "eligible" as EligibilityFilter,     label: "Eligible" },
-              { val: "not_eligible" as EligibilityFilter, label: "Tidak" },
+              { val: "eligible" as EligibilityFilter,     label: "Layak" },
+              { val: "not_eligible" as EligibilityFilter, label: "Tidak Layak" },
             ]).map((f) => {
               const active = eligibilityFilter === f.val;
               return (
@@ -343,7 +343,7 @@ export default function AdminBeneficiariesPage() {
               disabled={loading}
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+              Muat ulang
             </Button>
           </div>
         </div>
@@ -394,7 +394,7 @@ export default function AdminBeneficiariesPage() {
                   <th className="py-3 pl-5 pr-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Penerima</th>
                   <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Status</th>
                   <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Skor FIES</th>
-                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Eligibility</th>
+                  <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Kelayakan</th>
                   <th className="py-3 px-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Keluarga & Saldo</th>
                   <th className="py-3 pl-3 pr-5 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden xl:table-cell">Survey Terakhir</th>
                 </tr>

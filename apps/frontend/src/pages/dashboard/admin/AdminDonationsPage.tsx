@@ -34,7 +34,7 @@ const psConfig: Record<string, { label: string; dot: string; cls: string }> = {
   success:  { label: "Berhasil", dot: "bg-emerald-500", cls: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
   pending:  { label: "Menunggu", dot: "bg-amber-400",   cls: "bg-amber-50 text-amber-700 ring-amber-200" },
   failed:   { label: "Gagal",    dot: "bg-rose-500",    cls: "bg-rose-50 text-rose-700 ring-rose-200" },
-  refunded: { label: "Refund",   dot: "bg-slate-400",   cls: "bg-slate-50 text-slate-600 ring-slate-200" },
+  refunded: { label: "Pengembalian Dana",   dot: "bg-slate-400",   cls: "bg-slate-50 text-slate-600 ring-slate-200" },
 };
 const asConfig: Record<string, { label: string }> = {
   allocated:               { label: "Dialokasi" },
@@ -199,7 +199,7 @@ export default function AdminDonationsPage() {
             </div>
             <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs gap-1.5 flex-shrink-0"
               onClick={() => void loadDonations()} disabled={loading}>
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Refresh
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Muat Ulang
             </Button>
           </div>
         </div>

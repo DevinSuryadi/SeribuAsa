@@ -18,10 +18,10 @@ type AdminStatsResponse = {
 };
 
 const exports_ = [
-  { label: "Users",       endpoint: "/admin/export/users",       filename: "users.csv",       color: "text-slate-600",   bg: "bg-slate-100" },
-  { label: "Orders",      endpoint: "/admin/export/orders",      filename: "orders.csv",      color: "text-blue-600",    bg: "bg-blue-100" },
-  { label: "E-Wallet",    endpoint: "/admin/export/vouchers",    filename: "ewallet.csv",     color: "text-emerald-600", bg: "bg-emerald-100" },
-  { label: "Redemptions", endpoint: "/admin/export/redemptions", filename: "redemptions.csv", color: "text-purple-600",  bg: "bg-purple-100" },
+  { label: "Pengguna",       endpoint: "/admin/export/users",       filename: "pengguna.csv",       color: "text-slate-600",   bg: "bg-slate-100" },
+  { label: "Pesanan",      endpoint: "/admin/export/orders",      filename: "pesanan.csv",      color: "text-blue-600",    bg: "bg-blue-100" },
+  { label: "Dompet Nutrisi",    endpoint: "/admin/export/vouchers",    filename: "dompet_nutrisi.csv",     color: "text-emerald-600", bg: "bg-emerald-100" },
+  { label: "Penukaran", endpoint: "/admin/export/redemptions", filename: "penukaran.csv", color: "text-purple-600",  bg: "bg-purple-100" },
 ] as const;
 
 export default function AdminVouchersPage() {
@@ -77,9 +77,9 @@ export default function AdminVouchersPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: "Dompet Aktif",        val: loading ? "–" : String(stats?.vouchers.active_count ?? 0),  icon: Wallet,    bg: "bg-emerald-50", ring: "ring-emerald-100", color: "text-emerald-700", desc: "E-wallet dengan saldo > 0" },
-            { label: "Total Saldo Escrow",   val: loading ? "–" : formatIDR(stats?.vouchers.total_balance ?? 0), icon: BarChart3, bg: "bg-blue-50", ring: "ring-blue-100",  color: "text-blue-700",    desc: "Dana tertahan di sistem" },
-            { label: "Total Redemption",     val: loading ? "–" : String(stats?.redemptions.total_count ?? 0), icon: QrCode,   bg: "bg-purple-50", ring: "ring-purple-100", color: "text-purple-700",  desc: "QR scan berhasil" },
-            { label: "Nilai Transaksi",      val: loading ? "–" : formatIDR(stats?.redemptions.total_amount ?? 0), icon: TrendingUp, bg: "bg-rose-50", ring: "ring-rose-100", color: "text-rose-700", desc: "Total nilai redemption" },
+            { label: "Total Saldo",   val: loading ? "–" : formatIDR(stats?.vouchers.total_balance ?? 0), icon: BarChart3, bg: "bg-blue-50", ring: "ring-blue-100",  color: "text-blue-700",    desc: "Dana tertahan di sistem" },
+            { label: "Total Penukaran",     val: loading ? "–" : String(stats?.redemptions.total_count ?? 0), icon: QrCode,   bg: "bg-purple-50", ring: "ring-purple-100", color: "text-purple-700",  desc: "QR scan berhasil" },
+            { label: "Nilai Transaksi",      val: loading ? "–" : formatIDR(stats?.redemptions.total_amount ?? 0), icon: TrendingUp, bg: "bg-rose-50", ring: "ring-rose-100", color: "text-rose-700", desc: "Total Nominal Penukaran" },
           ].map((s) => (
             <div key={s.label} className={`rounded-2xl ${s.bg} ring-1 ${s.ring} p-5`}>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/5 mb-4">
@@ -123,7 +123,7 @@ export default function AdminVouchersPage() {
               <Download className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-base font-bold text-foreground">Export Data CSV</h3>
             </div>
-            <p className="text-xs text-muted-foreground">Download laporan langsung dari backend admin.</p>
+            <p className="text-xs text-muted-foreground">Unduh laporan dalam format CSV.</p>
           </div>
           <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {exports_.map((exp) => (
