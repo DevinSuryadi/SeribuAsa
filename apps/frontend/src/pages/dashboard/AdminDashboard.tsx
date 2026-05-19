@@ -1,50 +1,74 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import {
   Users,
-  Wallet,
   ShoppingCart,
-  QrCode,
   Heart,
   Download,
   RefreshCw,
   AlertCircle,
-  TrendingUp,
-  Store,
-  Shield,
   Package,
   ClipboardList,
-  Activity,
-  ArrowUpRight,
-  Bell,
-  CheckCircle2,
+  FileText,
+  Ticket,
+  Gift,
+  UserCheck,
+  BarChart3,
+  ChevronRight,
+  PieChart,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { formatIDR } from "@/lib/format";
 import { apiFetch } from "@/services/api";
 import { toast } from "sonner";
 
 interface AdminStats {
-  users: { total: number; donors: number; beneficiaries: number; vendors: number; pending_beneficiaries: number; pending_vendors: number };
-  products: { total: number; pending: number; approved: number; rejected: number };
-  vouchers: { active_count: number; total_balance: number }; // backend still uses vouchers key
-  orders: { total: number; completed: number; pending?: number };
-  redemptions: { total_count: number; total_amount: number };
-  donations: { total_amount: number };
+  users: {
+    total: number;
+    donors: number;
+    beneficiaries: number;
+    vendors: number;
+    pending_beneficiaries: number;
+    pending_vendors: number;
+  };
+  products: {
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+  };
+  vouchers: {
+    active_count: number;
+    total_balance: number;
+  };
+  orders: {
+    total: number;
+    completed: number;
+  };
+  redemptions: {
+    total_count: number;
+    total_amount: number;
+  };
+  donations: {
+    total_amount: number;
+  };
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedExport, setSelectedExport] = useState("users");
 
   const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+
       const data = await apiFetch("/admin/stats");
       setStats(data);
     } catch (err: any) {
@@ -55,37 +79,68 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const handleExport = async (type: string) => {
     try {
-      const token = await import("@/integrations/supabase/client").then((m) => m.supabase.auth.getSession());
+      const token = await import("@/integrations/supabase/client").then((m) =>
+        m.supabase.auth.getSession()
+      );
+
       const response = await fetch(`${API_BASE}/admin/export/${type}`, {
-        headers: { Authorization: `Bearer ${token.data.session?.access_token}` },
+        headers: {
+          Authorization: `Bearer ${token.data.session?.access_token}`,
+        },
       });
-      if (!response.ok) throw new Error("Export failed");
+
+      if (!response.ok) throw new Error("Gagal mengekspor data");
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `${type}.csv`; a.click();
+
+      a.href = url;
+      a.download = `${type}.csv`;
+      a.click();
+
       window.URL.revokeObjectURL(url);
-      toast.success(`Berhasil export ${type}.csv`);
+      toast.success(`Berhasil mengekspor ${type}.csv`);
     } catch (err: any) {
-      toast.error(err.message || "Gagal export");
+      toast.error(err.message || "Gagal mengekspor data");
     }
   };
 
   if (loading) {
     return (
-      <DashboardLayout title="Dashboard Admin" subtitle="Kelola sistem dan data NutriGuard.">
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-3xl border border-border bg-card p-6 shadow-sm animate-pulse">
-              <div className="h-10 w-10 rounded-2xl bg-secondary mb-4" />
-              <div className="h-8 w-28 bg-secondary rounded-lg mb-2" />
-              <div className="h-4 w-20 bg-secondary rounded-md" />
-            </div>
-          ))}
+      <DashboardLayout
+        title="Selamat datang, Admin"
+        subtitle="Pantau dan kelola seluruh ekosistem SeribuAsa."
+      >
+        <div className="flex min-h-[calc(100dvh-9.5rem)] flex-col gap-2.5">
+          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-[78px] animate-pulse rounded-2xl border border-slate-200 bg-white p-3"
+              >
+                <div className="mb-2.5 h-3 w-24 rounded-full bg-slate-100" />
+                <div className="mb-2 h-5 w-14 rounded-full bg-slate-100" />
+                <div className="h-2.5 w-20 rounded-full bg-slate-100" />
+              </div>
+            ))}
+          </div>
+
+          <div className="grid items-stretch gap-2.5 xl:grid-cols-[minmax(0,1.02fr)_minmax(320px,0.98fr)]">
+            <div className="h-[238px] animate-pulse rounded-2xl border border-slate-200 bg-white" />
+            <div className="h-[238px] animate-pulse rounded-2xl border border-slate-200 bg-white" />
+          </div>
+
+          <div className="grid flex-1 gap-2.5 xl:grid-cols-[minmax(0,1.26fr)_minmax(280px,0.74fr)]">
+            <div className="min-h-[94px] animate-pulse rounded-2xl border border-slate-200 bg-white" />
+            <div className="min-h-[94px] animate-pulse rounded-2xl border border-slate-200 bg-white" />
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -93,245 +148,561 @@ export default function AdminDashboard() {
 
   if (error) {
     return (
-      <DashboardLayout title="Dashboard Admin" subtitle="Kelola sistem dan data NutriGuard.">
-        <div className="rounded-3xl border border-red-200 bg-red-50/50 p-6 sm:p-8 flex items-start gap-5 shadow-sm">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-red-100/80 shadow-inner">
-            <AlertCircle className="h-6 w-6 text-red-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-red-800 text-lg mb-1.5">Gagal memuat data</h3>
-            <p className="text-sm text-red-600/90 mb-4">{error}</p>
-            <Button variant="outline" size="sm" onClick={fetchStats} className="border-red-300 text-red-700 bg-white hover:bg-red-50 hover:text-red-800 shadow-sm transition-all rounded-xl h-9">
-              <RefreshCw className="mr-2 h-4 w-4" /> Coba Lagi
-            </Button>
+      <DashboardLayout
+        title="Selamat datang, Admin"
+        subtitle="Pantau dan kelola seluruh ekosistem SeribuAsa."
+      >
+        <div className="rounded-2xl border border-red-200 bg-red-50/80 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-red-100">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            </div>
+
+            <div className="flex-1">
+              <h3 className="mb-1 text-sm font-semibold text-red-800">
+                Gagal memuat data
+              </h3>
+              <p className="mb-3 text-sm text-red-600">{error}</p>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchStats}
+                className="h-8 border-red-300 bg-white text-xs text-red-700 hover:bg-red-50"
+              >
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                Coba Lagi
+              </Button>
+            </div>
           </div>
         </div>
       </DashboardLayout>
     );
   }
 
-  const completionRate = stats?.orders.total
-    ? Math.round(((stats.orders.completed || 0) / stats.orders.total) * 100)
-    : 0;
+  const pendingBeneficiaries = stats?.users.pending_beneficiaries || 0;
+  const pendingVendors = stats?.users.pending_vendors || 0;
+  const pendingProducts = stats?.products.pending || 0;
+  const pendingOrders = Math.max(
+    (stats?.orders.total || 0) - (stats?.orders.completed || 0),
+    0
+  );
 
-  const totalPending =
-    (stats?.users.pending_beneficiaries ?? 0) +
-    (stats?.users.pending_vendors ?? 0) +
-    (stats?.products.pending ?? 0);
+  const pendingReview = pendingBeneficiaries + pendingVendors + pendingProducts;
+
+  const donors = stats?.users.donors || 0;
+  const beneficiaries = stats?.users.beneficiaries || 0;
+  const vendors = stats?.users.vendors || 0;
+  const totalComposition = donors + beneficiaries + vendors;
+  const roleTotal = Math.max(totalComposition, 1);
+
+  const donorDeg = totalComposition > 0 ? (donors / totalComposition) * 360 : 0;
+  const beneficiaryDeg =
+    totalComposition > 0 ? (beneficiaries / totalComposition) * 360 : 0;
+  const vendorDeg = totalComposition > 0 ? (vendors / totalComposition) * 360 : 0;
+
+  const pieGradient =
+    totalComposition > 0
+      ? `conic-gradient(
+          #059669 0deg ${donorDeg}deg,
+          #14b8a6 ${donorDeg}deg ${donorDeg + beneficiaryDeg}deg,
+          #f59e0b ${donorDeg + beneficiaryDeg}deg ${
+            donorDeg + beneficiaryDeg + vendorDeg
+          }deg,
+          #e2e8f0 ${donorDeg + beneficiaryDeg + vendorDeg}deg 360deg
+        )`
+      : "conic-gradient(#e2e8f0 0deg 360deg)";
+
+  const userComposition = [
+    {
+      label: "Donatur",
+      value: donors,
+      percent: Math.round((donors / roleTotal) * 100),
+      dotClass: "bg-emerald-600",
+      textClass: "text-emerald-700",
+    },
+    {
+      label: "Penerima",
+      value: beneficiaries,
+      percent: Math.round((beneficiaries / roleTotal) * 100),
+      dotClass: "bg-teal-500",
+      textClass: "text-teal-700",
+    },
+    {
+      label: "Vendor",
+      value: vendors,
+      percent: Math.round((vendors / roleTotal) * 100),
+      dotClass: "bg-amber-500",
+      textClass: "text-amber-700",
+    },
+  ];
+
+  const kpiCards = [
+    {
+      label: "Total Pengguna",
+      value: stats?.users.total || 0,
+      helper: "Semua peran",
+      icon: Users,
+      iconClass: "text-emerald-700",
+      surface: "bg-emerald-50",
+    },
+    {
+      label: "Total Donasi",
+      value: formatIDR(stats?.donations.total_amount || 0),
+      helper: "Dana terkumpul",
+      icon: Heart,
+      iconClass: "text-green-600",
+      surface: "bg-green-50",
+    },
+    {
+      label: "Perlu Ditinjau",
+      value: pendingReview,
+      helper: "Item menunggu tinjauan",
+      icon: ClipboardList,
+      iconClass: "text-amber-600",
+      surface: "bg-amber-50",
+    },
+    {
+      label: "Pesanan Selesai",
+      value: stats?.orders.completed || 0,
+      helper: `Dari ${stats?.orders.total || 0} pesanan`,
+      icon: Package,
+      iconClass: "text-sky-700",
+      surface: "bg-sky-50",
+    },
+  ];
+
+  const priorityTasks = [
+    {
+      title: "Kelayakan penerima",
+      desc: "Tinjau pengajuan penerima manfaat",
+      summary: `${pendingBeneficiaries} pengajuan menunggu tinjauan`,
+      count: pendingBeneficiaries,
+      href: "/dashboard/admin/beneficiaries",
+      accent: "bg-emerald-500",
+      priorityLabel: "Tinggi",
+      priorityClass: "bg-rose-50 text-rose-700 ring-1 ring-rose-100",
+    },
+    {
+      title: "Pesanan masuk",
+      desc: "Konfirmasi pesanan yang belum selesai",
+      summary: `${pendingOrders} pesanan perlu diproses`,
+      count: pendingOrders,
+      href: "/dashboard/admin/orders",
+      accent: "bg-teal-500",
+      priorityLabel: "Menengah",
+      priorityClass: "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
+    },
+    {
+      title: "Produk tertunda",
+      desc: "Tinjau produk yang menunggu persetujuan",
+      summary: `${pendingProducts} produk menunggu tinjauan`,
+      count: pendingProducts,
+      href: "/dashboard/admin/products",
+      accent: "bg-sky-500",
+      priorityLabel: "Menengah",
+      priorityClass: "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
+    },
+    {
+      title: "Validasi vendor",
+      desc: "Verifikasi akun vendor baru",
+      summary: `${pendingVendors} vendor menunggu verifikasi`,
+      count: pendingVendors,
+      href: "/dashboard/admin/users",
+      accent: "bg-lime-500",
+      priorityLabel: "Rendah",
+      priorityClass: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+    },
+  ];
+
+  const activePriorityTasks = priorityTasks.filter((task) => task.count > 0);
+
+  const exportOptions = [
+    {
+      label: "Pengguna",
+      desc: "Data akun pengguna",
+      type: "users",
+      icon: Users,
+    },
+    {
+      label: "Pesanan",
+      desc: "Riwayat pesanan",
+      type: "orders",
+      icon: ShoppingCart,
+    },
+    {
+      label: "Voucher",
+      desc: "Data voucher aktif",
+      type: "vouchers",
+      icon: Ticket,
+    },
+    {
+      label: "Penukaran",
+      desc: "Riwayat penukaran",
+      type: "redemptions",
+      icon: Gift,
+    },
+  ];
+
+  const quickLinks = [
+    {
+      label: "Kelola Pengguna",
+      desc: "Kelola akun dan peran pengguna",
+      href: "/dashboard/admin/users",
+      icon: Users,
+      iconWrap: "bg-emerald-50 text-emerald-700",
+    },
+    {
+      label: "Tinjau Kelayakan",
+      desc: "Tinjau pengajuan kelayakan penerima",
+      href: "/dashboard/admin/beneficiaries",
+      icon: UserCheck,
+      iconWrap: "bg-amber-50 text-amber-700",
+    },
+    {
+      label: "Kelola Pesanan",
+      desc: "Lihat dan proses pesanan masuk",
+      href: "/dashboard/admin/orders",
+      icon: ShoppingCart,
+      iconWrap: "bg-teal-50 text-teal-700",
+    },
+    {
+      label: "Laporan & Analitik",
+      desc: "Lihat data dan insight penting",
+      href: "/dashboard/admin/reports",
+      icon: BarChart3,
+      iconWrap: "bg-sky-50 text-sky-700",
+    },
+  ];
 
   return (
-    <DashboardLayout title="Dashboard Admin 🛡️" subtitle="Pantau dan kelola seluruh ekosistem NutriGuard.">
-      <div className="space-y-8">
-        {/* Premium Hero Summary Bar */}
-        <div className="rounded-[2rem] p-6 sm:p-8 relative overflow-hidden shadow-lg border border-slate-800/20" 
-             style={{ background: "linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%)" }}>
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-rose-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4 pointer-events-none" />
-          
-          <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            {[
-              { label: "Total Donasi Terkumpul", value: formatIDR(stats?.donations.total_amount || 0), icon: Heart, color: "text-rose-300", bg: "bg-rose-500/20", iconColor: "text-rose-400" },
-              { label: "Total Saldo E-Wallet", value: formatIDR(stats?.vouchers.total_balance || 0), icon: Wallet, color: "text-emerald-300", bg: "bg-emerald-500/20", iconColor: "text-emerald-400" },
-              { label: "Total Transaksi Selesai", value: formatIDR(stats?.redemptions.total_amount || 0), icon: QrCode, color: "text-blue-300", bg: "bg-blue-500/20", iconColor: "text-blue-400" },
-              { label: "Rasio Pesanan Selesai", value: `${completionRate}%`, icon: Activity, color: "text-purple-300", bg: "bg-purple-500/20", iconColor: "text-purple-400" },
-            ].map((item) => {
-              const Icon = item.icon
+    <DashboardLayout
+      title="Selamat datang, Admin"
+      subtitle="Pantau dan kelola seluruh ekosistem SeribuAsa."
+    >
+      <div className="relative -mx-1 flex min-h-[calc(100dvh-9.5rem)] flex-col gap-2.5 overflow-hidden rounded-[1.25rem] bg-[#fbfffc] px-1 pb-1">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-emerald-100/30 blur-3xl" />
+        <div className="pointer-events-none absolute left-1/3 top-40 h-32 w-32 rounded-full bg-amber-50/55 blur-3xl" />
+
+        <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_22px_rgba(15,23,42,0.024)]">
+          <div className="grid divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+            {kpiCards.map((card) => {
+              const Icon = card.icon;
+
               return (
-                <div key={item.label} className="relative group">
-                  <div className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl ${item.bg} mb-4 ring-1 ring-white/10 shadow-inner backdrop-blur-md`}>
-                    <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${item.iconColor}`} />
+                <div
+                  key={card.label}
+                  className="flex min-h-[80px] items-center justify-between gap-3 p-3 transition hover:bg-emerald-50/20 sm:min-h-[88px] lg:p-3.5"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-slate-700 sm:text-xs">
+                      {card.label}
+                    </p>
+                    <div className="mt-1 text-[1.35rem] font-semibold leading-none tracking-tight text-slate-950 sm:text-[1.55rem]">
+                      {card.value}
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+                      {card.helper}
+                    </p>
                   </div>
-                  <div className={`text-xl sm:text-3xl font-black tracking-tight ${item.color} mb-1.5 drop-shadow-sm`}>{item.value}</div>
-                  <p className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide uppercase">{item.label}</p>
+
+                  <div
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl ${card.surface}`}
+                  >
+                    <Icon className={`h-4 w-4 stroke-[1.8] ${card.iconClass}`} />
+                  </div>
                 </div>
-              )
+              );
             })}
           </div>
-        </div>
+        </section>
 
-        {/* Action Alerts */}
-        {totalPending > 0 && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 flex items-start gap-3 shadow-sm">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-amber-100 mt-0.5">
-              <Bell className="h-4 w-4 text-amber-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-amber-900 mb-1">Perlu Tindakan — {totalPending} item menunggu review</p>
-              <div className="flex flex-wrap gap-2">
-                {(stats?.users.pending_beneficiaries ?? 0) > 0 && (
-                  <Link to="/dashboard/admin/beneficiaries" className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg px-2.5 py-1 transition-colors">
-                    <Users className="h-3 w-3" />
-                    {stats?.users.pending_beneficiaries} penerima pending
-                  </Link>
-                )}
-                {(stats?.users.pending_vendors ?? 0) > 0 && (
-                  <Link to="/dashboard/admin/users" className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg px-2.5 py-1 transition-colors">
-                    <Store className="h-3 w-3" />
-                    {stats?.users.pending_vendors} vendor pending
-                  </Link>
-                )}
-                {(stats?.products.pending ?? 0) > 0 && (
-                  <Link to="/dashboard/admin/products" className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg px-2.5 py-1 transition-colors">
-                    <Package className="h-3 w-3" />
-                    {stats?.products.pending} produk pending
-                  </Link>
-                )}
-              </div>
-            </div>
-            <CheckCircle2 className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
-          </div>
-        )}
+        <section className="grid items-stretch gap-2.5 xl:grid-cols-[minmax(0,1.04fr)_minmax(320px,0.96fr)]">
+          <div className="relative flex h-full flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_10px_28px_rgba(15,23,42,0.035)] ring-1 ring-slate-200">
+            <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-emerald-500 via-teal-400 to-amber-300" />
 
-        {/* Bento Box Layout */}
-        <div className="grid gap-6 xl:grid-cols-3">
-          
-          {/* Main Content Area - Span 2 */}
-          <div className="xl:col-span-2 space-y-6">
-            
-            {/* Quick Actions Row */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card rounded-[2rem] p-3 pl-6 border border-border shadow-sm">
-              <div className="flex items-center gap-2">
-                <Download className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-bold text-foreground">Export Laporan CSV</p>
-              </div>
-              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                {[
-                  { label: "Users", type: "users", variant: "default" as const },
-                  { label: "Orders", type: "orders", variant: "secondary" as const },
-                  { label: "E-Wallet", type: "vouchers", variant: "secondary" as const },
-                  { label: "Redemptions", type: "redemptions", variant: "secondary" as const },
-                ].map((exp) => (
-                  <Button
-                    key={exp.type}
-                    variant={exp.variant}
-                    size="sm"
-                    onClick={() => handleExport(exp.type)}
-                    className="rounded-xl font-medium h-9"
-                  >
-                    {exp.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Demographics Bento — compact grid */}
-            <div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200">
-                    <Users className="h-3.5 w-3.5 text-slate-700" />
-                  </div>
-                  <h2 className="text-base font-bold text-foreground">Demografi Pengguna</h2>
+            <div className="relative flex h-full flex-col px-4 py-3.5 pl-5">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-[0.95rem] font-semibold tracking-[-0.02em] text-slate-950">
+                    Tugas Prioritas
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Ringkasan pekerjaan yang perlu dipantau.
+                  </p>
                 </div>
-                <span className="text-xs text-muted-foreground font-semibold">{stats?.users.total || 0} total</span>
+
+                <span
+                  className={[
+                    "rounded-full px-2.5 py-1 text-[10px] font-semibold",
+                    activePriorityTasks.length > 0
+                      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+                      : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+                  ].join(" ")}
+                >
+                  {activePriorityTasks.length > 0
+                    ? `${activePriorityTasks.length} aktif`
+                    : "Aman"}
+                </span>
               </div>
-              
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { label: "Total",    value: stats?.users.total || 0,         sub: "Semua role",     icon: Users,  color: "text-slate-700",   bg: "bg-slate-50",   ring: "ring-slate-100" },
-                  { label: "Donatur",  value: stats?.users.donors || 0,        sub: "Aktif",          icon: Heart,  color: "text-rose-600",    bg: "bg-rose-50",    ring: "ring-rose-100" },
-                  { label: "Penerima", value: stats?.users.beneficiaries || 0, sub: "Terverifikasi",  icon: Shield, color: "text-emerald-600", bg: "bg-emerald-50", ring: "ring-emerald-100" },
-                  { label: "Vendor",   value: stats?.users.vendors || 0,       sub: "Mitra toko",     icon: Store,  color: "text-indigo-600", bg: "bg-indigo-50",  ring: "ring-indigo-100" },
-                ].map((card) => {
-                  const Icon = card.icon
+
+              <div className="flex flex-1 flex-col overflow-hidden rounded-[18px] bg-slate-50/70">
+                {priorityTasks.map((task, index) => {
+                  const hasTask = task.count > 0;
+
                   return (
-                    <div key={card.label} className={`flex items-center gap-3 rounded-xl ring-1 ${card.ring} ${card.bg} p-3.5`}>
-                      <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/5`}>
-                        <Icon className={`h-4 w-4 ${card.color}`} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className={`text-xl font-extrabold ${card.color} leading-none`}>{card.value}</div>
-                        <p className="text-xs font-bold text-slate-800 mt-0.5">{card.label}</p>
-                        <p className="text-[10px] text-slate-500">{card.sub}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Performance Metrics Bento */}
-            <div className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="h-8 w-8 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
-                </div>
-                <h2 className="text-lg font-bold text-foreground">Performa Sistem</h2>
-              </div>
-              
-              <div className="grid sm:grid-cols-2 gap-4">
-                {[
-                  { title: "Total Saldo E-Wallet", val: formatIDR(stats?.vouchers.total_balance || 0), desc: `${stats?.vouchers.active_count || 0} dompet aktif`, icon: Wallet, color: "text-emerald-700", bg: "bg-emerald-50/50" },
-                  { title: "Total Redemption", val: formatIDR(stats?.redemptions.total_amount || 0), desc: `${stats?.redemptions.total_count || 0} transaksi berhasil`, icon: QrCode, color: "text-blue-700", bg: "bg-blue-50/50" },
-                  { title: "Pesanan Selesai", val: (stats?.orders.completed || 0).toString(), desc: `Dari total ${stats?.orders.total || 0} pesanan`, icon: ShoppingCart, color: "text-orange-700", bg: "bg-orange-50/50" },
-                  { title: "Total Donasi Masuk", val: formatIDR(stats?.donations.total_amount || 0), desc: "Pendanaan terkumpul", icon: TrendingUp, color: "text-rose-700", bg: "bg-rose-50/50" },
-                ].map((metric) => (
-                  <div key={metric.title} className={`flex items-center gap-4 rounded-2xl border border-border ${metric.bg} p-4`}>
-                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/5">
-                      <metric.icon className={`h-6 w-6 ${metric.color}`} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{metric.title}</p>
-                      <p className={`text-lg font-extrabold truncate ${metric.color}`}>{metric.val}</p>
-                      <p className="text-[11px] text-muted-foreground/80">{metric.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-          </div>
-
-          {/* Sidebar Menu - Span 1 */}
-          <div className="space-y-6">
-            <div className="rounded-[2rem] border border-border bg-card shadow-sm overflow-hidden flex flex-col h-full">
-              <div className="p-6 border-b border-border bg-slate-50/50">
-                <div className="flex items-center gap-2 mb-1">
-                  <Shield className="h-5 w-5 text-indigo-600" />
-                  <h2 className="text-lg font-bold text-foreground">Menu Manajemen</h2>
-                </div>
-                <p className="text-xs text-muted-foreground">Akses kontrol penuh operasional sistem</p>
-              </div>
-              
-              <div className="p-3 space-y-1 flex-1">
-                {[
-                  { label: "Kelola Pengguna",   desc: `${stats?.users.total || 0} akun terdaftar`,           icon: Users,        href: "/dashboard/admin/users",          bg: "bg-slate-100",   color: "text-slate-700",   badge: null },
-                  { label: "Kelola Produk",      desc: `${stats?.products.approved || 0} disetujui`,           icon: Package,      href: "/dashboard/admin/products",       bg: "bg-indigo-100",  color: "text-indigo-700",  badge: stats?.products.pending || null },
-                  { label: "Review Penerima",    desc: `${stats?.users.beneficiaries || 0} penerima aktif`,    icon: ClipboardList, href: "/dashboard/admin/beneficiaries", bg: "bg-amber-100",   color: "text-amber-700",   badge: stats?.users.pending_beneficiaries || null },
-                  { label: "Sistem E-Wallet",    desc: "Pantau escrow & alokasi",                             icon: Wallet,       href: "/dashboard/admin/vouchers",       bg: "bg-emerald-100", color: "text-emerald-700", badge: null },
-                  { label: "Kelola Donasi",      desc: formatIDR(stats?.donations.total_amount || 0),          icon: Heart,        href: "/dashboard/admin/donations",      bg: "bg-rose-100",    color: "text-rose-700",    badge: null },
-                  { label: "Monitor Pesanan",    desc: `${stats?.orders.completed || 0} dari ${stats?.orders.total || 0} selesai`, icon: ShoppingCart, href: "/dashboard/admin/orders", bg: "bg-blue-100", color: "text-blue-700", badge: stats?.orders.pending || null },
-                  { label: "Laporan & Analitik", desc: "Dashboard insight khusus",                            icon: Activity,     href: "/dashboard/admin/reports",        bg: "bg-purple-100",  color: "text-purple-700",  badge: null },
-                ].map((link) => {
-                  const Icon = link.icon
-                  return (
-                    <Link
-                      key={link.label}
-                      to={link.href}
-                      className="group flex items-center gap-3 rounded-xl p-2.5 transition-all hover:bg-slate-50 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200"
+                    <div
+                      key={task.title}
+                      className={[
+                        "grid flex-1 items-center gap-3 px-3.5 py-2.5 transition hover:bg-white/80 md:grid-cols-[1.25fr_0.7fr_auto_auto]",
+                        index !== priorityTasks.length - 1
+                          ? "border-b border-slate-100"
+                          : "",
+                      ].join(" ")}
                     >
-                      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${link.bg} shadow-inner transition-transform group-hover:scale-105`}>
-                        <Icon className={`h-5 w-5 ${link.color}`} />
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className={[
+                            "h-2.5 w-2.5 flex-shrink-0 rounded-full",
+                            hasTask ? task.accent : "bg-slate-300",
+                          ].join(" ")}
+                        />
+
+                        <div className="min-w-0">
+                          <p
+                            className={[
+                              "text-xs font-semibold",
+                              hasTask ? "text-slate-950" : "text-slate-500",
+                            ].join(" ")}
+                          >
+                            {task.title}
+                          </p>
+                          <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                            {task.desc}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{link.label}</div>
-                        <div className="text-[10px] font-medium text-slate-500">{link.desc}</div>
-                      </div>
-                      {link.badge ? (
-                        <span className="flex-shrink-0 rounded-lg bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 ring-1 ring-amber-200">
-                          {link.badge}
-                        </span>
+
+                      <p
+                        className={[
+                          "text-[11px]",
+                          hasTask ? "text-slate-600" : "text-slate-400",
+                        ].join(" ")}
+                      >
+                        {task.summary}
+                      </p>
+
+                      <span
+                        className={[
+                          "w-fit rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
+                          hasTask
+                            ? task.priorityClass
+                            : "bg-white text-slate-500 ring-1 ring-slate-200",
+                        ].join(" ")}
+                      >
+                        {hasTask ? task.priorityLabel : "Aman"}
+                      </span>
+
+                      {hasTask ? (
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="h-7 rounded-full border-emerald-200 bg-white px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                        >
+                          <Link to={task.href}>Tinjau</Link>
+                        </Button>
                       ) : (
-                        <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-all duration-200 flex-shrink-0" />
+                        <span className="inline-flex h-7 items-center justify-center rounded-full bg-white px-3 text-xs font-semibold text-slate-400 ring-1 ring-slate-200">
+                          Selesai
+                        </span>
                       )}
-                    </Link>
-                  )
+                    </div>
+                  );
                 })}
               </div>
             </div>
           </div>
 
-        </div>
+          <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.024)]">
+            <div className="mb-3 flex items-start gap-2.5">
+
+              <div>
+                <h2 className="text-[0.95rem] font-semibold tracking-[-0.02em] text-slate-950">
+                  Ekspor Data
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Pilih data yang ingin Anda ekspor dalam format CSV.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {exportOptions.map((option) => {
+                const Icon = option.icon;
+                const isSelected = selectedExport === option.type;
+
+                return (
+                  <button
+                    key={option.type}
+                    type="button"
+                    onClick={() => setSelectedExport(option.type)}
+                    className={[
+                      "rounded-xl border p-2.5 text-left transition",
+                      isSelected
+                        ? "border-emerald-400 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/20",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <Icon
+                        className={[
+                          "mt-0.5 h-4 w-4 flex-shrink-0",
+                          isSelected ? "text-emerald-700" : "text-slate-500",
+                        ].join(" ")}
+                      />
+
+                      <div>
+                        <p className="text-xs font-semibold text-slate-950">
+                          {option.label}
+                        </p>
+                        <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                          {option.desc}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-auto pt-5">
+              <div className="mb-4 h-px bg-slate-100" />
+
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="mb-1 text-xs font-medium text-slate-700">Format</p>
+                  <div className="flex h-9 min-w-[118px] items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-4">
+                    <FileText className="h-3.5 w-3.5 text-emerald-700" />
+                    <span className="text-xs font-semibold text-slate-950">CSV</span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => handleExport(selectedExport)}
+                  className="h-9 rounded-lg bg-emerald-600 px-5 text-xs font-semibold text-white shadow-[0_8px_18px_rgba(16,185,129,0.16)] hover:bg-emerald-700"
+                >
+                  <Download className="mr-2 h-3.5 w-3.5" />
+                  Ekspor
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid flex-1 items-stretch gap-2.5 xl:grid-cols-[minmax(0,1.26fr)_minmax(280px,0.74fr)]">
+          <div className="flex min-h-[104px] flex-col rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.024)]">
+            <div className="mb-2.5">
+              <h2 className="text-[0.95rem] font-semibold tracking-[-0.02em] text-slate-950">
+                Akses Cepat
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Kelola fitur utama dengan cepat.
+              </p>
+            </div>
+
+            <div className="grid flex-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {quickLinks.map((link) => {
+                const Icon = link.icon;
+
+                return (
+                  <Link
+                    key={link.label}
+                    to={link.href}
+                    className="group flex min-h-[58px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50/20 hover:shadow-[0_10px_20px_rgba(6,95,70,0.04)]"
+                  >
+                    <div
+                      className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${link.iconWrap}`}
+                    >
+                      <Icon className="h-3.5 w-3.5 stroke-[1.8]" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[11px] font-semibold text-slate-950">
+                        {link.label}
+                      </p>
+                      <p className="mt-0.5 line-clamp-1 text-[10.5px] leading-snug text-slate-500">
+                        {link.desc}
+                      </p>
+                    </div>
+
+                    <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-emerald-700" />
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex min-h-[104px] flex-col rounded-2xl border border-slate-200 bg-white p-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.024)]">
+            <div className="mb-2.5 flex items-start gap-2.5">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                <PieChart className="h-4 w-4" />
+              </div>
+
+              <div>
+                <h2 className="text-[0.95rem] font-semibold tracking-[-0.02em] text-slate-950">
+                  Komposisi Pengguna
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Distribusi role aktif.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-1 items-center gap-4">
+              <div className="relative flex h-[84px] w-[84px] flex-shrink-0 items-center justify-center rounded-full">
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: pieGradient }}
+                />
+
+                <div className="relative flex h-[54px] w-[54px] flex-col items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(15,23,42,0.06)]">
+                  <span className="text-base font-semibold leading-none text-slate-950">
+                    {totalComposition}
+                  </span>
+                  <span className="mt-0.5 text-[10px] text-slate-500">
+                    pengguna
+                  </span>
+                </div>
+              </div>
+
+              <div className="min-w-0 flex-1 space-y-1.5">
+                {userComposition.map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${item.dotClass}`} />
+                      <span className="truncate text-slate-600">{item.label}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400">
+                        {totalComposition > 0 ? item.percent : 0}%
+                      </span>
+                      <span
+                        className={`min-w-4 text-right font-semibold ${item.textClass}`}
+                      >
+                        {item.value}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </DashboardLayout>
   );

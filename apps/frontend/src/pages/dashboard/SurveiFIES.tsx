@@ -310,9 +310,7 @@ const SurveiFIES = () => {
                   <div className="absolute left-[32%] bottom-[-92px] h-48 w-48 rounded-full bg-black/10" />
 
                   <div className="relative z-10 flex h-full flex-col">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-primary shadow-lg shadow-black/10">
-                      <ClipboardList className="h-5 w-5" />
-                    </div>
+                    
 
                     <div className="mt-5 max-w-2xl space-y-2">
                       <h2 className="max-w-xl text-[22px] font-bold leading-tight tracking-tight sm:text-[26px]">

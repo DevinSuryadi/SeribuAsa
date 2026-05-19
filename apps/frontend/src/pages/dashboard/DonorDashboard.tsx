@@ -234,12 +234,11 @@ export default function DonorDashboard() {
 
         {/* Thank You Banner */}
         <div className="relative overflow-hidden rounded-[18px] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-emerald-50/80 to-white px-5 py-4 shadow-sm sm:px-6 sm:py-5 lg:px-8">
-          <div className="pointer-events-none absolute -left-12 -top-16 h-40 w-40 rounded-full bg-emerald-100/45 blur-2xl" />
           <div className="pointer-events-none absolute -right-10 -bottom-20 h-48 w-48 rounded-full bg-emerald-100/55 blur-3xl" />
 
-          <div className="relative flex min-h-[118px] flex-col gap-4 md:min-h-[132px] md:flex-row md:items-center md:justify-between">
+          <div className="relative flex min-h-[80px] flex-col gap-4 md:min-h-[90px] md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="flex h-[118px] w-[170px] shrink-0 items-end justify-center overflow-hidden md:h-[132px] md:w-[210px]">
+              <div className="flex h-[80px] w-[120px] shrink-0 items-end justify-center overflow-hidden md:h-[90px] md:w-[140px]">
                 <img
                   src={foto}
                   alt="Ilustrasi donatur mendukung nutrisi keluarga"
@@ -256,24 +255,6 @@ export default function DonorDashboard() {
                   Dukungan Anda membantu lebih banyak anak menerima nutrisi bulan
                   ini.
                 </p>
-              </div>
-            </div>
-
-            <div className="hidden items-center gap-4 lg:flex">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-emerald-600 shadow-sm ring-1 ring-emerald-100">
-                <Heart className="h-5 w-5" />
-              </div>
-
-              <div className="h-px w-14 border-t border-dashed border-emerald-300" />
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-emerald-600 shadow-sm ring-1 ring-emerald-100">
-                <Users className="h-5 w-5" />
-              </div>
-
-              <div className="h-px w-14 border-t border-dashed border-emerald-300" />
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-emerald-600 shadow-sm ring-1 ring-emerald-100">
-                <CreditCard className="h-5 w-5" />
               </div>
             </div>
           </div>
