@@ -1,7 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+const LEGACY_API_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (LEGACY_API_URL ? `${String(LEGACY_API_URL).replace(/\/$/, "")}/api/v1` : "http://localhost:8000/api/v1");
 let accessTokenCache: string | null = null;
 let sessionInitPromise: Promise<void> | null = null;
 let isRefreshingToken = false;
@@ -131,15 +134,22 @@ function fetchWithTimeout(
   options: RequestInit,
   timeout: number
 ): Promise<Response> {
-  return Promise.race([
-    fetch(url, options),
-    new Promise<Response>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Request timeout")),
-        timeout
-      )
-    ),
-  ]);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  return fetch(url, {
+    ...options,
+    signal: controller.signal,
+  })
+    .catch((error) => {
+      if (controller.signal.aborted) {
+        throw new Error("Request timeout");
+      }
+      throw error;
+    })
+    .finally(() => {
+      clearTimeout(timeoutId);
+    });
 }
 
 async function apiFetchWithRetry(
