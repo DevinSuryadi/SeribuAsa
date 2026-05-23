@@ -267,6 +267,25 @@ async def list_orders(
     return OrderListResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
 
 
+@router.get("/pickup/preview", response_model=OrderResponse)
+async def preview_pickup_by_qr(
+    qr_code: str = Query(..., min_length=10),
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Vendor validates a pickup QR and reviews the order before confirming it."""
+    if current_user.role != "vendor":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Vendor only")
+    try:
+        order = OrderService.get_pickup_preview_by_qr(db, qr_code, current_user.user_id)
+        o_dict = OrderResponse.model_validate(order).model_dump()
+        if order.vendor_profile:
+            o_dict["vendor_store_name"] = order.vendor_profile.store_name
+        return OrderResponse(**o_dict)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
 @router.get("/{order_id}", response_model=OrderDetailResponse)
 async def get_order(
     order_id: str,
