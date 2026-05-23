@@ -43,6 +43,9 @@ def _resolve_user_role(db: Session, user_id: UUID) -> UserRole | None:
 def _build_user_profile_response(db: Session, user_profile: UserProfile) -> UserProfileResponse:
     resolved_role = _resolve_user_role(db, user_profile.user_id)
     gender_value = user_profile.gender.value if user_profile.gender else None
+    vendor_profile = None
+    if resolved_role == "vendor":
+        vendor_profile = db.query(VendorProfile).filter(VendorProfile.user_id == user_profile.user_id).first()
 
     return UserProfileResponse(
         id=user_profile.id,
@@ -54,6 +57,9 @@ def _build_user_profile_response(db: Session, user_profile: UserProfile) -> User
         date_of_birth=user_profile.date_of_birth,
         gender=gender_value,
         avatar_url=user_profile.avatar_url,
+        bank_name=vendor_profile.bank_name if vendor_profile else None,
+        bank_account_number=vendor_profile.bank_account_number if vendor_profile else None,
+        bank_account_holder=vendor_profile.bank_account_holder if vendor_profile else None,
         created_at=user_profile.created_at,
         updated_at=user_profile.updated_at,
     )
@@ -242,6 +248,31 @@ async def update_user_profile(
     if "gender" in payload:
         gender = payload.get("gender")
         user_profile.gender = GenderEnum(gender) if gender else None
+
+    bank_fields = {"bank_name", "bank_account_number", "bank_account_holder"}
+    if bank_fields.intersection(payload):
+        vendor_profile = db.query(VendorProfile).filter(VendorProfile.user_id == user_id).first()
+        if not vendor_profile:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bank account fields are only available for vendor profiles"
+            )
+
+        if "bank_name" in payload:
+            bank_name = payload.get("bank_name")
+            vendor_profile.bank_name = bank_name.strip() if isinstance(bank_name, str) and bank_name.strip() else None
+
+        if "bank_account_number" in payload:
+            account_number = payload.get("bank_account_number")
+            vendor_profile.bank_account_number = (
+                account_number.strip() if isinstance(account_number, str) and account_number.strip() else None
+            )
+
+        if "bank_account_holder" in payload:
+            account_holder = payload.get("bank_account_holder")
+            vendor_profile.bank_account_holder = (
+                account_holder.strip() if isinstance(account_holder, str) and account_holder.strip() else None
+            )
 
     try:
         db.commit()

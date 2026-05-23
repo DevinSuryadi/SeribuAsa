@@ -367,7 +367,7 @@ export default function VendorQrScanner() {
                         <QrCameraScanner
                           onScan={handleCameraScan}
                           onError={(err) => setCameraError(err)}
-                          className="aspect-[4/3] w-full max-h-96"
+                          className="h-[min(62vh,560px)] min-h-[360px] w-full"
                         />
                         <p className="text-xs text-muted-foreground text-center">
                           Pastikan QR code terlihat jelas di dalam bingkai hijau

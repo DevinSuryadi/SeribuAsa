@@ -46,6 +46,22 @@ type Product = {
   images?: string[] | null;
 };
 
+const getStockLabel = (stock: number) => {
+  if (stock <= 0) return "Stok habis";
+  if (stock < 10) return `${stock} item tersisa`;
+  return `${stock} item tersedia`;
+};
+
+const getStockIndicatorClass = (stock: number) => {
+  if (stock <= 0) {
+    return "border-slate-200 bg-slate-100 text-slate-500";
+  }
+  if (stock < 10) {
+    return "border-red-200 bg-red-50 text-red-700";
+  }
+  return "border-emerald-200 bg-emerald-50 text-emerald-700";
+};
+
 // ── ModalProductDetail ─────────────────────────────────────────
 const ModalProductDetail = memo(function ModalProductDetail({
   product,
@@ -86,9 +102,16 @@ const ModalProductDetail = memo(function ModalProductDetail({
           <div className="text-xs text-muted-foreground mb-1">Harga Voucher</div>
           <div className="text-2xl font-bold text-primary">{formatIDR(product.voucher_price)}</div>
         </div>
-        <Badge variant={product.stock_quantity > 20 ? "secondary" : "destructive"}>
-          Stok: {product.stock_quantity}
-        </Badge>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${getStockIndicatorClass(
+            product.stock_quantity
+          )}`}
+        >
+          {product.stock_quantity > 0 && product.stock_quantity < 10 && (
+            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          {getStockLabel(product.stock_quantity)}
+        </span>
       </div>
 
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -185,11 +208,6 @@ const ProductCard = memo(function ProductCard({
           name={product.name}
           className="aspect-[4/3] w-full group-hover:scale-105 transition-transform duration-300"
         />
-        {product.stock_quantity <= 20 && hasStock && (
-          <Badge variant="destructive" className="absolute top-2 right-2 text-[10px]">
-            Sisa {product.stock_quantity}
-          </Badge>
-        )}
         {!hasStock && (
           <Badge variant="destructive" className="absolute top-2 right-2 text-[10px]">
             Stok Habis
@@ -203,6 +221,17 @@ const ProductCard = memo(function ProductCard({
         </h3>
         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
           <MapPin className="h-3 w-3" /> {product.vendor_store_name || "Vendor"}
+        </div>
+
+        <div
+          className={`mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${getStockIndicatorClass(
+            product.stock_quantity
+          )}`}
+        >
+          {product.stock_quantity > 0 && product.stock_quantity < 10 && (
+            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          {getStockLabel(product.stock_quantity)}
         </div>
 
         <div className="mt-auto pt-2">

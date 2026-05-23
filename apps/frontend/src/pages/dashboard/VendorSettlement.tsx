@@ -29,6 +29,8 @@ import {
   exportSettlements,
 } from "@/services/settlements";
 import type { Settlement } from "@/services/settlements";
+import { getWalletBalance, requestWithdrawal } from "@/services/vendor-wallet";
+import type { WalletBalance } from "@/services/vendor-wallet";
 import { triggerDownload } from "@/services/downloads";
 import type { SettlementReport } from "@/services/reports";
 import { getSettlementReport } from "@/services/reports";
@@ -161,12 +163,16 @@ const VendorSettlement = () => {
   const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(
     null
   );
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
 
   const [showClaimModal, setShowClaimModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [selectedSettlement, setSelectedSettlement] =
     useState<Settlement | null>(null);
   const [claimLoading, setClaimLoading] = useState(false);
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
   const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
 
@@ -201,9 +207,26 @@ const VendorSettlement = () => {
     }
   }, [user?.id]);
 
+  const fetchWalletBalance = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const data = await getWalletBalance();
+      setWalletBalance(data);
+      setVendorProfile((prev) => ({
+        bank_name: data.bank_name || prev?.bank_name,
+        bank_account_number: data.bank_account_number || prev?.bank_account_number,
+        bank_account_holder: data.bank_account_holder || prev?.bank_account_holder,
+      }));
+    } catch {
+      // Halaman tetap bisa menampilkan riwayat pencairan lama.
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     fetchVendorProfile();
-  }, [fetchVendorProfile]);
+    fetchWalletBalance();
+  }, [fetchVendorProfile, fetchWalletBalance]);
 
   const totalPaidCount = useMemo(
     () => settlements.filter((s) => s.status === "paid").length,
@@ -270,6 +293,56 @@ const VendorSettlement = () => {
       toast.error(msg);
     } finally {
       setClaimLoading(false);
+    }
+  };
+
+  const walletAvailable = walletBalance?.balance ?? 0;
+  const minimumWithdrawal = walletBalance?.minimum_withdrawal_amount ?? 50000;
+  const hasBankAccount = Boolean(
+    vendorProfile?.bank_name &&
+      vendorProfile?.bank_account_number &&
+      vendorProfile?.bank_account_holder
+  );
+  const withdrawAmountValue = Number(withdrawAmount || 0);
+  const canSubmitWithdrawal =
+    hasBankAccount &&
+    withdrawAmountValue >= minimumWithdrawal &&
+    withdrawAmountValue <= walletAvailable;
+
+  const openWithdrawModal = () => {
+    setWithdrawAmount(walletAvailable > 0 ? String(Math.floor(walletAvailable)) : "");
+    setShowWithdrawModal(true);
+  };
+
+  const handleWithdrawSubmit = async () => {
+    if (!hasBankAccount) {
+      toast.error("Lengkapi rekening bank di halaman profil terlebih dahulu.");
+      return;
+    }
+
+    if (withdrawAmountValue < minimumWithdrawal) {
+      toast.error(`Minimum pencairan adalah ${formatIDR(minimumWithdrawal)}.`);
+      return;
+    }
+
+    if (withdrawAmountValue > walletAvailable) {
+      toast.error("Nominal pencairan melebihi saldo wallet.");
+      return;
+    }
+
+    try {
+      setWithdrawLoading(true);
+      await requestWithdrawal(withdrawAmountValue);
+      toast.success("Pencairan berhasil diajukan ke rekening bank Anda.");
+      setShowWithdrawModal(false);
+      setWithdrawAmount("");
+      await fetchWalletBalance();
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Gagal mengajukan pencairan";
+      toast.error(msg);
+    } finally {
+      setWithdrawLoading(false);
     }
   };
 
@@ -379,14 +452,14 @@ const VendorSettlement = () => {
           />
 
           <StatCard
-            title="Jadwal Cair"
-            value="Tgl 5"
-            subtitle="Setiap bulan"
+            title="Saldo Wallet"
+            value={formatIDR(walletAvailable)}
+            subtitle={`Minimum cair ${formatIDR(minimumWithdrawal)}`}
             icon={Clock3}
-            iconWrapClass="bg-violet-50"
-            iconClass="text-violet-600"
-            valueClass="text-violet-600"
-            borderClass="border-violet-100"
+            iconWrapClass="bg-emerald-50"
+            iconClass="text-emerald-600"
+            valueClass="text-emerald-700"
+            borderClass="border-emerald-100"
           />
         </section>
 
@@ -471,6 +544,19 @@ const VendorSettlement = () => {
                   </button>
                 ))}
               </div>
+
+              <Button
+                onClick={openWithdrawModal}
+                disabled={withdrawLoading || walletAvailable < minimumWithdrawal}
+                className="h-9 rounded-xl bg-emerald-600 px-4 text-[11.5px] font-bold hover:bg-emerald-700"
+              >
+                {withdrawLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Wallet className="mr-2 h-4 w-4" />
+                )}
+                Cairkan Dana
+              </Button>
 
               <Button
                 onClick={handleExport}
@@ -607,6 +693,94 @@ const VendorSettlement = () => {
           )}
         </section>
       </div>
+
+      <Dialog open={showWithdrawModal} onOpenChange={setShowWithdrawModal}>
+        <DialogContent className="rounded-[22px] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[20px] font-black tracking-tight text-slate-900">
+              Cairkan Dana Wallet
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500">
+              Dana akan ditarik dari saldo vendor ke rekening yang terdaftar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 pt-1">
+            <div className="rounded-[16px] border border-emerald-100 bg-emerald-50/70 p-3.5">
+              <p className="text-[11px] font-semibold text-slate-500">
+                Saldo tersedia
+              </p>
+              <p className="mt-1 text-[25px] font-black tracking-tight text-emerald-700">
+                {formatIDR(walletAvailable)}
+              </p>
+              <p className="mt-1 text-[11px] font-medium text-emerald-700/75">
+                Minimum pencairan {formatIDR(minimumWithdrawal)}
+              </p>
+            </div>
+
+            <div className="rounded-[16px] border border-slate-200 bg-slate-50/70 p-3.5">
+              <p className="text-[11px] font-semibold text-slate-500">
+                Rekening tujuan
+              </p>
+              <p className="mt-2 text-[13px] font-black text-slate-900">
+                {vendorProfile?.bank_name || "Belum diatur"}
+              </p>
+              <p className="mt-1 text-[12px] text-slate-500">
+                {vendorProfile?.bank_account_holder ||
+                  "Nama pemilik rekening belum diatur"}
+              </p>
+              <p className="mt-1 text-[12px] text-slate-500">
+                {vendorProfile?.bank_account_number
+                  ? `****${vendorProfile.bank_account_number.slice(-4)}`
+                  : "Nomor rekening belum diatur"}
+              </p>
+            </div>
+
+            {!hasBankAccount && (
+              <div className="rounded-[14px] border border-red-100 bg-red-50 px-3.5 py-3 text-[12px] font-medium text-red-700">
+                Lengkapi rekening bank di halaman Profil sebelum mencairkan dana.
+              </div>
+            )}
+
+            <div>
+              <label className="mb-1.5 block text-[11.5px] font-bold text-slate-700">
+                Nominal pencairan
+              </label>
+              <input
+                type="number"
+                min={minimumWithdrawal}
+                max={walletAvailable}
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-semibold outline-none transition focus:border-emerald-300"
+                placeholder={`Minimum ${formatIDR(minimumWithdrawal)}`}
+              />
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl"
+                onClick={() => setShowWithdrawModal(false)}
+                disabled={withdrawLoading}
+              >
+                Batal
+              </Button>
+
+              <Button
+                className="h-10 rounded-xl bg-emerald-600 px-5 font-bold hover:bg-emerald-700"
+                onClick={handleWithdrawSubmit}
+                disabled={withdrawLoading || !canSubmitWithdrawal}
+              >
+                {withdrawLoading && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Konfirmasi Cairkan
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showClaimModal} onOpenChange={setShowClaimModal}>
         <DialogContent className="rounded-[22px] sm:max-w-md">

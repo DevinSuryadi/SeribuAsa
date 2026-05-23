@@ -65,7 +65,7 @@ export function QrCameraScanner({ onScan, onError, className = "" }: QrCameraSca
           cameraId,
           {
             fps: 10,
-            qrbox: { width: 240, height: 240 },
+            qrbox: { width: 280, height: 280 },
             aspectRatio: 1.333334,
             disableFlip: false,
           },
@@ -100,11 +100,14 @@ export function QrCameraScanner({ onScan, onError, className = "" }: QrCameraSca
   return (
     <div className={`relative overflow-hidden rounded-2xl bg-black ${className}`}>
       {/* html5-qrcode mounts video into this element */}
-      <div id={SCANNER_ID} className="w-full" />
+      <div
+        id={SCANNER_ID}
+        className="h-full w-full [&_canvas]:hidden [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+      />
 
       {/* Scan-frame overlay */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="relative h-52 w-52">
+        <div className="relative h-56 w-56">
           {/* Corner brackets */}
           {[
             "top-0 left-0 border-t-4 border-l-4 rounded-tl-xl",

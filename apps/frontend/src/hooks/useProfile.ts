@@ -13,6 +13,9 @@ interface UseProfileReturn extends AsyncState<BackendProfile> {
     address?: string | null;
     date_of_birth?: string | null;
     gender?: "male" | "female" | null;
+    bank_name?: string | null;
+    bank_account_number?: string | null;
+    bank_account_holder?: string | null;
   }) => Promise<boolean>;
 }
 
@@ -51,6 +54,9 @@ export function useProfile(): UseProfileReturn {
           address: profileData.address || null,
           date_of_birth: profileData.date_of_birth || null,
           gender: profileData.gender || null,
+          bank_name: profileData.bank_name || null,
+          bank_account_number: profileData.bank_account_number || null,
+          bank_account_holder: profileData.bank_account_holder || null,
         };
         setData(profile);
       }
@@ -69,6 +75,9 @@ export function useProfile(): UseProfileReturn {
       address?: string | null;
       date_of_birth?: string | null;
       gender?: "male" | "female" | null;
+      bank_name?: string | null;
+      bank_account_number?: string | null;
+      bank_account_holder?: string | null;
     }): Promise<boolean> => {
       if (!user?.id) {
         toast.error("User tidak ditemukan. Silakan login ulang.");
@@ -97,6 +106,9 @@ export function useProfile(): UseProfileReturn {
             address: updatedProfile.address || null,
             date_of_birth: updatedProfile.date_of_birth || null,
             gender: updatedProfile.gender || null,
+            bank_name: updatedProfile.bank_name || null,
+            bank_account_number: updatedProfile.bank_account_number || null,
+            bank_account_holder: updatedProfile.bank_account_holder || null,
           });
           toast.success("Profil berhasil diperbarui");
           return true;

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut, Lock, Loader2 } from "lucide-react";
+import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut, Lock, Loader2, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import type { UserRole } from "@/types";
@@ -32,6 +32,12 @@ interface PasswordFormData {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+}
+
+interface BankFormData {
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
 }
 
 const ROLE_LABELS: Record<UserRole | string, string> = {
@@ -55,6 +61,7 @@ const Profile = () => {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showBankModal, setShowBankModal] = useState(false);
 
   const [editFormData, setEditFormData] = useState<EditFormData>({
     fullName: user?.fullName || "",
@@ -70,6 +77,12 @@ const Profile = () => {
     confirmPassword: "",
   });
 
+  const [bankFormData, setBankFormData] = useState<BankFormData>({
+    bankName: "",
+    bankAccountNumber: "",
+    bankAccountHolder: "",
+  });
+
   // Update form data when profile loads
   useEffect(() => {
     if (profileData) {
@@ -80,6 +93,11 @@ const Profile = () => {
         address: profileData.address || "",
         dateOfBirth: profileData.date_of_birth || "",
         gender: profileData.gender || "",
+      });
+      setBankFormData({
+        bankName: profileData.bank_name || "",
+        bankAccountNumber: profileData.bank_account_number || "",
+        bankAccountHolder: profileData.bank_account_holder || "",
       });
     }
   }, [profileData, user?.fullName]);
@@ -148,6 +166,45 @@ const Profile = () => {
     setPasswordFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
   };
 
+  const validateBankForm = (): boolean => {
+    if (!bankFormData.bankName.trim()) {
+      toast.error("Nama bank tidak boleh kosong");
+      return false;
+    }
+    if (!bankFormData.bankAccountNumber.trim()) {
+      toast.error("Nomor rekening tidak boleh kosong");
+      return false;
+    }
+    if (!/^[0-9\s-]{6,50}$/.test(bankFormData.bankAccountNumber.trim())) {
+      toast.error("Nomor rekening tidak valid");
+      return false;
+    }
+    if (!bankFormData.bankAccountHolder.trim()) {
+      toast.error("Nama pemilik rekening tidak boleh kosong");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSaveBankAccount = async () => {
+    if (!validateBankForm()) return;
+
+    const success = await updateProfile({
+      full_name: profileData?.full_name || user?.fullName || resolvedName,
+      phone: profileData?.phone || null,
+      address: profileData?.address || null,
+      date_of_birth: profileData?.date_of_birth || null,
+      gender: profileData?.gender || null,
+      bank_name: bankFormData.bankName.trim(),
+      bank_account_number: bankFormData.bankAccountNumber.trim(),
+      bank_account_holder: bankFormData.bankAccountHolder.trim(),
+    });
+
+    if (success) {
+      setShowBankModal(false);
+    }
+  };
+
   const resolvedRole = profileData?.role || userRole;
   const resolvedName = profileData?.full_name || user?.fullName || "Pengguna";
 
@@ -165,6 +222,15 @@ const Profile = () => {
         : profileData?.gender
           ? GENDER_LABELS[profileData.gender]
           : "Belum diatur",
+      bankName: profileLoading ? "Memuat..." : profileData?.bank_name || "Belum diatur",
+      bankAccountNumber: profileLoading
+        ? "Memuat..."
+        : profileData?.bank_account_number
+          ? `****${profileData.bank_account_number.slice(-4)}`
+          : "Belum diatur",
+      bankAccountHolder: profileLoading
+        ? "Memuat..."
+        : profileData?.bank_account_holder || "Belum diatur",
       role: ROLE_LABELS[resolvedRole || ""] || "-",
     }),
     [profileLoading, profileData, resolvedRole]
@@ -292,6 +358,52 @@ const Profile = () => {
 
           {/* Sidebar - 1 col */}
           <div className="space-y-6">
+            {resolvedRole === "vendor" && (
+              <div className="rounded-[2rem] bg-white p-8 border border-emerald-100 shadow-sm hover:shadow-md transition-all duration-300">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-100 text-emerald-600">
+                    <Landmark size={20} />
+                  </div>
+                  Rekening Pencairan
+                </h3>
+
+                <div className="space-y-3 rounded-3xl bg-emerald-50/70 border border-emerald-100 p-5">
+                  <div>
+                    <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+                      Bank
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-gray-900">
+                      {displayValues.bankName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+                      Pemilik Rekening
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-gray-900">
+                      {displayValues.bankAccountHolder}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+                      Nomor Rekening
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-gray-900">
+                      {displayValues.bankAccountNumber}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => setShowBankModal(true)}
+                  className="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl gap-2 font-semibold h-11"
+                >
+                  <Landmark size={18} />
+                  {profileData?.bank_account_number ? "Ubah Rekening" : "Tambahkan Rekening"}
+                </Button>
+              </div>
+            )}
+
             {/* Security Bento */}
             <div className="rounded-[2rem] bg-white p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
               <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2.5">
@@ -430,6 +542,80 @@ const Profile = () => {
                   </>
                 ) : (
                   "Simpan"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bank Account Modal */}
+        <Dialog open={showBankModal} onOpenChange={setShowBankModal}>
+          <DialogContent className="w-full sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Rekening Pencairan</DialogTitle>
+              <DialogDescription>
+                Data ini digunakan untuk menarik saldo vendor ke rekening bank Anda.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="bankName" className="text-xs font-semibold uppercase tracking-wide">
+                  Nama Bank
+                </Label>
+                <Input
+                  id="bankName"
+                  value={bankFormData.bankName}
+                  onChange={(e) => setBankFormData({ ...bankFormData, bankName: e.target.value })}
+                  className="mt-1"
+                  placeholder="Contoh: BCA, BRI, Mandiri"
+                />
+              </div>
+              <div>
+                <Label htmlFor="bankAccountNumber" className="text-xs font-semibold uppercase tracking-wide">
+                  Nomor Rekening
+                </Label>
+                <Input
+                  id="bankAccountNumber"
+                  inputMode="numeric"
+                  value={bankFormData.bankAccountNumber}
+                  onChange={(e) =>
+                    setBankFormData({ ...bankFormData, bankAccountNumber: e.target.value })
+                  }
+                  className="mt-1"
+                  placeholder="Nomor rekening"
+                />
+              </div>
+              <div>
+                <Label htmlFor="bankAccountHolder" className="text-xs font-semibold uppercase tracking-wide">
+                  Nama Pemilik Rekening
+                </Label>
+                <Input
+                  id="bankAccountHolder"
+                  value={bankFormData.bankAccountHolder}
+                  onChange={(e) =>
+                    setBankFormData({ ...bankFormData, bankAccountHolder: e.target.value })
+                  }
+                  className="mt-1"
+                  placeholder="Sesuai nama di rekening"
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setShowBankModal(false)}>
+                Batal
+              </Button>
+              <Button
+                onClick={handleSaveBankAccount}
+                disabled={isSubmitting}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan Rekening"
                 )}
               </Button>
             </DialogFooter>
