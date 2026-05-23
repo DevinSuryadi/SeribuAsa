@@ -29,6 +29,8 @@ import {
   exportSettlements,
 } from "@/services/settlements";
 import type { Settlement } from "@/services/settlements";
+import { getWalletBalance, getWithdrawalHistory, requestWithdrawal } from "@/services/vendor-wallet";
+import type { WalletBalance, Withdrawal } from "@/services/vendor-wallet";
 import { triggerDownload } from "@/services/downloads";
 import type { SettlementReport } from "@/services/reports";
 import { getSettlementReport } from "@/services/reports";
@@ -143,6 +145,7 @@ function InsightCard({
 const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
     paid: "Sudah Cair",
+    completed: "Sudah Cair",
     ready: "Siap Dicairkan",
     pending: "Menunggu Proses",
     processing: "Diproses",
@@ -153,6 +156,18 @@ const getStatusLabel = (status: string) => {
   return labels[status] || "Menunggu Proses";
 };
 
+const getWithdrawalStatusClass = (status: string) => {
+  const classes: Record<string, string> = {
+    completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    pending: "border-amber-200 bg-amber-50 text-amber-700",
+    processing: "border-blue-200 bg-blue-50 text-blue-700",
+    failed: "border-red-200 bg-red-50 text-red-700",
+    cancelled: "border-slate-200 bg-slate-100 text-slate-600",
+  };
+
+  return classes[status] || classes.pending;
+};
+
 const VendorSettlement = () => {
   const { user } = useAuth();
   const { data: settlements, loading, error, refetch } = useVendorSettlement();
@@ -161,12 +176,18 @@ const VendorSettlement = () => {
   const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(
     null
   );
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
 
   const [showClaimModal, setShowClaimModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [selectedSettlement, setSelectedSettlement] =
     useState<Settlement | null>(null);
   const [claimLoading, setClaimLoading] = useState(false);
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
   const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
 
@@ -201,38 +222,89 @@ const VendorSettlement = () => {
     }
   }, [user?.id]);
 
+  const fetchWalletBalance = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const data = await getWalletBalance();
+      setWalletBalance(data);
+      setVendorProfile((prev) => ({
+        bank_name: data.bank_name || prev?.bank_name,
+        bank_account_number: data.bank_account_number || prev?.bank_account_number,
+        bank_account_holder: data.bank_account_holder || prev?.bank_account_holder,
+      }));
+    } catch {
+      // Halaman tetap bisa menampilkan riwayat pencairan lama.
+    }
+  }, [user?.id]);
+
+  const fetchWithdrawalHistory = useCallback(async () => {
+    if (!user?.id) return;
+
+    setWithdrawalsLoading(true);
+    try {
+      const data = await getWithdrawalHistory(1, 100);
+      setWithdrawals(data.items || []);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Gagal memuat riwayat pencairan wallet";
+      toast.error("Gagal memuat riwayat pencairan", { description: msg });
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     fetchVendorProfile();
-  }, [fetchVendorProfile]);
+    fetchWalletBalance();
+    fetchWithdrawalHistory();
+  }, [fetchVendorProfile, fetchWalletBalance, fetchWithdrawalHistory]);
 
   const totalPaidCount = useMemo(
-    () => settlements.filter((s) => s.status === "paid").length,
-    [settlements]
+    () =>
+      withdrawals.filter((w) => w.status === "completed").length ||
+      settlements.filter((s) => s.status === "paid").length,
+    [settlements, withdrawals]
   );
 
   const totalEarned = useMemo(() => {
+    const completedWithdrawalTotal = withdrawals
+      .filter((w) => w.status === "completed")
+      .reduce((a, b) => a + (b.amount || 0), 0);
+
+    if (completedWithdrawalTotal > 0) return completedWithdrawalTotal;
     if (report?.summary?.settled_amount) return report.summary.settled_amount;
 
     return settlements
       .filter((s) => s.status === "paid" || s.status === "ready")
       .reduce((a, b) => a + (b.net_amount || 0), 0);
-  }, [report, settlements]);
+  }, [report, settlements, withdrawals]);
 
   const pendingCount = useMemo(() => {
+    const activeWithdrawalCount = withdrawals.filter(
+      (w) => w.status === "pending" || w.status === "processing"
+    ).length;
+
+    if (activeWithdrawalCount > 0) return activeWithdrawalCount;
     if (report?.summary?.pending_count) return report.summary.pending_count;
 
     return settlements.filter(
       (s) => s.status === "ready" || s.status === "processing" || s.status === "calculating"
     ).length;
-  }, [report, settlements]);
+  }, [report, settlements, withdrawals]);
 
   const pendingTotal = useMemo(() => {
+    const activeWithdrawalTotal = withdrawals
+      .filter((w) => w.status === "pending" || w.status === "processing")
+      .reduce((a, b) => a + (b.amount || 0), 0);
+
+    if (activeWithdrawalTotal > 0) return activeWithdrawalTotal;
     if (report?.summary?.pending_amount) return report.summary.pending_amount;
 
     return settlements
       .filter((s) => s.status === "ready" || s.status === "processing" || s.status === "calculating")
       .reduce((a, b) => a + (b.net_amount || 0), 0);
-  }, [report, settlements]);
+  }, [report, settlements, withdrawals]);
 
   const monthGrowth = report?.trends?.month_over_month_growth ?? 0;
   const avgSettlementTime = report?.trends?.average_settlement_time ?? 0;
@@ -270,6 +342,57 @@ const VendorSettlement = () => {
       toast.error(msg);
     } finally {
       setClaimLoading(false);
+    }
+  };
+
+  const walletAvailable = walletBalance?.balance ?? 0;
+  const minimumWithdrawal = walletBalance?.minimum_withdrawal_amount ?? 50000;
+  const hasBankAccount = Boolean(
+    vendorProfile?.bank_name &&
+      vendorProfile?.bank_account_number &&
+      vendorProfile?.bank_account_holder
+  );
+  const withdrawAmountValue = Number(withdrawAmount || 0);
+  const canSubmitWithdrawal =
+    hasBankAccount &&
+    withdrawAmountValue >= minimumWithdrawal &&
+    withdrawAmountValue <= walletAvailable;
+
+  const openWithdrawModal = () => {
+    setWithdrawAmount(walletAvailable > 0 ? String(Math.floor(walletAvailable)) : "");
+    setShowWithdrawModal(true);
+  };
+
+  const handleWithdrawSubmit = async () => {
+    if (!hasBankAccount) {
+      toast.error("Lengkapi rekening bank di halaman profil terlebih dahulu.");
+      return;
+    }
+
+    if (withdrawAmountValue < minimumWithdrawal) {
+      toast.error(`Minimum pencairan adalah ${formatIDR(minimumWithdrawal)}.`);
+      return;
+    }
+
+    if (withdrawAmountValue > walletAvailable) {
+      toast.error("Nominal pencairan melebihi saldo wallet.");
+      return;
+    }
+
+    try {
+      setWithdrawLoading(true);
+      await requestWithdrawal(withdrawAmountValue);
+      toast.success("Pencairan berhasil diajukan ke rekening bank Anda.");
+      setShowWithdrawModal(false);
+      setWithdrawAmount("");
+      await fetchWalletBalance();
+      await fetchWithdrawalHistory();
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Gagal mengajukan pencairan";
+      toast.error(msg);
+    } finally {
+      setWithdrawLoading(false);
     }
   };
 
@@ -379,14 +502,14 @@ const VendorSettlement = () => {
           />
 
           <StatCard
-            title="Jadwal Cair"
-            value="Tgl 5"
-            subtitle="Setiap bulan"
+            title="Saldo Wallet"
+            value={formatIDR(walletAvailable)}
+            subtitle={`Minimum cair ${formatIDR(minimumWithdrawal)}`}
             icon={Clock3}
-            iconWrapClass="bg-violet-50"
-            iconClass="text-violet-600"
-            valueClass="text-violet-600"
-            borderClass="border-violet-100"
+            iconWrapClass="bg-emerald-50"
+            iconClass="text-emerald-600"
+            valueClass="text-emerald-700"
+            borderClass="border-emerald-100"
           />
         </section>
 
@@ -473,6 +596,19 @@ const VendorSettlement = () => {
               </div>
 
               <Button
+                onClick={openWithdrawModal}
+                disabled={withdrawLoading || walletAvailable < minimumWithdrawal}
+                className="h-9 rounded-xl bg-emerald-600 px-4 text-[11.5px] font-bold hover:bg-emerald-700"
+              >
+                {withdrawLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Wallet className="mr-2 h-4 w-4" />
+                )}
+                Cairkan Dana
+              </Button>
+
+              <Button
                 onClick={handleExport}
                 disabled={exportLoading}
                 className="h-9 rounded-xl bg-slate-900 px-4 text-[11.5px] font-bold hover:bg-slate-800"
@@ -486,6 +622,110 @@ const VendorSettlement = () => {
               </Button>
             </div>
           </div>
+        </section>
+
+        {/* Riwayat penarikan wallet */}
+        <section className="flex w-full flex-col rounded-[20px] border border-slate-200/70 bg-white p-3.5 shadow-[0_10px_26px_rgba(15,23,42,0.04)] sm:p-4">
+          <div className="mb-3 flex shrink-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-[16px] font-black tracking-tight text-slate-900">
+                Riwayat Penarikan Wallet
+              </h2>
+              <p className="mt-0.5 text-[11.5px] font-medium text-slate-500">
+                {withdrawals.length} pencairan wallet ditemukan
+              </p>
+            </div>
+          </div>
+
+          {withdrawalsLoading ? (
+            <div className="flex min-h-[110px] items-center justify-center rounded-[16px] border border-dashed border-slate-200 bg-slate-50/60">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin text-emerald-600" />
+              <span className="text-[12px] font-semibold text-slate-500">
+                Memuat riwayat pencairan...
+              </span>
+            </div>
+          ) : withdrawals.length === 0 ? (
+            <div className="flex min-h-[110px] items-center justify-center rounded-[16px] border border-dashed border-slate-200 bg-slate-50/60 px-4 py-4 text-center">
+              <div>
+                <p className="text-[16px] font-black tracking-tight text-slate-900">
+                  Belum ada penarikan wallet
+                </p>
+                <p className="mt-1 max-w-md text-[11.5px] leading-5 text-slate-500">
+                  Pencairan yang dibuat dari tombol Cairkan Dana akan muncul di sini.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+              {withdrawals.map((withdrawal) => (
+                <div
+                  key={withdrawal.id}
+                  className="rounded-[17px] border border-slate-200/80 bg-white p-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.03)]"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-emerald-50">
+                      <Wallet className="h-[18px] w-[18px] text-emerald-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-black leading-tight text-slate-900">
+                        Penarikan #{String(withdrawal.id).slice(0, 8)}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={`border text-[10px] font-bold ${getWithdrawalStatusClass(
+                            withdrawal.status
+                          )}`}
+                        >
+                          {getStatusLabel(withdrawal.status)}
+                        </Badge>
+                        <span className="text-[10.5px] font-medium text-slate-500">
+                          {withdrawal.withdrawal_method === "qr" ? "QR" : "Bank"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2.5">
+                    <div className="rounded-[13px] bg-slate-50 px-3 py-2.5">
+                      <p className="text-[9.5px] font-semibold uppercase tracking-wide text-slate-400">
+                        Nominal
+                      </p>
+                      <p className="mt-1 truncate text-[13px] font-black text-slate-900">
+                        {formatIDR(withdrawal.amount || 0)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-[13px] bg-slate-50 px-3 py-2.5">
+                      <p className="text-[9.5px] font-semibold uppercase tracking-wide text-slate-400">
+                        Tanggal
+                      </p>
+                      <p className="mt-1 truncate text-[13px] font-black text-slate-700">
+                        {withdrawal.created_at
+                          ? new Date(withdrawal.created_at).toLocaleDateString("id-ID")
+                          : "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-[13px] bg-slate-50 px-3 py-2.5">
+                    <p className="text-[9.5px] font-semibold uppercase tracking-wide text-slate-400">
+                      Rekening tujuan
+                    </p>
+                    <p className="mt-1 truncate text-[12.5px] font-bold text-slate-800">
+                      {withdrawal.bank_name || "Tidak tersedia"}
+                    </p>
+                    <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                      {withdrawal.bank_account_holder || "-"}
+                      {withdrawal.bank_account_number
+                        ? ` - ****${withdrawal.bank_account_number.slice(-4)}`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Daftar Pencairan */}
@@ -607,6 +847,94 @@ const VendorSettlement = () => {
           )}
         </section>
       </div>
+
+      <Dialog open={showWithdrawModal} onOpenChange={setShowWithdrawModal}>
+        <DialogContent className="rounded-[22px] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[20px] font-black tracking-tight text-slate-900">
+              Cairkan Dana Wallet
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500">
+              Dana akan ditarik dari saldo vendor ke rekening yang terdaftar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 pt-1">
+            <div className="rounded-[16px] border border-emerald-100 bg-emerald-50/70 p-3.5">
+              <p className="text-[11px] font-semibold text-slate-500">
+                Saldo tersedia
+              </p>
+              <p className="mt-1 text-[25px] font-black tracking-tight text-emerald-700">
+                {formatIDR(walletAvailable)}
+              </p>
+              <p className="mt-1 text-[11px] font-medium text-emerald-700/75">
+                Minimum pencairan {formatIDR(minimumWithdrawal)}
+              </p>
+            </div>
+
+            <div className="rounded-[16px] border border-slate-200 bg-slate-50/70 p-3.5">
+              <p className="text-[11px] font-semibold text-slate-500">
+                Rekening tujuan
+              </p>
+              <p className="mt-2 text-[13px] font-black text-slate-900">
+                {vendorProfile?.bank_name || "Belum diatur"}
+              </p>
+              <p className="mt-1 text-[12px] text-slate-500">
+                {vendorProfile?.bank_account_holder ||
+                  "Nama pemilik rekening belum diatur"}
+              </p>
+              <p className="mt-1 text-[12px] text-slate-500">
+                {vendorProfile?.bank_account_number
+                  ? `****${vendorProfile.bank_account_number.slice(-4)}`
+                  : "Nomor rekening belum diatur"}
+              </p>
+            </div>
+
+            {!hasBankAccount && (
+              <div className="rounded-[14px] border border-red-100 bg-red-50 px-3.5 py-3 text-[12px] font-medium text-red-700">
+                Lengkapi rekening bank di halaman Profil sebelum mencairkan dana.
+              </div>
+            )}
+
+            <div>
+              <label className="mb-1.5 block text-[11.5px] font-bold text-slate-700">
+                Nominal pencairan
+              </label>
+              <input
+                type="number"
+                min={minimumWithdrawal}
+                max={walletAvailable}
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-semibold outline-none transition focus:border-emerald-300"
+                placeholder={`Minimum ${formatIDR(minimumWithdrawal)}`}
+              />
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl"
+                onClick={() => setShowWithdrawModal(false)}
+                disabled={withdrawLoading}
+              >
+                Batal
+              </Button>
+
+              <Button
+                className="h-10 rounded-xl bg-emerald-600 px-5 font-bold hover:bg-emerald-700"
+                onClick={handleWithdrawSubmit}
+                disabled={withdrawLoading || !canSubmitWithdrawal}
+              >
+                {withdrawLoading && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Konfirmasi Cairkan
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showClaimModal} onOpenChange={setShowClaimModal}>
         <DialogContent className="rounded-[22px] sm:max-w-md">

@@ -4,6 +4,14 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   QrCode,
   ShoppingBag,
   CheckCircle2,
@@ -36,9 +44,11 @@ interface OrderItem {
 
 interface OrderPreview {
   id: string;
-  user_id: string;
+  user_id?: string;
+  beneficiary_id?: string;
   vendor_id: string;
   cart_total: number;
+  total_amount?: number | string;
   status: string;
   items: OrderItem[];
   pickup_qr_code?: string;
@@ -88,12 +98,49 @@ const HOW_TO = [
 
 const PLATFORM_FEE_RATE = 0.01; // 1% platform fee
 
+function toAmount(value: number | string | null | undefined): number {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function getOrderTotal(order: OrderPreview | null): number {
+  return toAmount(order?.cart_total ?? order?.total_amount);
+}
+
+function getItemSubtotal(item: OrderItem): number {
+  const subtotal = toAmount(item.subtotal);
+  return subtotal || toAmount(item.price) * toAmount(item.quantity);
+}
+
+function getNetEarned(order: OrderPreview | null): number {
+  return getOrderTotal(order) * (1 - PLATFORM_FEE_RATE);
+}
+
+function normalizePickupCode(value: string): string {
+  return value.trim().replace(/^NUTRIGUARD:ORDER:/i, "").toUpperCase();
+}
+
+function normalizeOrder(order: OrderPreview): OrderPreview {
+  return {
+    ...order,
+    cart_total: getOrderTotal(order),
+    items: (order.items || []).map((item) => ({
+      ...item,
+      quantity: toAmount(item.quantity),
+      price: toAmount(item.price),
+      subtotal: getItemSubtotal(item),
+    })),
+  };
+}
+
 export default function VendorQrScanner() {
   const [step, setStep] = useState<ScanStep>("scan");
   const [qrInput, setQrInput] = useState("");
   const [searching, setSearching] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [order, setOrder] = useState<OrderPreview | null>(null);
+  const [pickupCode, setPickupCode] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [netEarned, setNetEarned] = useState(0);
   const [cameraMode, setCameraMode] = useState(false);
@@ -102,27 +149,29 @@ export default function VendorQrScanner() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSearch = async (overrideCode?: string) => {
-    const code = (overrideCode ?? qrInput).trim().replace("NUTRIGUARD:ORDER:", "").toUpperCase();
+    const code = normalizePickupCode(overrideCode ?? qrInput);
     if (!code) { toast.error("Masukkan kode QR terlebih dahulu"); return; }
 
     setSearching(true);
     setErrorMsg("");
+    setPickupCode(code);
     try {
-      const result = await apiFetch(`/orders/${code}/confirm-pickup`, {
-        method: "POST",
-        body: JSON.stringify({ qr_code: code }),
-      }) as OrderPreview;
-      setNetEarned((result.cart_total ?? 0) * (1 - PLATFORM_FEE_RATE));
+      const result = normalizeOrder(await apiFetch(`/orders/pickup/preview?qr_code=${encodeURIComponent(code)}`) as OrderPreview);
+      setNetEarned(getNetEarned(result));
       setOrder(result);
-      setStep("success");
+      setStep("preview");
+      setShowConfirmDialog(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
       try {
-        const orders = await apiFetch("/orders?status=pending") as { items: OrderPreview[] };
+        const orders = await apiFetch("/orders?status=pending&page_size=100") as { items: OrderPreview[] };
         const found = orders.items?.find((o) => o.pickup_qr_code === code);
         if (found) {
-          setOrder(found);
+          const result = normalizeOrder(found);
+          setNetEarned(getNetEarned(result));
+          setOrder(result);
           setStep("preview");
+          setShowConfirmDialog(true);
         } else {
           setErrorMsg(msg || "QR code tidak ditemukan atau tidak valid");
           setStep("error");
@@ -138,16 +187,17 @@ export default function VendorQrScanner() {
 
   const handleConfirm = async () => {
     if (!order) return;
-    const code = qrInput.trim().replace("NUTRIGUARD:ORDER:", "").toUpperCase();
+    const code = pickupCode || normalizePickupCode(qrInput);
     setConfirming(true);
     try {
-      const result = await apiFetch(`/orders/${order.id}/confirm-pickup`, {
+      const result = normalizeOrder(await apiFetch(`/orders/${order.id}/confirm-pickup`, {
         method: "POST",
         body: JSON.stringify({ qr_code: code }),
-      }) as OrderPreview;
-      setNetEarned((result.cart_total ?? 0) * (1 - PLATFORM_FEE_RATE));
+      }) as OrderPreview);
+      setNetEarned(getNetEarned(result));
       setOrder(result);
       setStep("success");
+      setShowConfirmDialog(false);
       toast.success("Pickup berhasil dikonfirmasi! Dana masuk ke wallet Anda.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Konfirmasi gagal";
@@ -163,6 +213,8 @@ export default function VendorQrScanner() {
     setStep("scan");
     setQrInput("");
     setOrder(null);
+    setPickupCode("");
+    setShowConfirmDialog(false);
     setErrorMsg("");
     setNetEarned(0);
     setCameraMode(false);
@@ -171,7 +223,7 @@ export default function VendorQrScanner() {
 
   /** Called when camera scans a QR — auto-fill & search */
   const handleCameraScan = (raw: string) => {
-    const code = raw.trim().replace("NUTRIGUARD:ORDER:", "").toUpperCase();
+    const code = normalizePickupCode(raw);
     setQrInput(code);
     setCameraMode(false);
     void handleSearch(code);
@@ -197,7 +249,7 @@ export default function VendorQrScanner() {
       const html5QrCode = new Html5Qrcode(tempId);
       const decodedText = await html5QrCode.scanFile(file, false);
       
-      const code = decodedText.trim().replace("NUTRIGUARD:ORDER:", "").toUpperCase();
+      const code = normalizePickupCode(decodedText);
       setQrInput(code);
       setCameraMode(false);
       void handleSearch(code);
@@ -213,7 +265,7 @@ export default function VendorQrScanner() {
   };
 
   // ── Active step indicator for guide ───────────────────────────
-  const activeGuideStep = step === "scan" ? 1 : step === "preview" ? 2 : step === "success" ? 4 : 1;
+  const activeGuideStep = step === "scan" ? 1 : step === "preview" ? 3 : step === "success" ? 4 : 1;
 
   return (
     <DashboardLayout title="Scan QR Pickup" subtitle="Konfirmasi penerimaan pesanan dari beneficiary">
@@ -315,7 +367,7 @@ export default function VendorQrScanner() {
                         <QrCameraScanner
                           onScan={handleCameraScan}
                           onError={(err) => setCameraError(err)}
-                          className="aspect-[4/3] w-full max-h-96"
+                          className="h-[min(62vh,560px)] min-h-[360px] w-full"
                         />
                         <p className="text-xs text-muted-foreground text-center">
                           Pastikan QR code terlihat jelas di dalam bingkai hijau
@@ -461,7 +513,7 @@ export default function VendorQrScanner() {
                 </Button>
                 <Button
                   className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 font-semibold"
-                  onClick={handleConfirm}
+                  onClick={() => setShowConfirmDialog(true)}
                   disabled={confirming}
                 >
                   {confirming ? (
@@ -617,6 +669,128 @@ export default function VendorQrScanner() {
         </div>
 
       </div>
+
+      <Dialog
+        open={showConfirmDialog && !!order}
+        onOpenChange={(open: boolean) => {
+          if (!confirming) setShowConfirmDialog(open);
+        }}
+      >
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-lg overflow-hidden rounded-3xl p-0">
+          {order && (
+            <>
+              <div className="bg-emerald-600 px-6 py-5 text-white">
+                <DialogHeader className="space-y-2 text-left">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20">
+                    <BadgeCheck className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <DialogTitle className="text-xl font-black text-white">
+                    Konfirmasi Pickup Pesanan
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-white/75">
+                    Pastikan barang sudah diterima pembeli sebelum menyelesaikan pesanan.
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+
+              <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-emerald-700">Dana masuk ke wallet</p>
+                      <p className="mt-1 text-2xl font-black text-emerald-700">
+                        {formatIDR(getNetEarned(order))}
+                      </p>
+                    </div>
+                    <Wallet className="h-8 w-8 text-emerald-600" aria-hidden="true" />
+                  </div>
+                  <p className="mt-2 text-xs text-emerald-700/70">
+                    Dari total {formatIDR(getOrderTotal(order))} setelah potongan fee 1%.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Kode pickup</span>
+                    <span className="max-w-[13rem] truncate font-mono text-xs font-semibold text-foreground">
+                      {pickupCode || order.pickup_qr_code}
+                    </span>
+                  </div>
+                  {order.vendor_store_name && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Toko</span>
+                      <span className="font-semibold text-foreground">{order.vendor_store_name}</span>
+                    </div>
+                  )}
+                  {order.pickup_expires_at && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Berlaku hingga</span>
+                      <span className="font-semibold text-foreground">{formatDate(order.pickup_expires_at)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-border">
+                  <div className="flex items-center gap-2 border-b border-border bg-secondary/40 px-4 py-3">
+                    <ShoppingBag className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <p className="text-sm font-bold text-foreground">Ringkasan Pesanan</p>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {order.items.map((item, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 py-3">
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+                          <Package className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {item.product_name || `Produk ${i + 1}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatIDR(item.price)} x {item.quantity}
+                          </p>
+                        </div>
+                        <p className="flex-shrink-0 text-sm font-bold text-foreground">
+                          {formatIDR(getItemSubtotal(item))}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-3 border-t border-border bg-secondary/20 px-6 py-4 sm:space-x-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowConfirmDialog(false)}
+                  disabled={confirming}
+                >
+                  Batalkan
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1 gap-2 bg-emerald-600 font-semibold hover:bg-emerald-700"
+                  onClick={handleConfirm}
+                  disabled={confirming}
+                >
+                  {confirming ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Memproses...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Konfirmasi
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

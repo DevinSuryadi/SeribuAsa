@@ -319,6 +319,38 @@ class OrderService:
     # CONFIRM PICKUP VIA QR — vendor scans QR code → releases escrow
     # ──────────────────────────────────────────────────────────────────────────
     @staticmethod
+    def get_pickup_preview_by_qr(db: Session, qr_code: str, vendor_id: str) -> Order:
+        """Validate a pickup QR and return the order without completing it."""
+        vendor_uuid = OrderService._to_uuid(vendor_id)
+
+        order = db.query(Order).options(
+            joinedload(Order.beneficiary_profile),
+            joinedload(Order.vendor_profile),
+            joinedload(Order.items).joinedload(OrderItem.product),
+        ).filter(
+            Order.pickup_qr_code == qr_code.strip().upper(),
+            Order.is_active,
+        ).first()
+
+        if not order:
+            raise ValueError("QR code tidak valid atau pesanan tidak ditemukan")
+
+        if str(order.vendor_id) != str(vendor_uuid):
+            raise ValueError("QR code ini bukan untuk toko Anda")
+
+        if order.status == OrderStatusEnum.completed:
+            raise ValueError("Pesanan sudah selesai dikonfirmasi")
+        if order.status == OrderStatusEnum.cancelled:
+            raise ValueError("Pesanan telah dibatalkan")
+        if order.status != OrderStatusEnum.pending:
+            raise ValueError(f"Status pesanan tidak valid: {order.status}")
+
+        if order.pickup_expires_at and datetime.utcnow() > order.pickup_expires_at:
+            raise ValueError("QR code sudah kadaluarsa (lebih dari 24 jam). Silakan buat pesanan baru.")
+
+        return order
+
+    @staticmethod
     def confirm_pickup_qr(db: Session, qr_code: str, vendor_id: str) -> Order:
         """
         Called when vendor scans beneficiary's order QR.

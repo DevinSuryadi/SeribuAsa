@@ -46,6 +46,9 @@ class UserProfileResponse(BaseModel):
     date_of_birth: date | None
     gender: GenderType | None
     avatar_url: str | None
+    bank_name: str | None = None
+    bank_account_number: str | None = None
+    bank_account_holder: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -86,3 +89,6 @@ class UserProfileUpdateRequest(BaseModel):
     address: str | None = Field(None)
     date_of_birth: date | None = Field(None)
     gender: GenderType | None = Field(None)
+    bank_name: str | None = Field(None, max_length=100)
+    bank_account_number: str | None = Field(None, max_length=50)
+    bank_account_holder: str | None = Field(None, max_length=255)

@@ -48,6 +48,9 @@ export async function updateUserProfile(
     address?: string | null;
     date_of_birth?: string | null;
     gender?: "male" | "female" | null;
+    bank_name?: string | null;
+    bank_account_number?: string | null;
+    bank_account_holder?: string | null;
   }
 ): Promise<BackendProfile> {
   const response = await apiFetch(`/users/${userId}`, {

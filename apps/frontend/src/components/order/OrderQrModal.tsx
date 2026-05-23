@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { getOrderPickupQr, cancelOrder } from "@/services/wallet";
 import { formatIDR } from "@/lib/format";
@@ -128,6 +129,28 @@ export default function OrderQrModal({ orderId, open, onClose, onCancelled }: Pr
 
   // Simple QR SVG generator using a grid pattern
   const QRCodeDisplay = ({ value }: { value: string }) => {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <div className="relative rounded-2xl bg-white p-4 shadow-lg ring-2 ring-emerald-100">
+          <QRCodeCanvas
+            value={value}
+            size={176}
+            level="M"
+            includeMargin
+            className="rounded-xl"
+          />
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
+            <div className="rounded-full bg-emerald-500 px-3 py-0.5 text-[10px] font-bold text-white shadow">
+              NUTRIGUARD
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 font-mono text-xs font-bold tracking-widest text-slate-500">
+          {value.slice(-16)}
+        </p>
+      </div>
+    );
+
     // Use a simple visual placeholder — in production use qrcode.react
     return (
       <div className="flex flex-col items-center gap-2">

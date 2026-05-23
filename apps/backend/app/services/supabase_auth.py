@@ -3,11 +3,38 @@ Supabase Authentication Service
 Handles JWT validation and user info retrieval from Supabase
 """
 import httpx
+import base64
+import hashlib
+import json
+import time
 from typing import Optional
 from app.config import settings
+from app.utils.cache import get_app_cache
 import logging
 
 logger = logging.getLogger(__name__)
+cache = get_app_cache()
+
+
+def _token_cache_key(access_token: str) -> str:
+    return hashlib.sha256(access_token.encode("utf-8")).hexdigest()
+
+
+def _token_cache_ttl(access_token: str) -> int:
+    """Cache auth verification briefly, bounded by the JWT expiry."""
+    try:
+        parts = access_token.split(".")
+        if len(parts) < 2:
+            return 60
+        payload_segment = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_segment.encode("utf-8")))
+        exp = int(payload.get("exp", 0))
+        seconds_until_expiry = exp - int(time.time())
+        if seconds_until_expiry <= 0:
+            return 0
+        return max(30, min(seconds_until_expiry, 300))
+    except Exception:
+        return 60
 
 
 class SupabaseAuthService:
@@ -37,6 +64,11 @@ class SupabaseAuthService:
         """
         SupabaseAuthService._validate_config()
 
+        cache_key = _token_cache_key(access_token)
+        cached_user = cache.get("supabase_auth", cache_key)
+        if cached_user:
+            return cached_user
+
         url = f"{settings.SUPABASE_URL}/auth/v1/user"
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -44,15 +76,22 @@ class SupabaseAuthService:
         }
         
         try:
-            async with httpx.AsyncClient() as client:
+            timeout = httpx.Timeout(5.0, connect=3.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.get(url, headers=headers)
                 
                 if response.status_code == 200:
                     user_data = response.json()
-                    logger.info(f"Token verified for user: {user_data.get('email')}")
+                    ttl = _token_cache_ttl(access_token)
+                    if ttl > 0:
+                        cache.set("supabase_auth", cache_key, user_data, ttl_seconds=ttl)
+                    logger.debug(f"Token verified for user: {user_data.get('email')}")
                     return user_data
                 else:
-                    error_data = response.json() if response.content else {}
+                    try:
+                        error_data = response.json() if response.content else {}
+                    except ValueError:
+                        error_data = {"error": response.text}
                     logger.error(f"Token verification failed: {error_data}")
                     raise ValueError(f"Invalid token: {error_data.get('error', 'Unknown error')}")
                     
