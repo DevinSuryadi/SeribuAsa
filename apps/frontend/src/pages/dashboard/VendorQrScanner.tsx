@@ -36,9 +36,11 @@ interface OrderItem {
 
 interface OrderPreview {
   id: string;
-  user_id: string;
+  user_id?: string;
+  beneficiary_id?: string;
   vendor_id: string;
   cart_total: number;
+  total_amount?: number | string;
   status: string;
   items: OrderItem[];
   pickup_qr_code?: string;
@@ -88,6 +90,37 @@ const HOW_TO = [
 
 const PLATFORM_FEE_RATE = 0.01; // 1% platform fee
 
+function toAmount(value: number | string | null | undefined): number {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function getOrderTotal(order: OrderPreview | null): number {
+  return toAmount(order?.cart_total ?? order?.total_amount);
+}
+
+function getItemSubtotal(item: OrderItem): number {
+  const subtotal = toAmount(item.subtotal);
+  return subtotal || toAmount(item.price) * toAmount(item.quantity);
+}
+
+function getNetEarned(order: OrderPreview | null): number {
+  return getOrderTotal(order) * (1 - PLATFORM_FEE_RATE);
+}
+
+function normalizeOrder(order: OrderPreview): OrderPreview {
+  return {
+    ...order,
+    cart_total: getOrderTotal(order),
+    items: (order.items || []).map((item) => ({
+      ...item,
+      quantity: toAmount(item.quantity),
+      price: toAmount(item.price),
+      subtotal: getItemSubtotal(item),
+    })),
+  };
+}
+
 export default function VendorQrScanner() {
   const [step, setStep] = useState<ScanStep>("scan");
   const [qrInput, setQrInput] = useState("");
@@ -108,11 +141,11 @@ export default function VendorQrScanner() {
     setSearching(true);
     setErrorMsg("");
     try {
-      const result = await apiFetch(`/orders/${code}/confirm-pickup`, {
+      const result = normalizeOrder(await apiFetch(`/orders/${code}/confirm-pickup`, {
         method: "POST",
         body: JSON.stringify({ qr_code: code }),
-      }) as OrderPreview;
-      setNetEarned((result.cart_total ?? 0) * (1 - PLATFORM_FEE_RATE));
+      }) as OrderPreview);
+      setNetEarned(getNetEarned(result));
       setOrder(result);
       setStep("success");
     } catch (err: unknown) {
@@ -121,7 +154,7 @@ export default function VendorQrScanner() {
         const orders = await apiFetch("/orders?status=pending") as { items: OrderPreview[] };
         const found = orders.items?.find((o) => o.pickup_qr_code === code);
         if (found) {
-          setOrder(found);
+          setOrder(normalizeOrder(found));
           setStep("preview");
         } else {
           setErrorMsg(msg || "QR code tidak ditemukan atau tidak valid");
@@ -141,11 +174,11 @@ export default function VendorQrScanner() {
     const code = qrInput.trim().replace("NUTRIGUARD:ORDER:", "").toUpperCase();
     setConfirming(true);
     try {
-      const result = await apiFetch(`/orders/${order.id}/confirm-pickup`, {
+      const result = normalizeOrder(await apiFetch(`/orders/${order.id}/confirm-pickup`, {
         method: "POST",
         body: JSON.stringify({ qr_code: code }),
-      }) as OrderPreview;
-      setNetEarned((result.cart_total ?? 0) * (1 - PLATFORM_FEE_RATE));
+      }) as OrderPreview);
+      setNetEarned(getNetEarned(result));
       setOrder(result);
       setStep("success");
       toast.success("Pickup berhasil dikonfirmasi! Dana masuk ke wallet Anda.");
