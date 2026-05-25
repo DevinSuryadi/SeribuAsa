@@ -216,7 +216,7 @@ class TestBankValidator:
         """Test sanitizing account number"""
         dirty_account = "1234-5678-90"
         clean_account = BankValidator.sanitize_account_number(dirty_account)
-        assert clean_account == "123456789"
+        assert clean_account == "1234567890"
 
     def test_get_supported_banks(self):
         """Test getting list of supported banks"""
