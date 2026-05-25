@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 from sqlalchemy.orm import Session
 
 from app.services.donation_service import DonationService
-from app.models.donation import Donation, DonationAllocation
+from app.models.donation import Donation
 from app.models.user import BeneficiaryProfile
 
 
@@ -190,7 +190,7 @@ class TestDonationServiceAllocation:
 
     def test_get_allocation_by_id(self, mock_db):
         """Test getting allocation by ID"""
-        allocation = MagicMock(spec=DonationAllocation)
+        allocation = MagicMock()
         allocation.id = uuid4()
         mock_db.query.return_value.filter.return_value.first.return_value = allocation
         
@@ -200,7 +200,7 @@ class TestDonationServiceAllocation:
 
     def test_get_allocations_by_donation(self, mock_db, sample_donation):
         """Test getting all allocations for a donation"""
-        allocations = [MagicMock(spec=DonationAllocation) for _ in range(3)]
+        allocations = [MagicMock() for _ in range(3)]
         mock_db.query.return_value.filter.return_value.all.return_value = allocations
         
         result = DonationService.get_allocations_by_donation(db=mock_db, donation_id=sample_donation.id)
@@ -238,7 +238,7 @@ class TestDonationServiceUpdate:
 
     def test_update_allocation_status(self, mock_db):
         """Test updating allocation status"""
-        allocation = MagicMock(spec=DonationAllocation)
+        allocation = MagicMock()
         allocation.id = uuid4()
         mock_db.query.return_value.filter.return_value.first.return_value = allocation
         

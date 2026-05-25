@@ -6,14 +6,14 @@ on:
       - main
       - staging
     paths:
-      - 'apps/backend/**'
-      - '.github/workflows/cd-backend.yml'
+      - "apps/backend/**"
+      - ".github/workflows/cd-backend.yml"
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Deployment environment'
+        description: "Deployment environment"
         required: true
-        default: 'staging'
+        default: "staging"
         type: choice
         options:
           - staging
@@ -35,6 +35,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set image name to lowercase
+        run: echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -49,7 +52,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -77,6 +80,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set image name to lowercase
+        run: echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -92,7 +98,7 @@ jobs:
           docker run --rm \
             -e DATABASE_URL=sqlite:///:memory: \
             -e TEST_MODE=true \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:${{ github.ref_name }} \
             pytest tests/ -v --tb=short
 
   deploy-staging:
@@ -108,6 +114,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set image name to lowercase
+        run: echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> $GITHUB_ENV
+
       - name: Deploy to staging
         env:
           DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_KEY }}
@@ -118,10 +127,10 @@ jobs:
           echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
-          
+
           ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'EOF'
             cd /app/backend
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:staging
             docker-compose -f docker-compose.staging.yml up -d
             docker exec backend-app alembic upgrade head
           EOF
@@ -155,6 +164,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set image name to lowercase
+        run: echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> $GITHUB_ENV
+
       - name: Create deployment
         uses: actions/github-script@v7
         id: deployment
@@ -180,10 +192,10 @@ jobs:
           echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
-          
+
           ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'EOF'
             cd /app/backend
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:main
             docker-compose -f docker-compose.prod.yml up -d
             docker exec backend-app alembic upgrade head
           EOF

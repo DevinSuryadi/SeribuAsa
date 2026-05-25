@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import * as fc from 'fast-check';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, act } from "@testing-library/react";
+import { BrowserRouter } from "react-router-dom";
+import * as fc from "fast-check";
 
 // Mock the supabase client
 const mockOnAuthStateChange = vi.fn();
 const mockUpdateUser = vi.fn();
 
-vi.mock('@/integrations/supabase/client', () => ({
+vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
       onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
@@ -17,7 +17,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 }));
 
 // Also mock the relative path import used by the current unfixed component
-vi.mock('../../../integrations/supabase/client', () => ({
+vi.mock("../../../integrations/supabase/client", () => ({
   supabase: {
     auth: {
       onAuthStateChange: (...args: unknown[]) => mockOnAuthStateChange(...args),
@@ -27,9 +27,9 @@ vi.mock('../../../integrations/supabase/client', () => ({
 }));
 
 // Mock logo import
-vi.mock('@/assets/logo.svg', () => ({ default: 'logo.svg' }));
+vi.mock("@/assets/logo.svg", () => ({ default: "logo.svg" }));
 
-import ResetPassword from '../ResetPassword';
+import ResetPassword from "../ResetPassword";
 
 function renderResetPassword() {
   return render(
@@ -39,10 +39,14 @@ function renderResetPassword() {
   );
 }
 
-describe('Property 1: Bug Condition - Reset Password Form Missing Security Controls', () => {
+describe("Property 1: Bug Condition - Reset Password Form Missing Security Controls", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockOnAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
+    // By default, simulate a valid PASSWORD_RECOVERY event so the form renders
+    mockOnAuthStateChange.mockImplementation((callback: (event: string) => void) => {
+      callback("PASSWORD_RECOVERY");
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
   });
 
   /**
@@ -52,7 +56,7 @@ describe('Property 1: Bug Condition - Reset Password Form Missing Security Contr
    * The fixed component should have a confirmation password input.
    * On unfixed code, this will FAIL because no confirmation field exists.
    */
-  it('should render a confirmation password input field', () => {
+  it("should render a confirmation password input field", () => {
     renderResetPassword();
 
     // Also check for any second password input
@@ -69,61 +73,59 @@ describe('Property 1: Bug Condition - Reset Password Form Missing Security Contr
    * Uses fast-check to generate passwords that fail strength requirements.
    * On unfixed code, this will FAIL because only HTML minLength=6 is enforced.
    */
-  it('should reject weak passwords with real-time validation feedback', () => {
+  it("should reject weak passwords with real-time validation feedback", () => {
     // Generate passwords that are weak (missing uppercase, number, or special char)
     const weakPasswords = [
-      'abc123',          // no uppercase, no special char
-      'short',           // too short, no number, no special char
-      'nouppercase1!',   // no uppercase
-      'NOLOWERCASE1!',   // technically strong but let's test others
-      'NoSpecial1',      // no special character
-      'No1!',            // too short
-      'abcdefgh',        // no uppercase, no number, no special
-      'ABCDEFGH',        // no lowercase, no number, no special
-      '12345678',        // no letters, no special
+      "abc123", // no uppercase, no special char
+      "short", // too short, no number, no special char
+      "nouppercase1!", // no uppercase
+      "NOLOWERCASE1!", // technically strong but let's test others
+      "NoSpecial1", // no special character
+      "No1!", // too short
+      "abcdefgh", // no uppercase, no number, no special
+      "ABCDEFGH", // no lowercase, no number, no special
+      "12345678", // no letters, no special
     ];
 
     fc.assert(
-      fc.property(
-        fc.constantFrom(...weakPasswords),
-        (weakPassword: string) => {
-          // Re-render for each test case
-          const { unmount, container } = render(
-            <BrowserRouter>
-              <ResetPassword />
-            </BrowserRouter>
-          );
+      fc.property(fc.constantFrom(...weakPasswords), (weakPassword: string) => {
+        // Re-render for each test case
+        const { unmount, container } = render(
+          <BrowserRouter>
+            <ResetPassword />
+          </BrowserRouter>
+        );
 
-          // Type the weak password
-          const passwordInput = container.querySelector('input[type="password"]');
-          if (passwordInput) {
-            // Simulate input change
-            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-              window.HTMLInputElement.prototype, 'value'
-            )?.set;
-            nativeInputValueSetter?.call(passwordInput, weakPassword);
-            passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-            passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-
-          // The component should show real-time validation feedback
-          // Look for strength indicators, error messages, or validation checklist
-          const validationFeedback =
-            screen.queryByText(/uppercase/i) ||
-            screen.queryByText(/huruf besar/i) ||
-            screen.queryByText(/karakter khusus/i) ||
-            screen.queryByText(/special/i) ||
-            screen.queryByText(/angka/i) ||
-            screen.queryByText(/min.*8/i) ||
-            container.querySelector('[data-testid="password-strength"]') ||
-            container.querySelector('[role="alert"]');
-
-          unmount();
-
-          // There should be real-time validation feedback for weak passwords
-          return validationFeedback !== null;
+        // Type the weak password
+        const passwordInput = container.querySelector('input[type="password"]');
+        if (passwordInput) {
+          // Simulate input change
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype,
+            "value"
+          )?.set;
+          nativeInputValueSetter?.call(passwordInput, weakPassword);
+          passwordInput.dispatchEvent(new Event("input", { bubbles: true }));
+          passwordInput.dispatchEvent(new Event("change", { bubbles: true }));
         }
-      ),
+
+        // The component should show real-time validation feedback
+        // Look for strength indicators, error messages, or validation checklist
+        const validationFeedback =
+          screen.queryByText(/uppercase/i) ||
+          screen.queryByText(/huruf besar/i) ||
+          screen.queryByText(/karakter khusus/i) ||
+          screen.queryByText(/special/i) ||
+          screen.queryByText(/angka/i) ||
+          screen.queryByText(/min.*8/i) ||
+          container.querySelector('[data-testid="password-strength"]') ||
+          container.querySelector('[role="alert"]');
+
+        unmount();
+
+        // There should be real-time validation feedback for weak passwords
+        return validationFeedback !== null;
+      }),
       { numRuns: 5 }
     );
   });
@@ -134,13 +136,21 @@ describe('Property 1: Bug Condition - Reset Password Form Missing Security Contr
    *
    * On unfixed code, this will FAIL because the form always renders regardless of token.
    */
-  it('should not display the form without a recovery token and should show error with link to /lupa-sandi', () => {
-    // Render without any recovery token (no PASSWORD_RECOVERY event will fire)
-    // The mock onAuthStateChange won't trigger PASSWORD_RECOVERY
+  it("should not display the form without a recovery token and should show error with link to /lupa-sandi", () => {
+    vi.useFakeTimers();
+
+    // Override: do NOT trigger PASSWORD_RECOVERY for this test
+    mockOnAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
+
     renderResetPassword();
 
+    // Advance past the 5s timeout so tokenValid becomes false
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
     // The form should NOT be displayed when there's no valid recovery session
-    const form = screen.queryByRole('button', { name: /perbarui kata sandi/i });
+    const form = screen.queryByRole("button", { name: /perbarui kata sandi/i });
     const passwordInput = document.querySelector('input[type="password"]');
 
     // Without a valid token, the form should be hidden
@@ -148,10 +158,13 @@ describe('Property 1: Bug Condition - Reset Password Form Missing Security Contr
     expect(passwordInput).not.toBeInTheDocument();
 
     // Should show an error message with a link to request a new reset
-    const errorLink = screen.queryByRole('link', { name: /lupa.sandi|tautan baru|minta/i }) ||
+    const errorLink =
+      screen.queryByRole("link", { name: /lupa.sandi|tautan baru|minta/i }) ||
       document.querySelector('a[href="/lupa-sandi"]');
 
     expect(errorLink).toBeInTheDocument();
+
+    vi.useRealTimers();
   });
 
   /**
@@ -160,7 +173,7 @@ describe('Property 1: Bug Condition - Reset Password Form Missing Security Contr
    *
    * On unfixed code, this will FAIL because the current useEffect only checks URL hash.
    */
-  it('should call supabase.auth.onAuthStateChange on mount', () => {
+  it("should call supabase.auth.onAuthStateChange on mount", () => {
     renderResetPassword();
 
     // The component should subscribe to auth state changes

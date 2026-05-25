@@ -1,5 +1,5 @@
 """
-Admin API
+Admin API (Async)
 Handles admin dashboard stats, approvals, monitoring, and exports.
 """
 from datetime import date
@@ -12,10 +12,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import and_, func, or_
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.database import get_db
+from app.database import get_async_db
 from app.middleware.auth import AuthenticatedUser, RequireRole
 from app.models.donation import Donation, DonationStatusEnum, Voucher, VoucherRedemption
 from app.models.nutrition import AuditLog, FIESSurvey
@@ -36,6 +37,7 @@ from app.schemas.admin import (
     ApprovalUpdateRequest,
 )
 from app.utils.cache import get_app_cache
+from typing import Annotated
 
 cache = get_app_cache()
 
@@ -43,12 +45,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-
-def _paginate(items: list, page: int, page_size: int) -> tuple[list, int]:
-    start = (page - 1) * page_size
-    end = start + page_size
-    total = len(items)
-    return items[start:end], total
+# Type alias for database dependency
+DbDep = Annotated[AsyncSession, Depends(get_async_db)]
 
 
 def _total_pages(total: int, page_size: int) -> int:
@@ -62,8 +60,8 @@ def _normalize_status(value: Optional[str]) -> Optional[str]:
     return normalized or None
 
 
-def _record_audit_log(
-    db: Session,
+async def _record_audit_log(
+    db: AsyncSession,
     actor_user_id: UUID,
     action: str,
     entity_type: str,
@@ -71,35 +69,41 @@ def _record_audit_log(
     old_values: Optional[dict] = None,
     new_values: Optional[dict] = None,
 ) -> None:
-    actor_exists = db.query(UserProfile.user_id).filter(UserProfile.user_id == actor_user_id).first()
-    db.add(
-        AuditLog(
-            user_id=actor_user_id if actor_exists else None,
-            action=action,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            old_values=old_values,
-            new_values=new_values,
-        )
+    result = await db.execute(
+        select(UserProfile.user_id).where(UserProfile.user_id == actor_user_id)
     )
+    actor_exists = result.first()
+    
+    audit_entry = AuditLog(
+        user_id=actor_user_id if actor_exists else None,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        old_values=old_values,
+        new_values=new_values,
+    )
+    db.add(audit_entry)
 
 
-def _latest_survey_lookup(db: Session, beneficiary_ids: list[UUID]) -> dict[UUID, FIESSurvey]:
+async def _latest_survey_lookup(
+    db: AsyncSession, beneficiary_ids: list[UUID]
+) -> dict[UUID, FIESSurvey]:
     if not beneficiary_ids:
         return {}
 
+    # Build subquery for latest survey per beneficiary
     latest_survey_subquery = (
-        db.query(
+        select(
             FIESSurvey.beneficiary_id.label("beneficiary_id"),
             func.max(FIESSurvey.survey_date).label("latest_survey_date"),
         )
-        .filter(FIESSurvey.beneficiary_id.in_(beneficiary_ids))
+        .where(FIESSurvey.beneficiary_id.in_(beneficiary_ids))
         .group_by(FIESSurvey.beneficiary_id)
         .subquery()
     )
 
-    surveys = (
-        db.query(FIESSurvey)
+    result = await db.execute(
+        select(FIESSurvey)
         .join(
             latest_survey_subquery,
             and_(
@@ -107,8 +111,8 @@ def _latest_survey_lookup(db: Session, beneficiary_ids: list[UUID]) -> dict[UUID
                 FIESSurvey.survey_date == latest_survey_subquery.c.latest_survey_date,
             ),
         )
-        .all()
     )
+    surveys = result.scalars().all()
     return {survey.beneficiary_id: survey for survey in surveys}
 
 
@@ -263,7 +267,7 @@ def _build_admin_donation_item(donation: Donation) -> AdminDonationItem:
 
 @router.get("/stats", response_model=AdminStatsResponse)
 async def get_admin_stats(
-    db: Session = Depends(get_db),
+    db: DbDep,
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """Get admin dashboard statistics."""
@@ -273,40 +277,130 @@ async def get_admin_stats(
         logger.debug("Admin stats cache hit")
         return AdminStatsResponse(**cached)
     
-    total_users = db.query(UserProfile).count()
-    total_donors = db.query(DonorProfile).count()
-    total_beneficiaries = db.query(BeneficiaryProfile).count()
-    total_vendors = db.query(VendorProfile).count()
-    pending_beneficiaries = db.query(BeneficiaryProfile).filter(BeneficiaryProfile.approval_status == "pending").count()
-    pending_vendors = db.query(VendorProfile).filter(VendorProfile.approval_status == "pending").count()
+    # User counts
+    result = await db.execute(select(func.count()).select_from(UserProfile))
+    total_users = result.scalar() or 0
+    
+    result = await db.execute(select(func.count()).select_from(DonorProfile))
+    total_donors = result.scalar() or 0
+    
+    result = await db.execute(select(func.count()).select_from(BeneficiaryProfile))
+    total_beneficiaries = result.scalar() or 0
+    
+    result = await db.execute(select(func.count()).select_from(VendorProfile))
+    total_vendors = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(BeneficiaryProfile)
+        .where(BeneficiaryProfile.approval_status == "pending")
+    )
+    pending_beneficiaries = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(VendorProfile)
+        .where(VendorProfile.approval_status == "pending")
+    )
+    pending_vendors = result.scalar() or 0
 
-    active_vouchers = db.query(func.count(Voucher.id)).filter(
-        Voucher.balance > 0,
-        Voucher.status == "active",
-    ).scalar() or 0
-    total_voucher_balance = db.query(func.sum(Voucher.balance)).filter(Voucher.balance > 0).scalar() or 0
+    # Voucher counts
+    result = await db.execute(
+        select(func.count(Voucher.id)).where(
+            Voucher.balance > 0,
+            Voucher.status == "active",
+        )
+    )
+    active_vouchers = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.sum(Voucher.balance)).where(Voucher.balance > 0)
+    )
+    total_voucher_balance = result.scalar() or 0
 
-    total_orders = db.query(Order).count()
-    completed_orders = db.query(Order).filter(Order.status == "completed").count()
-    pending_orders = db.query(Order).filter(Order.status == "pending").count()
+    # Order counts
+    result = await db.execute(select(func.count()).select_from(Order))
+    total_orders = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(Order).where(Order.status == "completed")
+    )
+    completed_orders = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(Order).where(Order.status == "pending")
+    )
+    pending_orders = result.scalar() or 0
 
-    total_redemptions = db.query(VoucherRedemption).count()
-    total_redemption_amount = db.query(func.sum(VoucherRedemption.amount)).scalar() or 0
+    # Redemption counts
+    result = await db.execute(select(func.count()).select_from(VoucherRedemption))
+    total_redemptions = result.scalar() or 0
+    
+    result = await db.execute(select(func.sum(VoucherRedemption.amount)))
+    total_redemption_amount = result.scalar() or 0
 
-    total_products = db.query(Product).filter(Product.is_active).count()
-    pending_products = db.query(Product).filter(Product.is_active, Product.approval_status == "pending").count()
-    approved_products = db.query(Product).filter(Product.is_active, Product.approval_status == "approved").count()
-    rejected_products = db.query(Product).filter(Product.is_active, Product.approval_status == "rejected").count()
+    # Product counts
+    result = await db.execute(
+        select(func.count()).select_from(Product).where(Product.is_active)
+    )
+    total_products = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(Product)
+        .where(Product.is_active, Product.approval_status == "pending")
+    )
+    pending_products = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(Product)
+        .where(Product.is_active, Product.approval_status == "approved")
+    )
+    approved_products = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(Product)
+        .where(Product.is_active, Product.approval_status == "rejected")
+    )
+    rejected_products = result.scalar() or 0
 
-    total_donations = db.query(func.sum(Donation.amount)).filter(Donation.status == DonationStatusEnum.success).scalar() or 0
-    success_count = db.query(Donation).filter(Donation.status == DonationStatusEnum.success).count()
-    pending_count = db.query(Donation).filter(Donation.status == DonationStatusEnum.pending).count()
-    failed_count = db.query(Donation).filter(Donation.status == DonationStatusEnum.failed).count()
-    refunded_count = db.query(Donation).filter(Donation.status == DonationStatusEnum.refunded).count()
-    unallocated_success_count = db.query(Donation).filter(
-        Donation.status == DonationStatusEnum.success,
-        ~Donation.vouchers.any(),
-    ).count()
+    # Donation counts
+    result = await db.execute(
+        select(func.sum(Donation.amount)).where(Donation.status == DonationStatusEnum.success)
+    )
+    total_donations = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(Donation)
+        .where(Donation.status == DonationStatusEnum.success)
+    )
+    success_count = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(Donation)
+        .where(Donation.status == DonationStatusEnum.pending)
+    )
+    pending_count = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(Donation)
+        .where(Donation.status == DonationStatusEnum.failed)
+    )
+    failed_count = result.scalar() or 0
+    
+    result = await db.execute(
+        select(func.count()).select_from(Donation)
+        .where(Donation.status == DonationStatusEnum.refunded)
+    )
+    refunded_count = result.scalar() or 0
+    
+    # Unallocated success donations
+    from sqlalchemy import not_
+    result = await db.execute(
+        select(func.count()).select_from(Donation)
+        .where(
+            Donation.status == DonationStatusEnum.success,
+            not_(Donation.vouchers.any()),
+        )
+    )
+    unallocated_success_count = result.scalar() or 0
 
     result = AdminStatsResponse(
         users={
@@ -353,12 +447,12 @@ async def get_admin_stats(
 
 @router.get("/users", response_model=AdminUserListResponse)
 async def list_admin_users(
+    db: DbDep,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     role: Optional[str] = Query(None, description="user, beneficiary, donor, or vendor"),
     approval_status: Optional[str] = Query(None, alias="status"),
     search: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """List all user profiles for admin with role and approval filters."""
@@ -372,16 +466,17 @@ async def list_admin_users(
     search_term = search.strip().lower() if search else None
     rows: list[AdminUserItem] = []
 
-    base_query = (
-        db.query(UserProfile)
+    # Build base query with joins
+    base_stmt = (
+        select(UserProfile)
         .outerjoin(DonorProfile, DonorProfile.user_id == UserProfile.user_id)
         .outerjoin(BeneficiaryProfile, BeneficiaryProfile.user_id == UserProfile.user_id)
         .outerjoin(VendorProfile, VendorProfile.user_id == UserProfile.user_id)
-        .filter(UserProfile.is_active)
+        .where(UserProfile.is_active)
     )
 
     if search_term:
-        base_query = base_query.filter(
+        base_stmt = base_stmt.where(
             or_(
                 UserProfile.full_name.ilike(f"%{search_term}%"),
                 UserProfile.phone.ilike(f"%{search_term}%"),
@@ -390,13 +485,13 @@ async def list_admin_users(
         )
 
     if normalized_role == "donor":
-        base_query = base_query.filter(DonorProfile.user_id.isnot(None))
+        base_stmt = base_stmt.where(DonorProfile.user_id.isnot(None))
     elif normalized_role == "beneficiary":
-        base_query = base_query.filter(BeneficiaryProfile.user_id.isnot(None))
+        base_stmt = base_stmt.where(BeneficiaryProfile.user_id.isnot(None))
     elif normalized_role == "vendor":
-        base_query = base_query.filter(VendorProfile.user_id.isnot(None))
+        base_stmt = base_stmt.where(VendorProfile.user_id.isnot(None))
     elif normalized_role == "user":
-        base_query = base_query.filter(
+        base_stmt = base_stmt.where(
             DonorProfile.user_id.is_(None),
             BeneficiaryProfile.user_id.is_(None),
             VendorProfile.user_id.is_(None),
@@ -404,15 +499,15 @@ async def list_admin_users(
 
     if normalized_status:
         if normalized_role == "beneficiary":
-            base_query = base_query.filter(BeneficiaryProfile.approval_status == normalized_status)
+            base_stmt = base_stmt.where(BeneficiaryProfile.approval_status == normalized_status)
         elif normalized_role == "vendor":
-            base_query = base_query.filter(VendorProfile.approval_status == normalized_status)
+            base_stmt = base_stmt.where(VendorProfile.approval_status == normalized_status)
         elif normalized_role in {"donor", "user"}:
             if normalized_status != "approved":
-                base_query = base_query.filter(False)
+                base_stmt = base_stmt.where(False)
         else:
             if normalized_status == "approved":
-                base_query = base_query.filter(
+                base_stmt = base_stmt.where(
                     or_(
                         DonorProfile.user_id.isnot(None),
                         and_(
@@ -431,7 +526,7 @@ async def list_admin_users(
                     )
                 )
             else:
-                base_query = base_query.filter(
+                base_stmt = base_stmt.where(
                     or_(
                         and_(
                             BeneficiaryProfile.user_id.isnot(None),
@@ -444,8 +539,9 @@ async def list_admin_users(
                     )
                 )
 
-    query = (
-        base_query
+    # Eager load relationships
+    stmt = (
+        base_stmt
         .options(
             selectinload(UserProfile.donor_profile),
             selectinload(UserProfile.beneficiary_profile),
@@ -454,13 +550,15 @@ async def list_admin_users(
         .order_by(UserProfile.created_at.desc())
     )
 
-    total = query.count()
-    user_profiles = (
-        query
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
-    )
+    # Get total count
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    result = await db.execute(count_stmt)
+    total = result.scalar() or 0
+
+    # Get paginated results
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(stmt)
+    user_profiles = result.scalars().all()
 
     for user_profile in user_profiles:
         role_value: Optional[str] = None
@@ -481,9 +579,8 @@ async def list_admin_users(
 
         rows.append(_build_admin_user_item(user_profile, role_value, approval_status_value))
 
-    paged_items = rows
     return AdminUserListResponse(
-        items=paged_items,
+        items=rows,
         total=total,
         page=page,
         page_size=page_size,
@@ -493,12 +590,12 @@ async def list_admin_users(
 
 @router.get("/users/approvals", response_model=AdminUserApprovalListResponse)
 async def list_user_approvals(
+    db: DbDep,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     role: Optional[str] = Query(None, description="beneficiary or vendor"),
     approval_status: Optional[str] = Query(None, alias="status"),
     search: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """List beneficiary and vendor accounts that need admin review."""
@@ -513,50 +610,68 @@ async def list_user_approvals(
     search_term = search.strip().lower() if search else None
 
     if normalized_role in (None, "beneficiary"):
-        beneficiary_query = (
-            db.query(UserProfile, BeneficiaryProfile)
+        beneficiary_stmt = (
+            select(UserProfile, BeneficiaryProfile)
             .join(BeneficiaryProfile, BeneficiaryProfile.user_id == UserProfile.user_id)
-            .filter(UserProfile.is_active, BeneficiaryProfile.is_active)
+            .where(UserProfile.is_active, BeneficiaryProfile.is_active)
         )
         if normalized_status:
-            beneficiary_query = beneficiary_query.filter(BeneficiaryProfile.approval_status == normalized_status)
+            beneficiary_stmt = beneficiary_stmt.where(BeneficiaryProfile.approval_status == normalized_status)
         if search_term:
-            beneficiary_query = beneficiary_query.filter(UserProfile.full_name.ilike(f"%{search_term}%"))
+            beneficiary_stmt = beneficiary_stmt.where(UserProfile.full_name.ilike(f"%{search_term}%"))
 
-        total = beneficiary_query.count()
-        beneficiary_rows = (
-            beneficiary_query.order_by(UserProfile.created_at.desc())
+        # Get count
+        count_stmt = select(func.count()).select_from(beneficiary_stmt.subquery())
+        result = await db.execute(count_stmt)
+        total = result.scalar() or 0
+
+        # Get paginated results
+        beneficiary_stmt = (
+            beneficiary_stmt
+            .order_by(UserProfile.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
-            .all()
         )
-        survey_lookup = _latest_survey_lookup(db, [profile.user_id for _, profile in beneficiary_rows])
+        result = await db.execute(beneficiary_stmt)
+        beneficiary_rows = result.all()
+        
+        survey_lookup = await _latest_survey_lookup(db, [profile.user_id for _, profile in beneficiary_rows])
         items = [
             _build_beneficiary_approval_item(user_profile, profile, survey_lookup.get(profile.user_id))
             for user_profile, profile in beneficiary_rows
         ]
 
     if normalized_role == "vendor":
-        vendor_query = (
-            db.query(UserProfile, VendorProfile)
+        vendor_stmt = (
+            select(UserProfile, VendorProfile)
             .join(VendorProfile, VendorProfile.user_id == UserProfile.user_id)
-            .filter(UserProfile.is_active, VendorProfile.is_active)
+            .where(UserProfile.is_active, VendorProfile.is_active)
         )
         if normalized_status:
-            vendor_query = vendor_query.filter(VendorProfile.approval_status == normalized_status)
+            vendor_stmt = vendor_stmt.where(VendorProfile.approval_status == normalized_status)
         if search_term:
-            vendor_query = vendor_query.filter(
-                (UserProfile.full_name.ilike(f"%{search_term}%"))
-                | (VendorProfile.store_name.ilike(f"%{search_term}%"))
+            vendor_stmt = vendor_stmt.where(
+                or_(
+                    UserProfile.full_name.ilike(f"%{search_term}%"),
+                    VendorProfile.store_name.ilike(f"%{search_term}%"),
+                )
             )
 
-        total = vendor_query.count()
-        vendor_rows = (
-            vendor_query.order_by(UserProfile.created_at.desc())
+        # Get count
+        count_stmt = select(func.count()).select_from(vendor_stmt.subquery())
+        result = await db.execute(count_stmt)
+        total = result.scalar() or 0
+
+        # Get paginated results
+        vendor_stmt = (
+            vendor_stmt
+            .order_by(UserProfile.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
-            .all()
         )
+        result = await db.execute(vendor_stmt)
+        vendor_rows = result.all()
+        
         items = [
             _build_vendor_approval_item(user_profile, profile)
             for user_profile, profile in vendor_rows
@@ -564,46 +679,55 @@ async def list_user_approvals(
 
     if normalized_role is None:
         # Get both beneficiary and vendor approvals with proper pagination
-        beneficiary_query = (
-            db.query(UserProfile, BeneficiaryProfile)
+        beneficiary_stmt = (
+            select(UserProfile, BeneficiaryProfile)
             .join(BeneficiaryProfile, BeneficiaryProfile.user_id == UserProfile.user_id)
-            .filter(UserProfile.is_active, BeneficiaryProfile.is_active)
+            .where(UserProfile.is_active, BeneficiaryProfile.is_active)
         )
         if normalized_status:
-            beneficiary_query = beneficiary_query.filter(BeneficiaryProfile.approval_status == normalized_status)
+            beneficiary_stmt = beneficiary_stmt.where(BeneficiaryProfile.approval_status == normalized_status)
         if search_term:
-            beneficiary_query = beneficiary_query.filter(UserProfile.full_name.ilike(f"%{search_term}%"))
+            beneficiary_stmt = beneficiary_stmt.where(UserProfile.full_name.ilike(f"%{search_term}%"))
 
-        vendor_query = (
-            db.query(UserProfile, VendorProfile)
+        vendor_stmt = (
+            select(UserProfile, VendorProfile)
             .join(VendorProfile, VendorProfile.user_id == UserProfile.user_id)
-            .filter(UserProfile.is_active, VendorProfile.is_active)
+            .where(UserProfile.is_active, VendorProfile.is_active)
         )
         if normalized_status:
-            vendor_query = vendor_query.filter(VendorProfile.approval_status == normalized_status)
+            vendor_stmt = vendor_stmt.where(VendorProfile.approval_status == normalized_status)
         if search_term:
-            vendor_query = vendor_query.filter(
-                (UserProfile.full_name.ilike(f"%{search_term}%"))
-                | (VendorProfile.store_name.ilike(f"%{search_term}%"))
+            vendor_stmt = vendor_stmt.where(
+                or_(
+                    UserProfile.full_name.ilike(f"%{search_term}%"),
+                    VendorProfile.store_name.ilike(f"%{search_term}%"),
+                )
             )
 
-        total = beneficiary_query.count() + vendor_query.count()
+        # Get total count
+        beneficiary_count_stmt = select(func.count()).select_from(beneficiary_stmt.subquery())
+        vendor_count_stmt = select(func.count()).select_from(vendor_stmt.subquery())
+        
+        result_b = await db.execute(beneficiary_count_stmt)
+        result_v = await db.execute(vendor_count_stmt)
+        total = (result_b.scalar() or 0) + (result_v.scalar() or 0)
         
         # Fetch both with generous limit and combine
-        beneficiary_rows = (
-            beneficiary_query.order_by(UserProfile.created_at.desc())
+        beneficiary_rows_result = await db.execute(
+            beneficiary_stmt.order_by(UserProfile.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
-            .all()
         )
-        vendor_rows = (
-            vendor_query.order_by(UserProfile.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-            .all()
-        )
+        beneficiary_rows = beneficiary_rows_result.all()
         
-        survey_lookup = _latest_survey_lookup(db, [profile.user_id for _, profile in beneficiary_rows])
+        vendor_rows_result = await db.execute(
+            vendor_stmt.order_by(UserProfile.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        vendor_rows = vendor_rows_result.all()
+        
+        survey_lookup = await _latest_survey_lookup(db, [profile.user_id for _, profile in beneficiary_rows])
         items = []
         items.extend(
             _build_beneficiary_approval_item(user_profile, profile, survey_lookup.get(profile.user_id))
@@ -616,9 +740,8 @@ async def list_user_approvals(
         items.sort(key=lambda item: item.created_at, reverse=True)
         items = items[:page_size]
 
-    paged_items = items
     return AdminUserApprovalListResponse(
-        items=paged_items,
+        items=items,
         total=total,
         page=page,
         page_size=page_size,
@@ -630,66 +753,89 @@ async def list_user_approvals(
 async def update_user_approval(
     user_id: UUID,
     data: ApprovalUpdateRequest,
-    db: Session = Depends(get_db),
+    db: DbDep,
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """Approve or reject beneficiary and vendor accounts."""
-    user_profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    result = await db.execute(
+        select(UserProfile).where(UserProfile.user_id == user_id)
+    )
+    user_profile = result.scalar_one_or_none()
+    
     if not user_profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    beneficiary_profile = db.query(BeneficiaryProfile).filter(BeneficiaryProfile.user_id == user_id).first()
-    vendor_profile = db.query(VendorProfile).filter(VendorProfile.user_id == user_id).first()
-
-    if beneficiary_profile:
-        old_status = beneficiary_profile.approval_status
-        beneficiary_profile.approval_status = data.approval_status
-        _record_audit_log(
-            db,
-            current_user.user_id,
-            action=f"beneficiary_{data.approval_status}",
-            entity_type="beneficiary_profile",
-            entity_id=beneficiary_profile.user_id,
-            old_values={"approval_status": old_status},
-            new_values={"approval_status": data.approval_status, "notes": data.notes},
-        )
-        db.commit()
-        db.refresh(beneficiary_profile)
-        cache.invalidate_namespace("stats")
-        latest_survey = _latest_survey_lookup(db, [beneficiary_profile.user_id]).get(beneficiary_profile.user_id)
-        return _build_beneficiary_approval_item(user_profile, beneficiary_profile, latest_survey)
-
-    if vendor_profile:
-        old_status = vendor_profile.approval_status
-        vendor_profile.approval_status = data.approval_status
-        _record_audit_log(
-            db,
-            current_user.user_id,
-            action=f"vendor_{data.approval_status}",
-            entity_type="vendor_profile",
-            entity_id=vendor_profile.user_id,
-            old_values={"approval_status": old_status},
-            new_values={"approval_status": data.approval_status, "notes": data.notes},
-        )
-        db.commit()
-        db.refresh(vendor_profile)
-        cache.invalidate_namespace("stats")
-        return _build_vendor_approval_item(user_profile, vendor_profile)
-
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Only beneficiary and vendor accounts support approval workflow",
+    result = await db.execute(
+        select(BeneficiaryProfile).where(BeneficiaryProfile.user_id == user_id)
     )
+    beneficiary_profile = result.scalar_one_or_none()
+
+    result = await db.execute(
+        select(VendorProfile).where(VendorProfile.user_id == user_id)
+    )
+    vendor_profile = result.scalar_one_or_none()
+
+    try:
+        if beneficiary_profile:
+            old_status = beneficiary_profile.approval_status
+            beneficiary_profile.approval_status = data.approval_status
+            await _record_audit_log(
+                db,
+                current_user.user_id,
+                action=f"beneficiary_{data.approval_status}",
+                entity_type="beneficiary_profile",
+                entity_id=beneficiary_profile.user_id,
+                old_values={"approval_status": old_status},
+                new_values={"approval_status": data.approval_status, "notes": data.notes},
+            )
+            await db.commit()
+            await db.refresh(beneficiary_profile)
+            cache.invalidate_namespace("stats")
+            
+            latest_survey = await _latest_survey_lookup(db, [beneficiary_profile.user_id])
+            survey = latest_survey.get(beneficiary_profile.user_id)
+            return _build_beneficiary_approval_item(user_profile, beneficiary_profile, survey)
+
+        if vendor_profile:
+            old_status = vendor_profile.approval_status
+            vendor_profile.approval_status = data.approval_status
+            await _record_audit_log(
+                db,
+                current_user.user_id,
+                action=f"vendor_{data.approval_status}",
+                entity_type="vendor_profile",
+                entity_id=vendor_profile.user_id,
+                old_values={"approval_status": old_status},
+                new_values={"approval_status": data.approval_status, "notes": data.notes},
+            )
+            await db.commit()
+            await db.refresh(vendor_profile)
+            cache.invalidate_namespace("stats")
+            return _build_vendor_approval_item(user_profile, vendor_profile)
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only beneficiary and vendor accounts support approval workflow",
+        )
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update approval status",
+        )
 
 
 @router.get("/products/reviews", response_model=AdminProductReviewListResponse)
 async def list_product_reviews(
+    db: DbDep,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     approval_status: Optional[str] = Query(None, alias="status"),
     vendor_id: Optional[UUID] = Query(None),
     search: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """List product catalog submissions across approval states."""
@@ -697,28 +843,34 @@ async def list_product_reviews(
     if normalized_status not in {None, "pending", "approved", "rejected"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status filter")
 
-    query = (
-        db.query(Product)
+    stmt = (
+        select(Product)
         .options(
             selectinload(Product.category),
             selectinload(Product.vendor_profile).selectinload(VendorProfile.user_profile),
         )
-        .filter(Product.is_active)
+        .where(Product.is_active)
     )
     if normalized_status:
-        query = query.filter(Product.approval_status == normalized_status)
+        stmt = stmt.where(Product.approval_status == normalized_status)
     if vendor_id:
-        query = query.filter(Product.vendor_id == vendor_id)
+        stmt = stmt.where(Product.vendor_id == vendor_id)
     if search:
-        query = query.filter(Product.name.ilike(f"%{search.strip()}%"))
+        stmt = stmt.where(Product.name.ilike(f"%{search.strip()}%"))
 
-    total = query.count()
-    products = (
-        query.order_by(Product.created_at.desc())
+    # Get count
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    result = await db.execute(count_stmt)
+    total = result.scalar() or 0
+
+    # Get paginated results
+    stmt = (
+        stmt.order_by(Product.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
-        .all()
     )
+    result = await db.execute(stmt)
+    products = result.scalars().all()
 
     return AdminProductReviewListResponse(
         items=[_build_product_review_item(product) for product in products],
@@ -733,49 +885,57 @@ async def list_product_reviews(
 async def update_product_approval(
     product_id: UUID,
     data: ApprovalUpdateRequest,
-    db: Session = Depends(get_db),
+    db: DbDep,
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """Approve or reject catalog products."""
-    product = (
-        db.query(Product)
+    result = await db.execute(
+        select(Product)
         .options(
             selectinload(Product.category),
             selectinload(Product.vendor_profile).selectinload(VendorProfile.user_profile),
         )
-        .filter(Product.id == product_id, Product.is_active)
-        .first()
+        .where(Product.id == product_id, Product.is_active)
     )
+    product = result.scalar_one_or_none()
+    
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
-    old_status = product.approval_status
-    product.approval_status = data.approval_status
-    _record_audit_log(
-        db,
-        current_user.user_id,
-        action=f"product_{data.approval_status}",
-        entity_type="product",
-        entity_id=product.id,
-        old_values={"approval_status": old_status},
-        new_values={"approval_status": data.approval_status, "notes": data.notes},
-    )
-    db.commit()
-    db.refresh(product)
-    cache.invalidate_namespace("stats")
+    try:
+        old_status = product.approval_status
+        product.approval_status = data.approval_status
+        await _record_audit_log(
+            db,
+            current_user.user_id,
+            action=f"product_{data.approval_status}",
+            entity_type="product",
+            entity_id=product.id,
+            old_values={"approval_status": old_status},
+            new_values={"approval_status": data.approval_status, "notes": data.notes},
+        )
+        await db.commit()
+        await db.refresh(product)
+        cache.invalidate_namespace("stats")
 
-    return _build_product_review_item(product)
+        return _build_product_review_item(product)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update product approval",
+        )
 
 
 @router.get("/donations", response_model=AdminDonationListResponse)
 async def list_admin_donations(
+    db: DbDep,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     payment_status: Optional[str] = Query(None, alias="status"),
     allocation_status: Optional[str] = Query(None),
     donor_id: Optional[UUID] = Query(None),
     search: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """List all donations with payment and allocation visibility for admin."""
@@ -789,8 +949,8 @@ async def list_admin_donations(
     if normalized_allocation_status not in allowed_allocation_statuses:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid allocation_status filter")
 
-    query = (
-        db.query(Donation)
+    stmt = (
+        select(Donation)
         .options(
             selectinload(Donation.donor_profile).selectinload(DonorProfile.user_profile),
             selectinload(Donation.wallet_allocations),
@@ -800,17 +960,24 @@ async def list_admin_donations(
         )
     )
     if normalized_payment_status:
-        query = query.filter(Donation.status == normalized_payment_status)
+        stmt = stmt.where(Donation.status == normalized_payment_status)
     if donor_id:
-        query = query.filter(Donation.donor_id == donor_id)
+        stmt = stmt.where(Donation.donor_id == donor_id)
 
-    total = query.count()
-    donations = (
-        query.order_by(Donation.created_at.desc())
+    # Get count
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    result = await db.execute(count_stmt)
+    total = result.scalar() or 0
+
+    # Get paginated results
+    stmt = (
+        stmt.order_by(Donation.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
-        .all()
     )
+    result = await db.execute(stmt)
+    donations = result.scalars().all()
+    
     items = [_build_admin_donation_item(donation) for donation in donations]
 
     if normalized_allocation_status:
@@ -826,9 +993,8 @@ async def list_admin_donations(
             or search_term in (item.midtrans_transaction_id or "").lower()
         ]
 
-    paged_items = items
     return AdminDonationListResponse(
-        items=paged_items,
+        items=items,
         total=total,
         page=page,
         page_size=page_size,
@@ -838,6 +1004,7 @@ async def list_admin_donations(
 
 @router.get("/beneficiaries/eligibility", response_model=AdminBeneficiaryEligibilityListResponse)
 async def list_beneficiary_eligibility(
+    db: DbDep,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     year: Optional[int] = Query(None, ge=2000, le=2100),
@@ -845,7 +1012,6 @@ async def list_beneficiary_eligibility(
     approval_status: Optional[str] = Query(None, alias="status"),
     eligible_only: bool = Query(False),
     search: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """List beneficiary eligibility for monthly donation allocation."""
@@ -858,24 +1024,31 @@ async def list_beneficiary_eligibility(
     allocation_month = month or today.month
     allocation_date = date(allocation_year, allocation_month, 1)
 
-    query = (
-        db.query(UserProfile, BeneficiaryProfile)
+    stmt = (
+        select(UserProfile, BeneficiaryProfile)
         .join(BeneficiaryProfile, BeneficiaryProfile.user_id == UserProfile.user_id)
-        .filter(UserProfile.is_active, BeneficiaryProfile.is_active)
+        .where(UserProfile.is_active, BeneficiaryProfile.is_active)
     )
     if normalized_status:
-        query = query.filter(BeneficiaryProfile.approval_status == normalized_status)
+        stmt = stmt.where(BeneficiaryProfile.approval_status == normalized_status)
     if search:
-        query = query.filter(UserProfile.full_name.ilike(f"%{search.strip()}%"))
+        stmt = stmt.where(UserProfile.full_name.ilike(f"%{search.strip()}%"))
 
-    total = query.count()
-    rows = (
-        query.order_by(UserProfile.created_at.desc())
+    # Get count
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    result = await db.execute(count_stmt)
+    total = result.scalar() or 0
+
+    # Get paginated results
+    stmt = (
+        stmt.order_by(UserProfile.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
-        .all()
     )
-    survey_lookup = _latest_survey_lookup(db, [profile.user_id for _, profile in rows])
+    result = await db.execute(stmt)
+    rows = result.all()
+    
+    survey_lookup = await _latest_survey_lookup(db, [profile.user_id for _, profile in rows])
 
     items: list[AdminBeneficiaryEligibilityItem] = []
     for user_profile, profile in rows:
@@ -907,9 +1080,8 @@ async def list_beneficiary_eligibility(
         if not eligible_only or item.eligible_for_allocation:
             items.append(item)
 
-    paged_items = items
     return AdminBeneficiaryEligibilityListResponse(
-        items=paged_items,
+        items=items,
         total=total,
         page=page,
         page_size=page_size,
@@ -919,11 +1091,19 @@ async def list_beneficiary_eligibility(
 
 @router.get("/export/users")
 async def export_users(
-    db: Session = Depends(get_db),
+    db: DbDep,
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """Export users to CSV."""
-    users = db.query(UserProfile).all()
+    result = await db.execute(
+        select(UserProfile)
+        .options(
+            selectinload(UserProfile.donor_profile),
+            selectinload(UserProfile.beneficiary_profile),
+            selectinload(UserProfile.vendor_profile),
+        )
+    )
+    users = result.scalars().all()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -960,20 +1140,22 @@ async def export_users(
 
 @router.get("/export/orders")
 async def export_orders(
+    db: DbDep,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """Export orders to CSV."""
-    query = db.query(Order)
+    stmt = select(Order)
 
     if start_date:
-        query = query.filter(Order.created_at >= start_date)
+        stmt = stmt.where(Order.created_at >= start_date)
     if end_date:
-        query = query.filter(Order.created_at <= end_date)
+        stmt = stmt.where(Order.created_at <= end_date)
 
-    orders = query.order_by(Order.created_at.desc()).all()
+    stmt = stmt.order_by(Order.created_at.desc())
+    result = await db.execute(stmt)
+    orders = result.scalars().all()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -1001,11 +1183,13 @@ async def export_orders(
 
 @router.get("/export/vouchers")
 async def export_vouchers(
-    db: Session = Depends(get_db),
+    db: DbDep,
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """Export vouchers to CSV."""
-    vouchers = db.query(Voucher).order_by(Voucher.created_at.desc()).limit(1000).all()
+    stmt = select(Voucher).order_by(Voucher.created_at.desc()).limit(1000)
+    result = await db.execute(stmt)
+    vouchers = result.scalars().all()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -1034,20 +1218,22 @@ async def export_vouchers(
 
 @router.get("/export/redemptions")
 async def export_redemptions(
+    db: DbDep,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(RequireRole(["admin"])),
 ):
     """Export voucher redemptions to CSV."""
-    query = db.query(VoucherRedemption)
+    stmt = select(VoucherRedemption).options(selectinload(VoucherRedemption.voucher))
 
     if start_date:
-        query = query.filter(VoucherRedemption.created_at >= start_date)
+        stmt = stmt.where(VoucherRedemption.created_at >= start_date)
     if end_date:
-        query = query.filter(VoucherRedemption.created_at <= end_date)
+        stmt = stmt.where(VoucherRedemption.created_at <= end_date)
 
-    redemptions = query.order_by(VoucherRedemption.created_at.desc()).all()
+    stmt = stmt.order_by(VoucherRedemption.created_at.desc())
+    result = await db.execute(stmt)
+    redemptions = result.scalars().all()
 
     output = io.StringIO()
     writer = csv.writer(output)

@@ -1,9 +1,11 @@
 """
 Database Configuration and Session Management
+Supports both sync and async database operations
 """
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.config import settings
 import logging
 
@@ -70,6 +72,85 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for models
 Base = declarative_base()
+
+# ============================================================================
+# ASYNC DATABASE SUPPORT (for FastAPI async endpoints)
+# ============================================================================
+
+def _get_async_database_url():
+    """Convert database URL to async format."""
+    url = settings.get_database_url()
+    if url.startswith("sqlite://"):
+        # SQLite async URL format
+        return url.replace("sqlite://", "sqlite+aiosqlite://")
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+        # PostgreSQL async URL format - only convert if not already async
+        return url.replace("postgresql://", "postgresql+asyncpg://")
+    elif url.startswith("postgresql+psycopg2://"):
+        # Convert psycopg2 to asyncpg
+        return url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+    return url
+
+
+ASYNC_DATABASE_URL = _get_async_database_url()
+# Log only the scheme for debugging (safe - no credentials)
+logger.info(f"Async database driver: {ASYNC_DATABASE_URL.split('://')[0] if '://' in ASYNC_DATABASE_URL else 'unknown'}")
+
+
+def _create_async_sqlite_engine(url: str):
+    """Create an async SQLite engine with appropriate settings."""
+    kwargs = {
+        "connect_args": {"check_same_thread": False},
+    }
+    if url == "sqlite+aiosqlite:///:memory:":
+        kwargs["poolclass"] = StaticPool
+    return create_async_engine(url, **kwargs)
+
+
+def _create_async_postgres_engine(url: str):
+    """Create an async PostgreSQL engine with connection pooling."""
+    return create_async_engine(
+        url,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        pool_recycle=3600,
+    )
+
+
+def _build_async_engine():
+    """Build the async database engine."""
+    if ASYNC_DATABASE_URL.startswith("sqlite"):
+        return _create_async_sqlite_engine(ASYNC_DATABASE_URL)
+    return _create_async_postgres_engine(ASYNC_DATABASE_URL)
+
+
+# Async engine and session
+async_engine = _build_async_engine()
+AsyncSessionLocal = async_sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+
+async def get_async_db():
+    """
+    Async dependency to get database session.
+    Yields an async database session and ensures it's closed after use.
+    
+    Usage in FastAPI routes:
+        @app.get("/items")
+        async def get_items(db: AsyncSession = Depends(get_async_db)):
+            ...
+    """
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 
 def get_db() -> Session:

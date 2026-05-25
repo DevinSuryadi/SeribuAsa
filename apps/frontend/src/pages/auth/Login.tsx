@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { SEO } from "@/components/SEO";
 import logo from "@/assets/logo.svg";
 
 function GoogleIcon() {
@@ -128,190 +129,156 @@ export default function Login() {
   const passwordValid = isPasswordValid(password);
 
   return (
-    <div
-      className="flex h-screen items-center justify-center px-4 overflow-hidden relative"
-      style={{
-        background: "linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%)",
-      }}
-    >
-      {/* Background Decor */}
-      <div
-        style={{
-          position: "absolute",
-          top: -100,
-          left: -100,
-          width: 300,
-          height: 300,
-          borderRadius: "50%",
-          background: "rgba(34,197,94,0.1)",
-          filter: "blur(80px)",
-          pointerEvents: "none",
-        }}
+    <>
+      <SEO
+        title="Login"
+        description="Login ke akun SeribuAsa untuk mengakses dashboard donasi dan memantau dampak kontribusi Anda."
+        canonical="https://seribuasa.id/login"
+        noIndex={true}
       />
       <div
+        className="flex h-screen items-center justify-center px-4 overflow-hidden relative"
         style={{
-          position: "absolute",
-          bottom: -100,
-          right: -100,
-          width: 300,
-          height: 300,
-          borderRadius: "50%",
-          background: "rgba(37,99,235,0.07)",
-          filter: "blur(80px)",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div
-        className="w-full max-w-md bg-white p-8 sm:p-10 relative z-10"
-        style={{
-          borderRadius: "28px",
-          boxShadow: "0 24px 48px -12px rgba(22,163,74,0.15), 0 0 24px 0 rgba(0,0,0,0.04)",
-          border: "1px solid rgba(22,163,74,0.1)",
+          background: "linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%)",
         }}
       >
-        {/* Logo */}
-        <Link
-          to="/"
-          className="block mb-8 transition-transform hover:scale-105"
-          style={{ textDecoration: "none" }}
+        {/* Background Decor */}
+        <div
+          style={{
+            position: "absolute",
+            top: -100,
+            left: -100,
+            width: 300,
+            height: 300,
+            borderRadius: "50%",
+            background: "rgba(34,197,94,0.1)",
+            filter: "blur(80px)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: -100,
+            right: -100,
+            width: 300,
+            height: 300,
+            borderRadius: "50%",
+            background: "rgba(37,99,235,0.07)",
+            filter: "blur(80px)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <div
+          className="w-full max-w-md bg-white p-8 sm:p-10 relative z-10"
+          style={{
+            borderRadius: "28px",
+            boxShadow: "0 24px 48px -12px rgba(22,163,74,0.15), 0 0 24px 0 rgba(0,0,0,0.04)",
+            border: "1px solid rgba(22,163,74,0.1)",
+          }}
         >
-          <div className="flex flex-col items-center">
-            <img
-              src={logo}
-              alt="SeribuAsa Logo"
+          {/* Logo */}
+          <Link
+            to="/"
+            className="block mb-8 transition-transform hover:scale-105"
+            style={{ textDecoration: "none" }}
+          >
+            <div className="flex flex-col items-center">
+              <img
+                src={logo}
+                alt="SeribuAsa Logo"
+                style={{
+                  width: 90,
+                  height: 90,
+                  objectFit: "contain",
+                  marginBottom: -15,
+                  filter: "drop-shadow(0 4px 8px rgba(22,163,74,0.2))",
+                }}
+              />
+              <h1
+                style={{
+                  fontSize: 20,
+                  fontWeight: 800,
+                  margin: 0,
+                  color: "#346A43",
+                }}
+              >
+                SeribuAsa
+              </h1>
+            </div>
+          </Link>
+
+          {/* Title */}
+          <div className="text-center mb-8">
+            <h2
               style={{
-                width: 90,
-                height: 90,
-                objectFit: "contain",
-                marginBottom: -15,
-                filter: "drop-shadow(0 4px 8px rgba(22,163,74,0.2))",
-              }}
-            />
-            <h1
-              style={{
-                fontSize: 20,
-                fontWeight: 800,
-                margin: 0,
-                color: "#346A43",
+                fontSize: 24,
+                fontWeight: 700,
+                color: "#111",
+                margin: "0 0 8px 0",
+                letterSpacing: "-0.5px",
               }}
             >
-              SeribuAsa
-            </h1>
-          </div>
-        </Link>
-
-        {/* Title */}
-        <div className="text-center mb-8">
-          <h2
-            style={{
-              fontSize: 24,
-              fontWeight: 700,
-              color: "#111",
-              margin: "0 0 8px 0",
-              letterSpacing: "-0.5px",
-            }}
-          >
-            Selamat Datang Kembali
-          </h2>
-          <p
-            style={{
-              fontSize: 14,
-              color: "#666",
-              margin: 0,
-              lineHeight: 1.5,
-            }}
-          >
-            Masuk ke akun Anda untuk melanjutkan
-          </p>
-        </div>
-
-        {/* Checkout redirect banner */}
-        {fromCheckout && (
-          <div
-            style={{
-              padding: "12px 16px",
-              borderRadius: "12px",
-              background: "rgba(22,163,74,0.08)",
-              border: "1px solid rgba(22,163,74,0.2)",
-              marginBottom: 20,
-              textAlign: "center",
-            }}
-          >
-            <p style={{ fontSize: 13, color: "#15803d", fontWeight: 500 }}>
-              Silakan login untuk melanjutkan donasi Anda
+              Selamat Datang Kembali
+            </h2>
+            <p
+              style={{
+                fontSize: 14,
+                color: "#666",
+                margin: 0,
+                lineHeight: 1.5,
+              }}
+            >
+              Masuk ke akun Anda untuk melanjutkan
             </p>
           </div>
-        )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Email */}
-          <div>
-            <label
+          {/* Checkout redirect banner */}
+          {fromCheckout && (
+            <div
               style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#333",
-                display: "block",
-                marginBottom: 8,
+                padding: "12px 16px",
+                borderRadius: "12px",
+                background: "rgba(22,163,74,0.08)",
+                border: "1px solid rgba(22,163,74,0.2)",
+                marginBottom: 20,
+                textAlign: "center",
               }}
             >
-              Email Lengkap
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="nama@contoh.com"
-              required
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                borderRadius: "14px",
-                border: "1px solid #e5e5e5",
-                background: "#fafafa",
-                fontSize: 14,
-                outline: "none",
-                boxSizing: "border-box",
-                transition: "all 0.2s ease",
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "#16a34a";
-                e.currentTarget.style.background = "#fff";
-                e.currentTarget.style.boxShadow = "0 0 0 4px rgba(22,163,74,0.1)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = "#e5e5e5";
-                e.currentTarget.style.background = "#fafafa";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            />
-          </div>
+              <p style={{ fontSize: 13, color: "#15803d", fontWeight: 500 }}>
+                Silakan login untuk melanjutkan donasi Anda
+              </p>
+            </div>
+          )}
 
-          {/* Password */}
-          <div>
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#333",
-                display: "block",
-                marginBottom: 8,
-              }}
-            >
-              Kata Sandi
-            </label>
-            <div style={{ position: "relative" }}>
+          {/* Form */}
+          <form
+            onSubmit={handleSubmit}
+            style={{ display: "flex", flexDirection: "column", gap: 16 }}
+          >
+            {/* Email */}
+            <div>
+              <label
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#333",
+                  display: "block",
+                  marginBottom: 8,
+                }}
+              >
+                Email Lengkap
+              </label>
               <input
-                type={showPw ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="nama@contoh.com"
                 required
                 style={{
                   width: "100%",
-                  padding: "14px 44px 14px 16px",
+                  padding: "14px 16px",
                   borderRadius: "14px",
                   border: "1px solid #e5e5e5",
                   background: "#fafafa",
@@ -319,7 +286,6 @@ export default function Login() {
                   outline: "none",
                   boxSizing: "border-box",
                   transition: "all 0.2s ease",
-                  letterSpacing: !showPw && password ? "3px" : "normal",
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = "#16a34a";
@@ -332,180 +298,226 @@ export default function Login() {
                   e.currentTarget.style.boxShadow = "none";
                 }}
               />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                style={{
-                  position: "absolute",
-                  right: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#a3a3a3",
-                  padding: 4,
-                }}
-              >
-                {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
             </div>
 
-            {/* Password Requirements Notes */}
-            {password.length > 0 && !passwordValid && (
-              <div
+            {/* Password */}
+            <div>
+              <label
                 style={{
-                  marginTop: 8,
-                  padding: "10px 12px",
-                  background: "#fafafa",
-                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#333",
+                  display: "block",
+                  marginBottom: 8,
                 }}
               >
-                <p style={{ fontSize: 10, color: "#a3a3a3", marginBottom: 4 }}>
-                  Jika lupa password, gunakan:
-                </p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 10, color: "#737373" }}>Min. 8 karakter</span>
-                  <span style={{ fontSize: 10, color: "#737373" }}>• 1 huruf besar</span>
-                  <span style={{ fontSize: 10, color: "#737373" }}>• 1 angka</span>
-                  <span style={{ fontSize: 10, color: "#737373" }}>• 1 simbol</span>
-                </div>
+                Kata Sandi
+              </label>
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "14px 44px 14px 16px",
+                    borderRadius: "14px",
+                    border: "1px solid #e5e5e5",
+                    background: "#fafafa",
+                    fontSize: 14,
+                    outline: "none",
+                    boxSizing: "border-box",
+                    transition: "all 0.2s ease",
+                    letterSpacing: !showPw && password ? "3px" : "normal",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#16a34a";
+                    e.currentTarget.style.background = "#fff";
+                    e.currentTarget.style.boxShadow = "0 0 0 4px rgba(22,163,74,0.1)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#e5e5e5";
+                    e.currentTarget.style.background = "#fafafa";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#a3a3a3",
+                    padding: 4,
+                  }}
+                >
+                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
-            )}
-          </div>
 
-          {/* Forgot password */}
-          <p style={{ textAlign: "right", marginTop: -8 }}>
-            <Link
-              to="/lupa-sandi"
+              {/* Password Requirements Notes */}
+              {password.length > 0 && !passwordValid && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: "10px 12px",
+                    background: "#fafafa",
+                    borderRadius: 8,
+                  }}
+                >
+                  <p style={{ fontSize: 10, color: "#a3a3a3", marginBottom: 4 }}>
+                    Jika lupa password, gunakan:
+                  </p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 10, color: "#737373" }}>Min. 8 karakter</span>
+                    <span style={{ fontSize: 10, color: "#737373" }}>• 1 huruf besar</span>
+                    <span style={{ fontSize: 10, color: "#737373" }}>• 1 angka</span>
+                    <span style={{ fontSize: 10, color: "#737373" }}>• 1 simbol</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Forgot password */}
+            <p style={{ textAlign: "right", marginTop: -8 }}>
+              <Link
+                to="/lupa-sandi"
+                style={{
+                  fontSize: 13,
+                  color: "#16a34a",
+                  textDecoration: "none",
+                  fontWeight: 500,
+                }}
+              >
+                Lupa kata sandi?
+              </Link>
+            </p>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading || !email || password.length < 6}
               style={{
-                fontSize: 13,
-                color: "#16a34a",
-                textDecoration: "none",
-                fontWeight: 500,
+                width: "100%",
+                padding: "16px",
+                borderRadius: "14px",
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#fff",
+                background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                border: "none",
+                cursor: loading || !email || password.length < 6 ? "not-allowed" : "pointer",
+                opacity: loading || !email || password.length < 6 ? 0.6 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                boxShadow: "0 8px 20px -6px rgba(22,163,74,0.4)",
+                transition: "all 0.2s ease",
+                marginTop: 4,
+              }}
+              onMouseEnter={(e) => {
+                if (!loading && email && password.length >= 6) {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 10px 25px -6px rgba(22,163,74,0.5)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading && email && password.length >= 6) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 8px 20px -6px rgba(22,163,74,0.4)";
+                }
               }}
             >
-              Lupa kata sandi?
+              {loading ? (
+                <>
+                  <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                  <span>Memproses...</span>
+                </>
+              ) : (
+                "Masuk"
+              )}
+            </button>
+          </form>
+
+          {/* Google Login */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <div style={{ flex: 1, height: "1px", background: "#e5e5e5" }} />
+              <span style={{ fontSize: 12, color: "#a3a3a3" }}>atau lanjutkan dengan</span>
+              <div style={{ flex: 1, height: "1px", background: "#e5e5e5" }} />
+            </div>
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading || googleLoading}
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: "14px",
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#333",
+                background: "#fff",
+                border: "1px solid #e5e5e5",
+                cursor: loading || googleLoading ? "not-allowed" : "pointer",
+                opacity: loading || googleLoading ? 0.6 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                if (!loading && !googleLoading) {
+                  e.currentTarget.style.background = "#fafafa";
+                  e.currentTarget.style.borderColor = "#d4d4d4";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading && !googleLoading) {
+                  e.currentTarget.style.background = "#fff";
+                  e.currentTarget.style.borderColor = "#e5e5e5";
+                }
+              }}
+            >
+              {googleLoading ? (
+                <>
+                  <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                  <span>Mengalihkan...</span>
+                </>
+              ) : (
+                <>
+                  <GoogleIcon />
+                  <span>Masuk dengan Google</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Register Link */}
+          <p style={{ fontSize: 13, textAlign: "center", color: "#737373", marginTop: 24 }}>
+            Belum punya akun?{" "}
+            <Link
+              to="/register"
+              style={{
+                color: "#16a34a",
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Daftar sekarang
             </Link>
           </p>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading || !email || password.length < 6}
-            style={{
-              width: "100%",
-              padding: "16px",
-              borderRadius: "14px",
-              fontSize: 15,
-              fontWeight: 600,
-              color: "#fff",
-              background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-              border: "none",
-              cursor: loading || !email || password.length < 6 ? "not-allowed" : "pointer",
-              opacity: loading || !email || password.length < 6 ? 0.6 : 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              boxShadow: "0 8px 20px -6px rgba(22,163,74,0.4)",
-              transition: "all 0.2s ease",
-              marginTop: 4,
-            }}
-            onMouseEnter={(e) => {
-              if (!loading && email && password.length >= 6) {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 10px 25px -6px rgba(22,163,74,0.5)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading && email && password.length >= 6) {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 8px 20px -6px rgba(22,163,74,0.4)";
-              }
-            }}
-          >
-            {loading ? (
-              <>
-                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                <span>Memproses...</span>
-              </>
-            ) : (
-              "Masuk"
-            )}
-          </button>
-        </form>
-
-        {/* Google Login */}
-        <div style={{ marginTop: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <div style={{ flex: 1, height: "1px", background: "#e5e5e5" }} />
-            <span style={{ fontSize: 12, color: "#a3a3a3" }}>atau lanjutkan dengan</span>
-            <div style={{ flex: 1, height: "1px", background: "#e5e5e5" }} />
-          </div>
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={loading || googleLoading}
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: "14px",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#333",
-              background: "#fff",
-              border: "1px solid #e5e5e5",
-              cursor: loading || googleLoading ? "not-allowed" : "pointer",
-              opacity: loading || googleLoading ? 0.6 : 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              if (!loading && !googleLoading) {
-                e.currentTarget.style.background = "#fafafa";
-                e.currentTarget.style.borderColor = "#d4d4d4";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading && !googleLoading) {
-                e.currentTarget.style.background = "#fff";
-                e.currentTarget.style.borderColor = "#e5e5e5";
-              }
-            }}
-          >
-            {googleLoading ? (
-              <>
-                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                <span>Mengalihkan...</span>
-              </>
-            ) : (
-              <>
-                <GoogleIcon />
-                <span>Masuk dengan Google</span>
-              </>
-            )}
-          </button>
         </div>
-
-        {/* Register Link */}
-        <p style={{ fontSize: 13, textAlign: "center", color: "#737373", marginTop: 24 }}>
-          Belum punya akun?{" "}
-          <Link
-            to="/register"
-            style={{
-              color: "#16a34a",
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Daftar sekarang
-          </Link>
-        </p>
       </div>
-    </div>
+    </>
   );
 }

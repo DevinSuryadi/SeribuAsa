@@ -121,7 +121,14 @@ class Settings(BaseSettings):
         if self.is_test_mode() or not self.DATABASE_URL:
             # Use in-memory SQLite for testing
             return "sqlite:///:memory:"
-        return self.DATABASE_URL
+            
+        url = self.DATABASE_URL
+        
+        # Ensure psycopg2 driver is used for SQLAlchemy
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            
+        return url
 
 
 @lru_cache()

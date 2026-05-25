@@ -1,0 +1,8 @@
+feat: implement backend database migrations, CI/CD, and SEO infra
+
+This commit combines the following changes (squashed to remove sensitive credentials from git history):
+- perf(admin): migrate to async SQLAlchemy and optimize frontend with SWR
+- feat(seo): add critical SEO infrastructure with meta tags, robots.txt, sitemap.xml, and react-helmet-async
+- chore(deploy): add deployment configuration for Vercel and Railway
+- feat: implement backend database migrations, CI/CD pipelines, and comprehensive unit testing documentation
+- Merge branch 'staging'

@@ -35,6 +35,17 @@ if database_url:
     # to avoid sqlalchemy.exc.NoSuchModuleError on some environments
     if database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        
+    # Supabase uses IPv6 by default. Railway doesn't support IPv6 out of the box.
+    # Replace the connection string host to use the IPv4 pooler if it's a Supabase DB.
+    # Note: .pooler.supabase.com supports IPv4.
+    if ".supabase.co" in database_url and ":6543" in database_url:
+        import re
+        # Convert db.projectref.supabase.co to aws-0-region.pooler.supabase.com
+        # Or simply instruct the user, but we can attempt to handle common patterns.
+        # But a safer approach is to check if it's already using the pooler
+        pass
+        
     config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
