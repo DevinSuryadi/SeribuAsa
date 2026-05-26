@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut, Lock, Loader2, Landmark } from "lucide-react";
+import { User, MapPin, Phone, Mail, Calendar, Edit, LogOut, Lock, Loader2, Landmark, Store } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import type { UserRole } from "@/types";
@@ -26,6 +26,11 @@ interface EditFormData {
   address: string;
   dateOfBirth: string;
   gender: string;
+}
+
+interface StoreFormData {
+  storeName: string;
+  storeAddress: string;
 }
 
 interface PasswordFormData {
@@ -62,6 +67,7 @@ const Profile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showBankModal, setShowBankModal] = useState(false);
+  const [showStoreModal, setShowStoreModal] = useState(false);
 
   const [editFormData, setEditFormData] = useState<EditFormData>({
     fullName: user?.fullName || "",
@@ -83,6 +89,11 @@ const Profile = () => {
     bankAccountHolder: "",
   });
 
+  const [storeFormData, setStoreFormData] = useState<StoreFormData>({
+    storeName: "",
+    storeAddress: "",
+  });
+
   // Update form data when profile loads
   useEffect(() => {
     if (profileData) {
@@ -98,6 +109,10 @@ const Profile = () => {
         bankName: profileData.bank_name || "",
         bankAccountNumber: profileData.bank_account_number || "",
         bankAccountHolder: profileData.bank_account_holder || "",
+      });
+      setStoreFormData({
+        storeName: profileData.store_name || "",
+        storeAddress: profileData.store_address || "",
       });
     }
   }, [profileData, user?.fullName]);
@@ -205,6 +220,36 @@ const Profile = () => {
     }
   };
 
+  const validateStoreForm = (): boolean => {
+    if (!storeFormData.storeName.trim()) {
+      toast.error("Nama toko tidak boleh kosong");
+      return false;
+    }
+    if (!storeFormData.storeAddress.trim()) {
+      toast.error("Alamat toko tidak boleh kosong");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSaveStoreInfo = async () => {
+    if (!validateStoreForm()) return;
+
+    const success = await updateProfile({
+      full_name: profileData?.full_name || user?.fullName || resolvedName,
+      phone: profileData?.phone || null,
+      address: profileData?.address || null,
+      date_of_birth: profileData?.date_of_birth || null,
+      gender: profileData?.gender || null,
+      store_name: storeFormData.storeName.trim(),
+      store_address: storeFormData.storeAddress.trim(),
+    });
+
+    if (success) {
+      setShowStoreModal(false);
+    }
+  };
+
   const resolvedRole = profileData?.role || userRole;
   const resolvedName = profileData?.full_name || user?.fullName || "Pengguna";
 
@@ -231,6 +276,8 @@ const Profile = () => {
       bankAccountHolder: profileLoading
         ? "Memuat..."
         : profileData?.bank_account_holder || "Belum diatur",
+      storeName: profileLoading ? "Memuat..." : profileData?.store_name || "Belum diatur",
+      storeAddress: profileLoading ? "Memuat..." : profileData?.store_address || "Belum diatur",
       role: ROLE_LABELS[resolvedRole || ""] || "-",
     }),
     [profileLoading, profileData, resolvedRole]
@@ -354,6 +401,43 @@ const Profile = () => {
                 </div>
               </div>
             </div>
+
+            {resolvedRole === "vendor" && (
+              <div className="rounded-[2rem] bg-white p-8 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-purple-100 text-purple-600">
+                      <Store size={20} />
+                    </div>
+                    Informasi Toko
+                  </h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowStoreModal(true)}
+                    className="h-8 rounded-lg text-xs font-semibold"
+                  >
+                    <Edit size={14} className="mr-1.5" /> Edit
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Nama Toko</p>
+                    <p className="text-base font-semibold text-gray-900">
+                      {displayValues.storeName}
+                    </p>
+                  </div>
+                  
+                  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 sm:col-span-2">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Alamat Toko</p>
+                    <p className="text-base font-semibold text-gray-900 line-clamp-3">
+                      {displayValues.storeAddress}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar - 1 col */}
@@ -695,6 +779,63 @@ const Profile = () => {
                   </>
                 ) : (
                   "Ubah Kata Sandi"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Store Info Modal */}
+        <Dialog open={showStoreModal} onOpenChange={setShowStoreModal}>
+          <DialogContent className="w-full sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Informasi Toko</DialogTitle>
+              <DialogDescription>
+                Data toko Anda yang akan ditampilkan ke pelanggan.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="storeName" className="text-xs font-semibold uppercase tracking-wide">
+                  Nama Toko
+                </Label>
+                <Input
+                  id="storeName"
+                  value={storeFormData.storeName}
+                  onChange={(e) => setStoreFormData({ ...storeFormData, storeName: e.target.value })}
+                  className="mt-1"
+                  placeholder="Contoh: Toko Sehat Berkah"
+                />
+              </div>
+              <div>
+                <Label htmlFor="storeAddress" className="text-xs font-semibold uppercase tracking-wide">
+                  Alamat Toko
+                </Label>
+                <textarea
+                  id="storeAddress"
+                  value={storeFormData.storeAddress}
+                  onChange={(e) => setStoreFormData({ ...storeFormData, storeAddress: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 border border-input rounded-md bg-background min-h-[70px] text-sm"
+                  placeholder="Detail alamat toko Anda"
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setShowStoreModal(false)}>
+                Batal
+              </Button>
+              <Button
+                onClick={handleSaveStoreInfo}
+                disabled={isSubmitting}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan Informasi Toko"
                 )}
               </Button>
             </DialogFooter>

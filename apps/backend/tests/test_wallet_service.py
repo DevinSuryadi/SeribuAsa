@@ -6,7 +6,7 @@ import pytest
 from decimal import Decimal
 from datetime import datetime, timedelta
 from uuid import uuid4
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from sqlalchemy.orm import Session
 
@@ -25,9 +25,27 @@ def mock_db():
 def beneficiary():
     """Create a mock beneficiary profile"""
     beneficiary = MagicMock(spec=BeneficiaryProfile)
-    beneficiary.id = uuid4()
+    beneficiary.user_id = uuid4()
     beneficiary.vouchers_balance = Decimal("0")
+    beneficiary.wallet_held = Decimal("0")
     return beneficiary
+
+
+@pytest.fixture
+def order(beneficiary):
+    """Create a mock order"""
+    from app.models.product import Order
+    from app.models.user import VendorProfile
+    order = MagicMock(spec=Order)
+    order.id = uuid4()
+    order.total_amount = Decimal("50000")
+    order.beneficiary_profile = beneficiary
+    
+    vendor = MagicMock(spec=VendorProfile)
+    vendor.user_id = uuid4()
+    vendor.wallet_balance = Decimal("0")
+    order.vendor_profile = vendor
+    return order
 
 
 class TestWalletServiceCredit:
@@ -42,7 +60,7 @@ class TestWalletServiceCredit:
         
         allocation = WalletService.credit(
             db=mock_db,
-            beneficiary_id=beneficiary.id,
+            beneficiary_id=beneficiary.user_id,
             amount=amount,
             description="Test credit"
         )
@@ -61,7 +79,7 @@ class TestWalletServiceCredit:
         
         WalletService.credit(
             db=mock_db,
-            beneficiary_id=beneficiary.id,
+            beneficiary_id=beneficiary.user_id,
             amount=amount
         )
         
@@ -77,7 +95,7 @@ class TestWalletServiceCredit:
         
         allocation = WalletService.credit(
             db=mock_db,
-            beneficiary_id=beneficiary.id,
+            beneficiary_id=beneficiary.user_id,
             amount=amount,
             donation_id=donation_id
         )
@@ -93,7 +111,7 @@ class TestWalletServiceCredit:
         before_credit = datetime.utcnow()
         allocation = WalletService.credit(
             db=mock_db,
-            beneficiary_id=beneficiary.id,
+            beneficiary_id=beneficiary.user_id,
             amount=amount
         )
         datetime.utcnow()
@@ -111,7 +129,7 @@ class TestWalletServiceCredit:
         
         allocation = WalletService.credit(
             db=mock_db,
-            beneficiary_id=beneficiary.id,
+            beneficiary_id=beneficiary.user_id,
             amount=amount
         )
         
@@ -125,7 +143,7 @@ class TestWalletServiceCredit:
         
         allocation = WalletService.credit(
             db=mock_db,
-            beneficiary_id=beneficiary.id,
+            beneficiary_id=beneficiary.user_id,
             amount=amount_str
         )
         
@@ -185,71 +203,61 @@ class TestWalletServiceHold:
 class TestWalletServiceRefund:
     """Test wallet refund operations"""
 
-    def test_refund_hold_returns_amount(self, mock_db, beneficiary):
+    def test_refund_hold_returns_amount(self, mock_db, beneficiary, order):
         """Test that refund_hold returns held amount"""
         beneficiary.vouchers_balance = Decimal("50000")
-        amount = Decimal("50000")
+        beneficiary.wallet_held = Decimal("50000")
         
-        result = WalletService.refund_hold(
+        WalletService.refund_hold(
             db=mock_db,
-            beneficiary=beneficiary,
-            amount=amount
+            order=order
         )
         
         # Refund should succeed
-        assert isinstance(result, bool)
+        assert beneficiary.wallet_held == Decimal("0")
 
-    def test_refund_hold_with_order_id(self, mock_db, beneficiary):
+    def test_refund_hold_with_order_id(self, mock_db, beneficiary, order):
         """Test refund_hold with order ID"""
         beneficiary.vouchers_balance = Decimal("50000")
-        amount = Decimal("25000")
-        order_id = uuid4()
+        beneficiary.wallet_held = Decimal("50000")
+        order.total_amount = Decimal("25000")
         
-        result = WalletService.refund_hold(
+        WalletService.refund_hold(
             db=mock_db,
-            beneficiary=beneficiary,
-            amount=amount,
-            order_id=order_id
+            order=order
         )
         
-        assert isinstance(result, bool)
+        assert beneficiary.wallet_held == Decimal("25000")
 
 
 class TestWalletServiceRelease:
     """Test wallet release operations"""
 
-    def test_release_to_vendor(self, mock_db, beneficiary):
+    def test_release_to_vendor(self, mock_db, beneficiary, order):
         """Test releasing held amount to vendor"""
         beneficiary.vouchers_balance = Decimal("100000")
-        amount = Decimal("50000")
-        vendor_id = uuid4()
+        beneficiary.wallet_held = Decimal("50000")
         
         result = WalletService.release_to_vendor(
             db=mock_db,
-            beneficiary=beneficiary,
-            vendor_id=vendor_id,
-            amount=amount
+            order=order
         )
         
-        # Release should succeed
-        assert isinstance(result, bool)
+        # Release should succeed (returns net amount)
+        assert isinstance(result, Decimal)
+        assert result > Decimal("0")
 
-    def test_release_to_vendor_with_order_id(self, mock_db, beneficiary):
+    def test_release_to_vendor_with_order_id(self, mock_db, beneficiary, order):
         """Test release_to_vendor with order ID"""
         beneficiary.vouchers_balance = Decimal("100000")
-        amount = Decimal("50000")
-        vendor_id = uuid4()
-        order_id = uuid4()
+        beneficiary.wallet_held = Decimal("50000")
         
         result = WalletService.release_to_vendor(
             db=mock_db,
-            beneficiary=beneficiary,
-            vendor_id=vendor_id,
-            amount=amount,
-            order_id=order_id
+            order=order
         )
         
-        assert isinstance(result, bool)
+        assert isinstance(result, Decimal)
 
 
 class TestWalletServiceExpiration:
@@ -265,10 +273,16 @@ class TestWalletServiceExpiration:
         
         mock_db.query.return_value.filter.return_value.all.return_value = [old_allocation]
         
-        expired_count = WalletService.expire_allocations(db=mock_db)
+        # Need to mock _require_beneficiary
+        beneficiary = MagicMock(spec=BeneficiaryProfile)
+        beneficiary.vouchers_balance = Decimal("10000")
+        
+        with patch('app.services.wallet_service._require_beneficiary', return_value=beneficiary):
+            result = WalletService.expire_allocations(db=mock_db)
         
         # Should have processed expired allocations
-        assert isinstance(expired_count, int)
+        assert isinstance(result, dict)
+        assert result["expired_allocations"] == 1
 
     def test_expire_allocations_updates_status(self, mock_db):
         """Test that expire_allocations updates allocation status"""
@@ -279,7 +293,11 @@ class TestWalletServiceExpiration:
         
         mock_db.query.return_value.filter.return_value.all.return_value = [old_allocation]
         
-        WalletService.expire_allocations(db=mock_db)
+        beneficiary = MagicMock(spec=BeneficiaryProfile)
+        beneficiary.vouchers_balance = Decimal("10000")
+        
+        with patch('app.services.wallet_service._require_beneficiary', return_value=beneficiary):
+            WalletService.expire_allocations(db=mock_db)
         
         # Verify database operations were called
         assert mock_db.add.called or mock_db.query.called
@@ -305,64 +323,78 @@ class TestWalletServiceValidation:
                 amount=Decimal("100000")
             )
 
-    def test_validate_vendor_exists(self, mock_db, beneficiary):
+    def test_validate_vendor_exists(self, mock_db, order):
         """Test that vendor must exist for release operations"""
-        mock_db.query.return_value.filter.return_value.first.return_value = None
+        # Set vendor_profile to None to simulate missing vendor
+        order.vendor_profile = None
         
         # Should handle missing vendor
-        result = WalletService.release_to_vendor(
-            db=mock_db,
-            beneficiary=beneficiary,
-            vendor_id=uuid4(),
-            amount=Decimal("50000")
-        )
-        
-        # Should fail or raise error
-        assert isinstance(result, bool)
+        with pytest.raises(Exception):
+            WalletService.release_to_vendor(
+                db=mock_db,
+                order=order
+            )
 
 
 class TestWalletServiceIntegration:
     """Integration tests for wallet service"""
 
-    def test_credit_then_hold_then_release(self, mock_db, beneficiary):
+    def test_credit_then_hold_then_release(self, mock_db, beneficiary, order):
         """Test complete flow: credit -> hold -> release"""
         beneficiary.vouchers_balance = Decimal("0")
+        beneficiary.wallet_held = Decimal("0")
         
         mock_db.query.return_value.filter.return_value.first.return_value = beneficiary
         
         # Credit wallet
         allocation = WalletService.credit(
             db=mock_db,
-            beneficiary_id=beneficiary.id,
+            beneficiary_id=beneficiary.user_id,
             amount=Decimal("100000")
         )
         assert allocation is not None
         
         # Hold amount
         beneficiary.vouchers_balance = Decimal("100000")
+        beneficiary.wallet_held = Decimal("0")
+        
         hold_result = WalletService.hold(
             db=mock_db,
             beneficiary=beneficiary,
             amount=Decimal("50000")
         )
-        assert isinstance(hold_result, bool)
+        assert hold_result is True
+        
+        # Set hold state for release
+        beneficiary.wallet_held = Decimal("50000")
+        order.total_amount = Decimal("50000")
+        order.beneficiary_profile = beneficiary
+        
+        release_result = WalletService.release_to_vendor(
+            db=mock_db,
+            order=order
+        )
+        assert isinstance(release_result, Decimal)
 
-    def test_credit_then_hold_then_refund(self, mock_db, beneficiary):
+    def test_credit_then_hold_then_refund(self, mock_db, beneficiary, order):
         """Test complete flow: credit -> hold -> refund"""
         beneficiary.vouchers_balance = Decimal("0")
+        beneficiary.wallet_held = Decimal("0")
         
         mock_db.query.return_value.filter.return_value.first.return_value = beneficiary
         
         # Credit wallet
         allocation = WalletService.credit(
             db=mock_db,
-            beneficiary_id=beneficiary.id,
+            beneficiary_id=beneficiary.user_id,
             amount=Decimal("100000")
         )
         assert allocation is not None
         
         # Hold amount
         beneficiary.vouchers_balance = Decimal("100000")
+        beneficiary.wallet_held = Decimal("0")
+        
         WalletService.hold(
             db=mock_db,
             beneficiary=beneficiary,
@@ -370,9 +402,12 @@ class TestWalletServiceIntegration:
         )
         
         # Refund hold
-        refund_result = WalletService.refund_hold(
+        beneficiary.wallet_held = Decimal("50000")
+        order.total_amount = Decimal("50000")
+        order.beneficiary_profile = beneficiary
+        
+        WalletService.refund_hold(
             db=mock_db,
-            beneficiary=beneficiary,
-            amount=Decimal("50000")
+            order=order
         )
-        assert isinstance(refund_result, bool)
+        assert beneficiary.wallet_held == Decimal("0")

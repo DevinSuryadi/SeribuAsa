@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -14,12 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  getMyChildrenRisk,
   recomputeChildRisk,
   RISK_LEVEL_LABEL,
   type RiskLevel,
-  type StuntingRiskWithChild,
 } from "@/services/stunting-risk";
+import { useStuntingRisk } from "@/hooks/useBeneficiaryData";
 import { toast } from "sonner";
 
 const levelStyles: Record<
@@ -51,34 +50,14 @@ interface Props {
 }
 
 export default function StuntingRiskCard({ className = "" }: Props) {
-  const [items, setItems] = useState<StuntingRiskWithChild[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: items, isLoading: loading, error, mutate } = useStuntingRisk();
   const [recomputing, setRecomputing] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchRisk = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getMyChildrenRisk();
-      setItems(data);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Gagal memuat prediksi";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchRisk();
-  }, []);
 
   const onRecompute = async (childId: string) => {
     try {
       setRecomputing(childId);
       await recomputeChildRisk(childId);
-      await fetchRisk();
+      await mutate();
       toast.success("Prediksi risiko diperbarui");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal memperbarui";
@@ -87,6 +66,7 @@ export default function StuntingRiskCard({ className = "" }: Props) {
       setRecomputing(null);
     }
   };
+
 
   if (loading) {
     return (
@@ -116,7 +96,7 @@ export default function StuntingRiskCard({ className = "" }: Props) {
             <Button
               size="sm"
               variant="outline"
-              onClick={fetchRisk}
+              onClick={() => mutate()}
               className="mt-2 h-8 border-rose-200 bg-white text-xs text-rose-700 hover:bg-rose-50"
             >
               <RefreshCw className="mr-1.5 h-3 w-3" />

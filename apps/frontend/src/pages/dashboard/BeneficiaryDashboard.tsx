@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useMemo, useEffect } from "react";
 import type { ElementType } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { getWalletBalance, getWalletTransactions } from "@/services/wallet";
+import { useWalletBalance, useWalletTransactions } from "@/hooks/useWallet";
+import { useLatestFIESStatus, useLatestNutrition } from "@/hooks/useBeneficiaryData";
 import { Button } from "@/components/ui/button";
 import {
   Wallet,
@@ -20,11 +21,8 @@ import {
   TrendingUp,
   Loader2,
 } from "lucide-react";
-import { getLatestFIESStatus, getLatestNutritionMeasurement } from "@/services/nutrition";
 import { formatIDR, formatDate } from "@/lib/format";
 import { useStaggerChildren } from "@/hooks/useStaggerChildren";
-import { toast } from "sonner";
-import type { FIESStatus, NutritionData } from "@/types";
 import foto from "@/assets/hero-beneficiaryDashboard.svg";
 import StuntingRiskCard from "@/components/dashboard/StuntingRiskCard";
 
@@ -124,76 +122,18 @@ const getFiesLabel = (classification?: string | null) => {
 export default function BeneficiaryDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-
-  const [walletBalance, setWalletBalance] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [walletLoading, setWalletLoading] = useState(true);
-  const [walletError, setWalletError] = useState<string | null>(null);
-
-  const [fiesStatus, setFiesStatus] = useState<FIESStatus | null>(null);
-  const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchWalletData = useCallback(async () => {
-    if (!user?.id) return;
-    setWalletLoading(true);
-    setWalletError(null);
-    try {
-      const [balanceData, txData] = await Promise.all([
-        getWalletBalance(),
-        getWalletTransactions(),
-      ]);
-      setWalletBalance(balanceData);
-      setTransactions(txData.items || []);
-    } catch (err: any) {
-      setWalletError(err.message || "Gagal memuat data dompet");
-    } finally {
-      setWalletLoading(false);
-    }
-  }, [user?.id]);
-
   const gridRef = useStaggerChildren({ stagger: 0.08 });
+
+  const { data: walletBalance, isLoading: walletLoading, error: walletError, mutate: mutateWallet } = useWalletBalance();
+  const { data: transactions, isLoading: txLoading, mutate: mutateTx } = useWalletTransactions();
+  const { data: fiesStatus, isLoading: fiesLoading, error: fiesError, mutate: mutateFies } = useLatestFIESStatus();
+  const { data: nutritionData, isLoading: nutritionLoading, error: nutritionError, mutate: mutateNutrition } = useLatestNutrition();
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/login");
     }
   }, [user, authLoading, navigate]);
-
-  const fetchAdditionalData = useCallback(async () => {
-    if (!user?.id) return;
-
-    setDataLoading(true);
-    setError(null);
-
-    try {
-      const [fiesData, nutritionMeasure] = await Promise.all([
-        getLatestFIESStatus(user.id).catch(() => null),
-        getLatestNutritionMeasurement(user.id).catch(() => null),
-      ]);
-
-      setFiesStatus(fiesData);
-      setNutritionData(nutritionMeasure);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Gagal memuat data";
-
-      setError(errorMessage);
-
-      toast.error("Gagal memuat data dashboard", {
-        description: errorMessage,
-      });
-    } finally {
-      setDataLoading(false);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user) {
-      fetchAdditionalData();
-      fetchWalletData();
-    }
-  }, [user, fetchAdditionalData, fetchWalletData]);
 
   const totalBalance = walletBalance?.wallet_available ?? 0;
 
@@ -208,7 +148,8 @@ export default function BeneficiaryDashboard() {
     );
   }, [fiesStatus]);
 
-  const isLoading = authLoading || walletLoading || dataLoading;
+  const isLoading = authLoading || walletLoading || fiesLoading || nutritionLoading || txLoading;
+  const error = fiesError || nutritionError;
 
   if (isLoading) {
     return (
@@ -234,14 +175,16 @@ export default function BeneficiaryDashboard() {
           <div className="flex-1">
             <h3 className="mb-1 font-semibold text-red-800">Gagal memuat data</h3>
 
-            <p className="mb-3 text-sm text-red-600">{error || walletError}</p>
+            <p className="mb-3 text-sm text-red-600">{(error as Error)?.message || (walletError as Error)?.message || "Terjadi kesalahan koneksi"}</p>
 
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                fetchWalletData();
-                fetchAdditionalData();
+                mutateWallet();
+                mutateTx();
+                mutateFies();
+                mutateNutrition();
               }}
               className="border-red-300 text-red-700 hover:bg-red-50"
             >
@@ -411,7 +354,7 @@ export default function BeneficiaryDashboard() {
         </section>
 
         {/* Wallet Expiry Warning */}
-        {walletBalance?.expiring_soon > 0 && (
+        {walletBalance && walletBalance.expiring_soon > 0 && (
           <Link
             to="/dashboard/dompet-nutrisi"
             className="group flex items-center gap-2.5 rounded-[15px] border border-orange-200 bg-orange-50 px-3.5 py-2.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md"

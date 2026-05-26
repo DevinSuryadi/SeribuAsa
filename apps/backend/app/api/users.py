@@ -57,6 +57,8 @@ def _build_user_profile_response(db: Session, user_profile: UserProfile) -> User
         date_of_birth=user_profile.date_of_birth,
         gender=gender_value,
         avatar_url=user_profile.avatar_url,
+        store_name=vendor_profile.store_name if vendor_profile else None,
+        store_address=vendor_profile.store_address if vendor_profile else None,
         bank_name=vendor_profile.bank_name if vendor_profile else None,
         bank_account_number=vendor_profile.bank_account_number if vendor_profile else None,
         bank_account_holder=vendor_profile.bank_account_holder if vendor_profile else None,
@@ -249,14 +251,27 @@ async def update_user_profile(
         gender = payload.get("gender")
         user_profile.gender = GenderEnum(gender) if gender else None
 
-    bank_fields = {"bank_name", "bank_account_number", "bank_account_holder"}
-    if bank_fields.intersection(payload):
+    vendor_fields = {"bank_name", "bank_account_number", "bank_account_holder", "store_name", "store_address"}
+    if vendor_fields.intersection(payload):
         vendor_profile = db.query(VendorProfile).filter(VendorProfile.user_id == user_id).first()
         if not vendor_profile:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Bank account fields are only available for vendor profiles"
+                detail="Store and bank account fields are only available for vendor profiles"
             )
+
+        if "store_name" in payload:
+            store_name = payload.get("store_name")
+            if store_name is not None and not store_name.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="store_name cannot be empty"
+                )
+            vendor_profile.store_name = store_name.strip() if store_name else ""
+
+        if "store_address" in payload:
+            store_address = payload.get("store_address")
+            vendor_profile.store_address = store_address.strip() if isinstance(store_address, str) and store_address.strip() else ""
 
         if "bank_name" in payload:
             bank_name = payload.get("bank_name")

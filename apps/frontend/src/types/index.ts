@@ -34,6 +34,8 @@ export interface BackendProfile {
   address: string | null;
   date_of_birth: string | null;
   gender: "male" | "female" | null;
+  store_name?: string | null;
+  store_address?: string | null;
   bank_name?: string | null;
   bank_account_number?: string | null;
   bank_account_holder?: string | null;

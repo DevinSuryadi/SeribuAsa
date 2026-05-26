@@ -206,22 +206,80 @@ async function syncGoogleProfile(
   };
 }
 
-async function ensureBackendProfileForSession(currentSession: Session): Promise<void> {
-  if (isGoogleSession(currentSession)) return;
+let inFlightProfileRequest: Promise<{ role: UserRole; fullName: string; exists: boolean }> | null = null;
 
-  const roleToCreate = resolveBackendSignupRoleForSession(currentSession);
-
-  const existingResponse = await fetch(`${BACKEND_BASE_URL}/users/${currentSession.user.id}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (existingResponse.ok || existingResponse.status !== 404) {
-    return;
+async function getCombinedUserProfile(
+  userId: string,
+  _email?: string | null
+): Promise<{ role: UserRole; fullName: string; exists: boolean }> {
+  if (inFlightProfileRequest) {
+    return inFlightProfileRequest;
   }
 
+  inFlightProfileRequest = (async () => {
+    try {
+      const metadataRole = await getSessionMetadataRole().catch(() => null);
+
+      const response = await fetch(`${BACKEND_BASE_URL}/users/${userId}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        let fullName = "User";
+        let role = await getSessionRoleFallback().catch(() => "donor");
+
+        if (response.status === 404) {
+          return { role: role as UserRole, fullName, exists: false };
+        }
+
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", userId)
+          .single();
+        if (!error && data) fullName = data.full_name || "User";
+
+        return { role: role as UserRole, fullName, exists: false };
+      }
+
+      const data = await response.json();
+      let role = data?.role;
+
+      if (metadataRole === "admin" || metadataRole === "government") {
+        role = metadataRole;
+      }
+
+      if (!isKnownRole(role)) {
+        role = await getSessionRoleFallback().catch(() => "donor");
+      }
+
+      return {
+        role: role as UserRole,
+        fullName: data?.full_name || "User",
+        exists: true,
+      };
+    } catch {
+      const role = await getSessionRoleFallback().catch(() => "donor");
+      return { role: role as UserRole, fullName: "User", exists: false };
+    } finally {
+      setTimeout(() => {
+        inFlightProfileRequest = null;
+      }, 5000);
+    }
+  })();
+
+  return inFlightProfileRequest;
+}
+
+async function ensureBackendProfileForSessionIfNeeded(
+  currentSession: Session,
+  profileExists: boolean
+): Promise<void> {
+  if (isGoogleSession(currentSession)) return;
+  if (profileExists) return;
+
+  const roleToCreate = resolveBackendSignupRoleForSession(currentSession);
   const fullName =
     resolveFullNameFromMetadata(currentSession.user.user_metadata, currentSession.user.email) ||
     "User";
@@ -248,77 +306,6 @@ async function ensureBackendProfileForSession(currentSession: Session): Promise<
   }
 }
 
-async function getUserRole(userId: string): Promise<UserRole> {
-  try {
-    const metadataRole = await getSessionMetadataRole();
-    if (metadataRole === "admin" || metadataRole === "government") {
-      return metadataRole;
-    }
-
-    // Try to fetch from backend first (more reliable)
-    const response = await fetch(`${BACKEND_BASE_URL}/users/${userId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      // Backend unavailable, fall back to email-based detection
-      return await getSessionRoleFallback();
-    }
-
-    const data = await response.json().catch(() => null);
-    const roleCandidate = data?.role;
-    if (isKnownRole(roleCandidate)) {
-      return roleCandidate;
-    }
-
-    return await getSessionRoleFallback();
-  } catch {
-    // Error fetching from backend, fall back to email-based detection
-    try {
-      return await getSessionRoleFallback();
-    } catch {
-      // Ignore fallback errors
-    }
-    return "donor";
-  }
-}
-
-async function getUserProfile(userId: string): Promise<{ fullName: string }> {
-  try {
-    // Try to fetch from backend first (more reliable)
-    const response = await fetch(`${BACKEND_BASE_URL}/users/${userId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      // Missing profile should not trigger extra fallback calls.
-      if (response.status === 404) {
-        return { fullName: "User" };
-      }
-
-      // Fallback to Supabase profiles table if backend is failing unexpectedly.
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("user_id", userId)
-        .single();
-      if (error || !data) return { fullName: "User" };
-      return { fullName: data.full_name || "User" };
-    }
-
-    const data = await response.json();
-    return { fullName: data.full_name || "User" };
-  } catch {
-    return { fullName: "User" };
-  }
-}
-
 async function buildAuthUserFromSession(currentSession: Session): Promise<AuthUser> {
   let syncedRole: UserRole = null;
   let syncedFullName: string | null = null;
@@ -331,22 +318,24 @@ async function buildAuthUserFromSession(currentSession: Session): Promise<AuthUs
     } catch (error) {
       console.warn("[AUTH] Google profile sync failed, using fallback detection", error);
     }
-  } else {
+  }
+
+  const profileData = await getCombinedUserProfile(
+    currentSession.user.id,
+    currentSession.user.email
+  );
+
+  if (!isGoogleSession(currentSession) && !profileData.exists) {
     try {
-      await ensureBackendProfileForSession(currentSession);
+      await ensureBackendProfileForSessionIfNeeded(currentSession, profileData.exists);
     } catch (error) {
       console.warn("[AUTH] Profile sync for non-Google session failed", error);
     }
   }
 
-  const [fallbackRole, profile] = await Promise.all([
-    getUserRole(currentSession.user.id),
-    getUserProfile(currentSession.user.id),
-  ]);
-
-  const resolvedRole = syncedRole || fallbackRole || "donor";
+  const resolvedRole = syncedRole || profileData.role || "donor";
   const resolvedFullName =
-    syncedFullName || profile.fullName || currentSession.user.email?.split("@")[0] || "User";
+    syncedFullName || profileData.fullName || currentSession.user.email?.split("@")[0] || "User";
 
   return {
     id: currentSession.user.id,

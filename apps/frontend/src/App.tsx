@@ -80,14 +80,23 @@ function DashboardRedirect() {
   return <Navigate to="/" replace />;
 }
 
+import { SWRConfig } from "swr";
+
 function App() {
   return (
     <ErrorBoundary>
-      <Toaster position="top-right" richColors />
-      <ScrollToTop />
-      <Suspense fallback={<PageLoader />}>
-      <Routes>
-        {/* Public routes */}
+      <SWRConfig 
+        value={{ 
+          revalidateOnFocus: false,
+          dedupingInterval: 5000,
+          errorRetryCount: 3
+        }}
+      >
+        <Toaster position="top-right" richColors />
+        <ScrollToTop />
+        <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public routes */}
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -432,7 +441,8 @@ function App() {
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-      </Suspense>
+        </Suspense>
+      </SWRConfig>
     </ErrorBoundary>
   );
 }

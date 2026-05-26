@@ -54,6 +54,29 @@ DEMO_USERS = [
         "address": "Jl. Gatot Subroto No. 67, Jakarta",
         "store_name": "Warung Sehat Jaya",
         "store_address": "Jl. Gatot Subroto No. 67, Jakarta",
+    },
+    {
+        "email": "demo2-donor@gmail.com",
+        "role": "donor",
+        "full_name": "Siti Rahma",
+        "phone": "081223344556",
+        "address": "Jl. Kebon Kacang No. 10, Jakarta",
+    },
+    {
+        "email": "demo2-penerima@gmail.com",
+        "role": "beneficiary",
+        "full_name": "Bapak Anton",
+        "phone": "082334455667",
+        "address": "Jl. Tanah Abang No. 15, Jakarta",
+    },
+    {
+        "email": "demo2-vendor@gmail.com",
+        "role": "vendor",
+        "full_name": "Ibu Kartini",
+        "phone": "083445566778",
+        "address": "Pasar Senen Blok A",
+        "store_name": "Toko Berkah Utama",
+        "store_address": "Pasar Senen Blok A No. 12",
     }
 ]
 
