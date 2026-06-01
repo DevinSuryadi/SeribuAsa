@@ -1,13 +1,11 @@
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Sparkles,
   ShoppingBasket,
   Info,
   RefreshCw,
-  Apple,
   Target,
   TrendingUp,
   ArrowRight,
@@ -32,21 +30,6 @@ interface Recommendation {
   impact_score?: number;
 }
 
-const categoryLabel: Record<string, string> = {
-  nutrition: 'Nutrisi',
-  gizi: 'Gizi',
-  stunting: 'Stunting',
-  protein: 'Protein',
-};
-
-const categoryIcon: Record<string, React.ElementType> = {
-  nutrition: TrendingUp,
-  gizi: TrendingUp,
-  stunting: Target,
-  protein: Apple,
-  default: TrendingUp,
-};
-
 const priorityConfig = {
   high: {
     color: 'text-rose-700',
@@ -64,8 +47,6 @@ const priorityConfig = {
 
 function RecommendationCard({ rec, index }: { rec: Recommendation; index: number }) {
   const cfg = priorityConfig[rec.priority] || priorityConfig.low;
-  const categoryKey = rec.category?.toLowerCase();
-  const CatIcon = categoryIcon[categoryKey] || categoryIcon.default;
   const impactPct = Math.min(100, Math.max(20, rec.impact_score ?? 60));
 
   return (
@@ -74,16 +55,6 @@ function RecommendationCard({ rec, index }: { rec: Recommendation; index: number
       style={{ animationDelay: `${index * 0.1}s` }}
     >
       <div className="p-4 sm:p-5">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className="h-6 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-semibold text-emerald-800"
-          >
-            <CatIcon className="mr-1.5 h-3 w-3" />
-            {categoryLabel[categoryKey] || rec.category}
-          </Badge>
-        </div>
-
         <div className="grid gap-3">
           <div>
             <h3 className="text-base font-semibold tracking-[-0.02em] text-[#17231d] sm:text-lg">
@@ -131,7 +102,7 @@ function RecommendationCard({ rec, index }: { rec: Recommendation; index: number
             >
               <Link to="/dashboard/katalog">
                 <ShoppingBasket className="mr-2 h-3.5 w-3.5" />
-                Belanja Paket Ini
+                Belanja Produk Bergizi
                 <ArrowRight className="ml-2 h-3.5 w-3.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
               </Link>
             </Button>

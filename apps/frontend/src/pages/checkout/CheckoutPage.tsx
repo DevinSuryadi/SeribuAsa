@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Loader2, ShoppingBag, AlertTriangle, ArrowLeft } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { OrderConfirmationStep } from "@/components/checkout/OrderConfirmationStep";
+import { EmptyState, ErrorState } from "@/components/dashboard/EmptyState";
 import { useCheckoutFlow } from "@/hooks/useCheckoutFlow";
 import { useAuth } from "@/contexts/AuthContext";
 import { validateStockForCheckout } from "@/services/cart";
@@ -30,6 +31,9 @@ function CheckoutPage() {
   const flow = useCheckoutFlow();
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [stockError, setStockError] = useState<string | null>(null);
+
+  const goBackToCart = () => navigate("/dashboard/cart");
+  const isSubmitDisabled = flow.isSubmitting || flow.cartItems.length === 0 || !!stockError;
 
   useEffect(() => {
     flow.loadCartItems();
@@ -81,21 +85,17 @@ function CheckoutPage() {
   if (!flow.isLoading && flow.cartItems.length === 0) {
     return (
       <DashboardLayout title="Konfirmasi Pesanan" subtitle="">
-        <div className="max-w-md mx-auto text-center py-16 space-y-5">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-secondary mx-auto">
-            <ShoppingBag className="h-9 w-9 text-muted-foreground" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Keranjang Kosong</h2>
-            <p className="text-sm text-muted-foreground">
-              Tambahkan produk sebelum melanjutkan ke konfirmasi.
-            </p>
-          </div>
-          <Button asChild className="gap-2">
-            <Link to="/dashboard/cart">
-              <ArrowLeft className="h-4 w-4" /> Kembali ke Keranjang
-            </Link>
-          </Button>
+        <div className="max-w-md mx-auto">
+          <EmptyState
+            icon={
+              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-secondary mx-auto">
+                <ShoppingBag className="h-9 w-9 text-muted-foreground" aria-hidden="true" />
+              </div>
+            }
+            title="Keranjang Kosong"
+            description="Tambahkan produk sebelum melanjutkan ke konfirmasi."
+            action={{ label: "Kembali ke Keranjang", onClick: goBackToCart }}
+          />
         </div>
       </DashboardLayout>
     );
@@ -103,25 +103,48 @@ function CheckoutPage() {
 
   // ── Submit ─────────────────────────────────────────────────────
   const handleConfirmOrder = async () => {
-    if (!user) {
-      toast.error("Anda harus login untuk melanjutkan");
-      return;
+  if (!user) {
+    toast.error("Anda harus login untuk melanjutkan");
+    return;
+  }
+
+  try {
+    // Ambil snapshot SEBELUM submitOrder,
+    // karena setelah submitOrder cart bisa ke-clear.
+    const orderSummarySnapshot = flow.getOrderSummary();
+
+    const orderIds = await flow.submitOrder();
+
+    const successPayload = {
+      orderIds,
+      orderSummary: orderSummarySnapshot,
+      walletBalance: flow.walletBalance,
+    };
+
+    sessionStorage.setItem(
+      `checkout_success_${orderIds[0]}`,
+      JSON.stringify(successPayload)
+    );
+
+    toast.success("✓ Pesanan berhasil dibuat!");
+
+    const orderIdsQuery = encodeURIComponent(orderIds.join(","));
+
+    navigate(`/checkout/success/${orderIds[0]}?orderIds=${orderIdsQuery}`, {
+      state: successPayload,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Gagal membuat pesanan";
+
+    if (msg.toLowerCase().includes("balance") || msg.toLowerCase().includes("saldo")) {
+      toast.error(`Saldo tidak cukup. ${msg}`);
+    } else if (msg.toLowerCase().includes("stock") || msg.toLowerCase().includes("stok")) {
+      toast.error(`Stok tidak tersedia. ${msg}`);
+    } else {
+      toast.error(msg);
     }
-    try {
-      const orderIds = await flow.submitOrder();
-      toast.success("✓ Pesanan berhasil dibuat!");
-      navigate(`/checkout/success/${orderIds[0]}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal membuat pesanan";
-      if (msg.toLowerCase().includes("balance") || msg.toLowerCase().includes("saldo")) {
-        toast.error(`Saldo tidak cukup. ${msg}`);
-      } else if (msg.toLowerCase().includes("stock") || msg.toLowerCase().includes("stok")) {
-        toast.error(`Stok tidak tersedia. ${msg}`);
-      } else {
-        toast.error(msg);
-      }
-    }
-  };
+  }
+};
 
   return (
     <DashboardLayout
@@ -142,7 +165,7 @@ function CheckoutPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Tetap di Sini</AlertDialogCancel>
-            <AlertDialogAction onClick={() => navigate("/dashboard/cart")}>
+            <AlertDialogAction onClick={goBackToCart}>
               Kembali ke Keranjang
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -152,23 +175,12 @@ function CheckoutPage() {
       <div className="space-y-6">
         {/* Stock Error Alert */}
         {stockError && (
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-destructive/5 border border-destructive/30 animate-in slide-in-from-top-2 duration-300">
-            <AlertTriangle
-              className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5"
-              aria-hidden="true"
+          <div className="animate-in slide-in-from-top-2 duration-300">
+            <ErrorState
+              title="Stok Tidak Tersedia"
+              message={stockError}
+              action={{ label: "Kembali", onClick: goBackToCart }}
             />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-destructive">Stok Tidak Tersedia</p>
-              <p className="text-xs text-destructive/80 mt-1">{stockError}</p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => navigate("/dashboard/cart")}
-              className="flex-shrink-0"
-            >
-              Kembali
-            </Button>
           </div>
         )}
 
@@ -198,7 +210,7 @@ function CheckoutPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowCancelDialog(true)}
-              className="gap-1.5 w-full sm:w-auto"
+              className="gap-1.5 h-11 w-full sm:w-auto"
             >
               <ArrowLeft className="h-4 w-4" />
               Kembali ke Keranjang
@@ -206,8 +218,8 @@ function CheckoutPage() {
 
             <Button
               onClick={handleConfirmOrder}
-              disabled={flow.isSubmitting || flow.cartItems.length === 0 || !!stockError}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 w-full sm:min-w-[180px] h-11 font-semibold shadow-sm shadow-emerald-900/20"
+              disabled={isSubmitDisabled}
+              className="gap-2 h-11 bg-emerald-600 hover:bg-emerald-700 w-full sm:min-w-[220px] font-semibold shadow-sm shadow-emerald-900/20"
             >
               {flow.isSubmitting ? (
                 <>
