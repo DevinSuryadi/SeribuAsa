@@ -7,6 +7,13 @@ import { Check, ArrowRight, Baby, Heart, Building2, User, AlertCircle } from 'lu
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { formatIDR } from '@/lib/format'
 import { toast } from 'sonner'
 import { DONATION_CHECKOUT_STORAGE_KEY } from '@/lib/donation-constants'
@@ -30,6 +37,7 @@ export default function DonationCheckout() {
   const [donationType, setDonationType] = useState<'monthly' | 'once'>(initialType === 'once' ? 'once' : 'monthly')
   const [customAmount, setCustomAmount] = useState(initialAmount || '')
   const [agree, setAgree] = useState(false)
+  const [showMonthlyConfirm, setShowMonthlyConfirm] = useState(false)
 
   const plan = plans.find((p) => p.id === selectedPlan) || plans[0]
   const isCorporate = selectedPlan === 'corporate'
@@ -42,16 +50,7 @@ export default function DonationCheckout() {
     }
   }, [user, authLoading, navigate])
 
-  const handleProceed = () => {
-    if (isCorporate) {
-      toast.info('Untuk corporate, silakan hubungi tim kami')
-      return
-    }
-    if (!agree) {
-      toast.error('Setujui syarat dan ketentuan')
-      return
-    }
-
+  const proceedToCreateDonation = () => {
     // Save checkout data for CreateDonation
     sessionStorage.setItem(
       DONATION_CHECKOUT_STORAGE_KEY,
@@ -65,6 +64,27 @@ export default function DonationCheckout() {
     )
 
     navigate(`/donation/create?plan=${selectedPlan}&type=${donationType}&amount=${amount}`)
+  }
+
+  const handleProceed = () => {
+    if (isCorporate) {
+      toast.info('Untuk corporate, silakan hubungi tim kami')
+      return
+    }
+    if (amount < 10000) {
+      toast.error('Jumlah minimal Rp 10.000')
+      return
+    }
+    if (!agree) {
+      toast.error('Setujui syarat dan ketentuan')
+      return
+    }
+    if (donationType === 'monthly') {
+      setShowMonthlyConfirm(true)
+      return
+    }
+
+    proceedToCreateDonation()
   }
 
   // Show loading while checking auth
@@ -312,6 +332,51 @@ export default function DonationCheckout() {
         </div>
       </main>
       <Footer />
+
+      <Dialog open={showMonthlyConfirm} onOpenChange={setShowMonthlyConfirm}>
+        <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Donasi Bulanan</DialogTitle>
+            <DialogDescription>
+              Anda akan mengaktifkan donasi bulanan untuk mendukung penerima manfaat secara
+              berkelanjutan. Pastikan detail donasi sudah sesuai sebelum melanjutkan pembayaran.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-green-700">Nominal bulanan</span>
+                <span className="text-lg font-bold text-green-800">{formatIDR(amount)}</span>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-green-700">
+                Donasi akan diproses setiap bulan sesuai nominal ini. Anda dapat memantau,
+                menjeda, atau membatalkan langganan kapan saja melalui menu Langganan.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowMonthlyConfirm(false)}
+              >
+                Batalkan
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                onClick={() => {
+                  setShowMonthlyConfirm(false)
+                  proceedToCreateDonation()
+                }}
+              >
+                Lanjut Bulanan
+                <ArrowRight size={16} className="ml-2" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
