@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Navbar } from '@/components/landing/Navbar'
 import { Footer } from '@/components/landing/Footer'
 import { useAuth } from '@/contexts/AuthContext'
-import { Check, ArrowRight, Baby, Heart, Building2, CreditCard, QrCode, Landmark, Wallet, User, AlertCircle } from 'lucide-react'
+import { Check, ArrowRight, Baby, Heart, Building2, User, AlertCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -11,20 +11,11 @@ import { formatIDR } from '@/lib/format'
 import { toast } from 'sonner'
 import { DONATION_CHECKOUT_STORAGE_KEY } from '@/lib/donation-constants'
 import { ImpactPreview } from '@/components/donation/ImpactPreview'
-import { PaymentMethodDetails } from '@/components/donation/PaymentMethodDetails'
 
 const plans = [
   { id: 'balita', name: 'Adopsi Nutrisi 1 Balita', price: 300000, icon: Baby, features: ['Voucher pangan bergizi bulanan', 'Laporan dampak per anak', 'Sertifikat donasi digital', 'Pemantauan gizi anak'] },
   { id: '1000hpk', name: 'Paket 1000 HPK', price: 500000, icon: Heart, features: ['Semua fitur Adopsi Nutrisi', 'Dukungan nutrisi ibu hamil', 'Pemantauan pertumbuhan 1000 HPK', 'Rekomendasi nutrisi AI', 'Laporan dampak mendalam'] },
   { id: 'corporate', name: 'Corporate Impact Plan', price: 0, icon: Building2, features: ['Semua fitur Paket 1000 HPK', 'Dashboard CSR khusus', 'Laporan dampak untuk stakeholder', 'Employee matching program'] },
-]
-
-const paymentMethods = [
-  { id: 'qris', label: 'QRIS', icon: QrCode },
-  { id: 'va_bca', label: 'VA BCA', icon: Landmark },
-  { id: 'va_mandiri', label: 'VA Mandiri', icon: Landmark },
-  { id: 'gopay', label: 'GoPay', icon: Wallet },
-  { id: 'cc', label: 'Kartu Kredit', icon: CreditCard },
 ]
 
 export default function DonationCheckout() {
@@ -38,7 +29,6 @@ export default function DonationCheckout() {
   const [selectedPlan, setSelectedPlan] = useState(initialPlan)
   const [donationType, setDonationType] = useState<'monthly' | 'once'>(initialType === 'once' ? 'once' : 'monthly')
   const [customAmount, setCustomAmount] = useState(initialAmount || '')
-  const [selectedPayment, setSelectedPayment] = useState('qris')
   const [agree, setAgree] = useState(false)
 
   const plan = plans.find((p) => p.id === selectedPlan) || plans[0]
@@ -69,13 +59,12 @@ export default function DonationCheckout() {
         plan: selectedPlan,
         type: donationType,
         amount,
-        payment: selectedPayment,
         name: user?.fullName || '',
         email: user?.email || '',
       })
     )
 
-    navigate(`/donation/create?plan=${selectedPlan}&type=${donationType}&amount=${amount}&payment=${selectedPayment}`)
+    navigate(`/donation/create?plan=${selectedPlan}&type=${donationType}&amount=${amount}`)
   }
 
   // Show loading while checking auth
@@ -267,40 +256,7 @@ export default function DonationCheckout() {
                )}
 
                {/* Impact Preview */}
-               <ImpactPreview amount={amount} />{/* Payment Method */}
-               <div>
-                 <h3 className="mb-3 text-sm font-semibold text-gray-900 uppercase tracking-wide">Metode Pembayaran</h3>
-                <div className="space-y-2">
-                  {paymentMethods.map((pm) => (
-                    <button
-                      key={pm.id}
-                      onClick={() => setSelectedPayment(pm.id)}
-                      className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all ${
-                        selectedPayment === pm.id
-                          ? 'border-2 border-green-600 bg-green-50'
-                          : 'border border-gray-100 bg-white hover:border-gray-200'
-                      }`}
-                    >
-                      <pm.icon
-                        className={`h-5 w-5 flex-shrink-0 ${
-                          selectedPayment === pm.id ? 'text-green-600' : 'text-gray-400'
-                        }`}
-                      />
-                      <span className={`text-sm font-medium ${
-                        selectedPayment === pm.id ? 'text-gray-900' : 'text-gray-600'
-                      }`}>
-                        {pm.label}
-                      </span>
-                      {selectedPayment === pm.id && (
-                        <Check className="ml-auto h-5 w-5 text-green-600" />
-                      )}
-                    </button>
-                  ))}
-                 </div>
-               </div>
-
-                {/* Payment Method Details */}
-                <PaymentMethodDetails methodId={selectedPayment} />
+               <ImpactPreview amount={amount} />
 
                 {/* Validation Alert */}
                 {amount < 10000 && amount > 0 && (
@@ -312,24 +268,30 @@ export default function DonationCheckout() {
                   </Alert>
                 )}
 
-                {/* Agreement */}
-              <label className="flex cursor-pointer items-start gap-3 text-xs text-gray-600 leading-relaxed">
-                <input
-                  type="checkbox"
-                  checked={agree}
-                  onChange={(e) => setAgree(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-gray-300 accent-green-600"
-                />
-                <span>
-                  Saya menyetujui <span className="text-green-600 underline">Syarat & Ketentuan</span> serta memahami bahwa donasi ini bersifat sukarela.
-                </span>
-              </label>
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                  Ketentuan dan Pembayaran
+                </h3>
 
-              {/* Total + CTA */}
-              <div className="rounded-lg bg-gray-50 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Total Donasi</span>
-                  <span className="text-2xl font-bold text-gray-900">{formatIDR(amount)}</span>
+                {/* Agreement */}
+                <label className="flex cursor-pointer items-start gap-3 text-xs text-gray-600 leading-relaxed">
+                  <input
+                    type="checkbox"
+                    checked={agree}
+                    onChange={(e) => setAgree(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 accent-green-600"
+                  />
+                  <span>
+                    Saya menyetujui <span className="text-green-600 underline">Syarat & Ketentuan</span> serta memahami bahwa donasi ini bersifat sukarela.
+                  </span>
+                </label>
+
+                {/* Total + CTA */}
+                <div className="rounded-lg bg-gray-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Total Donasi</span>
+                    <span className="text-2xl font-bold text-gray-900">{formatIDR(amount)}</span>
+                  </div>
                 </div>
               </div>
 

@@ -9,8 +9,6 @@ import { loadMidtransScript } from "@/utils/midtrans";
 import { formatIDR } from "@/lib/format";
 import {
   PLAN_NAMES,
-  PAYMENT_LABELS,
-  PAYMENT_METHOD_MAP,
   DONATION_CHECKOUT_STORAGE_KEY,
 } from "@/lib/donation-constants";
 import { DonationHero } from "@/components/donation/DonationHero";
@@ -24,7 +22,6 @@ export default function CreateDonation() {
   const [planId, setPlanId] = useState("");
   const [amount, setAmount] = useState("");
   const [donationType, setDonationType] = useState<"one_time" | "subscription">("one_time");
-  const [paymentMethod, setPaymentMethod] = useState("qris");
   const [donorName, setDonorName] = useState("");
   const [donorEmail, setDonorEmail] = useState("");
 
@@ -42,9 +39,6 @@ export default function CreateDonation() {
         }
         if (data.type === "monthly") setDonationType("subscription");
         else if (data.type === "once") setDonationType("one_time");
-        if (data.payment) {
-          setPaymentMethod(PAYMENT_METHOD_MAP[data.payment] || "qris");
-        }
         if (data.name) setDonorName(data.name);
         if (data.email) setDonorEmail(data.email);
         sessionStorage.removeItem(DONATION_CHECKOUT_STORAGE_KEY);
@@ -55,15 +49,11 @@ export default function CreateDonation() {
 
     const planAmount = searchParams.get("amount");
     const planType = searchParams.get("type");
-    const planPayment = searchParams.get("payment");
     const planId = searchParams.get("plan");
 
     if (planAmount && !amount) setAmount(planAmount);
     if (planType === "monthly" && donationType !== "subscription") setDonationType("subscription");
     if (planType === "once" && donationType !== "one_time") setDonationType("one_time");
-    if (planPayment) {
-      setPaymentMethod(PAYMENT_METHOD_MAP[planPayment] || "qris");
-    }
     if (planId && !planName) {
       setPlanName(PLAN_NAMES[planId] || "Donasi Custom");
       setPlanId(planId);
@@ -82,7 +72,7 @@ export default function CreateDonation() {
       const donation = await createDonation({
         amount: parseInt(amount),
         type: donationType,
-        payment_method: paymentMethod,
+        payment_method: "midtrans",
         plan_id: planId, // Kirim plan ID ke backend
         is_subscription: donationType === "subscription", // Flag untuk subscription
       });
@@ -204,12 +194,6 @@ export default function CreateDonation() {
                 <span className="text-gray-600">Jenis:</span>
                 <span className="font-medium text-gray-900">
                   {donationType === "one_time" ? "Sekali" : "Bulanan"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Metode:</span>
-                <span className="font-medium text-gray-900">
-                  {PAYMENT_LABELS[paymentMethod] || paymentMethod}
                 </span>
               </div>
             </div>
