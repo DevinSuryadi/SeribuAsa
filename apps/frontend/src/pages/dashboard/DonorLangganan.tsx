@@ -90,11 +90,10 @@ const DonorLangganan = () => {
     }
   };
 
-  // Get active subscription (first active one, or first one if none active)
+  // Show the latest non-cancelled subscription as the current managed subscription.
   const activeSubscription = useMemo(() => {
     if (subscriptions.length === 0) return null;
-    const active = subscriptions.find((s) => s.status === "active");
-    return active || subscriptions[0];
+    return subscriptions.find((s) => s.status !== "cancelled") || subscriptions[0];
   }, [subscriptions]);
 
   const currentPlan = useMemo(() => {
@@ -304,14 +303,28 @@ const DonorLangganan = () => {
       <div className="space-y-5">
         {/* Active Plan Card */}
         <div
-          className={`rounded-2xl border p-5 ${isCancelled ? "border-red-200 bg-red-50/40" : activeSubscription ? "border-rose-200 bg-rose-50/30" : "border-border bg-card"}`}
+          className={`rounded-2xl border p-5 ${
+            isCancelled
+              ? "border-red-200 bg-red-50/40"
+              : isPaused
+                ? "border-amber-200 bg-amber-50/60"
+                : activeSubscription
+                  ? "border-rose-200 bg-rose-50/30"
+                  : "border-border bg-card"
+          }`}
         >
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
               <div
-                className={`flex h-12 w-12 items-center justify-center rounded-2xl ${isCancelled ? "bg-red-100" : "bg-rose-100"}`}
+                className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                  isCancelled ? "bg-red-100" : isPaused ? "bg-amber-100" : "bg-rose-100"
+                }`}
               >
-                <PlanIcon className={`h-6 w-6 ${isCancelled ? "text-red-600" : "text-rose-600"}`} />
+                <PlanIcon
+                  className={`h-6 w-6 ${
+                    isCancelled ? "text-red-600" : isPaused ? "text-amber-600" : "text-rose-600"
+                  }`}
+                />
               </div>
               <div>
                 <h2 className="font-bold text-foreground">{currentPlan.name}</h2>
@@ -449,12 +462,6 @@ const DonorLangganan = () => {
               <p className="w-full text-xs text-amber-700">
                 Langganan sedang dijeda. Pembayaran bulanan tidak akan diproses sampai Anda
                 melanjutkannya kembali.
-              </p>
-            )}
-            {isActive && (
-              <p className="w-full text-xs text-muted-foreground">
-                Gunakan Jeda untuk menghentikan sementara pembayaran bulanan. Langganan dapat
-                dilanjutkan kembali kapan saja dari tab ini.
               </p>
             )}
             {!activeSubscription && (
