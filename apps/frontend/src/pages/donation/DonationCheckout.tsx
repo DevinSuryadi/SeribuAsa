@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Navbar } from '@/components/landing/Navbar'
 import { Footer } from '@/components/landing/Footer'
 import { useAuth } from '@/contexts/AuthContext'
-import { Check, ArrowRight, Baby, Heart, Building2, User, AlertCircle } from 'lucide-react'
+import { Check, ArrowRight, Baby, Heart, Building2, User, AlertCircle, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -18,6 +18,7 @@ import { formatIDR } from '@/lib/format'
 import { toast } from 'sonner'
 import { DONATION_CHECKOUT_STORAGE_KEY } from '@/lib/donation-constants'
 import { ImpactPreview } from '@/components/donation/ImpactPreview'
+import { getSubscriptions } from '@/services/subscriptions'
 
 const plans = [
   { id: 'balita', name: 'Adopsi Nutrisi 1 Balita', price: 300000, icon: Baby, features: ['Voucher pangan bergizi bulanan', 'Laporan dampak per anak', 'Sertifikat donasi digital', 'Pemantauan gizi anak'] },
@@ -38,6 +39,8 @@ export default function DonationCheckout() {
   const [customAmount, setCustomAmount] = useState(initialAmount || '')
   const [agree, setAgree] = useState(false)
   const [showMonthlyConfirm, setShowMonthlyConfirm] = useState(false)
+  const [showExistingSubscriptionConfirm, setShowExistingSubscriptionConfirm] = useState(false)
+  const [checkingSubscription, setCheckingSubscription] = useState(false)
 
   const plan = plans.find((p) => p.id === selectedPlan) || plans[0]
   const isCorporate = selectedPlan === 'corporate'
@@ -66,7 +69,7 @@ export default function DonationCheckout() {
     navigate(`/donation/create?plan=${selectedPlan}&type=${donationType}&amount=${amount}`)
   }
 
-  const handleProceed = () => {
+  const handleProceed = async () => {
     if (isCorporate) {
       toast.info('Untuk corporate, silakan hubungi tim kami')
       return
@@ -80,7 +83,21 @@ export default function DonationCheckout() {
       return
     }
     if (donationType === 'monthly') {
-      setShowMonthlyConfirm(true)
+      setCheckingSubscription(true)
+      try {
+        const subscriptions = await getSubscriptions()
+        if (subscriptions.length > 0) {
+          setShowExistingSubscriptionConfirm(true)
+        } else {
+          setShowMonthlyConfirm(true)
+        }
+      } catch (err: any) {
+        toast.error('Gagal memeriksa status langganan', {
+          description: err?.message || 'Silakan coba beberapa saat lagi.',
+        })
+      } finally {
+        setCheckingSubscription(false)
+      }
       return
     }
 
@@ -317,11 +334,21 @@ export default function DonationCheckout() {
 
               <Button
                 onClick={handleProceed}
+                disabled={checkingSubscription}
                 className="h-11 w-full bg-green-600 text-base hover:bg-green-700"
                 size="lg"
               >
-                Lanjut ke Pembayaran
-                <ArrowRight size={18} className="ml-2" />
+                {checkingSubscription ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Memeriksa...
+                  </>
+                ) : (
+                  <>
+                    Lanjut ke Pembayaran
+                    <ArrowRight size={18} className="ml-2" />
+                  </>
+                )}
               </Button>
 
               <p className="text-center text-xs text-gray-500">
@@ -371,6 +398,50 @@ export default function DonationCheckout() {
                 }}
               >
                 Lanjut Bulanan
+                <ArrowRight size={16} className="ml-2" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showExistingSubscriptionConfirm}
+        onOpenChange={setShowExistingSubscriptionConfirm}
+      >
+        <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Langganan Donasi Sudah Terdaftar</DialogTitle>
+            <DialogDescription>
+              Anda sudah memiliki donasi bulanan yang terdaftar. Perubahan nominal, paket, atau
+              status langganan dapat dilakukan melalui tab Langganan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <p className="text-xs leading-relaxed text-blue-700">
+                Buka tab Langganan untuk meninjau langganan yang berjalan, mengubah paket,
+                menjeda, atau membatalkan donasi bulanan Anda.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowExistingSubscriptionConfirm(false)}
+              >
+                Batalkan
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                onClick={() => {
+                  setShowExistingSubscriptionConfirm(false)
+                  navigate('/dashboard/langganan')
+                }}
+              >
+                Ke Langganan
                 <ArrowRight size={16} className="ml-2" />
               </Button>
             </div>

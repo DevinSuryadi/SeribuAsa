@@ -57,6 +57,19 @@ async def create_donation(
         )
     
     logger.info(f"[DONATION] Donor profile verified for user {current_user.user_id}")
+
+    if donation_data.is_subscription and donation_data.type == "subscription":
+        from app.models.subscription import Subscription
+
+        existing_subscription = db.query(Subscription).filter(
+            Subscription.donor_id == current_user.user_id
+        ).first()
+
+        if existing_subscription:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A monthly donation subscription already exists. Please manage it from the subscription dashboard."
+            )
     
     donation = DonationService.create_donation(
         db=db,
