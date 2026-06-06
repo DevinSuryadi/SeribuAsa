@@ -143,7 +143,7 @@ export default function StuntingRiskCard({ className = "" }: Props) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            AI Early Warning
+            Peringatan Dini Berbasis AI
           </p>
           <h3 className="text-sm font-bold text-slate-900 sm:text-base">
             Prediksi Risiko Stunting (3 Bulan)

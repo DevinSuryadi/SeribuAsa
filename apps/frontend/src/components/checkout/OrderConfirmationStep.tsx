@@ -1,6 +1,7 @@
-import { AlertCircle, CheckCircle2, Package, Store, Wallet, X } from "lucide-react";
+import { AlertCircle, Store, X } from "lucide-react";
 import type { OrderSummary } from "@/types/checkout";
 import { useState } from "react";
+import { ProductAvatar } from "@/components/product/ProductAvatar";
 import { formatIDR } from "@/lib/format";
 
 interface OrderConfirmationStepProps {
@@ -26,13 +27,6 @@ export function OrderConfirmationStep({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-foreground mb-1">Konfirmasi Pesanan</h2>
-        <p className="text-sm text-muted-foreground">
-          Tinjau pesanan Anda sebelum menyelesaikan pembayaran
-        </p>
-      </div>
-
       {/* Error alert */}
       {error && (
         <div className="flex items-start gap-3 p-4 rounded-xl bg-destructive/5 border border-destructive/30">
@@ -83,9 +77,12 @@ export function OrderConfirmationStep({
                       key={item.id}
                       className="flex items-center gap-3 pb-3 border-b border-border/50 last:border-0 last:pb-0"
                     >
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-secondary">
-                        <Package className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                      </div>
+                      <ProductAvatar
+                        images={item.product_images}
+                        categoryName={item.category_name}
+                        name={item.product_name}
+                        className="h-9 w-9 flex-shrink-0 rounded-lg"
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">
                           {item.product_name}
@@ -113,21 +110,10 @@ export function OrderConfirmationStep({
           })}
 
           {/* Payment method */}
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 p-5">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600">
-                <Wallet className="h-4.5 w-4.5 text-white" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">Dompet Nutrisi</p>
-                <p className="text-xs text-muted-foreground">Pembayaran via e-wallet nutrisi</p>
-              </div>
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 ml-auto flex-shrink-0" aria-hidden="true" />
-            </div>
-          </div>
+          
 
           {vendorCount > 1 && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-4 text-xs text-blue-700 dark:text-blue-400">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-100/30 dark:border-blue-800 p-4 text-xs text-blue-700 dark:text-blue-400">
               📦 Pesanan akan dibagi menjadi <strong>{vendorCount} pesanan terpisah</strong> sesuai
               vendor. Kamu akan mendapat QR Pickup untuk setiap pesanan.
             </div>
@@ -135,7 +121,7 @@ export function OrderConfirmationStep({
         </div>
 
         {/* Summary — 1/3 sticky */}
-        <div className="lg:sticky lg:top-24 h-fit">
+        <div className="sticky top-6 self-start lg:h-fit">
           <div className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
             <h3 className="font-bold text-foreground">Ringkasan Pembayaran</h3>
 

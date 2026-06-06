@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Clock,
   Lock,
-  Package,
   ShoppingBasket,
   RefreshCw,
   Receipt,
@@ -178,18 +177,6 @@ const DompetNutrisi = () => {
                 )}
               </div>
             </div>
-
-            {/* Quick nav to QR Pickup tab */}
-            <button
-              onClick={() => handleTabChange("pesanan")}
-              className="flex-shrink-0 flex flex-col items-center gap-1.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-green-700 rounded-xl"
-              title="Lihat Pesanan Saya"
-            >
-              <div className="h-16 w-16 rounded-xl bg-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                <Package className="h-9 w-9 text-green-700" aria-hidden="true" />
-              </div>
-              <span className="text-[10px] text-white/70">Pesanan</span>
-            </button>
           </div>
 
           {/* Expiring warning */}

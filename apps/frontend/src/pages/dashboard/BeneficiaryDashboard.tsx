@@ -523,7 +523,7 @@ export default function BeneficiaryDashboard() {
               </div>
             ) : (
               <div className="mt-2 min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
-                {transactions.slice(0, 6).map((t: any) => {
+                {transactions.slice(0, 4).map((t: any) => {
                   const isCredit = (t.amount || 0) > 0;
 
                   return (

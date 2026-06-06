@@ -141,7 +141,7 @@ export default function OrderQrModal({ orderId, open, onClose, onCancelled }: Pr
           />
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
             <div className="rounded-full bg-emerald-500 px-3 py-0.5 text-[10px] font-bold text-white shadow">
-              NUTRIGUARD
+              SERIBUASA
             </div>
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function OrderQrModal({ orderId, open, onClose, onCancelled }: Pr
 
   return (
     <Dialog open={open} onOpenChange={(v: boolean) => !v && onClose()}>
-      <DialogContent className="max-w-sm gap-0 overflow-hidden rounded-3xl border-0 p-0 shadow-2xl">
+      <DialogContent className="max-w-sm gap-0 overflow-hidden rounded-3xl border-0 p-0 shadow-2xl [&>button]:hidden">
         {/* Header */}
         <div className="bg-gradient-to-br from-emerald-600 to-teal-700 px-6 pb-5 pt-6 text-white">
           <DialogHeader>

@@ -66,15 +66,15 @@ const HOW_TO = [
     step: 1,
     icon: QrCode,
     title: "Minta QR Penerima",
-    desc: "Minta beneficiary membuka pesanannya dan tampilkan QR Pickup.",
+    desc: "Minta Penerima membuka pesanannya dan tampilkan QR.",
     color: "bg-blue-600",
     ring: "ring-blue-200",
   },
   {
     step: 2,
     icon: ScanLine,
-    title: "Scan atau Ketik Kode",
-    desc: "Scan menggunakan kamera atau ketik kode QR secara manual.",
+    title: "Pindai atau Ketik Kode",
+    desc: "Pindai menggunakan kamera atau ketik kode QR secara manual.",
     color: "bg-emerald-600",
     ring: "ring-emerald-200",
   },
@@ -82,7 +82,7 @@ const HOW_TO = [
     step: 3,
     icon: BadgeCheck,
     title: "Verifikasi & Konfirmasi",
-    desc: "Periksa detail pesanan, pastikan sesuai, lalu konfirmasi pickup.",
+    desc: "Periksa detail pesanan, pastikan sesuai, lalu konfirmasi pengambilan.",
     color: "bg-purple-600",
     ring: "ring-purple-200",
   },
@@ -90,7 +90,7 @@ const HOW_TO = [
     step: 4,
     icon: Wallet,
     title: "Dana Masuk",
-    desc: "Dana otomatis masuk ke wallet Anda setelah konfirmasi berhasil.",
+    desc: "Dana otomatis masuk ke dompet Anda setelah konfirmasi berhasil.",
     color: "bg-amber-500",
     ring: "ring-amber-200",
   },
@@ -118,6 +118,42 @@ function getNetEarned(order: OrderPreview | null): number {
 
 function normalizePickupCode(value: string): string {
   return value.trim().replace(/^NUTRIGUARD:ORDER:/i, "").toUpperCase();
+}
+
+function parseErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    const msg = typeof err.message === "string" ? err.message.trim() : "";
+    if (msg && msg !== "[object Object]") {
+      return msg;
+    }
+
+    const detail = (err as { detail?: unknown }).detail;
+    if (typeof detail === "string" && detail.trim()) {
+      return detail;
+    }
+    if (detail && typeof detail === "object" && "message" in detail) {
+      const nested = (detail as { message?: unknown }).message;
+      return typeof nested === "string" ? nested : "";
+    }
+
+    return "";
+  }
+
+  if (typeof err === "string") {
+    return err;
+  }
+
+  if (err && typeof err === "object" && "message" in err) {
+    const message = (err as { message?: unknown }).message;
+    return typeof message === "string" ? message : "";
+  }
+
+  return "";
+}
+
+function getSafeErrorText(err: unknown, fallback: string): string {
+  const message = parseErrorMessage(err);
+  return typeof message === "string" && message.trim() ? message : fallback;
 }
 
 function normalizeOrder(order: OrderPreview): OrderPreview {
@@ -162,7 +198,7 @@ export default function VendorQrScanner() {
       setStep("preview");
       setShowConfirmDialog(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
+      const msg = getSafeErrorText(err, "QR code tidak ditemukan atau tidak valid");
       try {
         const orders = await apiFetch("/orders?status=pending&page_size=100") as { items: OrderPreview[] };
         const found = orders.items?.find((o) => o.pickup_qr_code === code);
@@ -173,11 +209,11 @@ export default function VendorQrScanner() {
           setStep("preview");
           setShowConfirmDialog(true);
         } else {
-          setErrorMsg(msg || "QR code tidak ditemukan atau tidak valid");
+          setErrorMsg(msg);
           setStep("error");
         }
       } catch {
-        setErrorMsg(msg || "QR code tidak ditemukan");
+        setErrorMsg(msg);
         setStep("error");
       }
     } finally {
@@ -198,9 +234,9 @@ export default function VendorQrScanner() {
       setOrder(result);
       setStep("success");
       setShowConfirmDialog(false);
-      toast.success("Pickup berhasil dikonfirmasi! Dana masuk ke wallet Anda.");
+      toast.success("Pengambilan berhasil dikonfirmasi! Dana masuk ke dompet Anda.");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Konfirmasi gagal";
+      const msg = getSafeErrorText(err, "Konfirmasi gagal");
       toast.error(msg);
       setErrorMsg(msg);
       setStep("error");
@@ -268,7 +304,7 @@ export default function VendorQrScanner() {
   const activeGuideStep = step === "scan" ? 1 : step === "preview" ? 3 : step === "success" ? 4 : 1;
 
   return (
-    <DashboardLayout title="Scan QR Pickup" subtitle="Konfirmasi penerimaan pesanan dari beneficiary">
+    <DashboardLayout title="Pindai QR" subtitle="Konfirmasi penerimaan pesanan dari penerima donasi">
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
         {/* ── LEFT: Scanner Panel (3/5) ── */}
@@ -292,7 +328,7 @@ export default function VendorQrScanner() {
                       <QrCode className="h-10 w-10 text-white" aria-hidden="true" />
                     )}
                   </div>
-                  <h2 className="text-xl font-extrabold text-white mb-1">Scan QR Pickup</h2>
+                  <h2 className="text-xl font-extrabold text-white mb-1">Pindai QR</h2>
                   <p className="text-white/70 text-sm">
                     {cameraMode ? "Arahkan kamera ke QR penerima" : "Ketik atau tempel kode dari QR penerima"}
                   </p>
@@ -332,7 +368,7 @@ export default function VendorQrScanner() {
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-muted-foreground hover:bg-secondary transition-all disabled:opacity-50"
                 >
                   {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" aria-hidden="true" />}
-                  {isUploading ? "Membaca..." : "Upload"}
+                  {isUploading ? "Membaca..." : "Unggah Gambar"}
                 </button>
                 <input
                   type="file"
@@ -387,7 +423,7 @@ export default function VendorQrScanner() {
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                         className="font-mono text-sm tracking-widest h-11"
                         autoFocus
-                        aria-label="Kode QR Pickup"
+                        aria-label="Kode QR"
                       />
                       <Button
                         onClick={() => handleSearch()}
@@ -410,7 +446,7 @@ export default function VendorQrScanner() {
                     {/* Tips */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       {[
-                        { icon: QrCode, title: "QR Otomatis", desc: "Kode terisi saat scan dari kamera", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
+                        { icon: QrCode, title: "QR Otomatis", desc: "Kode terisi saat berhasil dipindai dari kamera", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
                         { icon: Package, title: "Konfirmasi Dulu", desc: "Periksa item sebelum konfirmasi", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
                       ].map(({ icon: Icon, title, desc, color, bg }, i) => (
                         <div key={i} className={`rounded-2xl ${bg} p-4 text-center`}>
@@ -486,7 +522,7 @@ export default function VendorQrScanner() {
                   <div className="flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Wallet className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-                      <span className="text-sm font-semibold text-foreground">Dana masuk ke wallet</span>
+                      <span className="text-sm font-semibold text-foreground">Dana masuk ke dompet</span>
                     </div>
                     <div className="text-right">
                       <span className="text-base font-black text-emerald-600">
@@ -540,8 +576,8 @@ export default function VendorQrScanner() {
                   <CheckCircle2 className="h-12 w-12 text-white" aria-hidden="true" />
                 </div>
 
-                <h2 className="text-2xl font-extrabold text-white mb-1">Pickup Selesai! 🎉</h2>
-                <p className="text-white/70 text-sm mb-7">Dana telah dikreditkan ke wallet Anda</p>
+                <h2 className="text-2xl font-extrabold text-white mb-1">Pengambilan Selesai!</h2>
+                <p className="text-white/70 text-sm mb-7">Dana telah dikreditkan ke dompet Anda</p>
 
                 {/* Net earnings */}
                 <div className="mb-6 rounded-2xl bg-white/15 backdrop-blur-sm p-5 mx-auto max-w-xs">
@@ -572,7 +608,7 @@ export default function VendorQrScanner() {
                   onClick={reset}
                 >
                   <QrCode className="h-4 w-4" aria-hidden="true" />
-                  Scan QR Berikutnya
+                  Pindai QR Berikutnya
                 </Button>
               </div>
             </div>
@@ -604,7 +640,7 @@ export default function VendorQrScanner() {
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600">
                 <ScanLine className="h-4 w-4 text-white" aria-hidden="true" />
               </div>
-              <h3 className="font-bold text-foreground">Cara Scan Pickup</h3>
+              <h3 className="font-bold text-foreground">Cara Pindai QR</h3>
             </div>
 
             <ol className="space-y-4">
@@ -652,10 +688,10 @@ export default function VendorQrScanner() {
             <h3 className="text-sm font-bold text-foreground mb-3">Catatan Penting</h3>
             <ul className="space-y-2.5 text-xs text-muted-foreground">
               {[
-                "QR Pickup hanya bisa digunakan sekali per pesanan",
-                "Dana masuk ke wallet setelah pickup dikonfirmasi",
-                "Platform fee 1% dipotong otomatis dari total pesanan",
-                "Jika QR kadaluarsa, minta penerima refresh QR mereka",
+                "QR hanya bisa digunakan sekali per pesanan",
+                "Dana masuk ke dompet setelah pengambilan dikonfirmasi",
+                "Biaya Layanan 1% dipotong otomatis dari total pesanan",
+                "Jika QR kadaluarsa, minta penerima memuat ulang QR mereka",
               ].map((note, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-muted-foreground mt-0.5">
@@ -685,7 +721,7 @@ export default function VendorQrScanner() {
                     <BadgeCheck className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <DialogTitle className="text-xl font-black text-white">
-                    Konfirmasi Pickup Pesanan
+                    Konfirmasi Pengambilan Pesanan
                   </DialogTitle>
                   <DialogDescription className="text-sm text-white/75">
                     Pastikan barang sudah diterima pembeli sebelum menyelesaikan pesanan.
@@ -697,7 +733,7 @@ export default function VendorQrScanner() {
                 <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-xs font-medium text-emerald-700">Dana masuk ke wallet</p>
+                      <p className="text-xs font-medium text-emerald-700">Dana masuk ke dompet</p>
                       <p className="mt-1 text-2xl font-black text-emerald-700">
                         {formatIDR(getNetEarned(order))}
                       </p>
@@ -711,7 +747,7 @@ export default function VendorQrScanner() {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Kode pickup</span>
+                    <span className="text-muted-foreground">Kode QR</span>
                     <span className="max-w-[13rem] truncate font-mono text-xs font-semibold text-foreground">
                       {pickupCode || order.pickup_qr_code}
                     </span>

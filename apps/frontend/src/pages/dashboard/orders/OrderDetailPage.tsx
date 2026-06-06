@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Wallet,
   Receipt,
   AlertCircle,
 } from "lucide-react";
@@ -28,48 +27,54 @@ import { toast } from "sonner";
 // ── Status config ───────────────────────────────────────────────
 const statusConfig: Record<
   string,
-  { label: string; cls: string; dot: string; icon: React.ElementType; desc: string }
+  { label: string; cls: string; dot: string; icon: React.ElementType; iconClass: string; desc: string }
 > = {
   pending: {
     label: "Menunggu",
-    cls: "bg-amber-50 text-amber-700 border-amber-200",
-    dot: "bg-amber-400",
+    cls: "bg-white text-slate-900 border-amber-200 shadow-sm",
+    dot: "bg-amber-500",
     icon: Clock,
+    iconClass: "text-amber-600",
     desc: "Pesanan menunggu konfirmasi dari vendor",
   },
   confirmed: {
     label: "Dikonfirmasi",
-    cls: "bg-blue-50 text-blue-700 border-blue-200",
+    cls: "bg-white text-slate-900 border-blue-200 shadow-sm",
     dot: "bg-blue-500",
     icon: CheckCircle2,
+    iconClass: "text-blue-600",
     desc: "Vendor telah mengkonfirmasi pesanan Anda",
   },
   processing: {
     label: "Diproses",
-    cls: "bg-purple-50 text-purple-700 border-purple-200",
+    cls: "bg-white text-slate-900 border-purple-200 shadow-sm",
     dot: "bg-purple-500",
     icon: Loader2,
+    iconClass: "text-purple-600",
     desc: "Pesanan sedang disiapkan oleh vendor",
   },
   delivered: {
     label: "Terkirim",
-    cls: "bg-green-50 text-green-700 border-green-200",
+    cls: "bg-white text-slate-900 border-green-200 shadow-sm",
     dot: "bg-green-500",
     icon: CheckCircle2,
+    iconClass: "text-green-600",
     desc: "Pesanan telah terkirim/diambil",
   },
   completed: {
     label: "Selesai",
-    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    cls: "bg-white text-slate-900 border-emerald-200 shadow-sm",
     dot: "bg-emerald-500",
     icon: CheckCircle2,
+    iconClass: "text-emerald-600",
     desc: "Pesanan telah selesai",
   },
   cancelled: {
     label: "Dibatalkan",
-    cls: "bg-red-50 text-red-700 border-red-200",
+    cls: "bg-white text-slate-900 border-red-200 shadow-sm",
     dot: "bg-red-400",
     icon: XCircle,
+    iconClass: "text-red-600",
     desc: "Pesanan telah dibatalkan",
   },
 };
@@ -83,6 +88,23 @@ type OrderItem = {
   subtotal?: number;
   product_images?: string[];
   category_name?: string;
+};
+
+const computeOrderTotal = (order: Record<string, unknown>): number => {
+  const cartTotal = Number(order.cart_total ?? order.total_amount ?? 0);
+  if (cartTotal > 0) return cartTotal;
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  if (items.length > 0) {
+    const itemsSum = items.reduce((sum, item) => {
+      const subtotal = Number((item as any).subtotal ?? 0);
+      const byPrice = Number((item as any).price ?? 0) * Number((item as any).quantity ?? 1);
+      return sum + (subtotal > 0 ? subtotal : byPrice);
+    }, 0);
+    if (itemsSum > 0) return itemsSum;
+  }
+
+  return Number(order.cash_amount ?? order.cash_amount ?? 0);
 };
 
 function OrderDetailPage() {
@@ -174,10 +196,14 @@ function OrderDetailPage() {
   };
   const StatusIcon = sc.icon;
   const items = Array.isArray(order.items) ? (order.items as OrderItem[]) : [];
-  const totalAmount = Number(order.cart_total ?? order.total_amount ?? 0);
-  const voucherDiscount = Number(order.voucher_discount ?? order.voucher_used ?? 0);
-  const walletPaid = totalAmount - voucherDiscount;
+  const totalAmount = computeOrderTotal(order);
+  const walletPaid = Number(order.voucher_discount ?? order.voucher_paid ?? order.wallet_amount ?? 0);
   const cashPaid = Number(order.cash_paid ?? order.cash_amount ?? 0);
+  const totalPaid = status === "cancelled"
+    ? 0
+    : walletPaid + cashPaid > 0
+    ? walletPaid + cashPaid
+    : totalAmount;
   const createdAt = order.created_at ? new Date(String(order.created_at)) : null;
   const canShowQr = status === "pending" || status === "confirmed";
   const canReorder = items.length > 0 && status !== "pending";
@@ -302,25 +328,22 @@ function OrderDetailPage() {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-semibold text-foreground">{formatIDR(totalAmount)}</span>
                 </div>
-                {voucherDiscount > 0 && (
+                {walletPaid > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-emerald-600">Diskon Voucher</span>
-                    <span className="font-semibold text-emerald-600">-{formatIDR(voucherDiscount)}</span>
+                    <span className="text-slate-700">Dibayar via Dompet Nutrisi</span>
+                    <span className="font-semibold text-slate-900">{formatIDR(walletPaid)}</span>
                   </div>
                 )}
-                <div className="flex justify-between pt-3 border-t border-border">
-                  <span className="font-bold text-foreground flex items-center gap-1.5">
-                    <Wallet className="h-3.5 w-3.5 text-emerald-600" />
-                    Dibayar via Dompet
-                  </span>
-                  <span className="font-black text-lg text-emerald-600">{formatIDR(walletPaid)}</span>
-                </div>
                 {cashPaid > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Bayar Tunai</span>
-                    <span className="font-semibold">{formatIDR(cashPaid)}</span>
+                    <span className="font-semibold text-foreground">{formatIDR(cashPaid)}</span>
                   </div>
                 )}
+                <div className="flex justify-between pt-3 border-t border-border">
+                  <span className="text-sm font-bold text-foreground">Total Terbayar</span>
+                  <span className="text-sm font-bold text-foreground">{formatIDR(totalPaid)}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -331,9 +354,9 @@ function OrderDetailPage() {
             {/* Status card */}
             <div className={`rounded-2xl border p-5 ${sc.cls}`}>
               <div className="flex items-center gap-3 mb-3">
-                <div className={`h-3 w-3 rounded-full ${sc.dot} ring-4 ring-current/20`} />
+                <div className={`h-3 w-3 rounded-full ${sc.dot}`} />
                 <span className="font-bold text-base">{sc.label}</span>
-                <StatusIcon className="h-4 w-4 ml-auto opacity-70" aria-hidden="true" />
+                <StatusIcon className={`h-4 w-4 ml-auto opacity-70 ${sc.iconClass}`} aria-hidden="true" />
               </div>
               <p className="text-xs opacity-80">{sc.desc}</p>
             </div>

@@ -340,7 +340,7 @@ export default function VendorDashboard() {
               >
                 <Link to="/dashboard/scan-qr">
                   <QrCode className="mr-2 h-4 w-4" />
-                  Scan QR Pickup
+                  Pindai QR
                 </Link>
               </Button>
             </div>
@@ -485,7 +485,7 @@ export default function VendorDashboard() {
                               >
                                 <Link to="/dashboard/scan-qr">
                                   <QrCode className="mr-1 h-3 w-3" />
-                                  Scan QR
+                                  Pindai QR
                                 </Link>
                               </Button>
 
@@ -520,8 +520,8 @@ export default function VendorDashboard() {
 
             <div className="grid flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
               <VendorMenuCard
-                title="Scan QR Pickup"
-                desc="Verifikasi pickup penerima"
+                title="Pindai QR"
+                desc="Verifikasi order penerima"
                 href="/dashboard/scan-qr"
                 icon={QrCode}
                 iconWrapClass="bg-indigo-50"

@@ -375,7 +375,7 @@ const VendorSettlement = () => {
     }
 
     if (withdrawAmountValue > walletAvailable) {
-      toast.error("Nominal pencairan melebihi saldo wallet.");
+      toast.error("Nominal pencairan melebihi saldo dompet.");
       return;
     }
 
@@ -502,7 +502,7 @@ const VendorSettlement = () => {
           />
 
           <StatCard
-            title="Saldo Wallet"
+            title="Saldo Dompet"
             value={formatIDR(walletAvailable)}
             subtitle={`Minimum cair ${formatIDR(minimumWithdrawal)}`}
             icon={Clock3}
@@ -526,7 +526,7 @@ const VendorSettlement = () => {
 
           <InsightCard
             title="Rata-rata Waktu Cair"
-            value={`${avgSettlementTime.toFixed(1)} hari`}
+            value={`${Math.round(avgSettlementTime)} hari`}
             icon={Calendar}
             iconWrapClass="bg-indigo-50"
             iconClass="text-indigo-600"

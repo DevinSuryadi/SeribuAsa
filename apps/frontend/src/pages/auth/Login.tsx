@@ -136,6 +136,15 @@ export default function Login() {
         canonical="https://seribuasa.id/login"
         noIndex={true}
       />
+      <style>
+        {`.password-input::-ms-reveal,
+          .password-input::-ms-clear,
+          .password-input::-webkit-textfield-decoration-container,
+          .password-input::-webkit-password-toggle-button {
+            display: none !important;
+          }
+        `}
+      </style>
       <div
         className="flex h-screen items-center justify-center px-4 overflow-hidden relative"
         style={{
@@ -320,6 +329,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  className="password-input"
                   style={{
                     width: "100%",
                     padding: "14px 44px 14px 16px",

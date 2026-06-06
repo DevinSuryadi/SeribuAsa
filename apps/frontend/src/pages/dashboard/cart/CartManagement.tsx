@@ -355,7 +355,7 @@ export function CartManagement() {
             {/* Add more */}
             <Link
               to="/dashboard/katalog"
-              className="flex items-center gap-2 p-3 rounded-2xl border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all duration-200 group"
+              className="flex items-center gap-2 p-3 rounded-2xl border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-200/20 transition-all duration-200 group"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary group-hover:bg-emerald-100 transition-colors">
                 <Sparkles
@@ -363,7 +363,7 @@ export function CartManagement() {
                   aria-hidden="true"
                 />
               </div>
-              <span>Tambah produk lain dari katalog</span>
+              <span>Butuh Produk lebih banyak? Tambah produk lain dari katalog</span>
             </Link>
           </div>
 
@@ -424,7 +424,7 @@ export function CartManagement() {
               <div
                 className={`rounded-xl p-3 text-xs space-y-1 ${
                   canAfford
-                    ? "bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800"
+                    ? "bg-emerald-50 border border-emerald-200 dark:bg-emerald-100/30 dark:border-emerald-800"
                     : "bg-destructive/5 border border-destructive/30"
                 }`}
               >
