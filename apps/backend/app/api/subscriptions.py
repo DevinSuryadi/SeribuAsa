@@ -26,8 +26,8 @@ from app.schemas.subscription import (
     PauseSubscriptionRequest,
     ResumeSubscriptionRequest,
     CancelSubscriptionRequest,
-    UpgradeSubscriptionRequest,
     ChangePaymentMethodRequest,
+    UpdateSubscriptionAmountRequest,
 )
 import logging
 
@@ -233,9 +233,10 @@ async def resume_subscription(
     subscription.status = SubscriptionStatusEnum.active
     subscription.paused_at = None
     
-    # Update next billing date if provided
     if data and data.next_billing_date:
         subscription.next_billing_date = data.next_billing_date
+    else:
+        subscription.next_billing_date = date.today() + timedelta(days=30)
     
     db.commit()
     db.refresh(subscription)
@@ -329,59 +330,6 @@ async def reactivate_subscription(
     )
 
 
-@router.post("/{subscription_id}/upgrade", response_model=SubscriptionActionResponse)
-async def upgrade_subscription(
-    subscription_id: str,
-    data: UpgradeSubscriptionRequest,
-    db: Session = Depends(get_db),
-    current_user: AuthenticatedUser = Depends(get_current_user)
-):
-    """Upgrade subscription plan"""
-    subscription = db.query(Subscription).filter(
-        Subscription.id == subscription_id,
-        Subscription.donor_id == current_user.user_id
-    ).first()
-    
-    if not subscription:
-        raise HTTPException(status_code=404, detail="Subscription not found")
-    
-    if subscription.status not in [SubscriptionStatusEnum.active, SubscriptionStatusEnum.paused]:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot upgrade inactive subscription"
-        )
-    
-    # Get new plan
-    new_plan = db.query(SubscriptionPlan).filter(
-        SubscriptionPlan.id == data.plan_id,
-        SubscriptionPlan.is_active == "true"
-    ).first()
-    
-    if not new_plan:
-        raise HTTPException(status_code=404, detail="New plan not found")
-    
-    # Update subscription
-    subscription.plan_id = new_plan.id
-    subscription.plan_name = new_plan.name
-    subscription.amount = new_plan.price
-    subscription.frequency = new_plan.frequency
-    subscription.metadata["upgraded_from"] = {
-        "plan_id": str(subscription.plan_id),
-        "plan_name": subscription.plan_name,
-        "amount": str(subscription.amount),
-        "upgraded_at": datetime.utcnow().isoformat()
-    }
-    
-    db.commit()
-    db.refresh(subscription)
-    
-    return SubscriptionActionResponse(
-        success=True,
-        message=f"Subscription upgraded to {new_plan.name}",
-        subscription=SubscriptionResponse.model_validate(subscription)
-    )
-
-
 @router.put("/{subscription_id}/payment-method", response_model=SubscriptionActionResponse)
 async def change_payment_method(
     subscription_id: str,
@@ -411,6 +359,50 @@ async def change_payment_method(
     return SubscriptionActionResponse(
         success=True,
         message=f"Payment method changed to {data.payment_method}",
+        subscription=SubscriptionResponse.model_validate(subscription)
+    )
+
+
+@router.put("/{subscription_id}/amount", response_model=SubscriptionActionResponse)
+async def update_subscription_amount(
+    subscription_id: str,
+    data: UpdateSubscriptionAmountRequest,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Update monthly donation amount"""
+    subscription = db.query(Subscription).filter(
+        Subscription.id == subscription_id,
+        Subscription.donor_id == current_user.user_id
+    ).first()
+
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    if subscription.status == SubscriptionStatusEnum.cancelled:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot update amount for cancelled subscription"
+        )
+
+    if data.amount < 10000:
+        raise HTTPException(
+            status_code=400,
+            detail="Minimum monthly donation amount is Rp 10.000"
+        )
+
+    subscription.amount = data.amount
+    subscription.meta_data = {
+        **(subscription.meta_data or {}),
+        "amount_updated_at": datetime.utcnow().isoformat(),
+    }
+
+    db.commit()
+    db.refresh(subscription)
+
+    return SubscriptionActionResponse(
+        success=True,
+        message="Subscription amount updated successfully",
         subscription=SubscriptionResponse.model_validate(subscription)
     )
 

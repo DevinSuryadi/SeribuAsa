@@ -119,12 +119,12 @@ class CancelSubscriptionRequest(BaseModel):
     reason: Optional[str] = None
 
 
-class UpgradeSubscriptionRequest(BaseModel):
-    plan_id: str
-
-
 class ChangePaymentMethodRequest(BaseModel):
     payment_method: str
+
+
+class UpdateSubscriptionAmountRequest(BaseModel):
+    amount: Decimal
 
 
 # ============================================
