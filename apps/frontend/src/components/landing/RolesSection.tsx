@@ -131,11 +131,11 @@ export function RolesSection() {
                 textDecoration: "none",
                 display: "block",
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={(e: any) => {
                 e.currentTarget.style.transform = "translateY(-4px)";
                 e.currentTarget.style.boxShadow = "0 8px 28px rgba(0,0,0,0.09)";
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={(e: any) => {
                 e.currentTarget.style.transform = "translateY(0)";
                 e.currentTarget.style.boxShadow = "none";
               }}

@@ -104,8 +104,8 @@ export function Footer() {
                     <Link
                       to={link.href}
                       style={{ fontSize: 13, color: '#888', textDecoration: 'none', transition: 'color 0.15s ease' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#111')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '#888')}
+                      onMouseEnter={(e: any) => (e.currentTarget.style.color = '#111')}
+                      onMouseLeave={(e: any) => (e.currentTarget.style.color = '#888')}
                     >
                       {link.label}
                     </Link>

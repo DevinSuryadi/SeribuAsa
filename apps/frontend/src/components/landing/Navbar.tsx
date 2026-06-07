@@ -111,8 +111,8 @@ export function Navbar() {
               marginRight: -18, // Mendekatkan logo ke tulisan
               transition: 'transform 0.2s ease',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            onMouseEnter={(e: any) => (e.currentTarget.style.transform = 'scale(1.05)')}
+            onMouseLeave={(e: any) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             <img 
               src={logo} 
@@ -156,13 +156,13 @@ export function Navbar() {
                   background: active ? 'rgba(21,128,61,0.08)' : 'transparent',
                   transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={(e: any) => {
                   if (!active) {
                     e.currentTarget.style.color = '#111';
                     e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
                   }
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={(e: any) => {
                   if (!active) {
                     e.currentTarget.style.color = '#666';
                     e.currentTarget.style.background = 'transparent';
@@ -194,10 +194,10 @@ export function Navbar() {
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                   }}
-                  onMouseEnter={(e) => {
+                  onMouseEnter={(e: any) => {
                     e.currentTarget.style.background = 'rgba(0,0,0,0.03)';
                   }}
-                  onMouseLeave={(e) => {
+                  onMouseLeave={(e: any) => {
                     e.currentTarget.style.background = 'transparent';
                   }}
                 >
@@ -283,8 +283,8 @@ export function Navbar() {
                           textDecoration: 'none',
                           transition: 'background 0.1s ease',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.03)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onMouseEnter={(e: any) => (e.currentTarget.style.background = 'rgba(0,0,0,0.03)')}
+                        onMouseLeave={(e: any) => (e.currentTarget.style.background = 'transparent')}
                       >
                         <LayoutDashboard size={15} style={{ color: '#999' }} />
                         Dashboard
@@ -302,8 +302,8 @@ export function Navbar() {
                           textDecoration: 'none',
                           transition: 'background 0.1s ease',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.03)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onMouseEnter={(e: any) => (e.currentTarget.style.background = 'rgba(0,0,0,0.03)')}
+                        onMouseLeave={(e: any) => (e.currentTarget.style.background = 'transparent')}
                       >
                         <User size={15} style={{ color: '#999' }} />
                         Profil Saya
@@ -327,8 +327,8 @@ export function Navbar() {
                           cursor: 'pointer',
                           transition: 'background 0.1s ease',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.04)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onMouseEnter={(e: any) => (e.currentTarget.style.background = 'rgba(239,68,68,0.04)')}
+                        onMouseLeave={(e: any) => (e.currentTarget.style.background = 'transparent')}
                       >
                         <LogOut size={15} style={{ color: '#ef4444' }} />
                         Keluar
@@ -351,8 +351,8 @@ export function Navbar() {
                   textDecoration: 'none',
                   transition: 'color 0.15s ease',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#111')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}
+                onMouseEnter={(e: any) => (e.currentTarget.style.color = '#111')}
+                onMouseLeave={(e: any) => (e.currentTarget.style.color = '#555')}
               >
                 Masuk
               </Link>
@@ -370,11 +370,11 @@ export function Navbar() {
                   boxShadow: '0 2px 8px rgba(21,128,61,0.25)',
                   transition: 'all 0.2s ease',
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={(e: any) => {
                   e.currentTarget.style.transform = 'translateY(-1px)';
                   e.currentTarget.style.boxShadow = '0 4px 14px rgba(21,128,61,0.35)';
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={(e: any) => {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = '0 2px 8px rgba(21,128,61,0.25)';
                 }}

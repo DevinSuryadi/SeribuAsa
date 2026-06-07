@@ -104,11 +104,11 @@ export function CTASection() {
                 width: 'clamp(200px, 100%, 300px)',
                 justifyContent: 'center',
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={(e: any) => {
                 e.currentTarget.style.transform = 'translateY(-1px)';
                 e.currentTarget.style.boxShadow = '0 4px 18px rgba(34,197,94,0.4)';
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={(e: any) => {
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = '0 2px 12px rgba(34,197,94,0.3)';
               }}
@@ -136,11 +136,11 @@ export function CTASection() {
                 width: 'clamp(200px, 100%, 300px)',
                 justifyContent: 'center',
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={(e: any) => {
                 e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
                 e.currentTarget.style.borderColor = 'rgba(0,0,0,0.25)';
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={(e: any) => {
                 e.currentTarget.style.background = 'transparent';
                 e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)';
               }}
@@ -167,11 +167,11 @@ export function CTASection() {
                 width: 'clamp(200px, 100%, 300px)',
                 justifyContent: 'center',
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={(e: any) => {
                 e.currentTarget.style.color = '#111';
                 e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={(e: any) => {
                 e.currentTarget.style.color = '#555';
                 e.currentTarget.style.background = 'transparent';
               }}
