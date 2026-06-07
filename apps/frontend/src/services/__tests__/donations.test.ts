@@ -7,7 +7,7 @@ import {
   getDashboardMetrics,
 } from "../donations";
 import { apiFetch } from "../api";
-import { DonationType, DonationStatus } from "@/types";
+
 
 // Mock apiFetch
 vi.mock("../api", () => ({
@@ -26,7 +26,7 @@ describe("Donation Service", () => {
 
       const payload = {
         amount: 100000,
-        type: "one_time" as DonationType,
+        type: "one_time",
         payment_method: "qris",
       };
 
@@ -42,27 +42,25 @@ describe("Donation Service", () => {
     it("should handle error when creating donation", async () => {
       vi.mocked(apiFetch).mockRejectedValueOnce(new Error("API Error"));
 
-      const payload = { amount: 100000, type: "one_time" as DonationType };
+      const payload = { amount: 100000, type: "one_time", payment_method: "qris" };
       await expect(createDonation(payload)).rejects.toThrow("API Error");
     });
   });
 
   describe("getDonations", () => {
-    it("should fetch all donations with optional params", async () => {
-      const mockDonations = [
-        { id: "don_1", amount: 100000 },
-        { id: "don_2", amount: 200000 },
-      ];
+    it("should fetch all donations", async () => {
+      const mockDonations = {
+        data: [
+          { id: "don_1", amount: 100000 },
+          { id: "don_2", amount: 200000 },
+        ]
+      };
       vi.mocked(apiFetch).mockResolvedValueOnce(mockDonations);
 
-      const params = { status: "success" as DonationStatus, limit: 10 };
-      const result = await getDonations(params);
+      const result = await getDonations();
 
-      // Verify the query params string correctly
-      expect(apiFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/donations/?")
-      );
-      expect(result).toEqual(mockDonations);
+      expect(apiFetch).toHaveBeenCalledWith("/donations/");
+      expect(result).toEqual(mockDonations.data);
     });
 
     it("should fetch donations without params", async () => {

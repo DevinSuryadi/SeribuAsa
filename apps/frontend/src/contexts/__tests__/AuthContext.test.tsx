@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { AuthProvider, useAuth } from "../AuthContext";
 import React from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock supabase
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
       getSession: vi.fn(),
@@ -29,8 +29,8 @@ describe("AuthContext", () => {
 
     // Mock onAuthStateChange returning a mock unsubscription
     vi.mocked(supabase.auth.onAuthStateChange).mockReturnValue({
-      data: { subscription: { unsubscribe: vi.fn() } },
-    });
+      data: { subscription: { unsubscribe: vi.fn() } as any },
+    } as any);
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
