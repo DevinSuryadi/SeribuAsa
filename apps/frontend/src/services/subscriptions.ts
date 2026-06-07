@@ -25,14 +25,6 @@ export interface BillingHistoryItem {
   payment_method: string;
 }
 
-export interface UpgradePlan {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  frequency: string;
-}
-
 /**
  * Get all active subscriptions for the current donor
  */
@@ -95,20 +87,6 @@ export async function reactivateSubscription(subscriptionId: string): Promise<Su
 }
 
 /**
- * Upgrade subscription plan
- */
-export async function upgradeSubscription(
-  subscriptionId: string,
-  planId: string
-): Promise<Subscription> {
-  const res = await apiFetch(`/subscriptions/${subscriptionId}/upgrade`, {
-    method: "POST",
-    body: JSON.stringify({ plan_id: planId }),
-  });
-  return res?.data || res;
-}
-
-/**
  * Change payment method for a subscription
  */
 export async function changePaymentMethod(
@@ -123,11 +101,17 @@ export async function changePaymentMethod(
 }
 
 /**
- * Get available upgrade plans
+ * Update monthly donation amount for a subscription
  */
-export async function getUpgradePlans(): Promise<UpgradePlan[]> {
-  const res = await apiFetch("/subscriptions/plans");
-  return Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+export async function updateSubscriptionAmount(
+  subscriptionId: string,
+  amount: number
+): Promise<Subscription> {
+  const res = await apiFetch(`/subscriptions/${subscriptionId}/amount`, {
+    method: "PUT",
+    body: JSON.stringify({ amount }),
+  });
+  return res?.data?.subscription || res?.subscription || res?.data || res;
 }
 
 /**

@@ -23,7 +23,7 @@ import {
   Pause,
   Play,
   XCircle,
-  ArrowUp,
+  Pencil,
   Baby,
   CheckCircle,
   Heart,
@@ -34,7 +34,6 @@ import {
   RefreshCw,
   Calendar,
   TrendingUp,
-  ChevronRight,
   Loader2,
 } from "lucide-react";
 import { formatIDR, formatDate } from "@/lib/format";
@@ -44,11 +43,9 @@ import {
   resumeSubscription,
   cancelSubscription,
   reactivateSubscription,
-  upgradeSubscription,
   changePaymentMethod,
-  getUpgradePlans,
+  updateSubscriptionAmount,
   type Subscription,
-  type UpgradePlan,
 } from "@/services/subscriptions";
 import { toast } from "sonner";
 
@@ -63,11 +60,11 @@ const paymentMethods = [
 const DonorLangganan = () => {
   const { user } = useAuth();
   const [showCancel, setShowCancel] = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showAmount, setShowAmount] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState("");
+  const [draftAmount, setDraftAmount] = useState("");
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [upgradePlans, setUpgradePlans] = useState<UpgradePlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,12 +80,8 @@ const DonorLangganan = () => {
     setLoading(true);
     setError(null);
     try {
-      const [subsData, plansData] = await Promise.all([
-        getSubscriptions(),
-        getUpgradePlans().catch(() => []), // Graceful fallback if plans endpoint not ready
-      ]);
+      const subsData = await getSubscriptions();
       setSubscriptions(subsData);
-      setUpgradePlans(plansData);
     } catch (err: any) {
       setError(err.message || "Gagal memuat data langganan");
       toast.error("Gagal memuat data", { description: err.message });
@@ -97,11 +90,10 @@ const DonorLangganan = () => {
     }
   };
 
-  // Get active subscription (first active one, or first one if none active)
+  // Show the latest non-cancelled subscription as the current managed subscription.
   const activeSubscription = useMemo(() => {
     if (subscriptions.length === 0) return null;
-    const active = subscriptions.find((s) => s.status === "active");
-    return active || subscriptions[0];
+    return subscriptions.find((s) => s.status !== "cancelled") || subscriptions[0];
   }, [subscriptions]);
 
   const currentPlan = useMemo(() => {
@@ -151,24 +143,6 @@ const DonorLangganan = () => {
     }
   };
 
-  const handleUpgrade = async (plan: UpgradePlan) => {
-    if (!activeSubscription) return;
-
-    setActionLoading(true);
-    try {
-      await upgradeSubscription(activeSubscription.id, plan.id);
-      toast.success(`Berhasil upgrade ke ${plan.name}!`, {
-        description: `Tagihan berikutnya: ${formatIDR(plan.price)}/bulan`,
-      });
-      setShowUpgrade(false);
-      await fetchData();
-    } catch (err: any) {
-      toast.error("Gagal upgrade", { description: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const handleChangePayment = async () => {
     if (!activeSubscription || !selectedPayment) return;
 
@@ -183,6 +157,36 @@ const DonorLangganan = () => {
       await fetchData();
     } catch (err: any) {
       toast.error("Gagal mengubah metode", { description: err.message });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const openAmountDialog = () => {
+    if (!activeSubscription) return;
+    setDraftAmount(String(Math.round(Number(activeSubscription.amount))));
+    setShowAmount(true);
+  };
+
+  const handleUpdateAmount = async () => {
+    if (!activeSubscription) return;
+
+    const nextAmount = Number(draftAmount);
+    if (!Number.isFinite(nextAmount) || nextAmount < 10000) {
+      toast.error("Jumlah minimal Rp 10.000");
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await updateSubscriptionAmount(activeSubscription.id, nextAmount);
+      toast.success("Nominal langganan diperbarui", {
+        description: `Donasi bulanan berikutnya menjadi ${formatIDR(nextAmount)}`,
+      });
+      setShowAmount(false);
+      await fetchData();
+    } catch (err: any) {
+      toast.error("Gagal memperbarui nominal", { description: err.message });
     } finally {
       setActionLoading(false);
     }
@@ -299,14 +303,28 @@ const DonorLangganan = () => {
       <div className="space-y-5">
         {/* Active Plan Card */}
         <div
-          className={`rounded-2xl border p-5 ${isCancelled ? "border-red-200 bg-red-50/40" : activeSubscription ? "border-rose-200 bg-rose-50/30" : "border-border bg-card"}`}
+          className={`rounded-2xl border p-5 ${
+            isCancelled
+              ? "border-red-200 bg-red-50/40"
+              : isPaused
+                ? "border-amber-200 bg-amber-50/60"
+                : activeSubscription
+                  ? "border-rose-200 bg-rose-50/30"
+                  : "border-border bg-card"
+          }`}
         >
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
               <div
-                className={`flex h-12 w-12 items-center justify-center rounded-2xl ${isCancelled ? "bg-red-100" : "bg-rose-100"}`}
+                className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                  isCancelled ? "bg-red-100" : isPaused ? "bg-amber-100" : "bg-rose-100"
+                }`}
               >
-                <PlanIcon className={`h-6 w-6 ${isCancelled ? "text-red-600" : "text-rose-600"}`} />
+                <PlanIcon
+                  className={`h-6 w-6 ${
+                    isCancelled ? "text-red-600" : isPaused ? "text-amber-600" : "text-rose-600"
+                  }`}
+                />
               </div>
               <div>
                 <h2 className="font-bold text-foreground">{currentPlan.name}</h2>
@@ -375,7 +393,7 @@ const DonorLangganan = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2">
-            {isActive && (
+            {(isActive || isPaused) && (
               <>
                 <Button
                   size="sm"
@@ -397,10 +415,10 @@ const DonorLangganan = () => {
                   size="sm"
                   variant="outline"
                   className="gap-1.5"
-                  onClick={() => setShowUpgrade(true)}
-                  disabled={actionLoading}
+                  onClick={openAmountDialog}
+                  disabled={actionLoading || isPaused}
                 >
-                  <ArrowUp className="h-3.5 w-3.5" /> Upgrade
+                  <Pencil className="h-3.5 w-3.5" /> Edit Nominal
                 </Button>
                 <Button
                   size="sm"
@@ -410,7 +428,7 @@ const DonorLangganan = () => {
                     setSelectedPayment(currentPaymentMethod);
                     setShowPayment(true);
                   }}
-                  disabled={actionLoading}
+                  disabled={actionLoading || isPaused}
                 >
                   <CreditCard className="h-3.5 w-3.5" /> Ganti Metode
                 </Button>
@@ -439,6 +457,12 @@ const DonorLangganan = () => {
                 )}
                 Aktifkan Kembali
               </Button>
+            )}
+            {isPaused && (
+              <p className="w-full text-xs text-amber-700">
+                Langganan sedang dijeda. Pembayaran bulanan tidak akan diproses sampai Anda
+                melanjutkannya kembali.
+              </p>
             )}
             {!activeSubscription && (
               <p className="text-sm text-muted-foreground">Anda belum memiliki langganan aktif.</p>
@@ -513,42 +537,41 @@ const DonorLangganan = () => {
         </div>
       </div>
 
-      {/* Upgrade Dialog */}
-      <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
+      {/* Edit Amount Dialog */}
+      <Dialog open={showAmount} onOpenChange={setShowAmount}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Upgrade Langganan</DialogTitle>
+            <DialogTitle>Edit Nominal Langganan</DialogTitle>
             <DialogDescription>
-              Pilih paket yang lebih tinggi untuk dampak lebih besar.
+              Masukkan nominal donasi bulanan baru. Perubahan berlaku untuk pembayaran berikutnya.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            {upgradePlans.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Tidak ada paket upgrade tersedia saat ini.
+          <div className="space-y-4">
+            <div>
+              <Label className="mb-1.5 block text-sm font-semibold">Nominal Bulanan</Label>
+              <input
+                type="number"
+                value={draftAmount}
+                onChange={(e) => setDraftAmount(e.target.value)}
+                min="10000"
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none transition-colors focus:border-green-600 focus:ring-1 focus:ring-green-600"
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Minimal donasi bulanan Rp 10.000.
               </p>
-            ) : (
-              upgradePlans.map((plan) => (
-                <button
-                  key={plan.id}
-                  onClick={() => handleUpgrade(plan)}
-                  disabled={actionLoading}
-                  className="w-full rounded-xl border border-rose-200 bg-rose-50 p-4 flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition-all text-left disabled:opacity-50"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-white">
-                    <Heart className="h-5 w-5 text-rose-600" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-foreground">{plan.name}</div>
-                    <div className="text-xs text-muted-foreground">{plan.description}</div>
-                    <div className="text-sm font-bold mt-0.5 text-rose-600">
-                      {formatIDR(plan.price)}/bulan
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
-                </button>
-              ))
-            )}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAmount(false)}>
+                Batal
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                onClick={handleUpdateAmount}
+                disabled={actionLoading}
+              >
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Simpan"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
