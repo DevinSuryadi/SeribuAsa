@@ -9,13 +9,12 @@ import {
   Download,
   FileText,
   Search,
-  Heart,
-  TrendingUp,
-  CheckCircle,
   Plus,
   Loader2,
   CreditCard,
   QrCode,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { formatIDR, formatDate } from "@/lib/format";
 import { getDonations, getPaymentLink, simulatePayment } from "@/services/donations";
@@ -29,8 +28,6 @@ import type { Donation, DonationStatus } from "@/types/donation";
 import { toast } from "sonner";
 import { ErrorState } from "@/components/dashboard/ErrorState";
 import { CardSkeletonGrid, ListItemSkeleton } from "@/components/dashboard/LoadingSkeleton";
-import { KpiCard, KpiCardGrid } from "@/components/dashboard/KpiCard";
-import { donationStatusConfig } from "@/lib/status-config";
 import {
   Dialog,
   DialogContent,
@@ -72,6 +69,8 @@ const DonorRiwayat = () => {
   const [exporting, setExporting] = useState(false);
   const [selectedPending, setSelectedPending] = useState<Donation | null>(null);
   const [payingDonationId, setPayingDonationId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const fetchDonations = useCallback(async () => {
     const controller = new AbortController();
@@ -208,6 +207,18 @@ const DonorRiwayat = () => {
     [donations]
   );
 
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  const paginatedDonations = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  }, [filtered, currentPage]);
+
+  useEffect(() => {
+  setCurrentPage(1);
+  }, [search, statusFilter]);
+
   if (loading) {
     return (
       <DashboardLayout title="Riwayat Donasi" subtitle="Semua transaksi donasi Anda.">
@@ -232,22 +243,31 @@ const DonorRiwayat = () => {
   return (
     <DashboardLayout title="Riwayat Donasi" subtitle="Semua transaksi donasi Anda.">
       <div className="space-y-5">
-        {/* Stats Row */}
-        <KpiCardGrid columns={3}>
-          <KpiCard
-            icon={Heart}
-            label="Total Berhasil"
-            value={formatIDR(totalDonated)}
-            variant="rose"
-          />
-          <KpiCard
-            icon={TrendingUp}
-            label="Total Transaksi"
-            value={`${totalCount}x`}
-            variant="blue"
-          />
-          <KpiCard icon={CheckCircle} label="Sukses" value={`${successCount}x`} variant="green" />
-        </KpiCardGrid>
+        {/* Stats Summary */}
+<div className="rounded-2xl border border-border bg-card shadow-sm">
+  <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+    <div className="px-6 py-6 md:px-8">
+      <p className="text-sm font-semibold text-muted-foreground">Total Donasi</p>
+      <p className="mt-3 text-3xl font-bold tracking-tight text-emerald-700">
+        {formatIDR(totalDonated)}
+      </p>
+    </div>
+
+    <div className="px-6 py-6 md:px-8">
+      <p className="text-sm font-semibold text-muted-foreground">Total Transaksi</p>
+      <p className="mt-3 text-2xl font-bold tracking-tight text-foreground">
+        {totalCount} transaksi
+      </p>
+    </div>
+
+    <div className="px-6 py-6 md:px-8">
+      <p className="text-sm font-semibold text-muted-foreground">Transaksi Berhasil</p>
+      <p className="mt-3 text-2xl font-bold tracking-tight text-foreground">
+        {successCount} berhasil
+      </p>
+    </div>
+  </div>
+</div>
 
         {/* Search & Filter Bar */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
@@ -265,10 +285,10 @@ const DonorRiwayat = () => {
               <button
                 key={tab.key}
                 onClick={() => setStatusFilter(tab.key)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
                   statusFilter === tab.key
-                    ? "bg-rose-600 text-white"
-                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                    ? "bg-emerald-700 text-white shadow-sm hover:bg-emerald-800"
+                    : "border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 {tab.label}
@@ -291,105 +311,173 @@ const DonorRiwayat = () => {
           </Button>
         </div>
 
-        {/* Transaction List */}
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          {filtered.length === 0 ? (
-            <div className="text-center py-14">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 mx-auto mb-4">
-                <Heart className="h-6 w-6 text-rose-400" />
-              </div>
-              <p className="font-semibold text-foreground mb-1">Tidak ada donasi ditemukan</p>
-              <p className="text-sm text-muted-foreground mb-5">
-                {search || statusFilter !== "all"
-                  ? "Coba ubah kata kunci"
-                  : "Mulai berdonasi untuk mendukung nutrisi anak"}
-              </p>
-              <Button
-                size="sm"
-                onClick={() => navigate("/donation/create")}
-                className="bg-rose-600 hover:bg-rose-700 gap-1.5"
+        {/* Transaction Table */}
+<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+  {filtered.length === 0 ? (
+    <div className="text-center py-14">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+        <FileText className="h-6 w-6 text-muted-foreground" />
+      </div>
+
+      <p className="font-semibold text-foreground mb-1">Tidak ada donasi ditemukan</p>
+      <p className="text-sm text-muted-foreground mb-5">
+        {search || statusFilter !== "all"
+          ? "Coba ubah kata kunci atau filter status."
+          : "Mulai berdonasi untuk mendukung nutrisi anak."}
+      </p>
+
+      <Button
+        size="sm"
+        onClick={() => navigate("/donation/create")}
+        className="bg-emerald-700 hover:bg-emerald-800 gap-1.5"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Buat Donasi
+      </Button>
+    </div>
+  ) : (
+    <>
+      <div className="px-5 py-4 sm:px-6">
+        <div className="hidden grid-cols-[1.2fr_1.7fr_1.1fr_1.2fr_1fr] gap-6 border-b border-border pb-4 text-sm font-semibold text-muted-foreground md:grid">
+          <div>Tanggal</div>
+          <div>Jenis Donasi</div>
+          <div>Metode</div>
+          <div>Nominal</div>
+          <div>Status</div>
+        </div>
+
+        <div className="divide-y divide-border">
+          {paginatedDonations.map((d) => {
+            const typeLabel =
+              d.type === "subscription" ? "Donasi Langganan" : "Donasi Satu Kali";
+
+            
+            const statusLabel =
+              d.status === "success"
+                ? "Berhasil"
+                : d.status === "pending"
+                  ? "Menunggu"
+                  : "Gagal";
+
+            const statusClass =
+              d.status === "success"
+                ? "bg-green-100 text-green-700 border-green-200"
+                : d.status === "pending"
+                  ? "bg-amber-100 text-amber-700 border-amber-200"
+                  : "bg-red-100 text-red-700 border-red-200";
+
+            const methodLabel =
+              paymentMethodLabel[d.payment_method] || d.payment_method?.replace("_", " ") || "—";
+
+            return (
+              <div
+                key={d.id}
+                className="grid gap-3 py-4 md:grid-cols-[1.2fr_1.7fr_1.1fr_1.2fr_1fr] md:items-center md:gap-6"
               >
-                <Plus className="h-3.5 w-3.5" /> Buat Donasi
-              </Button>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/50">
-              {filtered.map((d) => {
-                const typeLabel =
-                  d.type === "subscription" ? "Donasi Langganan" : "Donasi Satu Kali";
-                const sc = donationStatusConfig[d.status] || {
-                  ...donationStatusConfig.pending,
-                  label: d.status,
-                  icon: FileText,
-                };
-                const StatusIcon = sc.icon;
-                return (
-                  <div
-                    key={d.id}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors group"
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {formatDate(d.created_at)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-foreground">{typeLabel}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-foreground">{methodLabel}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-bold text-foreground">{formatIDR(d.amount)}</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusClass}`}
                   >
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-50">
-                      <Heart className="h-4 w-4 text-rose-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-foreground">{typeLabel}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatDate(d.created_at)}
-                        {d.payment_method && (
-                          <span className="ml-1.5 opacity-60">
-                            · {d.payment_method.replace("_", " ")}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right flex items-center gap-3 flex-shrink-0">
-                      <div>
-                        <div className="text-sm font-bold text-foreground">
-                          {formatIDR(d.amount)}
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={`text-[9px] border gap-0.5 ${sc.className}`}
-                        >
-                          <StatusIcon className="h-2.5 w-2.5" />
-                          {sc.label}
-                        </Badge>
-                      </div>
-                      {d.status === "pending" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
-                          onClick={() => openPendingPayment(d)}
-                        >
-                          <CreditCard className="h-3.5 w-3.5" />
-                          Bayar
-                        </Button>
+                    {statusLabel}
+                  </Badge>
+
+                  {d.status === "pending" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 border-amber-300 text-amber-700 hover:bg-amber-50"
+                      onClick={() => openPendingPayment(d)}
+                    >
+                      Bayar
+                    </Button>
+                  )}
+
+                  {d.status === "success" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleDownloadReceipt(d.id)}
+                      disabled={downloadingReceipt === d.id}
+                      aria-label={`Unduh kwitansi untuk donasi ${d.id.slice(0, 8)}`}
+                    >
+                      {downloadingReceipt === d.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
                       )}
-                      {d.status === "success" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleDownloadReceipt(d.id)}
-                          disabled={downloadingReceipt === d.id}
-                          aria-label={`Unduh kwitansi untuk donasi ${d.id.slice(0, 8)}`}
-                        >
-                          {downloadingReceipt === d.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Download className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
+
+      {totalPages > 1 && (
+  <div className="flex items-center justify-center gap-3 border-t border-border px-5 py-5">
+    <Button
+      variant="outline"
+      size="icon"
+      className="h-9 w-9 rounded-lg"
+      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+      disabled={currentPage === 1}
+    >
+      <ChevronLeft className="h-4 w-4" />
+    </Button>
+
+    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+      <Button
+        key={page}
+        variant={currentPage === page ? "default" : "outline"}
+        size="icon"
+        className={`h-9 w-9 rounded-lg ${
+          currentPage === page
+            ? "bg-emerald-700 text-white hover:bg-emerald-800"
+            : ""
+        }`}
+        onClick={() => setCurrentPage(page)}
+      >
+        {page}
+      </Button>
+    ))}
+
+    <Button
+      variant="outline"
+      size="icon"
+      className="h-9 w-9 rounded-lg"
+      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+      disabled={currentPage === totalPages}
+    >
+      <ChevronRight className="h-4 w-4" />
+    </Button>
+  </div>
+)}
+    </>
+  )}
+</div>
+
+  </div>
 
       <Dialog open={!!selectedPending} onOpenChange={(open: boolean) => !open && closePendingPayment()}>
         <DialogContent className="max-w-xl rounded-2xl p-0 overflow-hidden">
@@ -460,7 +548,7 @@ const DonorRiwayat = () => {
               Tutup
             </Button>
             <Button
-              className="gap-2 bg-rose-600 hover:bg-rose-700"
+              className="gap-2 bg-emerald-700 hover:bg-emerald-800"
               onClick={handleContinuePayment}
               disabled={!!payingDonationId}
             >
