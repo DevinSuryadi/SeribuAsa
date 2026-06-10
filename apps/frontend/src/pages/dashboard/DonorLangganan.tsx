@@ -22,7 +22,6 @@ import {
   CreditCard,
   Play,
   Pencil,
-  Heart,
   Wallet,
   QrCode,
   Landmark,
@@ -55,7 +54,6 @@ const paymentMethods = [
 const DonorLangganan = () => {
   const { user } = useAuth();
   const [showCancel, setShowCancel] = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showAmount, setShowAmount] = useState(false);
   const [showDetails, setShowDetails] = useState(true);
@@ -63,7 +61,6 @@ const DonorLangganan = () => {
   const [selectedPayment, setSelectedPayment] = useState("");
   const [draftAmount, setDraftAmount] = useState("");
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [upgradePlans, setUpgradePlans] = useState<UpgradePlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,12 +76,8 @@ const DonorLangganan = () => {
     setLoading(true);
     setError(null);
     try {
-      const [subsData, plansData] = await Promise.all([
-        getSubscriptions(),
-        getUpgradePlans().catch(() => []),
-      ]);
+      const subsData = await getSubscriptions();
       setSubscriptions(subsData);
-      setUpgradePlans(plansData);
     } catch (err: any) {
       setError(err.message || "Gagal memuat data langganan");
       toast.error("Gagal memuat data", { description: err.message });
@@ -151,24 +144,6 @@ const DonorLangganan = () => {
       await fetchData(); // Refresh data
     } catch (err: any) {
       toast.error("Gagal mengubah status", { description: err.message });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleUpgrade = async (plan: UpgradePlan) => {
-    if (!activeSubscription) return;
-
-    setActionLoading(true);
-    try {
-      await upgradeSubscription(activeSubscription.id, plan.id);
-      toast.success(`Berhasil upgrade ke ${plan.name}!`, {
-        description: `Tagihan berikutnya: ${formatIDR(plan.price)}/bulan`,
-      });
-      setShowUpgrade(false);
-      await fetchData();
-    } catch (err: any) {
-      toast.error("Gagal upgrade", { description: err.message });
     } finally {
       setActionLoading(false);
     }
@@ -468,19 +443,6 @@ const DonorLangganan = () => {
                   <Button
                     size="sm"
                     className="h-10 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800"
-                    onClick={() => setShowUpgrade(true)}
-                    disabled={actionLoading}
-                  >
-                    {actionLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      "Tingkatkan Langganan"
-                    )}
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    className="h-10 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800"
                     onClick={openAmountDialog}
                     disabled={actionLoading}
                   >
@@ -691,48 +653,6 @@ const DonorLangganan = () => {
           )}
         </div>
       </div>
-
-      {/* Upgrade Dialog */}
-      <Dialog open={showUpgrade} onOpenChange={setShowUpgrade}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Tingkatkan Langganan</DialogTitle>
-            <DialogDescription>
-              Pilih paket yang lebih tinggi untuk dampak lebih besar.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {upgradePlans.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Belum ada paket yang dapat ditingkatkan saat ini.
-              </p>
-            ) : (
-              upgradePlans.map((plan) => (
-                <button
-                  key={plan.id}
-                  onClick={() => handleUpgrade(plan)}
-                  disabled={actionLoading}
-                  className="w-full rounded-xl border border-rose-200 bg-rose-50 p-4 flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition-all text-left disabled:opacity-50"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-white">
-                    <Heart className="h-5 w-5 text-rose-600" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-foreground">{plan.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {plan.description}
-                    </div>
-                    <div className="text-sm font-bold mt-0.5 text-rose-600">
-                      {formatIDR(plan.price)}/bulan
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
-                </button>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Edit Amount Dialog */}
       <Dialog open={showAmount} onOpenChange={setShowAmount}>
