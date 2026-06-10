@@ -3,36 +3,105 @@ import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import {
-  BarChart3,
-  MapPin,
-  TrendingUp,
-  Users,
-  Heart,
-  CreditCard,
-  RefreshCw,
-  AlertCircle,
-  Sparkles,
-} from "lucide-react";
-import {
-  BarChart,
+  Area,
+  AreaChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
 } from "recharts";
 import { formatIDR } from "@/lib/format";
 import type { ImpactReport } from "@/services/reports";
 import { getImpactReport } from "@/services/reports";
 import { toast } from "sonner";
 
-const CHART_COLORS = ["#16a34a", "#2563eb", "#f59e0b", "#8b5cf6"];
+const GREEN = "#047857";
+const GREEN_DARK = "#065f46";
+const GRID = "#e5e7eb";
+
+const formatCompactNumber = (value: number) => {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}M`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}jt`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}rb`;
+  return String(value);
+};
+
+const getNumberValue = (item: any, keys: string[], fallback = 0) => {
+  for (const key of keys) {
+    if (item?.[key] !== undefined && item?.[key] !== null) {
+      const value = Number(item[key]);
+      return Number.isNaN(value) ? fallback : value;
+    }
+  }
+
+  return fallback;
+};
+
+const getStringValue = (item: any, keys: string[], fallback = "Data") => {
+  for (const key of keys) {
+    if (item?.[key]) return String(item[key]);
+  }
+
+  return fallback;
+};
+
+const ChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-xl border border-border bg-white px-3 py-2 text-xs shadow-sm">
+      <p className="font-semibold text-foreground">{label}</p>
+      <p className="mt-1 text-muted-foreground">
+        Total:{" "}
+        <span className="font-semibold text-emerald-700">
+          {formatIDR(Number(payload[0]?.value || 0))}
+        </span>
+      </p>
+    </div>
+  );
+};
+
+const EmptyState = ({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) => (
+  <div className="flex h-[260px] items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-6 text-center">
+    <div>
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="mt-1 max-w-md text-sm leading-relaxed text-muted-foreground">
+        {description}
+      </p>
+    </div>
+  </div>
+);
+
+const ImpactMetric = ({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+}) => (
+  <div className="flex h-full min-h-[180px] flex-col px-6 py-6">
+    <p className="text-sm font-medium text-muted-foreground">{label}</p>
+
+    <p className="mt-6 text-xl font-bold tracking-tight text-emerald-700">
+      {value}
+    </p>
+
+    <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
+      {helper}
+    </p>
+  </div>
+);
 
 const DonorDampak = () => {
   const { user } = useAuth();
@@ -42,15 +111,21 @@ const DonorDampak = () => {
 
   const fetchReport = useCallback(async () => {
     if (!user?.id) return;
+
     try {
       setLoading(true);
       setError(null);
+
       const endDate = new Date().toISOString().split("T")[0];
-      const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0];
+
       const data = await getImpactReport(startDate, endDate);
+      console.log("Impact report:", data);
       setReport(data);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Gagal memuat dampak donasi");
       toast.error("Gagal memuat dampak donasi");
     } finally {
       setLoading(false);
@@ -65,8 +140,17 @@ const DonorDampak = () => {
     () => parseFloat(report?.summary?.total_donated?.toString() || "0"),
     [report]
   );
-  const childrenHelped = useMemo(() => report?.summary?.total_children_helped || 0, [report]);
-  const vouchersAllocated = useMemo(() => report?.summary?.total_vouchers_allocated || 0, [report]);
+
+  const childrenHelped = useMemo(
+    () => Number(report?.summary?.total_children_helped || 0),
+    [report]
+  );
+
+  const vouchersAllocated = useMemo(
+    () => Number(report?.summary?.total_vouchers_allocated || 0),
+    [report]
+  );
+
   const vouchersRedeemed = useMemo(
     () =>
       Number(
@@ -78,13 +162,81 @@ const DonorDampak = () => {
       ),
     [report]
   );
-  const trendData = useMemo(() => report?.donation_trend || [], [report]);
-  const geoData = useMemo(() => report?.geographic_distribution || [], [report]);
-  // Calculate redemption rate from actual API data, not hardcoded
+
+  const trendData = useMemo(() => {
+    const raw = report?.donation_trend || [];
+
+    return raw.map((item: any, index: number) => ({
+      label: getStringValue(
+        item,
+        ["month", "period", "date", "label"],
+        `Bulan ${index + 1}`
+      ),
+      value: getNumberValue(item, [
+        "total",
+        "amount",
+        "total_amount",
+        "total_donation",
+        "donation_total",
+        "value",
+      ]),
+    }));
+  }, [report]);
+
+  const geoData = useMemo(() => {
+    const raw = report?.geographic_distribution || [];
+
+    return raw.map((item: any) => ({
+      label: getStringValue(item, [
+        "region",
+        "province",
+        "city",
+        "area",
+        "wilayah",
+        "label",
+      ]),
+      value: getNumberValue(item, [
+        "total",
+        "amount",
+        "total_amount",
+        "total_donation",
+        "donation_total",
+        "value",
+      ]),
+    }));
+  }, [report]);
+
+const voucherCategoryData = useMemo(() => {
+  const raw =
+    (report as any)?.voucher_category_usage ||
+    (report as any)?.voucher_usage_by_category ||
+    (report as any)?.category_usage ||
+    [];
+
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((item: any) => ({
+    label: getStringValue(item, [
+      "category",
+      "name",
+      "label",
+      "product_category",
+    ]),
+    value: getNumberValue(item, [
+      "total",
+      "count",
+      "used",
+      "redeemed",
+      "value",
+    ]),
+  }));
+}, [report]);
+
   const redemptionRate = useMemo(() => {
     if (vouchersAllocated > 0 && vouchersRedeemed > 0) {
       return Math.round((vouchersRedeemed / vouchersAllocated) * 100);
     }
+
     return (
       (
         report?.summary as {
@@ -94,78 +246,30 @@ const DonorDampak = () => {
     );
   }, [vouchersAllocated, vouchersRedeemed, report]);
 
-  const kpiCards = [
-    {
-      label: "Total Donasi",
-      value: formatIDR(totalDonated),
-      icon: Heart,
-      color: "text-rose-600",
-      bg: "bg-rose-50",
-      border: "border-rose-200",
-    },
-    {
-      label: "Anak Terbantu",
-      value: `${childrenHelped} anak`,
-      icon: Users,
-      color: "text-green-600",
-      bg: "bg-green-50",
-      border: "border-green-200",
-    },
-    {
-      label: "Voucher Dialokasikan",
-      value: `${vouchersAllocated} voucher`,
-      icon: CreditCard,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-      border: "border-blue-200",
-    },
-    {
-      label: "Tren Donasi",
-      value: `${trendData.length} bulan`,
-      icon: TrendingUp,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-      border: "border-purple-200",
-    },
-    {
-      label: "Wilayah Terjangkau",
-      value: `${geoData.length} wilayah`,
-      icon: MapPin,
-      color: "text-orange-600",
-      bg: "bg-orange-50",
-      border: "border-orange-200",
-    },
-    {
-      label: "Tingkat Penukaran",
-      value: `${redemptionRate}%`,
-      icon: BarChart3,
-      color: "text-indigo-600",
-      bg: "bg-indigo-50",
-      border: "border-indigo-200",
-    },
-  ];
-
   if (loading) {
     return (
       <DashboardLayout
         title="Dampak Donasi Anda"
         subtitle="Lihat bagaimana donasi Anda membuat perubahan nyata."
       >
-        <div className="space-y-5">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="rounded-2xl border border-border bg-card p-5 animate-pulse">
-                <div className="h-9 w-9 rounded-xl bg-secondary mb-3" />
-                <div className="h-7 w-24 bg-secondary rounded mb-2" />
-                <div className="h-3 w-16 bg-secondary rounded" />
-              </div>
-            ))}
+        <div className="space-y-6">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div className="grid grid-cols-1 items-stretch divide-y divide-border lg:grid-cols-[1.5fr_1fr_1.15fr_1fr_1fr] lg:divide-x lg:divide-y-0">
+              {[1, 2, 3, 4, 5].map((item) => (
+                <div key={item} className="px-6 py-6">
+                  <div className="h-4 w-32 animate-pulse rounded bg-secondary" />
+                  <div className="mt-4 h-8 w-40 animate-pulse rounded bg-secondary" />
+                  <div className="mt-4 h-4 w-36 animate-pulse rounded bg-secondary" />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {[1, 2].map((i) => (
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            {[1, 2].map((item) => (
               <div
-                key={i}
-                className="rounded-2xl border border-border bg-card p-5 animate-pulse h-72"
+                key={item}
+                className="h-[380px] animate-pulse rounded-2xl border border-border bg-card shadow-sm"
               />
             ))}
           </div>
@@ -180,189 +284,223 @@ const DonorDampak = () => {
         title="Dampak Donasi Anda"
         subtitle="Lihat bagaimana donasi Anda membuat perubahan nyata."
       >
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 flex items-start gap-4">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-red-800 mb-1">Gagal memuat data</h3>
-            <p className="text-sm text-red-600 mb-3">{error}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchReport}
-              className="border-red-300 text-red-700"
-            >
-              <RefreshCw className="mr-2 h-3 w-3" /> Coba Lagi
-            </Button>
-          </div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+          <h3 className="font-semibold text-red-800">Gagal memuat data</h3>
+          <p className="mt-1 text-sm text-red-600">{error}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchReport}
+            className="mt-4 border-red-300 text-red-700 hover:bg-red-100"
+          >
+            Coba Lagi
+          </Button>
         </div>
       </DashboardLayout>
     );
   }
-
-  const tooltipStyle = {
-    background: "white",
-    border: "1px solid #e5e7eb",
-    borderRadius: "12px",
-    fontSize: "12px",
-  };
 
   return (
     <DashboardLayout
       title="Dampak Donasi Anda"
       subtitle="Lihat bagaimana donasi Anda membuat perubahan nyata."
     >
-      <div className="space-y-5">
-        {/* Hero Banner */}
-        <div
-          className="rounded-2xl p-5 relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #e11d48 0%, #be123c 60%, #9f1239 100%)" }}
-        >
-          <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
-          <div className="relative z-10 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-              <Sparkles className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm text-rose-200 font-medium">Dampak Nyata Donasi Anda</p>
-              <p className="text-2xl font-extrabold text-white">{formatIDR(totalDonated)}</p>
-              <p className="text-xs text-rose-200 mt-0.5">
-                Membantu <strong className="text-white">{childrenHelped} anak</strong> mendapat
-                nutrisi di <strong className="text-white">{geoData.length} wilayah</strong>
+      <div className="space-y-6">
+        {/* Impact Summary */}
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[1.5fr_1fr_1.15fr_1fr_1fr] lg:divide-x lg:divide-y-0">
+            <div className="px-6 py-6 md:px-8">
+              <p className="text-sm font-semibold text-muted-foreground">
+                Total Dampak Donasi Anda
+              </p>
+              <p className="mt-4 text-4xl font-bold tracking-tight text-emerald-700">
+                {formatIDR(totalDonated)}
+              </p>
+              <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
+                Total donasi yang telah tersalurkan melalui program nutrisi anak.
               </p>
             </div>
-          </div>
-        </div>
 
-        {/* KPI Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {kpiCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <div key={card.label} className={`rounded-2xl border p-4 ${card.border} ${card.bg}`}>
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg border bg-white ${card.border} mb-2.5`}
-                >
-                  <Icon className={`h-4 w-4 ${card.color}`} />
-                </div>
-                <div className={`text-xl font-extrabold leading-tight ${card.color}`}>
-                  {card.value}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{card.label}</p>
-              </div>
-            );
-          })}
+            <ImpactMetric
+              label="Anak Terbantu"
+              value={`${childrenHelped} anak`}
+              helper="Mendapat nutrisi"
+            />
+
+            <ImpactMetric
+              label="Voucher Dialokasikan"
+              value={`${vouchersAllocated} voucher`}
+              helper="Untuk penukaran"
+            />
+
+            <ImpactMetric
+              label="Wilayah Terjangkau"
+              value={`${geoData.length} wilayah`}
+              helper="Sebaran donasi"
+            />
+
+            <ImpactMetric
+              label="Tingkat Penukaran"
+              value={`${redemptionRate}%`}
+              helper="Dari total voucher"
+            />
+          </div>
         </div>
 
         {/* Charts */}
-        <div className="grid gap-5 lg:grid-cols-2">
-          {/* Monthly Trend */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50">
-                <TrendingUp className="h-4 w-4 text-rose-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-foreground">Tren Donasi Bulanan</h3>
-                <p className="text-xs text-muted-foreground">90 hari terakhir</p>
-              </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="mb-6">
+              <h2 className="text-lg font-bold tracking-tight text-foreground">
+                Tren Donasi Bulanan
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">90 hari terakhir</p>
             </div>
-            {trendData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                  <YAxis
-                    tick={{ fill: "#94a3b8", fontSize: 11 }}
-                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    formatter={(value) => formatIDR(Number(value))}
-                    contentStyle={tooltipStyle}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="amount"
-                    stroke="#e11d48"
-                    strokeWidth={2.5}
-                    dot={{ fill: "#e11d48", r: 4 }}
-                    name="Donasi"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+
+            {trendData.length === 0 ? (
+              <EmptyState
+                title="Belum ada data tren donasi"
+                description="Grafik akan muncul setelah terdapat transaksi donasi dalam periode ini."
+              />
             ) : (
-              <div className="flex flex-col items-center justify-center h-[220px] text-muted-foreground">
-                <TrendingUp className="h-10 w-10 mb-2 opacity-30" />
-                <p className="text-sm">Belum ada data tren</p>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={trendData}
+                    margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="donationTrend" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={GREEN} stopOpacity={0.16} />
+                        <stop offset="95%" stopColor={GREEN} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+
+                    <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                      dy={10}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                      tickFormatter={(value) => formatCompactNumber(Number(value))}
+                    />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke={GREEN}
+                      strokeWidth={2.5}
+                      fill="url(#donationTrend)"
+                      dot={{ r: 4, fill: GREEN_DARK, strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: GREEN_DARK }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             )}
           </div>
 
-          {/* Geographic Distribution */}
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-                <MapPin className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-foreground">Distribusi Geografis</h3>
-                <p className="text-xs text-muted-foreground">Sebaran donasi per wilayah</p>
-              </div>
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="mb-6">
+              <h2 className="text-lg font-bold tracking-tight text-foreground">
+                Distribusi Geografis
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Sebaran donasi per wilayah
+              </p>
             </div>
-            {geoData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={geoData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="region" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="amount" fill="#2563eb" name="Donasi" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+
+            {geoData.length === 0 ? (
+              <EmptyState
+                title="Belum ada data wilayah"
+                description="Distribusi geografis akan muncul setelah donasi tersalurkan ke wilayah penerima."
+              />
             ) : (
-              <div className="flex flex-col items-center justify-center h-[220px] text-muted-foreground">
-                <MapPin className="h-10 w-10 mb-2 opacity-30" />
-                <p className="text-sm">Belum ada data wilayah</p>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={geoData}
+                    layout="vertical"
+                    margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
+                    <XAxis
+                      type="number"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                      tickFormatter={(value) => formatCompactNumber(Number(value))}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      width={95}
+                      tick={{ fontSize: 12, fill: "#334155" }}
+                    />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Bar dataKey="value" fill={GREEN} radius={[0, 8, 8, 0]} barSize={14} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             )}
           </div>
         </div>
 
-        {/* Voucher Category Pie (only if data exists) */}
-        {geoData.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50">
-                <BarChart3 className="h-4 w-4 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-foreground">
-                  Penggunaan Voucher per Kategori
-                </h3>
-                <p className="text-xs text-muted-foreground">Komposisi penggunaan voucher</p>
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={240}>
-              <PieChart>
-                <Pie
-                  data={geoData.slice(0, 4).map((g) => ({ name: g.district, value: g.amount }))}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  dataKey="value"
-                  label={(entry: any) => entry.name}
-                >
-                  {geoData.slice(0, 4).map((_: any, i: number) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} formatter={(v) => formatIDR(Number(v))} />
-              </PieChart>
-            </ResponsiveContainer>
+        {/* Voucher Category */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-6">
+            <h2 className="text-lg font-bold tracking-tight text-foreground">
+              Penggunaan Voucher per Kategori
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Ringkasan kategori produk yang ditukarkan menggunakan voucher.
+            </p>
           </div>
-        )}
+
+          {voucherCategoryData.length === 0 ? (
+            <EmptyState
+              title="Belum ada data penggunaan voucher"
+              description="Data kategori akan muncul setelah penerima menukarkan voucher pada produk yang tersedia."
+            />
+          ) : (
+            <div className="space-y-4">
+              {voucherCategoryData.map((item) => {
+                const maxValue = Math.max(
+                  ...voucherCategoryData.map((data) => data.value),
+                  1
+                );
+                const percentage = Math.round((item.value / maxValue) * 100);
+
+                return (
+                  <div key={item.label}>
+                    <div className="mb-2 flex items-center justify-between gap-4">
+                      <p className="text-sm font-medium text-foreground">{item.label}</p>
+                      <p className="text-sm font-semibold text-emerald-700">
+                        {item.value} voucher
+                      </p>
+                    </div>
+
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-emerald-700"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
     </DashboardLayout>
   );
