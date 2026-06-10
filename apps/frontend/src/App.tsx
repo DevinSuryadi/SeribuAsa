@@ -36,6 +36,7 @@ import ScrollToTop from "./components/ScrollToTop";
 const Donasi = lazy(() => import("./pages/Donasi"));
 const Tentang = lazy(() => import("./pages/Tentang"));
 const Dampak = lazy(() => import("./pages/Dampak"));
+const MitraKami = lazy(() => import("./pages/landing/MitraKami"));
 const DonorDampak = lazy(() => import("./pages/dashboard/DonorDampak"));
 const PemantauanGizi = lazy(() => import("./pages/dashboard/PemantauanGizi"));
 const KatalogPangan = lazy(() => import("./pages/dashboard/KatalogPangan"));
@@ -129,6 +130,14 @@ function App() {
           element={
             <Suspense fallback={<PageLoader />}>
               <Dampak />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/mitra"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <MitraKami />
             </Suspense>
           }
         />

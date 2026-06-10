@@ -40,7 +40,6 @@ if database_url:
     # Replace the connection string host to use the IPv4 pooler if it's a Supabase DB.
     # Note: .pooler.supabase.com supports IPv4.
     if ".supabase.co" in database_url and ":6543" in database_url:
-        import re
         # Convert db.projectref.supabase.co to aws-0-region.pooler.supabase.com
         # Or simply instruct the user, but we can attempt to handle common patterns.
         # But a safer approach is to check if it's already using the pooler

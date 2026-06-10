@@ -4,7 +4,7 @@ Tests donation operations: create, process, metrics, and reporting
 """
 import pytest
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import uuid4
 from unittest.mock import MagicMock, patch
 

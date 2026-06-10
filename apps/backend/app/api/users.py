@@ -15,7 +15,8 @@ from app.schemas.user import (
     UserSignUpResponse,
     UserProfileUpdateRequest,
     UserProfileResponse,
-    UserRole
+    UserRole,
+    PublicVendorResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,29 @@ def _build_user_profile_response(db: Session, user_profile: UserProfile) -> User
         created_at=user_profile.created_at,
         updated_at=user_profile.updated_at,
     )
+
+
+@router.get("/public/vendors", response_model=list[PublicVendorResponse])
+async def get_public_vendors(db: Session = Depends(get_db)):
+    """
+    Get a list of all approved vendors for public display.
+    No authentication required.
+    """
+    vendors = db.query(VendorProfile).filter(
+        VendorProfile.approval_status == "approved",
+        VendorProfile.is_active.is_(True)
+    ).order_by(VendorProfile.created_at.desc()).all()
+    
+    # We map it manually to match the schema
+    result = []
+    for v in vendors:
+        result.append(PublicVendorResponse(
+            store_name=v.store_name or "Warung SeribuAsa",
+            store_address=v.store_address or "Indonesia",
+            join_date=v.created_at
+        ))
+    
+    return result
 
 
 @router.post("/signup", response_model=UserSignUpResponse, status_code=status.HTTP_201_CREATED)

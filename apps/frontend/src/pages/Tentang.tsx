@@ -47,6 +47,14 @@ const values = [
   },
 ];
 
+const team = [
+  { name: "Achmad Faruq Mahdison", role: "Project Manager", photo: "" },
+  { name: "Keyna Fatima Abinalibrata", role: "Frontend Engineer", photo: "" },
+  { name: "Devin Suryadi", role: "Backend Engineer", photo: "" },
+  { name: "Muhammad Ilhamsyah Ridwan", role: "Backend Engineer", photo: "" },
+  { name: "Dosen Pembimbing", role: "Dosen Pembimbing", photo: "" },
+];
+
 const Tentang = () => {
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", email: "", msg: "" });
@@ -106,6 +114,35 @@ const Tentang = () => {
                 <p className="text-sm text-gray-400 leading-relaxed">{item.desc}</p>
               </div>
             ))}
+          </div>
+
+          {/* Team Section */}
+          <div className="max-w-4xl mx-auto mb-16 md:mb-20">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center tracking-tight mb-8">
+              Tim Pengembang
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+              {team.map((member) => (
+                <div
+                  key={member.name}
+                  className="rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md p-6 text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+                >
+                  {member.photo ? (
+                    <img 
+                      src={member.photo} 
+                      alt={member.name} 
+                      className="w-16 h-16 mx-auto rounded-full object-cover mb-4 shadow-sm border border-green-100"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 mx-auto rounded-full bg-green-50 text-green-600 flex items-center justify-center text-xl font-bold mb-4 shadow-sm border border-green-100">
+                      {member.name.charAt(0)}
+                    </div>
+                  )}
+                  <h3 className="font-semibold text-gray-900 text-sm mb-1">{member.name}</h3>
+                  <p className="text-xs text-green-600 font-medium">{member.role}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* FAQ */}

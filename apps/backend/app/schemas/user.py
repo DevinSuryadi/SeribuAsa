@@ -96,3 +96,12 @@ class UserProfileUpdateRequest(BaseModel):
     bank_name: str | None = Field(None, max_length=100)
     bank_account_number: str | None = Field(None, max_length=50)
     bank_account_holder: str | None = Field(None, max_length=255)
+
+
+class PublicVendorResponse(BaseModel):
+    """Schema for public vendor directory response"""
+    model_config = ConfigDict(from_attributes=True)
+
+    store_name: str
+    store_address: str
+    join_date: datetime

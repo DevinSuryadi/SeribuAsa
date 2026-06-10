@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 import { Helmet as HelmetBase } from "react-helmet-async";
 
 interface SEOProps {

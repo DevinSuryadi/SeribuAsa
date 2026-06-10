@@ -227,7 +227,7 @@ async function getCombinedUserProfile(
 
       if (!response.ok) {
         let fullName = "User";
-        let role = await getSessionRoleFallback().catch(() => "donor");
+        const role = await getSessionRoleFallback().catch(() => "donor");
 
         if (response.status === 404) {
           return { role: role as UserRole, fullName, exists: false };
