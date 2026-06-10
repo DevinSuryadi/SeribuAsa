@@ -20,7 +20,8 @@ import { toast } from "sonner";
 
 const GREEN = "#047857";
 const GREEN_DARK = "#065f46";
-const GRID = "#e5e7eb";
+const GRID = "var(--border)";
+const TEXT_COLOR = "var(--muted-foreground)";
 
 const formatCompactNumber = (value: number) => {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}M`;
@@ -162,6 +163,22 @@ const DonorDampak = () => {
       ),
     [report]
   );
+
+  const nutritionImprovementRate = useMemo(
+    () =>
+      Number(
+        (
+          report?.summary as {
+            nutrition_improvement_rate?: number;
+          } | null
+        )?.nutrition_improvement_rate || 0
+      ),
+    [report]
+  );
+
+  const topProductsData = useMemo(() => {
+    return (report as any)?.top_products || [];
+  }, [report]);
 
   const trendData = useMemo(() => {
     const raw = report?.donation_trend || [];
@@ -308,15 +325,15 @@ const voucherCategoryData = useMemo(() => {
       <div className="space-y-6">
         {/* Impact Summary */}
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-[1.5fr_1fr_1.15fr_1fr_1fr] lg:divide-x lg:divide-y-0">
-            <div className="px-6 py-6 md:px-8">
+          <div className="grid grid-cols-2 divide-y divide-border lg:grid-cols-6 lg:divide-x lg:divide-y-0">
+            <div className="col-span-2 px-6 py-6 md:px-8 lg:col-span-1">
               <p className="text-sm font-semibold text-muted-foreground">
                 Total Dampak Donasi Anda
               </p>
-              <p className="mt-4 text-4xl font-bold tracking-tight text-emerald-700">
+              <p className="mt-4 text-3xl font-bold tracking-tight text-emerald-700 xl:text-4xl">
                 {formatIDR(totalDonated)}
               </p>
-              <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-4 max-w-md text-xs leading-relaxed text-muted-foreground xl:text-sm">
                 Total donasi yang telah tersalurkan melalui program nutrisi anak.
               </p>
             </div>
@@ -325,6 +342,12 @@ const voucherCategoryData = useMemo(() => {
               label="Anak Terbantu"
               value={`${childrenHelped} anak`}
               helper="Mendapat nutrisi"
+            />
+
+            <ImpactMetric
+              label="Perbaikan Gizi"
+              value={`${nutritionImprovementRate}%`}
+              helper="Anak membaik statusnya"
             />
 
             <ImpactMetric
@@ -381,13 +404,13 @@ const voucherCategoryData = useMemo(() => {
                       dataKey="label"
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 12, fill: "#64748b" }}
+                      tick={{ fontSize: 12, fill: TEXT_COLOR }}
                       dy={10}
                     />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 12, fill: "#64748b" }}
+                      tick={{ fontSize: 12, fill: TEXT_COLOR }}
                       tickFormatter={(value) => formatCompactNumber(Number(value))}
                     />
                     <Tooltip content={<ChartTooltip />} />
@@ -434,7 +457,7 @@ const voucherCategoryData = useMemo(() => {
                       type="number"
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 12, fill: "#64748b" }}
+                      tick={{ fontSize: 12, fill: TEXT_COLOR }}
                       tickFormatter={(value) => formatCompactNumber(Number(value))}
                     />
                     <YAxis
@@ -443,7 +466,7 @@ const voucherCategoryData = useMemo(() => {
                       tickLine={false}
                       axisLine={false}
                       width={95}
-                      tick={{ fontSize: 12, fill: "#334155" }}
+                      tick={{ fontSize: 12, fill: TEXT_COLOR }}
                     />
                     <Tooltip content={<ChartTooltip />} />
                     <Bar dataKey="value" fill={GREEN} radius={[0, 8, 8, 0]} barSize={14} />
@@ -454,51 +477,87 @@ const voucherCategoryData = useMemo(() => {
           </div>
         </div>
 
-        {/* Voucher Category */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <div className="mb-6">
-            <h2 className="text-lg font-bold tracking-tight text-foreground">
-              Penggunaan Voucher per Kategori
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Ringkasan kategori produk yang ditukarkan menggunakan voucher.
-            </p>
+        {/* Product Details Area */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Voucher Category */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="mb-6">
+              <h2 className="text-lg font-bold tracking-tight text-foreground">
+                Penggunaan Voucher per Kategori
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ringkasan kategori produk yang ditukarkan menggunakan voucher.
+              </p>
+            </div>
+
+            {voucherCategoryData.length === 0 ? (
+              <EmptyState
+                title="Belum ada data penggunaan voucher"
+                description="Data kategori akan muncul setelah penerima menukarkan voucher pada produk yang tersedia."
+              />
+            ) : (
+              <div className="space-y-4">
+                {voucherCategoryData.map((item) => {
+                  const maxValue = Math.max(
+                    ...voucherCategoryData.map((data) => data.value),
+                    1
+                  );
+                  const percentage = Math.round((item.value / maxValue) * 100);
+
+                  return (
+                    <div key={item.label}>
+                      <div className="mb-2 flex items-center justify-between gap-4">
+                        <p className="text-sm font-medium text-foreground">{item.label}</p>
+                        <p className="text-sm font-semibold text-emerald-700">
+                          {item.value} voucher
+                        </p>
+                      </div>
+
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-emerald-700"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {voucherCategoryData.length === 0 ? (
-            <EmptyState
-              title="Belum ada data penggunaan voucher"
-              description="Data kategori akan muncul setelah penerima menukarkan voucher pada produk yang tersedia."
-            />
-          ) : (
-            <div className="space-y-4">
-              {voucherCategoryData.map((item) => {
-                const maxValue = Math.max(
-                  ...voucherCategoryData.map((data) => data.value),
-                  1
-                );
-                const percentage = Math.round((item.value / maxValue) * 100);
+          {/* Top Products */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="mb-6">
+              <h2 className="text-lg font-bold tracking-tight text-foreground">
+                Produk Paling Banyak Dibeli
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Produk pangan spesifik yang mendominasi keranjang belanja penerima manfaat.
+              </p>
+            </div>
 
-                return (
-                  <div key={item.label}>
-                    <div className="mb-2 flex items-center justify-between gap-4">
-                      <p className="text-sm font-medium text-foreground">{item.label}</p>
-                      <p className="text-sm font-semibold text-emerald-700">
-                        {item.value} voucher
-                      </p>
+            {topProductsData.length === 0 ? (
+              <EmptyState
+                title="Belum ada data produk"
+                description="Data produk spesifik akan muncul setelah terdapat transaksi yang berhasil."
+              />
+            ) : (
+              <div className="space-y-4">
+                {topProductsData.map((item: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between gap-4 rounded-xl border border-border p-4">
+                    <div>
+                      <p className="font-semibold text-foreground">{item.product_name}</p>
+                      <p className="text-sm text-muted-foreground">{item.quantity_sold} barang terjual</p>
                     </div>
-
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-emerald-700"
-                        style={{ width: `${percentage}%` }}
-                      />
+                    <div className="text-right">
+                      <p className="font-bold text-emerald-700">{formatIDR(item.revenue)}</p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
       </div>

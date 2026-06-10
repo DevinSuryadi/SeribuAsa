@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   getChildRisk,
   getHighRiskChildren,
+  recomputeChildRisk,
 } from "../stunting-risk";
 import { apiFetch } from "../api";
 
@@ -52,7 +53,20 @@ describe("Stunting Risk Service", () => {
     });
   });
 
-  describe("triggerRiskPrediction", () => {
-    // Skipping this test as the triggerRiskPrediction method doesn't exist in the new file
+  describe("recomputeChildRisk", () => {
+    it("should trigger a new prediction computation", async () => {
+      const mockData = {
+        risk_level: "high",
+        risk_score: 0.85,
+      };
+      vi.mocked(apiFetch).mockResolvedValueOnce({ success: true, data: mockData });
+
+      const result = await recomputeChildRisk("child_123");
+
+      expect(apiFetch).toHaveBeenCalledWith("/nutrition/risk/child_123/recompute", {
+        method: "POST",
+      });
+      expect(result).toEqual(mockData);
+    });
   });
 });

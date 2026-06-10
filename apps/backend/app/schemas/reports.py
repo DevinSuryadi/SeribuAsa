@@ -51,6 +51,8 @@ class ImpactSummary(BaseModel):
     total_children_helped: int = Field(ge=0)
     total_vouchers_allocated: int = Field(ge=0)
     total_families_impacted: int = Field(ge=0)
+    total_vouchers_redeemed: int = Field(ge=0, default=0)
+    nutrition_improvement_rate: float = Field(ge=0, le=100, default=0)
 
     @field_validator("total_donated", mode="before")
     @classmethod
@@ -58,6 +60,11 @@ class ImpactSummary(BaseModel):
         if v is None:
             return Decimal("0")
         return Decimal(str(v))
+
+
+class VoucherCategoryItem(BaseModel):
+    category: str = Field(min_length=1, max_length=255)
+    total: int = Field(ge=0)
 
 
 class DonationTrendItem(BaseModel):
@@ -78,6 +85,8 @@ class ImpactReportResponse(BaseModel):
     summary: ImpactSummary
     donation_trend: List[DonationTrendItem] = Field(default_factory=list)
     geographic_distribution: List[GeographicItem] = Field(default_factory=list)
+    voucher_category_usage: List[VoucherCategoryItem] = Field(default_factory=list)
+    top_products: List["TopProductItem"] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

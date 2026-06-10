@@ -20,9 +20,7 @@ import {
 import { Label } from "@/components/ui/label";
 import {
   CreditCard,
-  Pause,
   Play,
-  XCircle,
   Pencil,
   Heart,
   Wallet,
@@ -40,12 +38,9 @@ import {
   resumeSubscription,
   cancelSubscription,
   reactivateSubscription,
-  upgradeSubscription,
   changePaymentMethod,
   updateSubscriptionAmount,
-  getUpgradePlans,
   type Subscription,
-  type UpgradePlan,
 } from "@/services/subscriptions";
 import { toast } from "sonner";
 

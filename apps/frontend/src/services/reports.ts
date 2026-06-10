@@ -7,7 +7,14 @@ export interface ImpactSummary {
   total_donated: number;
   total_children_helped: number;
   total_vouchers_allocated: number;
+  total_vouchers_redeemed: number;
   total_families_impacted: number;
+  nutrition_improvement_rate: number;
+}
+
+export interface VoucherCategoryItem {
+  category: string;
+  total: number;
 }
 
 export interface DonationTrendItem {
@@ -31,6 +38,8 @@ export interface ImpactReport {
   summary: ImpactSummary;
   donation_trend: DonationTrendItem[];
   geographic_distribution: GeographicItem[];
+  voucher_category_usage: VoucherCategoryItem[];
+  top_products: TopProductItem[];
 }
 
 // ============================================
