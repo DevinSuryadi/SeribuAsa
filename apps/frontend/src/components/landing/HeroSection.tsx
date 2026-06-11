@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, ArrowRight } from 'lucide-react';
 import gsap from 'gsap';
+import bgHero from '@/assets/bg-hero.svg';
 
 const stats = [
   { value: '12.500+', label: 'Penerima Manfaat' },
@@ -32,105 +33,30 @@ export function HeroSection() {
 
   return (
     <section
-      ref={heroRef}
-      style={{
-        position: 'relative',
-        overflow: 'hidden',
-        padding: 'clamp(100px, 18vh, 160px) 0 clamp(40px, 8vh, 64px)',
-        minHeight: '100dvh',
-        display: 'flex',
-        alignItems: 'center',
-        background: '#ffffff'
-      }}
-    >
-      {/* Background Gradient & Blurs */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 0,
-          background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(255,255,255,0) 60%)',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          top: 60,
-          right: 20,
-          width: 'clamp(150px, 30vw, 288px)',
-          height: 'clamp(150px, 30vw, 288px)',
-          borderRadius: '50%',
-          background: 'rgba(34,197,94,0.05)',
-          filter: 'blur(64px)',
-          zIndex: 0,
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 20,
-          left: 20,
-          width: 'clamp(120px, 25vw, 256px)',
-          height: 'clamp(120px, 25vw, 256px)',
-          borderRadius: '50%',
-          background: 'rgba(34,197,94,0.07)',
-          filter: 'blur(64px)',
-          zIndex: 0,
-        }}
-      />
+  ref={heroRef}
+  style={{
+    position: 'relative',
+    overflow: 'hidden',
+    padding: 'clamp(100px, 18vh, 160px) 0 clamp(40px, 8vh, 64px)',
+    minHeight: '100dvh',
+    display: 'flex',
+    alignItems: 'center',
+    backgroundImage: `
+      linear-gradient(
+        90deg,
+        rgba(4, 35, 22, 0.78) 0%,
+        rgba(4, 35, 22, 0.62) 34%,
+        rgba(4, 35, 22, 0.22) 62%,
+        rgba(4, 35, 22, 0.08) 100%
+      ),
+      url(${bgHero})
+    `,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+  }}
 
-      {/* SVG Geometric Curves - Smooth & Organic */}
-      <div
-        className="hidden md:block hero-curves"
-        style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          width: 'clamp(40%, 60vw, 60%)',
-          height: '100%',
-          zIndex: 1,
-          pointerEvents: 'none'
-        }}
-      >
-        <svg
-          viewBox="0 0 1000 1000"
-          preserveAspectRatio="xMaxYMid slice"
-          style={{ width: '100%', height: '100%' }}
-        >
-          {/* Layer 1: Hijau Tua (Dark Forest) - Lengkungan paling luar */}
-          <path
-            d="M 1000 0 
-               C 850 150, 750 300, 650 500 
-               C 550 700, 400 850, 200 1000 
-               L 1000 1000 
-               Z"
-            fill="#064e3b"
-            opacity="0.9"
-          />
-          
-          {/* Layer 2: Hijau Cerah (Primary Green) - Lengkungan tengah */}
-          <path
-            d="M 1000 50 
-               C 900 180, 820 320, 730 520 
-               C 640 720, 500 870, 320 1000 
-               L 1000 1000 
-               Z"
-            fill="#22c55e"
-            opacity="0.85"
-          />
-          
-          {/* Layer 3: Hijau Terang - Lengkungan dalam */}
-          <path
-            d="M 1000 100 
-               C 950 200, 880 340, 800 540 
-               C 720 740, 580 880, 440 1000 
-               L 1000 1000 
-               Z"
-            fill="#4ade80"
-            opacity="0.7"
-          />
-        </svg>
-      </div>
+    >
 
       {/* Konten Utama */}
       <div style={{ 
@@ -151,11 +77,11 @@ export function HeroSection() {
               gap: 8,
               padding: '6px 16px',
               borderRadius: 999,
-              border: '1px solid rgba(34,197,94,0.25)',
-              background: 'rgba(34,197,94,0.06)',
+              border: '1px solid rgba(134,239,172,0.5)',
+              background: 'rgba(22,163,74,0.12))',
               fontSize: 'clamp(13px, 3.5vw, 16px)',
               fontWeight: 500,
-              color: '#16a34a',
+              color: '#86efac',
               marginBottom: 'clamp(16px, 4vw, 24px)',
             }}
           >
@@ -165,10 +91,10 @@ export function HeroSection() {
           <h1
             className="hero-title"
             style={{
-              fontSize: 'clamp(32px, 5vw, 64px)',
+              fontSize: 'clamp(32px, 5vw, 50px)',
               fontWeight: 800,
               lineHeight: 1.2,
-              color: '#111',
+              color: '#ffffff',
               letterSpacing: '-1px',
               margin: '0 0 24px 0',
             }}
@@ -191,8 +117,8 @@ export function HeroSection() {
           <p
             className="hero-desc"
             style={{
-              fontSize: 'clamp(15px, 2vw, 20px)',
-              color: '#666',
+              fontSize: 'clamp(15px, 2vw, 17px)',
+              color: 'rgba(255, 255, 255, 0.82)',
               lineHeight: 1.7,
               margin: '0 0 36px 0',
             }}
@@ -243,9 +169,9 @@ export function HeroSection() {
                 borderRadius: 10,
                 fontSize: 15,
                 fontWeight: 500,
-                color: '#333',
+                color: '#ffffff',
                 textDecoration: 'none',
-                border: '1px solid rgba(0,0,0,0.15)',
+                border: '1px solid rgba(255,255,255,0.15)',
                 background: 'transparent'
               }}
             >
@@ -270,15 +196,15 @@ export function HeroSection() {
               <div key={stat.label}>
                 <div
                   style={{
-                    fontSize: 'clamp(24px, 3vw, 32px)',
+                    fontSize: 'clamp(24px, 3vw, 24px)',
                     fontWeight: 800,
-                    color: '#111',
+                    color: '#ffffff',
                     letterSpacing: '-0.5px',
                   }}
                 >
                   {stat.value}
                 </div>
-                <div style={{ marginTop: 4, fontSize: 14, color: '#666', fontWeight: 500 }}>
+                <div style={{ marginTop: 4, fontSize: 14, color: 'rgba(255, 255, 255, 0.82)', fontWeight: 500 }}>
                   {stat.label}
                 </div>
               </div>
