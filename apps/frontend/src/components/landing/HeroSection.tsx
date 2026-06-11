@@ -2,13 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, ArrowRight } from 'lucide-react';
 import gsap from 'gsap';
-
-const stats = [
-  { value: '12.500+', label: 'Penerima Manfaat' },
-  { value: '3.200+', label: 'Donatur Aktif' },
-  { value: '28', label: 'Provinsi' },
-  { value: 'Rp4,2M', label: 'Dana Tersalurkan' },
-];
+import bgHero from '@/assets/bg-hero.svg';
 
 export function HeroSection() {
   const heroRef = useRef<HTMLDivElement>(null);
@@ -19,12 +13,24 @@ export function HeroSection() {
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-      tl.from('.hero-badge', { y: 20, opacity: 0, duration: 0.6 })
-        .from('.hero-title', { y: 30, opacity: 0, duration: 0.8 }, '-=0.3')
-        .from('.hero-desc', { y: 20, opacity: 0, duration: 0.6 }, '-=0.4')
-        .from('.hero-cta', { y: 20, opacity: 0, duration: 0.5, stagger: 0.15 }, '-=0.3')
-        .from('.hero-stats', { y: 20, opacity: 0, duration: 0.5 }, '-=0.2')
-        .from('.hero-curves path', { x: 100, opacity: 0, duration: 1, stagger: 0.2 }, '-=0.8');
+
+      tl.from('.hero-title-line', {
+        y: 28,
+        opacity: 0,
+        duration: 0.75,
+        stagger: 0.12,
+      })
+        .from('.hero-desc-wrap', { y: 18, opacity: 0, duration: 0.55 }, '-=0.25')
+        .from(
+          '.hero-cta',
+          {
+            y: 18,
+            opacity: 0,
+            duration: 0.45,
+            stagger: 0.12,
+          },
+          '-=0.2'
+        );
     }, heroRef);
 
     return () => ctx.revert();
@@ -36,179 +42,158 @@ export function HeroSection() {
       style={{
         position: 'relative',
         overflow: 'hidden',
-        padding: 'clamp(100px, 18vh, 160px) 0 clamp(40px, 8vh, 64px)',
         minHeight: '100dvh',
         display: 'flex',
         alignItems: 'center',
-        background: '#ffffff'
+        padding: 'clamp(138px, 20vh, 190px) 0 clamp(86px, 11vh, 120px)',
+        backgroundImage: `
+          linear-gradient(
+            90deg,
+            rgba(2, 22, 14, 0.78) 0%,
+            rgba(2, 22, 14, 0.67) 32%,
+            rgba(2, 22, 14, 0.38) 56%,
+            rgba(2, 22, 14, 0.12) 100%
+          ),
+          url(${bgHero})
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center right',
+        backgroundRepeat: 'no-repeat',
       }}
     >
-      {/* Background Gradient & Blurs */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
           zIndex: 0,
-          background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(255,255,255,0) 60%)',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          top: 60,
-          right: 20,
-          width: 'clamp(150px, 30vw, 288px)',
-          height: 'clamp(150px, 30vw, 288px)',
-          borderRadius: '50%',
-          background: 'rgba(34,197,94,0.05)',
-          filter: 'blur(64px)',
-          zIndex: 0,
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 20,
-          left: 20,
-          width: 'clamp(120px, 25vw, 256px)',
-          height: 'clamp(120px, 25vw, 256px)',
-          borderRadius: '50%',
-          background: 'rgba(34,197,94,0.07)',
-          filter: 'blur(64px)',
-          zIndex: 0,
+          background:
+            'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.22) 100%)',
+          pointerEvents: 'none',
         }}
       />
 
-      {/* SVG Geometric Curves - Smooth & Organic */}
       <div
-        className="hidden md:block hero-curves"
         style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          width: 'clamp(40%, 60vw, 60%)',
-          height: '100%',
-          zIndex: 1,
-          pointerEvents: 'none'
+          position: 'relative',
+          zIndex: 2,
+          width: '100%',
+          maxWidth: 1440,
+          margin: '0 auto',
+          paddingLeft: 'clamp(32px, 6vw, 92px)',
+          paddingRight: 'clamp(24px, 5vw, 80px)',
         }}
       >
-        <svg
-          viewBox="0 0 1000 1000"
-          preserveAspectRatio="xMaxYMid slice"
-          style={{ width: '100%', height: '100%' }}
-        >
-          {/* Layer 1: Hijau Tua (Dark Forest) - Lengkungan paling luar */}
-          <path
-            d="M 1000 0 
-               C 850 150, 750 300, 650 500 
-               C 550 700, 400 850, 200 1000 
-               L 1000 1000 
-               Z"
-            fill="#064e3b"
-            opacity="0.9"
-          />
-          
-          {/* Layer 2: Hijau Cerah (Primary Green) - Lengkungan tengah */}
-          <path
-            d="M 1000 50 
-               C 900 180, 820 320, 730 520 
-               C 640 720, 500 870, 320 1000 
-               L 1000 1000 
-               Z"
-            fill="#22c55e"
-            opacity="0.85"
-          />
-          
-          {/* Layer 3: Hijau Terang - Lengkungan dalam */}
-          <path
-            d="M 1000 100 
-               C 950 200, 880 340, 800 540 
-               C 720 740, 580 880, 440 1000 
-               L 1000 1000 
-               Z"
-            fill="#4ade80"
-            opacity="0.7"
-          />
-        </svg>
-      </div>
-
-      {/* Konten Utama */}
-      <div style={{ 
-        position: 'relative',
-        zIndex: 2, 
-        width: '100%',
-        maxWidth: 1300, 
-        margin: '0 auto', 
-        padding: '0 clamp(16px, 5vw, 24px)', 
-      }}>
-        <div style={{ maxWidth: 650 }}>
-          {/* Badge */}
-          <div
-            className="hero-badge"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 16px',
-              borderRadius: 999,
-              border: '1px solid rgba(34,197,94,0.25)',
-              background: 'rgba(34,197,94,0.06)',
-              fontSize: 'clamp(13px, 3.5vw, 16px)',
-              fontWeight: 500,
-              color: '#16a34a',
-              marginBottom: 'clamp(16px, 4vw, 24px)',
-            }}
-          >
-            Ekosistem Ketahanan Pangan & Gizi Indonesia
-          </div>
-
+        <div style={{ maxWidth: 720 }}>
+          {/* Title */}
           <h1
             className="hero-title"
             style={{
-              fontSize: 'clamp(32px, 5vw, 64px)',
-              fontWeight: 800,
-              lineHeight: 1.2,
-              color: '#111',
-              letterSpacing: '-1px',
-              margin: '0 0 24px 0',
+              margin: 0,
+              fontFamily: '"Cormorant Garamond", Georgia, serif',
+              fontWeight: 700,
+              color: '#ffffff',
+              letterSpacing: '-0.7px',
+              textShadow: '0 10px 34px rgba(0,0,0,0.26)',
+              maxWidth: 700,
             }}
           >
-            Nutrisi Sehat untuk
-            <br />
             <span
+              className="hero-title-line"
               style={{
-                background: 'linear-gradient(135deg, #4ade80, #16a34a)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                display: 'block',
+                fontSize: 'clamp(46px, 5.3vw, 74px)',
+                lineHeight: 0.9,
+                fontWeight: 700,
               }}
             >
-              1000 Hari Pertama Kehidupan
+              Nutrisi Sehat
+            </span>
+
+            <span
+              className="hero-title-line"
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: 14,
+                marginTop: 10,
+                marginLeft: 'clamp(24px, 5vw, 86px)',
+                flexWrap: 'nowrap',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 'clamp(28px, 3vw, 40px)',
+                  lineHeight: 1,
+                  color: '#ffffff',
+                  fontWeight: 700,
+                }}
+              >
+                untuk
+              </span>
+
+              <span
+                style={{
+                  fontSize: 'clamp(48px, 5.4vw, 72px)',
+                  lineHeight: 0.9,
+                  color: '#4ade80',
+                  fontWeight: 700,
+                }}
+              >
+                1000 Hari
+              </span>
+            </span>
+
+            <span
+              className="hero-title-line"
+              style={{
+                display: 'block',
+                marginTop: 10,
+                fontSize: 'clamp(40px, 4.6vw, 62px)',
+                lineHeight: 0.92,
+                color: '#ffffff',
+                fontWeight: 700,
+              }}
+            >
+              Pertama Kehidupan
             </span>
           </h1>
 
-          {/* Description */}
-          <p
-            className="hero-desc"
+          {/* Description sejajar dengan "Pertama Kehidupan" */}
+          <div
+            className="hero-desc-wrap"
             style={{
-              fontSize: 'clamp(15px, 2vw, 20px)',
-              color: '#666',
-              lineHeight: 1.7,
-              margin: '0 0 36px 0',
+              marginTop: 38,
+              maxWidth: 590,
             }}
           >
-            SeribuAsa menghubungkan donatur dengan keluarga rentan melalui sistem e-voucher nutrisi,
-            memastikan setiap bantuan tepat sasaran untuk pangan bergizi.
-          </p>
+            <div
+            
+            />
 
-          {/* CTA */}
+            <p
+              className="hero-desc"
+              style={{
+                fontSize: 'clamp(15px, 1.5vw, 17px)',
+                color: 'rgba(255,255,255,0.84)',
+                lineHeight: 1.78,
+                margin: 0,
+                maxWidth: 570,
+                fontWeight: 400,
+              }}
+            >
+              SeribuAsa menghubungkan donatur dengan keluarga rentan melalui sistem e-voucher
+              nutrisi, memastikan setiap bantuan tepat sasaran untuk pangan bergizi.
+            </p>
+          </div>
+
+          {/* CTA sejajar dengan deskripsi */}
           <div
             style={{
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
-              gap: 16,
-              marginBottom: 10
+              gap: 14,
+              marginTop: 58,
             }}
           >
             <Link
@@ -217,19 +202,22 @@ export function HeroSection() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 8,
-                padding: '14px 28px',
+                padding: '11px 22px',
+                minHeight: 46,
                 borderRadius: 10,
-                fontSize: 15,
-                fontWeight: 600,
-                color: 'white',
+                fontSize: 14.5,
+                fontWeight: 700,
+                color: '#ffffff',
                 textDecoration: 'none',
-                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                boxShadow: '0 4px 14px rgba(34,197,94,0.3)',
+                background: 'linear-gradient(135deg, #166534, #15803d)',
+                border: '1px solid rgba(187, 247, 208, 0.24)',
+                boxShadow: '0 10px 26px rgba(0,0,0,0.22)',
               }}
             >
               Mulai Donasi
-              <ArrowRight size={18} />
+              <ArrowRight size={17} />
             </Link>
 
             <Link
@@ -238,51 +226,24 @@ export function HeroSection() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 8,
-                padding: '14px 28px',
+                padding: '11px 20px',
+                minHeight: 46,
                 borderRadius: 10,
-                fontSize: 15,
-                fontWeight: 500,
-                color: '#333',
+                fontSize: 14.5,
+                fontWeight: 650,
+                color: 'rgba(255,255,255,0.92)',
                 textDecoration: 'none',
-                border: '1px solid rgba(0,0,0,0.15)',
-                background: 'transparent'
+                border: '1px solid rgba(255,255,255,0.24)',
+                background: 'rgba(255,255,255,0.055)',
+                backdropFilter: 'blur(12px)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
               }}
             >
-              <Users size={18} />
+              <Users size={17} />
               Daftar Penerima Manfaat
             </Link>
-          </div>
-
-          {/* Stats */}
-          <div
-            className="hero-stats"
-            style={{
-              marginTop: 64,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-              gap: 24,
-              borderTop: '1px solid #eee',
-              paddingTop: 32,
-            }}
-          >
-            {stats.map((stat) => (
-              <div key={stat.label}>
-                <div
-                  style={{
-                    fontSize: 'clamp(24px, 3vw, 32px)',
-                    fontWeight: 800,
-                    color: '#111',
-                    letterSpacing: '-0.5px',
-                  }}
-                >
-                  {stat.value}
-                </div>
-                <div style={{ marginTop: 4, fontSize: 14, color: '#666', fontWeight: 500 }}>
-                  {stat.label}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
