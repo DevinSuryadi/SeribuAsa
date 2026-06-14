@@ -147,9 +147,6 @@ class ProductService:
         for key, value in update_data.items():
             setattr(product, key, value)
 
-        if update_data:
-            product.approval_status = "pending"
-
         db.commit()
         db.refresh(product)
         logger.info(f"Product updated: {product.id}")
