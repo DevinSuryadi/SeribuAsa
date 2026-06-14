@@ -72,15 +72,23 @@ const ModalProductDetail = memo(function ModalProductDetail({
   onAddToCart: (quantity: number) => void;
   isLoading: boolean;
 }) {
-  const [quantity, setQuantity] = useState(1);
+  const hasStock = product.stock_quantity > 0;
+  const [quantity, setQuantity] = useState(hasStock ? 1 : 0);
+
+  useEffect(() => {
+    setQuantity(hasStock ? 1 : 0);
+  }, [hasStock, product.id]);
 
   const handleQuantityChange = (value: number) => {
+    if (!hasStock) {
+      setQuantity(0);
+      return;
+    }
     const newValue = Math.max(1, Math.min(value, product.stock_quantity));
     setQuantity(newValue);
   };
 
   const totalPrice = product.voucher_price * quantity;
-  const hasStock = product.stock_quantity > 0;
 
   return (
     <div className="space-y-4">
@@ -137,7 +145,7 @@ const ModalProductDetail = memo(function ModalProductDetail({
             value={quantity}
             onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
             className="w-16 text-center"
-            disabled={isLoading}
+            disabled={!hasStock || isLoading}
           />
           <Button
             variant="outline"
@@ -196,11 +204,18 @@ const ProductCard = memo(function ProductCard({
   const hasStock = product.stock_quantity > 0;
 
   return (
-    <Card className="overflow-hidden flex flex-col transition-all hover:shadow-md group">
+    <Card
+      className={`overflow-hidden flex flex-col transition-all group ${
+        hasStock
+          ? "hover:shadow-md"
+          : "border-slate-200 bg-slate-50 opacity-70 grayscale"
+      }`}
+    >
       <button
         className="relative overflow-hidden"
         onClick={() => onSelect(product)}
         aria-label={`Lihat detail ${product.name}`}
+        disabled={!hasStock}
       >
         <ProductAvatarLarge
           images={product.images}
@@ -311,7 +326,7 @@ const KatalogPangan = () => {
 
       try {
         const [productsData, catsData, balanceData, cartData] = await Promise.all([
-          getProducts({ in_stock_only: true }).catch((err) => {
+          getProducts({ page_size: 100 }).catch((err) => {
             console.error("Failed to load products:", err);
             return { items: [] };
           }),
@@ -355,11 +370,18 @@ const KatalogPangan = () => {
 
   const filtered = useMemo(
     () =>
-      products.filter((p) => {
-        if (category !== "Semua" && p.category_name !== category) return false;
-        if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-      }),
+      products
+        .filter((p) => {
+          if (category !== "Semua" && p.category_name !== category) return false;
+          if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+          return true;
+        })
+        .sort((a, b) => {
+          const aOutOfStock = a.stock_quantity <= 0;
+          const bOutOfStock = b.stock_quantity <= 0;
+          if (aOutOfStock !== bOutOfStock) return aOutOfStock ? 1 : -1;
+          return 0;
+        }),
     [products, category, search]
   );
 
