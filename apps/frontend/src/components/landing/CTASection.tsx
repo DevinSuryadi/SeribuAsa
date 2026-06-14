@@ -1,181 +1,249 @@
 import { Link } from 'react-router-dom';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
 import { ArrowRight, Store, BarChart3 } from 'lucide-react';
+import ctaBg from '../../assets/cta-bg.svg';
 
 export function CTASection() {
   const ref = useScrollReveal({ y: 30 });
 
   return (
-    <section style={{ position: 'relative', overflow: 'hidden', padding: 'clamp(48px, 8vh, 80px) 0' }}>
-      {/* Background blobs */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        zIndex: -1,
-        background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(255,255,255,0) 60%)',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: 60,
-        right: 20,
-        width: 'clamp(150px, 30vw, 288px)',
-        height: 'clamp(150px, 30vw, 288px)',
-        borderRadius: '50%',
-        background: 'rgba(34,197,94,0.05)',
-        filter: 'blur(64px)',
-        zIndex: -1,
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: 20,
-        left: 20,
-        width: 'clamp(120px, 25vw, 256px)',
-        height: 'clamp(120px, 25vw, 256px)',
-        borderRadius: '50%',
-        background: 'rgba(34,197,94,0.07)',
-        filter: 'blur(64px)',
-        zIndex: -1,
-      }} />
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 5vw, 24px)' }}>
-        <div
-          ref={ref}
-          style={{
-            maxWidth: 896,
-            margin: '0 auto',
-            borderRadius: 20,
-            border: '1px solid rgba(0,0,0,0.08)',
-            background: '#fff',
-            padding: 'clamp(32px, 6vw, 64px) clamp(20px, 5vw, 40px)',
-            textAlign: 'center',
-            boxShadow: '0 4px 32px rgba(0,0,0,0.07)',
-          }}
-        >
-          <h2
-            style={{
-              fontSize: 'clamp(28px, 4vw, 36px)',
-              fontWeight: 700,
-              color: '#111',
-              letterSpacing: '-0.5px',
-              margin: 0,
-            }}
-          >
+    <section
+      className="cta-section"
+      style={
+        {
+          '--cta-bg': `url(${ctaBg})`,
+        } as React.CSSProperties
+      }
+    >
+      <style>
+        {`
+          .cta-section {
+            position: relative;
+            overflow: hidden;
+            background: #061a10;
+            padding: clamp(110px, 14vh, 150px) 0 clamp(72px, 10vh, 110px);
+          }
+
+          /* foto background */
+          .cta-section::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: var(--cta-bg);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 0;
+            pointer-events: none;
+            filter: saturate(0.85) contrast(1.05);
+            transform: scale(1.02);
+          }
+
+          /* overlay hijau supaya foto jadi kehijauan */
+          .cta-photo-overlay {
+            position: absolute;
+            inset: 0;
+            background:
+              linear-gradient(
+                180deg,
+                rgba(6, 26, 16, 0.78) 0%,
+                rgba(6, 26, 16, 0.82) 45%,
+                rgba(6, 26, 16, 0.88) 100%
+              ),
+              rgba(28, 91, 54, 0.42);
+            mix-blend-mode: multiply;
+            z-index: 1;
+            pointer-events: none;
+          }
+
+          /* bentuk U cream di atas */
+          .cta-curve {
+            position: absolute;
+            left: -5%;
+            right: -5%;
+            top: -1px;
+            height: 120px;
+            background: #f8f4eb;
+            clip-path: ellipse(58% 70% at 50% 0%);
+            z-index: 3;
+            pointer-events: none;
+          }
+
+          .cta-container {
+            position: relative;
+            z-index: 4;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 clamp(16px, 5vw, 24px);
+          }
+
+          .cta-card {
+            max-width: 760px;
+            margin: 36px auto 0;
+            border-radius: 28px;
+            border: 1px solid rgba(248, 244, 235, 0.18);
+            background: rgba(248, 244, 235, 0.96);
+            padding: clamp(30px, 5vw, 48px) clamp(20px, 4vw, 34px);
+            text-align: center;
+            box-shadow:
+              0 24px 54px rgba(0, 0, 0, 0.24),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.52);
+            backdrop-filter: blur(2px);
+          }
+
+          .cta-title {
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(30px, 4vw, 48px);
+            line-height: 0.98;
+            font-weight: 700;
+            color: #154632;
+            letter-spacing: -1px;
+            margin: 0;
+          }
+
+          .cta-desc {
+            max-width: 470px;
+            margin: 16px auto 0;
+            font-size: 15px;
+            color: #586d61;
+            line-height: 1.75;
+          }
+
+          .cta-actions {
+            margin-top: 32px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+          }
+
+          .cta-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: clamp(190px, 100%, 240px);
+            padding: 12px 20px;
+            border-radius: 999px;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            transition:
+              transform 0.2s ease,
+              box-shadow 0.2s ease,
+              background 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease;
+          }
+
+          .cta-button-primary {
+            color: #ffffff;
+            background: #2f6f46;
+            box-shadow: 0 10px 24px rgba(47, 111, 70, 0.24);
+          }
+
+          .cta-button-primary:hover {
+            transform: translateY(-2px);
+            background: #265f3b;
+            box-shadow: 0 14px 30px rgba(47, 111, 70, 0.30);
+          }
+
+          .cta-button-outline {
+            color: #2f513e;
+            border: 1px solid rgba(47, 111, 70, 0.18);
+            background: rgba(47, 111, 70, 0.05);
+          }
+
+          .cta-button-outline:hover {
+            transform: translateY(-2px);
+            border-color: rgba(47, 111, 70, 0.28);
+            background: rgba(47, 111, 70, 0.09);
+          }
+
+          .cta-button-ghost {
+            color: #53675d;
+            background: transparent;
+            width: auto;
+            min-width: unset;
+            padding: 8px 10px;
+          }
+
+          .cta-button-ghost:hover {
+            transform: translateY(-2px);
+            color: #154632;
+            background: rgba(47, 111, 70, 0.06);
+          }
+
+          @media (max-width: 640px) {
+            .cta-section {
+              padding: 96px 0 74px;
+            }
+
+            .cta-curve {
+              height: 86px;
+              clip-path: ellipse(78% 68% at 50% 0%);
+            }
+
+            .cta-card {
+              max-width: 100%;
+              border-radius: 22px;
+              padding: 36px 18px 36px;
+            }
+
+            .cta-title {
+              font-size: clamp(32px, 11vw, 42px);
+            }
+
+            .cta-desc {
+              font-size: 14px;
+            }
+
+            .cta-actions {
+              flex-direction: column;
+              gap: 10px;
+            }
+
+            .cta-button {
+              width: min(100%, 240px);
+            }
+
+            .cta-button-ghost {
+              width: auto;
+            }
+          }
+        `}
+      </style>
+
+      <div className="cta-photo-overlay" />
+      <div className="cta-curve" />
+
+      <div className="cta-container">
+        <div ref={ref} className="cta-card">
+          <h2 className="cta-title">
             Bergabunglah dalam Misi Nutrisi Indonesia
           </h2>
-          <p
-            style={{
-              maxWidth: 480,
-              margin: '16px auto 0',
-              fontSize: 15,
-              color: '#666',
-              lineHeight: 1.6,
-            }}
-          >
-            Jadilah bagian dari ekosistem yang memastikan setiap keluarga mendapat akses pangan bergizi.
+
+          <p className="cta-desc">
+            Jadilah bagian dari ekosistem yang memastikan setiap keluarga
+            mendapat akses pangan bergizi.
           </p>
 
-          <div
-            style={{
-              marginTop: 36,
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              flexDirection: 'column',
-            }}
-            className="sm:flex-row"
-          >
-            {/* Primary */}
-            <Link
-              to="/donasi"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '11px 22px',
-                borderRadius: 10,
-                fontSize: 15,
-                fontWeight: 600,
-                color: 'white',
-                textDecoration: 'none',
-                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                boxShadow: '0 2px 12px rgba(34,197,94,0.3)',
-                transition: 'all 0.2s ease',
-                width: 'clamp(200px, 100%, 300px)',
-                justifyContent: 'center',
-              }}
-              onMouseEnter={(e: any) => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 4px 18px rgba(34,197,94,0.4)';
-              }}
-              onMouseLeave={(e: any) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 12px rgba(34,197,94,0.3)';
-              }}
-            >
+          <div className="cta-actions">
+            <Link to="/donasi" className="cta-button cta-button-primary">
               Mulai Donasi
               <ArrowRight size={16} />
             </Link>
 
-            {/* Outline */}
             <Link
               to="/register?role=vendor"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '11px 22px',
-                borderRadius: 10,
-                fontSize: 15,
-                fontWeight: 500,
-                color: '#333',
-                textDecoration: 'none',
-                border: '1px solid rgba(0,0,0,0.15)',
-                background: 'transparent',
-                transition: 'all 0.15s ease',
-                width: 'clamp(200px, 100%, 300px)',
-                justifyContent: 'center',
-              }}
-              onMouseEnter={(e: any) => {
-                e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
-                e.currentTarget.style.borderColor = 'rgba(0,0,0,0.25)';
-              }}
-              onMouseLeave={(e: any) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)';
-              }}
+              className="cta-button cta-button-outline"
             >
               <Store size={16} />
               Daftar Vendor
             </Link>
 
-            {/* Ghost */}
-            <Link
-              to="/dampak"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '11px 22px',
-                borderRadius: 10,
-                fontSize: 15,
-                fontWeight: 500,
-                color: '#555',
-                textDecoration: 'none',
-                background: 'transparent',
-                transition: 'all 0.15s ease',
-                width: 'clamp(200px, 100%, 300px)',
-                justifyContent: 'center',
-              }}
-              onMouseEnter={(e: any) => {
-                e.currentTarget.style.color = '#111';
-                e.currentTarget.style.background = 'rgba(0,0,0,0.04)';
-              }}
-              onMouseLeave={(e: any) => {
-                e.currentTarget.style.color = '#555';
-                e.currentTarget.style.background = 'transparent';
-              }}
-            >
+            <Link to="/dampak" className="cta-button cta-button-ghost">
               <BarChart3 size={16} />
               Lihat Dampak
             </Link>
