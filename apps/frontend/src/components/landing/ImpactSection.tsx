@@ -111,7 +111,7 @@ export function ImpactSection() {
           right: '-4%',
           bottom: -1,
           zIndex: 3,
-          height: 'clamp(58% 70% at 50% 100%)',
+          height: 'clamp(58px, 10vw, 116px)',
           background: '#fbf6ec',
           clipPath: 'ellipse(66% 54% at 50% 100%)',
         }}
