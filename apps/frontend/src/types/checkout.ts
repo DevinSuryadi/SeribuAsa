@@ -14,6 +14,7 @@ export interface CartItemData {
   subtotal: number;
   created_at: string;
   vendor_id: string;
+  vendor_store_name?: string;
   category_name?: string;
   product_images?: string[];
   stock_quantity?: number;

@@ -20,6 +20,7 @@ import { ProductAvatar } from "@/components/product/ProductAvatar";
 import { getOrder } from "@/services/orders";
 import { formatIDR } from "@/lib/format";
 import type { OrderItem } from "@/types/orders";
+import { QRCodeCanvas } from "qrcode.react";
 
 type OrderRecord = Record<string, unknown>;
 type OrderItemRecord = Partial<OrderItem> & Record<string, any>;
@@ -36,6 +37,18 @@ type VendorGroup = {
   vendorName: string;
   items: OrderItemRecord[];
   subtotal: number;
+};
+
+type PickupQRData = {
+  order_id: string;
+  qr_code: string;
+  qr_value: string;
+  total_amount: number;
+  pickup_expires_at: string | null;
+  cancel_deadline: string | null;
+  vendor_name: string | null;
+  items: { name: string; quantity: number; price: number }[];
+  status: string;
 };
 
 const ITEM_ARRAY_KEYS = [
@@ -170,6 +183,11 @@ const toText = (value: unknown, fallback = ""): string => {
   if (typeof value === "string" && value.trim().length > 0) return value;
   if (typeof value === "number") return String(value);
   return fallback;
+};
+
+const formatPickupCode = (value: string) => {
+  const code = value.replace(/^NUTRIGUARD:ORDER:/, "");
+  return code.length > 16 ? code.slice(-16) : code;
 };
 
 const getNestedRecord = (
@@ -865,6 +883,9 @@ export function CheckoutSuccess() {
   );
 
   const [orderPayload, setOrderPayload] = useState<unknown>(null);
+  const [pickupQrs, setPickupQrs] = useState<PickupQRData[]>([]);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!snapshotPayload);
   const [error, setError] = useState<string | null>(null);
   const [expandedVendors, setExpandedVendors] = useState<Record<string, boolean>>(
@@ -895,6 +916,12 @@ export function CheckoutSuccess() {
 
     loadOrders();
   }, [snapshotPayload, orderIds.join(",")]);
+
+  useEffect(() => {
+    setPickupQrs([]);
+    setQrError(null);
+    setQrLoading(false);
+  }, [orderIds.join(",")]);
 
   const displayPayload = snapshotPayload ?? orderPayload;
   const primaryRecord = getPrimaryRecord(displayPayload);
@@ -1165,6 +1192,123 @@ export function CheckoutSuccess() {
           </main>
 
           <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+            <section className="hidden rounded-2xl border border-emerald-200 bg-white p-5 shadow-[0_1px_4px_rgba(15,23,42,0.04)] lg:p-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                  <QrCode className="h-4 w-4" aria-hidden="true" />
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold tracking-tight text-slate-950">
+                    {pickupQrs.length > 1 ? "QR Pickup per Vendor" : "QR Pickup"}
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    {pickupQrs.length > 1
+                      ? "Tunjukkan QR sesuai vendor tempat pengambilan pesanan."
+                      : "Tunjukkan QR ini kepada vendor saat pengambilan pesanan."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                {qrLoading && (
+                  <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
+                    <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                  </div>
+                )}
+
+                {!qrLoading && qrError && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                    {qrError}
+                  </div>
+                )}
+
+                {!qrLoading &&
+                  !qrError &&
+                  pickupQrs.map((qr, index) => {
+                    const itemCount = qr.items.reduce(
+                      (total, item) => total + Number(item.quantity || 0),
+                      0
+                    );
+
+                    return (
+                      <div
+                        key={qr.order_id}
+                        className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60"
+                      >
+                        <div className="border-b border-slate-200 bg-white px-4 py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                                Vendor {index + 1}
+                              </p>
+                              <p className="mt-1 truncate text-sm font-bold text-slate-950">
+                                {qr.vendor_name || "Vendor"}
+                              </p>
+                            </div>
+
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 rounded-full border-amber-200 bg-amber-50 text-amber-700"
+                            >
+                              {itemCount} item
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 px-4 py-4">
+                          <div className="flex justify-center">
+                            <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-emerald-100">
+                              <QRCodeCanvas
+                                value={qr.qr_value}
+                                size={168}
+                                level="M"
+                                includeMargin
+                                className="rounded-xl"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="text-center">
+                            <p className="font-mono text-xs font-bold tracking-widest text-slate-500">
+                              {formatPickupCode(qr.qr_value)}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Order #{qr.order_id.slice(0, 8).toUpperCase()}
+                            </p>
+                          </div>
+
+                          <div className="rounded-lg bg-white px-3 py-3">
+                            <div className="space-y-2">
+                              {qr.items.map((item, itemIndex) => (
+                                <div
+                                  key={`${qr.order_id}-${itemIndex}`}
+                                  className="flex items-center justify-between gap-3 text-xs"
+                                >
+                                  <span className="min-w-0 truncate text-slate-600">
+                                    {item.name} x{item.quantity}
+                                  </span>
+                                  <span className="shrink-0 font-bold text-slate-950">
+                                    {formatIDR(item.price * item.quantity)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-between border-t border-dashed border-slate-200 pt-3 text-sm">
+                              <span className="font-medium text-slate-600">Total</span>
+                              <span className="font-black text-emerald-700">
+                                {formatIDR(qr.total_amount)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </section>
+
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_4px_rgba(15,23,42,0.04)] lg:p-6">
               <h3 className="text-base font-bold tracking-tight text-slate-950">
                 Status & Aksi

@@ -20,11 +20,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { validateStockForCheckout } from "@/services/cart";
 import { toast } from "sonner";
 
-/**
- * CheckoutPage — Order confirmation page.
- * Cart review happens in CartManagement (/dashboard/cart).
- * This page is purely for final confirmation + submission.
- */
 function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -71,8 +66,6 @@ function CheckoutPage() {
         }
       } catch (err: unknown) {
         console.error("Stock validation error:", err);
-        // Don't show error to user if validation endpoint fails
-        // (it's not critical - backend will check anyway)
       }
     };
 
@@ -107,8 +100,6 @@ function CheckoutPage() {
   }
 
   try {
-    // Ambil snapshot SEBELUM submitOrder,
-    // karena setelah submitOrder cart bisa ke-clear.
     const orderSummarySnapshot = flow.getOrderSummary();
 
     const orderIds = await flow.submitOrder();
