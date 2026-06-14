@@ -17,6 +17,7 @@ import {
   Search,
   ShoppingBasket,
   Plus,
+  Minus,
   ShoppingCart,
   MapPin,
   RefreshCw,
@@ -25,7 +26,7 @@ import {
 } from "lucide-react";
 import { formatIDR } from "@/lib/format";
 import { getProducts, getCategories } from "@/services/products";
-import { addToCart, getCart } from "@/services/cart";
+import { addToCart, getCart, removeCartItem, updateCartItem } from "@/services/cart";
 import { getWalletBalance } from "@/services/wallet";
 import { useStaggerChildren } from "@/hooks/useStaggerChildren";
 import { toast } from "sonner";
@@ -44,6 +45,11 @@ type Product = {
   description: string | null;
   vendor_id: string;
   images?: string[] | null;
+};
+
+type CartProductEntry = {
+  itemId: string;
+  quantity: number;
 };
 
 const getStockLabel = (stock: number) => {
@@ -72,15 +78,23 @@ const ModalProductDetail = memo(function ModalProductDetail({
   onAddToCart: (quantity: number) => void;
   isLoading: boolean;
 }) {
-  const [quantity, setQuantity] = useState(1);
+  const hasStock = product.stock_quantity > 0;
+  const [quantity, setQuantity] = useState(hasStock ? 1 : 0);
+
+  useEffect(() => {
+    setQuantity(hasStock ? 1 : 0);
+  }, [hasStock, product.id]);
 
   const handleQuantityChange = (value: number) => {
+    if (!hasStock) {
+      setQuantity(0);
+      return;
+    }
     const newValue = Math.max(1, Math.min(value, product.stock_quantity));
     setQuantity(newValue);
   };
 
   const totalPrice = product.voucher_price * quantity;
-  const hasStock = product.stock_quantity > 0;
 
   return (
     <div className="space-y-4">
@@ -137,7 +151,7 @@ const ModalProductDetail = memo(function ModalProductDetail({
             value={quantity}
             onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
             className="w-16 text-center"
-            disabled={isLoading}
+            disabled={!hasStock || isLoading}
           />
           <Button
             variant="outline"
@@ -184,23 +198,36 @@ const ProductCard = memo(function ProductCard({
   product,
   onSelect,
   onAddToCart,
+  onChangeQuantity,
+  onOpenCart,
   addingToCart,
+  cartQuantity,
 }: {
   product: Product;
   onSelect: (p: Product) => void;
   onAddToCart: (id: string) => void;
+  onChangeQuantity: (id: string, quantity: number) => void;
+  onOpenCart: () => void;
   addingToCart: string | null;
-  pendingQuantity: number;
+  cartQuantity: number;
 }) {
   const isLoading = addingToCart === product.id;
   const hasStock = product.stock_quantity > 0;
+  const isInCart = cartQuantity > 0;
 
   return (
-    <Card className="overflow-hidden flex flex-col transition-all hover:shadow-md group">
+    <Card
+      className={`overflow-hidden flex flex-col transition-all group ${
+        hasStock
+          ? "hover:shadow-md"
+          : "border-slate-200 bg-slate-50 opacity-70 grayscale"
+      }`}
+    >
       <button
         className="relative overflow-hidden"
         onClick={() => onSelect(product)}
         aria-label={`Lihat detail ${product.name}`}
+        disabled={!hasStock}
       >
         <ProductAvatarLarge
           images={product.images}
@@ -245,26 +272,71 @@ const ProductCard = memo(function ProductCard({
       </CardContent>
 
       <CardFooter className="p-3 pt-0">
-        <Button
-          size="sm"
-          className="w-full gap-1.5"
-          onClick={() => onAddToCart(product.id)}
-          disabled={isLoading || !hasStock}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Menambahkan...
-            </>
-          ) : !hasStock ? (
-            "Stok Habis"
-          ) : (
-            <>
-              <Plus className="h-3.5 w-3.5" />
-              Tambah
-            </>
-          )}
-        </Button>
+        {!isInCart ? (
+          <Button
+            size="sm"
+            className="w-full gap-1.5"
+            onClick={() => onAddToCart(product.id)}
+            disabled={isLoading || !hasStock}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Menambahkan...
+              </>
+            ) : !hasStock ? (
+              "Stok Habis"
+            ) : (
+              <>
+                <Plus className="h-3.5 w-3.5" />
+                Tambah
+              </>
+            )}
+          </Button>
+        ) : (
+          <div className="flex w-full items-center gap-2">
+            <div className="flex h-9 min-w-0 flex-1 items-center overflow-hidden rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700">
+              <button
+                type="button"
+                onClick={() => onChangeQuantity(product.id, cartQuantity - 1)}
+                disabled={isLoading}
+                className="flex h-full w-9 shrink-0 items-center justify-center transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={`Kurangi ${product.name}`}
+              >
+                <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+
+              <div className="flex min-w-0 flex-1 items-center justify-center px-2 text-sm font-black">
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-label="Memperbarui..." />
+                ) : (
+                  cartQuantity
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onChangeQuantity(product.id, cartQuantity + 1)}
+                disabled={isLoading || cartQuantity >= product.stock_quantity}
+                className="flex h-full w-9 shrink-0 items-center justify-center transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={`Tambah ${product.name}`}
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="h-9 w-12 shrink-0 border-emerald-200 text-emerald-700 hover:bg-emerald-50 sm:w-14"
+              onClick={onOpenCart}
+              aria-label="Buka keranjang"
+            >
+              <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        )}
       </CardFooter>
     </Card>
   );
@@ -285,13 +357,32 @@ const KatalogPangan = () => {
   const [addingToCart, setAddingToCart] = useState<string | null>(null); // track which product is loading
   const [currentPage, setCurrentPage] = useState(1);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  // Local state untuk cart items yang sedang di-add dengan quantity
   const [pendingCartItems, setPendingCartItems] = useState<Map<string, number>>(new Map());
+  const [cartProducts, setCartProducts] = useState<Map<string, CartProductEntry>>(new Map());
 
   const itemsPerPage = 12;
   const gridRef = useStaggerChildren({ stagger: 0.05 });
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  const syncCartState = useCallback((items: any[] = []) => {
+    const nextCartProducts = new Map<string, CartProductEntry>();
+    let nextCartItemCount = 0;
+
+    items.forEach((item) => {
+      const productId = String(item.product_id || "");
+      if (!productId) return;
+
+      const quantity = Number(item.quantity || 0);
+      nextCartItemCount += quantity;
+      nextCartProducts.set(productId, {
+        itemId: String(item.id || ""),
+        quantity,
+      });
+    });
+
+    setCartProducts(nextCartProducts);
+    setCartItemCount(nextCartItemCount);
+  }, []);
 
   const fetchData = useCallback(
     async (forceRefresh = false) => {
@@ -311,7 +402,7 @@ const KatalogPangan = () => {
 
       try {
         const [productsData, catsData, balanceData, cartData] = await Promise.all([
-          getProducts({ in_stock_only: true }).catch((err) => {
+          getProducts({ page_size: 100 }).catch((err) => {
             console.error("Failed to load products:", err);
             return { items: [] };
           }),
@@ -337,7 +428,7 @@ const KatalogPangan = () => {
         const catNames = (catsData || []).map((c: any) => c.name);
         setCategories(["Semua", ...catNames]);
         setBalance(Number(balanceData.wallet_available || 0));
-        setCartItemCount((cartData.items || []).length);
+        syncCartState(cartData.items || []);
         setLastUpdated(new Date());
         setLoading(false);
       } catch (err) {
@@ -346,7 +437,7 @@ const KatalogPangan = () => {
         setLoading(false);
       }
     },
-    [user, products.length, lastUpdated]
+    [user, products.length, lastUpdated, syncCartState]
   );
 
   useEffect(() => {
@@ -355,11 +446,18 @@ const KatalogPangan = () => {
 
   const filtered = useMemo(
     () =>
-      products.filter((p) => {
-        if (category !== "Semua" && p.category_name !== category) return false;
-        if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-      }),
+      products
+        .filter((p) => {
+          if (category !== "Semua" && p.category_name !== category) return false;
+          if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+          return true;
+        })
+        .sort((a, b) => {
+          const aOutOfStock = a.stock_quantity <= 0;
+          const bOutOfStock = b.stock_quantity <= 0;
+          if (aOutOfStock !== bOutOfStock) return aOutOfStock ? 1 : -1;
+          return 0;
+        }),
     [products, category, search]
   );
 
@@ -381,7 +479,9 @@ const KatalogPangan = () => {
 
       // Find product for optimistic update
       const product = products.find((p) => p.id === productId);
-      if (!product || product.stock_quantity < quantity) {
+      const currentCartQuantity = cartProducts.get(productId)?.quantity || 0;
+      const nextQuantity = currentCartQuantity + quantity;
+      if (!product || nextQuantity > product.stock_quantity) {
         toast.error("Stok tidak cukup");
         return;
       }
@@ -390,20 +490,15 @@ const KatalogPangan = () => {
       const originalStock = product.stock_quantity;
       const originalCartCount = cartItemCount;
       const originalPendingItems = new Map(pendingCartItems);
+      const originalCartProducts = new Map(cartProducts);
 
       setAddingToCart(productId);
       try {
         // 1. Optimistic update: update local state immediately
-        setProducts((prev) =>
-          prev.map((p) =>
-            p.id === productId
-              ? { ...p, stock_quantity: Math.max(0, p.stock_quantity - quantity) }
-              : p
-          )
-        );
+        setProducts((prev) => prev);
 
         // 2. Increment cart count (by 1 item, not quantity — backend merges existing items)
-        setCartItemCount((prev) => prev + 1);
+        setCartItemCount((prev) => prev + quantity);
 
         // 3. Track pending cart item (for UI feedback)
         setPendingCartItems((prev) => {
@@ -411,9 +506,18 @@ const KatalogPangan = () => {
           updated.set(productId, (updated.get(productId) || 0) + quantity);
           return updated;
         });
+        setCartProducts((prev) => {
+          const updated = new Map(prev);
+          const current = updated.get(productId);
+          updated.set(productId, {
+            itemId: current?.itemId || "",
+            quantity: nextQuantity,
+          });
+          return updated;
+        });
 
         // 4. Make API call in background
-        await addToCart({
+        const response = await addToCart({
           product_id: productId,
           quantity: quantity,
         });
@@ -422,6 +526,14 @@ const KatalogPangan = () => {
         setPendingCartItems((prev) => {
           const updated = new Map(prev);
           updated.delete(productId);
+          return updated;
+        });
+        setCartProducts((prev) => {
+          const updated = new Map(prev);
+          updated.set(productId, {
+            itemId: String(response?.id || response?.data?.id || updated.get(productId)?.itemId || ""),
+            quantity: Number(response?.quantity ?? response?.data?.quantity ?? nextQuantity),
+          });
           return updated;
         });
 
@@ -433,6 +545,7 @@ const KatalogPangan = () => {
         );
         setCartItemCount(originalCartCount);
         setPendingCartItems(originalPendingItems);
+        setCartProducts(originalCartProducts);
 
         const errorMsg = err.message || "Coba lagi";
         toast.error("Gagal menambahkan ke keranjang", {
@@ -443,7 +556,67 @@ const KatalogPangan = () => {
         setAddingToCart(null);
       }
     },
-    [products, addingToCart, cartItemCount, pendingCartItems]
+    [products, addingToCart, cartItemCount, pendingCartItems, cartProducts]
+  );
+
+  const changeCartQuantityHandler = useCallback(
+    async (productId: string, nextQuantity: number) => {
+      if (addingToCart) return;
+
+      const product = products.find((p) => p.id === productId);
+      const current = cartProducts.get(productId);
+      if (!product || !current) return;
+
+      const safeNextQuantity = Math.max(0, nextQuantity);
+      if (safeNextQuantity > product.stock_quantity) {
+        toast.error("Stok tidak cukup");
+        return;
+      }
+
+      const originalCartCount = cartItemCount;
+      const originalCartProducts = new Map(cartProducts);
+
+      setAddingToCart(productId);
+      try {
+        setCartProducts((prev) => {
+          const updated = new Map(prev);
+          if (safeNextQuantity === 0) {
+            updated.delete(productId);
+          } else {
+            updated.set(productId, {
+              itemId: current.itemId,
+              quantity: safeNextQuantity,
+            });
+          }
+          return updated;
+        });
+        setCartItemCount((prev) => Math.max(0, prev - current.quantity + safeNextQuantity));
+
+        if (safeNextQuantity === 0) {
+          await removeCartItem(current.itemId);
+          toast.success("Item dihapus dari keranjang");
+        } else {
+          const response = await updateCartItem(current.itemId, { quantity: safeNextQuantity });
+          setCartProducts((prev) => {
+            const updated = new Map(prev);
+            updated.set(productId, {
+              itemId: String(response?.id || response?.data?.id || current.itemId),
+              quantity: Number(response?.quantity ?? response?.data?.quantity ?? safeNextQuantity),
+            });
+            return updated;
+          });
+        }
+      } catch (err: any) {
+        setCartItemCount(originalCartCount);
+        setCartProducts(originalCartProducts);
+        toast.error("Gagal memperbarui keranjang", {
+          description: err?.message || "Coba lagi",
+        });
+      } finally {
+        setAddingToCart(null);
+      }
+    },
+    [addingToCart, cartItemCount, cartProducts, products]
   );
 
   if (loading) {
@@ -611,8 +784,10 @@ const KatalogPangan = () => {
               product={product}
               onSelect={setSelectedProduct}
               onAddToCart={addToCartHandler}
+              onChangeQuantity={changeCartQuantityHandler}
+              onOpenCart={() => navigate("/dashboard/cart")}
               addingToCart={addingToCart}
-              pendingQuantity={pendingCartItems.get(product.id) || 0}
+              cartQuantity={cartProducts.get(product.id)?.quantity || 0}
             />
           ))}
         </div>

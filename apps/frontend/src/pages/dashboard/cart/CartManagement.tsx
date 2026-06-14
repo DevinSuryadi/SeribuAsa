@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   ShoppingCart,
@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Package,
   Sparkles,
+  Store,
 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { CartItem } from "@/components/cart/CartItem";
@@ -54,6 +55,14 @@ interface WalletBalance {
   wallet_available: number;
   expiring_soon: number;
   earliest_expiry?: string;
+}
+
+interface CartVendorGroup {
+  vendorId: string;
+  vendorName: string;
+  items: CartItemData[];
+  subtotal: number;
+  itemCount: number;
 }
 
 export function CartManagement() {
@@ -102,6 +111,12 @@ export function CartManagement() {
       if (itemIndex === -1) return;
 
       const item = cartItems[itemIndex];
+      const availableStock = item.available_stock ?? item.stock_quantity;
+      if (availableStock !== undefined && quantity > availableStock) {
+        toast.error(`Stok ${item.product_name} hanya tersedia ${availableStock}`);
+        return;
+      }
+
       const oldSubtotal = Number(item.subtotal);
       const newSubtotal = quantity * Number(item.price);
       const subtotalDifference = newSubtotal - oldSubtotal;
@@ -212,6 +227,17 @@ export function CartManagement() {
       toast.error("Keranjang Anda kosong");
       return;
     }
+    const overStockItem = cartItems.find((item) => {
+      const availableStock = item.available_stock ?? item.stock_quantity;
+      return availableStock !== undefined && item.quantity > availableStock;
+    });
+    if (overStockItem) {
+      const availableStock = overStockItem.available_stock ?? overStockItem.stock_quantity ?? 0;
+      toast.error(
+        `Stok ${overStockItem.product_name} hanya tersedia ${availableStock}. Sesuaikan jumlah sebelum checkout.`
+      );
+      return;
+    }
     // Use real wallet_available instead of summary voucher_balance
     const availableBalance = walletBalance?.wallet_available ?? 0;
     const totalAmount = summary?.total_amount ?? 0;
@@ -229,6 +255,32 @@ export function CartManagement() {
   const canAfford = availableBalance >= totalAmount;
   const remainder = Math.max(0, availableBalance - totalAmount);
   const shortfall = Math.max(0, totalAmount - availableBalance);
+  const vendorGroups = useMemo<CartVendorGroup[]>(() => {
+    const groups = new Map<string, CartVendorGroup>();
+
+    cartItems.forEach((item) => {
+      const vendorId = item.vendor_id || `vendor-${item.product_id}`;
+      const vendorName = item.vendor_store_name || "Vendor";
+      const existing = groups.get(vendorId);
+
+      if (!existing) {
+        groups.set(vendorId, {
+          vendorId,
+          vendorName,
+          items: [item],
+          subtotal: Number(item.subtotal || 0),
+          itemCount: Number(item.quantity || 0),
+        });
+        return;
+      }
+
+      existing.items.push(item);
+      existing.subtotal += Number(item.subtotal || 0);
+      existing.itemCount += Number(item.quantity || 0);
+    });
+
+    return Array.from(groups.values());
+  }, [cartItems]);
 
   // ── Loading ────────────────────────────────────────────────────
   if (isLoading) {
@@ -333,22 +385,54 @@ export function CartManagement() {
               </button>
             </div>
 
-            {/* Items */}
-            <div className="space-y-2">
-              {cartItems.map((item) => (
-                <CartItem
-                  key={item.id}
-                  id={item.id}
-                  productName={item.product_name}
-                  quantity={item.quantity}
-                  price={Number(item.price)}
-                  subtotal={Number(item.subtotal)}
-                  onUpdateQuantity={handleUpdateQuantity}
-                  onRemove={handleRemoveItem}
-                  isLoading={isUpdating}
-                  images={item.product_images}
-                  categoryName={item.category_name}
-                />
+            {/* Items grouped by vendor */}
+            <div className="space-y-3">
+              {vendorGroups.map((group, index) => (
+                <div
+                  key={group.vendorId}
+                  className="overflow-hidden rounded-2xl border border-border bg-card"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary/30 px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Store className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-foreground">
+                          {group.vendorName || `Vendor ${index + 1}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {group.itemCount} item
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Subtotal Vendor
+                      </p>
+                      <p className="text-sm font-black text-foreground">
+                        {formatIDR(group.subtotal)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 p-3">
+                    {group.items.map((item) => (
+                      <CartItem
+                        key={item.id}
+                        id={item.id}
+                        productName={item.product_name}
+                        quantity={item.quantity}
+                        price={Number(item.price)}
+                        subtotal={Number(item.subtotal)}
+                        onUpdateQuantity={handleUpdateQuantity}
+                        onRemove={handleRemoveItem}
+                        isLoading={isUpdating}
+                        images={item.product_images}
+                        categoryName={item.category_name}
+                        availableStock={item.available_stock ?? item.stock_quantity}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
 
@@ -399,7 +483,29 @@ export function CartManagement() {
 
               {/* Line items */}
               <div className="space-y-2.5 text-sm">
-                {cartItems.map((item) => (
+                {vendorGroups.map((group, index) => (
+                  <div key={group.vendorId} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-xs font-bold text-foreground">
+                        {group.vendorName || `Vendor ${index + 1}`}
+                      </span>
+                      <span className="shrink-0 text-xs font-bold text-foreground">
+                        {formatIDR(group.subtotal)}
+                      </span>
+                    </div>
+                    {group.items.map((item) => (
+                      <div key={item.id} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground truncate mr-2 max-w-[130px]">
+                          {item.product_name} x{item.quantity}
+                        </span>
+                        <span className="font-medium text-muted-foreground flex-shrink-0">
+                          {formatIDR(Number(item.subtotal))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {false && cartItems.map((item) => (
                   <div key={item.id} className="flex justify-between text-xs">
                     <span className="text-muted-foreground truncate mr-2 max-w-[130px]">
                       {item.product_name} ×{item.quantity}

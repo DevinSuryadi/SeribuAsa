@@ -37,8 +37,11 @@ export interface VendorProduct {
   price: number;
   voucher_price: number;
   stock: number;
+  stock_quantity?: number;
   unit: string;
   category: string;
+  category_id?: string;
+  category_name?: string;
   approval_status: ProductApprovalStatus;
   created_at: string;
   images?: string[];

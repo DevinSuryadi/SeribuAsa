@@ -235,6 +235,7 @@ const KelolaProduk = () => {
 
     const priceNum = parseFloat(form.price);
     const voucherPriceNum = parseFloat(form.voucherPrice);
+    const stockNum = form.stock.trim() === "" ? 0 : Number(form.stock);
 
     if (Number.isNaN(priceNum) || priceNum <= 0) {
       toast.error("Harga produk harus lebih dari 0");
@@ -251,6 +252,11 @@ const KelolaProduk = () => {
       return;
     }
 
+    if (!Number.isInteger(stockNum) || stockNum < 0) {
+      toast.error("Stok harus berupa angka bulat dan tidak boleh negatif");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -259,7 +265,7 @@ const KelolaProduk = () => {
         category_id: form.category || undefined,
         price: priceNum,
         voucher_price: voucherPriceNum,
-        stock_quantity: parseInt(form.stock) || 0,
+        stock_quantity: stockNum,
         unit: form.unit,
         images: form.images.length > 0 ? form.images : undefined,
       };

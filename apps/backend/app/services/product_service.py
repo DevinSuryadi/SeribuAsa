@@ -2,6 +2,7 @@
 Product Service
 Business logic for category and product management
 """
+from sqlalchemy import case
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 import logging
@@ -60,7 +61,10 @@ class ProductService:
             query = query.filter(Product.stock_quantity > 0)
 
         return (
-            query.order_by(Product.created_at.desc())
+            query.order_by(
+                case((Product.stock_quantity > 0, 0), else_=1),
+                Product.created_at.desc(),
+            )
             .offset((params.page - 1) * params.page_size)
             .limit(params.page_size)
             .all()
@@ -142,9 +146,6 @@ class ProductService:
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(product, key, value)
-
-        if update_data:
-            product.approval_status = "pending"
 
         db.commit()
         db.refresh(product)

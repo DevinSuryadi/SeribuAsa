@@ -135,7 +135,7 @@ async def update_product(
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
-    """Update own product (vendor only, resets approval if price/stock changed)"""
+    """Update own product (vendor only, keeps existing approval status)"""
     product = ProductService.update_product(db, product_id, current_user.user_id, data)
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found or not yours")

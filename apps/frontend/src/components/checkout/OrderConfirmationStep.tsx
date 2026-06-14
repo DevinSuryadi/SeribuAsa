@@ -112,7 +112,7 @@ export function OrderConfirmationStep({
           {/* Payment method */}
           
 
-          {vendorCount > 1 && (
+          {false && (
             <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-100/30 dark:border-blue-800 p-4 text-xs text-blue-700 dark:text-blue-400">
               📦 Pesanan akan dibagi menjadi <strong>{vendorCount} pesanan terpisah</strong> sesuai
               vendor. Kamu akan mendapat QR Pickup untuk setiap pesanan.
