@@ -1,129 +1,208 @@
 import React from 'react';
 import { useCountUp } from '../../hooks/useCountUp';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import impactBg from '../../assets/cta-bg.svg';
 
 const stats = [
-  { end: 12500, prefix: '', suffix: '+', label: 'Penerima Manfaat Aktif', desc: 'Keluarga rentan yang mendapat bantuan nutrisi' },
-  { end: 45000, prefix: '', suffix: '+', label: 'Voucher Tersalurkan', desc: 'E-voucher nutrisi berhasil ditukarkan' },
-  { end: 4200, prefix: 'Rp', suffix: 'Jt', label: 'Dana Tersalurkan', desc: 'Total donasi yang telah disalurkan' },
-  { end: 87, prefix: '', suffix: '%', label: 'Tingkat Penukaran', desc: 'Voucher berhasil digunakan tepat sasaran' },
+  {
+    end: 12500,
+    prefix: '',
+    suffix: '+',
+    label: 'Penerima Manfaat Aktif',
+    desc: 'Keluarga rentan yang mendapat bantuan nutrisi',
+  },
+  {
+    end: 45000,
+    prefix: '',
+    suffix: '+',
+    label: 'Voucher Tersalurkan',
+    desc: 'E-voucher nutrisi berhasil ditukarkan',
+  },
+  {
+    end: 4200,
+    prefix: 'Rp',
+    suffix: 'Jt',
+    label: 'Dana Tersalurkan',
+    desc: 'Total donasi yang telah disalurkan',
+  },
+  {
+    end: 87,
+    prefix: '',
+    suffix: '%',
+    label: 'Tingkat Penukaran',
+    desc: 'Voucher berhasil digunakan tepat sasaran',
+  },
 ];
 
 export function ImpactSection() {
-  const titleRef = useScrollReveal({ y: 30 });
+  const sectionRef = useScrollReveal({ y: 24 });
 
   return (
-    <section style={{ position: 'relative', overflow: 'hidden', padding: 'clamp(48px, 8vh, 80px) 0' }}>
-      {/* Background blobs */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        zIndex: -1,
-        background: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(255,255,255,0) 60%)',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: 60,
-        right: 20,
-        width: 'clamp(150px, 30vw, 288px)',
-        height: 'clamp(150px, 30vw, 288px)',
-        borderRadius: '50%',
-        background: 'rgba(34,197,94,0.05)',
-        filter: 'blur(64px)',
-        zIndex: -1,
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: 20,
-        left: 20,
-        width: 'clamp(120px, 25vw, 256px)',
-        height: 'clamp(120px, 25vw, 256px)',
-        borderRadius: '50%',
-        background: 'rgba(34,197,94,0.07)',
-        filter: 'blur(64px)',
-        zIndex: -1,
-      }} />
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 5vw, 24px)' }}>
-        <div ref={titleRef} style={{ textAlign: 'center', marginBottom: 'clamp(32px, 6vw, 56px)' }}>
-          <h2
-            style={{
-              fontSize: 'clamp(28px, 4vw, 36px)',
-              fontWeight: 700,
-              color: '#111',
-              letterSpacing: '-0.5px',
-              margin: 0,
-            }}
-          >
-            Dampak Nyata
-          </h2>
-          <p
-            style={{
-              marginTop: 12,
-              fontSize: 15,
-              color: '#666',
-              maxWidth: 600,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              lineHeight: 1.6,
-            }}
-          >
-            Setiap donasi menciptakan perubahan yang terukur dan transparan.
-          </p>
-        </div>
+    <section
+      ref={sectionRef}
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        background: `url(${impactBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        padding: 'clamp(34px, 6vw, 56px) 0 clamp(80px, 10vw, 120px)',
+      }}
+    >
+      {/* Overlay hijau biar warnanya sama kayak CTA */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          background:
+            'linear-gradient(180deg, rgba(6, 26, 16, 0.74) 0%, rgba(6, 26, 16, 0.78) 45%, rgba(6, 26, 16, 0.84) 100%), rgba(28, 91, 54, 0.38)',
+          mixBlendMode: 'multiply',
+        }}
+      />
 
+      {/* Subtle highlight bawah */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          background:
+            'radial-gradient(circle at 50% 100%, rgba(255,255,255,0.055), transparent 50%)',
+        }}
+      />
+
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          maxWidth: 920,
+          margin: '0 auto',
+          padding: '0 clamp(18px, 5vw, 32px)',
+        }}
+      >
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 20,
-            maxWidth: 960,
-            margin: '0 auto',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 0,
           }}
         >
-          {stats.map((stat) => (
-            <ImpactCard key={stat.label} {...stat} />
+          {stats.map((stat, index) => (
+            <ImpactStat
+              key={stat.label}
+              {...stat}
+              showDivider={index !== stats.length - 1}
+            />
           ))}
         </div>
       </div>
+
+      {/* White wave bottom */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: '-4%',
+          right: '-4%',
+          bottom: -1,
+          zIndex: 3,
+          height: 'clamp(58% 70% at 50% 100%)',
+          background: '#fbf6ec',
+          clipPath: 'ellipse(66% 54% at 50% 100%)',
+        }}
+      />
+
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: -72,
+          height: 72,
+          background: '#ffffff',
+          zIndex: 2,
+        }}
+      />
     </section>
   );
 }
 
-function ImpactCard({ end, prefix, suffix, label, desc }: typeof stats[number]) {
-  const { ref, display } = useCountUp({ end, prefix, suffix, separator: '.' });
+function ImpactStat({
+  end,
+  prefix,
+  suffix,
+  label,
+  desc,
+  showDivider,
+}: (typeof stats)[number] & { showDivider: boolean }) {
+  const { ref, display } = useCountUp({
+    end,
+    prefix,
+    suffix,
+    separator: '.',
+  });
 
   return (
     <div
+      title={desc}
       style={{
+        position: 'relative',
         textAlign: 'center',
-        borderRadius: 14,
-        border: '1px solid rgba(0,0,0,0.08)',
-        background: '#fff',
-        padding: '28px 20px',
-        transition: 'all 0.2s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.09)';
-        e.currentTarget.style.transform = 'translateY(-2px)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'none';
-        e.currentTarget.style.transform = 'translateY(0)';
+        padding: '0 clamp(10px, 2vw, 26px)',
       }}
     >
       <div
         ref={ref as React.RefObject<HTMLDivElement>}
         style={{
-          fontSize: 'clamp(28px, 4vw, 36px)',
+          fontSize: 'clamp(25px, 4vw, 38px)',
+          lineHeight: 1,
           fontWeight: 800,
-          color: '#16a34a',
-          letterSpacing: '-1px',
+          color: '#fffaf0',
+          letterSpacing: '-0.8px',
+          textShadow: '0 3px 18px rgba(0,0,0,0.28)',
         }}
       >
         {display}
       </div>
-      <div style={{ marginTop: 8, fontWeight: 600, fontSize: 14, color: '#222' }}>{label}</div>
-      <p style={{ marginTop: 4, fontSize: 13, color: '#888', lineHeight: 1.5 }}>{desc}</p>
+
+      <div
+        style={{
+          marginTop: 8,
+          fontSize: 'clamp(8px, 1.1vw, 10px)',
+          lineHeight: 1.2,
+          fontWeight: 800,
+          color: 'rgba(255,250,240,0.86)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.8px',
+          maxWidth: 124,
+          marginLeft: 'auto',
+          marginRight: 'auto',
+        }}
+      >
+        {label}
+      </div>
+
+      {showDivider && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            right: 0,
+            transform: 'translateY(-50%)',
+            width: 1,
+            height: 58,
+            background:
+              'linear-gradient(180deg, transparent, rgba(255,250,240,0.32), transparent)',
+          }}
+        />
+      )}
     </div>
   );
 }
