@@ -12,6 +12,8 @@ interface CartItemData {
   price: number;
   subtotal: number;
   created_at: string;
+  stock_quantity?: number;
+  available_stock?: number;
 }
 
 interface CartListProps {
@@ -105,6 +107,7 @@ export function CartList({
                 onUpdateQuantity={onUpdateQuantity}
                 onRemove={onRemove}
                 isLoading={isLoading}
+                availableStock={item.available_stock ?? item.stock_quantity}
               />
             ))}
       </div>

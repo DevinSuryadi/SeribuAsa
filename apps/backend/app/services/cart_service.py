@@ -36,6 +36,8 @@ class CartService:
             "category_id": str(product.category_id) if product.category_id else None,
             "category_name": product.category.name if product.category else None,
             "product_images": product.images if product.images else [],
+            "stock_quantity": product.stock_quantity,
+            "available_stock": product.stock_quantity,
             "quantity": item.quantity,
             "price": product.price,
             "voucher_price": voucher_price,
@@ -99,6 +101,8 @@ class CartService:
                 new_quantity = existing_item.quantity + quantity
                 if new_quantity > 100:
                     raise ValueError("Max quantity for this product is 100")
+                if product.stock_quantity < new_quantity:
+                    raise ValueError(f"Not enough stock. Available: {product.stock_quantity}")
                 existing_item.quantity = new_quantity
             else:
                 # Reactivate soft-deleted item
@@ -144,6 +148,8 @@ class CartService:
                     merged_quantity = concurrent_item.quantity + quantity
                     if merged_quantity > 100:
                         raise ValueError("Max quantity for this product is 100")
+                    if product.stock_quantity < merged_quantity:
+                        raise ValueError(f"Not enough stock. Available: {product.stock_quantity}")
                     concurrent_item.quantity = merged_quantity
                 else:
                     concurrent_item.is_active = True
@@ -191,6 +197,8 @@ class CartService:
                     "category_id": str(product.category_id) if product.category_id else None,
                     "category_name": product.category.name if product.category else None,
                     "product_images": product.images if product.images else [],
+                    "stock_quantity": product.stock_quantity,
+                    "available_stock": product.stock_quantity,
                     "is_eligible": (product.voucher_price or Decimal(0)) > 0,
                     "created_at": item.created_at,
                     "updated_at": item.updated_at,
@@ -347,6 +355,8 @@ class CartService:
                 "category_id": str(product.category_id) if product.category_id else None,
                 "category_name": product.category.name if product.category else None,
                 "product_images": product.images if product.images else [],
+                "stock_quantity": product.stock_quantity,
+                "available_stock": product.stock_quantity,
                 "quantity": item.quantity,
                 "price": product.price,
                 "voucher_price": voucher_price,

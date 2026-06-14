@@ -52,22 +52,20 @@ function CheckoutPage() {
         const productIds = flow.cartItems.map((item) => item.product_id);
         const validation = await validateStockForCheckout(productIds);
 
-        if (!validation.all_available) {
-          const unavailableProducts = validation.unavailable_items || [];
-          if (unavailableProducts.length > 0) {
-            const productNames = unavailableProducts
-              .map(
-                (item: any) =>
-                  `${item.product_name} (kebutuhan: ${item.required}, tersedia: ${item.available})`
-              )
-              .join(", ");
+        if (!validation.all_in_stock) {
+          const unavailableProducts = validation.unavailable_products || [];
+          const lowStockProducts = validation.low_stock_products || [];
+          const affectedProductIds = [...unavailableProducts, ...lowStockProducts];
+          const affectedNames = flow.cartItems
+            .filter((item) => affectedProductIds.includes(item.product_id))
+            .map((item) => item.product_name);
+          const productList = affectedNames.length > 0 ? affectedNames.join(", ") : "beberapa produk";
 
-            const errorMsg = `Stok produk tidak tersedia: ${productNames}. Silakan kembali ke keranjang untuk menyesuaikan jumlah.`;
-            setStockError(errorMsg);
-            toast.error("Stok Produk Tidak Tersedia", {
-              description: errorMsg,
-            });
-          }
+          const errorMsg = `Stok ${productList} tidak mencukupi. Silakan kembali ke keranjang untuk menyesuaikan jumlah.`;
+          setStockError(errorMsg);
+          toast.error("Stok Produk Tidak Tersedia", {
+            description: errorMsg,
+          });
         } else {
           setStockError(null);
         }

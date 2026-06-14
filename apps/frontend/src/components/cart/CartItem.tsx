@@ -13,6 +13,7 @@ interface CartItemProps {
   isLoading?: boolean;
   categoryName?: string;
   images?: string[];
+  availableStock?: number;
 }
 
 import { ProductAvatar } from "@/components/product/ProductAvatar";
@@ -28,11 +29,15 @@ export function CartItem({
   isLoading = false,
   categoryName,
   images = [],
+  availableStock,
 }: CartItemProps) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const maxQuantity = Math.max(0, Math.min(100, availableStock ?? 100));
+  const isStockLimited = availableStock !== undefined;
+  const isOutOfStock = isStockLimited && maxQuantity <= 0;
 
   const handleQty = async (newQty: number) => {
-    if (newQty < 1 || newQty > 100 || isUpdating) return;
+    if (newQty < 1 || newQty > maxQuantity || isUpdating) return;
     setIsUpdating(true);
     try {
       await onUpdateQuantity(id, newQty);
@@ -53,7 +58,13 @@ export function CartItem({
   const busy = isUpdating || isLoading;
 
   return (
-    <div className="group flex items-center gap-4 p-4 rounded-2xl border border-border/80 bg-card hover:border-border hover:shadow-sm transition-all duration-200">
+    <div
+      className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200 ${
+        isOutOfStock
+          ? "border-slate-200 bg-slate-50 opacity-75"
+          : "border-border/80 bg-card hover:border-border hover:shadow-sm"
+      }`}
+    >
       {/* Product icon */}
       <ProductAvatar
         images={images}
@@ -66,6 +77,11 @@ export function CartItem({
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">{productName}</p>
         <p className="text-xs text-muted-foreground mt-0.5">{formatIDR(price)} / satuan</p>
+        {isStockLimited && (
+          <p className={`text-[11px] mt-1 ${quantity > maxQuantity ? "text-destructive" : "text-muted-foreground"}`}>
+            {isOutOfStock ? "Stok habis" : `Stok tersedia: ${maxQuantity}`}
+          </p>
+        )}
       </div>
 
       {/* Qty stepper */}
@@ -85,7 +101,7 @@ export function CartItem({
         <button
           type="button"
           onClick={() => handleQty(quantity + 1)}
-          disabled={busy || quantity >= 100}
+          disabled={busy || quantity >= maxQuantity}
           className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           aria-label="Tambah"
         >

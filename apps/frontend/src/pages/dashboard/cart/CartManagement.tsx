@@ -102,6 +102,12 @@ export function CartManagement() {
       if (itemIndex === -1) return;
 
       const item = cartItems[itemIndex];
+      const availableStock = item.available_stock ?? item.stock_quantity;
+      if (availableStock !== undefined && quantity > availableStock) {
+        toast.error(`Stok ${item.product_name} hanya tersedia ${availableStock}`);
+        return;
+      }
+
       const oldSubtotal = Number(item.subtotal);
       const newSubtotal = quantity * Number(item.price);
       const subtotalDifference = newSubtotal - oldSubtotal;
@@ -210,6 +216,17 @@ export function CartManagement() {
   const handleGoToCheckout = () => {
     if (cartItems.length === 0) {
       toast.error("Keranjang Anda kosong");
+      return;
+    }
+    const overStockItem = cartItems.find((item) => {
+      const availableStock = item.available_stock ?? item.stock_quantity;
+      return availableStock !== undefined && item.quantity > availableStock;
+    });
+    if (overStockItem) {
+      const availableStock = overStockItem.available_stock ?? overStockItem.stock_quantity ?? 0;
+      toast.error(
+        `Stok ${overStockItem.product_name} hanya tersedia ${availableStock}. Sesuaikan jumlah sebelum checkout.`
+      );
       return;
     }
     // Use real wallet_available instead of summary voucher_balance
@@ -348,6 +365,7 @@ export function CartManagement() {
                   isLoading={isUpdating}
                   images={item.product_images}
                   categoryName={item.category_name}
+                  availableStock={item.available_stock ?? item.stock_quantity}
                 />
               ))}
             </div>

@@ -35,6 +35,8 @@ class CartItemResponse(BaseModel):
     category_id: Optional[str] = None
     category_name: Optional[str] = None
     product_images: Optional[List[str]] = None
+    stock_quantity: int = 0
+    available_stock: int = 0
     is_eligible: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

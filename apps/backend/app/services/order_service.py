@@ -186,7 +186,8 @@ class OrderService:
             query = db.query(CartItem, Product).join(
                 Product, CartItem.product_id == Product.id
             ).filter(
-                CartItem.beneficiary_id == beneficiary_uuid
+                CartItem.beneficiary_id == beneficiary_uuid,
+                CartItem.is_active,
             )
             
             if cart_item_ids:

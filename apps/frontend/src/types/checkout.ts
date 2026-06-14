@@ -16,6 +16,8 @@ export interface CartItemData {
   vendor_id: string;
   category_name?: string;
   product_images?: string[];
+  stock_quantity?: number;
+  available_stock?: number;
 }
 
 export interface OrderSummary {
