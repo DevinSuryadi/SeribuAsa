@@ -131,62 +131,6 @@ const Tentang = () => {
               linear-gradient(180deg, #fbf6ec 0%, #f7f1e5 100%);
           }
 
-          .about-bg-shape-one,
-          .about-bg-shape-two,
-          .about-bg-shape-three,
-          .about-bg-shape-four {
-            position: absolute;
-            pointer-events: none;
-            z-index: 0;
-            filter: blur(2px);
-          }
-
-          .about-bg-shape-one {
-            top: 100px;
-            left: -120px;
-            width: 340px;
-            height: 340px;
-            border-radius: 999px;
-            background: radial-gradient(
-              circle,
-              rgba(47, 111, 70, 0.10) 0%,
-              rgba(47, 111, 70, 0.02) 62%,
-              transparent 75%
-            );
-          }
-
-          .about-bg-shape-two {
-            top: 360px;
-            right: -140px;
-            width: 360px;
-            height: 360px;
-            border-radius: 999px;
-            background: radial-gradient(
-              circle,
-              rgba(47, 111, 70, 0.09) 0%,
-              rgba(47, 111, 70, 0.02) 60%,
-              transparent 76%
-            );
-          }
-
-          .about-bg-shape-three {
-            top: 40px;
-            right: 18%;
-            width: 180px;
-            height: 180px;
-            border-radius: 50% 50% 44% 56% / 58% 40% 60% 42%;
-            background: rgba(47, 111, 70, 0.055);
-          }
-
-          .about-bg-shape-four {
-            bottom: 180px;
-            left: 8%;
-            width: 220px;
-            height: 220px;
-            border-radius: 46% 54% 40% 60% / 58% 44% 56% 42%;
-            background: rgba(47, 111, 70, 0.05);
-          }
-
           .section-title {
             font-family: Georgia, "Times New Roman", serif;
             color: #154632;
@@ -205,13 +149,14 @@ const Tentang = () => {
 
           .about-hero {
             position: relative;
-            max-width: 1120px;
+            max-width: 1180px;
             margin: 0 auto;
-            padding: clamp(42px, 7vw, 86px) 0 clamp(28px, 5vw, 54px);
+            padding: clamp(42px, 7vw, 86px) clamp(18px, 4vw, 34px) clamp(28px, 5vw, 54px);
             z-index: 1;
-            min-height: clamp(420px, 56vw, 620px);
+            min-height: clamp(420px, 54vw, 600px);
             display: flex;
             align-items: center;
+            overflow: visible;
           }
 
           .about-hero-copy {
@@ -223,7 +168,7 @@ const Tentang = () => {
           .about-hero-title {
             margin: 0;
             max-width: 780px;
-            font-size: clamp(42px, 6.4vw, 82px);
+            font-size: clamp(42px, 6vw, 72px);
             font-weight: 850;
             text-align: left;
           }
@@ -256,48 +201,45 @@ const Tentang = () => {
             position: absolute;
             pointer-events: none;
             z-index: 1;
+            background: #2f6f46;
           }
 
           .hero-liquid-left {
-            left: -270px;
-            top: 42px;
+            left: -420px;
+            top: 70px;
             width: 430px;
             height: 490px;
-            background: #2f6f46;
-            opacity: 0.13;
+            opacity: 0.075;
             border-radius: 52% 48% 64% 36% / 44% 58% 42% 56%;
             transform: rotate(-18deg);
           }
 
           .hero-liquid-right {
-            right: -280px;
-            top: 16px;
-            width: 500px;
+            right: -360px;
+            top: 28px;
+            width: 520px;
             height: 560px;
-            background: #2f6f46;
-            opacity: 0.12;
+            opacity: 0.085;
             border-radius: 48% 52% 36% 64% / 52% 42% 58% 48%;
             transform: rotate(16deg);
           }
 
           .hero-liquid-small {
-            right: 10%;
-            bottom: 48px;
+            right: 8%;
+            bottom: 46px;
             width: 150px;
             height: 132px;
-            background: #2f6f46;
-            opacity: 0.08;
+            opacity: 0.055;
             border-radius: 60% 40% 56% 44% / 48% 62% 38% 52%;
             transform: rotate(-10deg);
           }
 
           .hero-liquid-dot {
             left: 58%;
-            top: 26%;
+            top: 28%;
             width: 86px;
             height: 86px;
-            background: #2f6f46;
-            opacity: 0.055;
+            opacity: 0.04;
             border-radius: 55% 45% 60% 40% / 50% 56% 44% 50%;
             transform: rotate(22deg);
           }
@@ -510,7 +452,8 @@ const Tentang = () => {
           @media (max-width: 760px) {
             .about-hero {
               min-height: auto;
-              padding: 36px 0 42px;
+              padding: 36px clamp(18px, 5vw, 24px) 42px;
+              overflow: hidden;
             }
 
             .about-hero-title,
@@ -524,19 +467,19 @@ const Tentang = () => {
             }
 
             .hero-liquid-left {
-              left: -290px;
+              left: -360px;
               top: 90px;
               width: 390px;
               height: 440px;
-              opacity: 0.11;
+              opacity: 0.07;
             }
 
             .hero-liquid-right {
-              right: -320px;
+              right: -360px;
               top: 20px;
               width: 440px;
               height: 500px;
-              opacity: 0.10;
+              opacity: 0.075;
             }
 
             .hero-liquid-small {
@@ -544,7 +487,7 @@ const Tentang = () => {
               bottom: 8px;
               width: 110px;
               height: 96px;
-              opacity: 0.07;
+              opacity: 0.05;
             }
 
             .team-grid {
@@ -609,11 +552,6 @@ const Tentang = () => {
       </style>
 
       <div className="about-page relative z-0">
-        <div className="about-bg-shape-one" />
-        <div className="about-bg-shape-two" />
-        <div className="about-bg-shape-three" />
-        <div className="about-bg-shape-four" />
-
         <Navbar />
 
         <main className="pt-24 md:pt-28 pb-16 md:pb-20 relative z-10">

@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { Navbar } from "../components/landing/Navbar";
 import { Footer } from "../components/landing/Footer";
 import { SEO } from "../components/SEO";
@@ -19,7 +20,19 @@ import {
   Line,
   Legend,
 } from "recharts";
-import { MapPin, TrendingUp, Users, Wheat, Baby, Download } from "lucide-react";
+import {
+  MapPin,
+  TrendingUp,
+  Users,
+  Wheat,
+  Baby,
+  Download,
+  BarChart3,
+  TicketCheck,
+  Wallet,
+  Percent,
+  ArrowUpRight,
+} from "lucide-react";
 
 const regionData = [
   { provinsi: "Jawa Barat", penerima: 3200, voucher: 9600, penukaran: 89 },
@@ -40,9 +53,9 @@ const fiesTrend = [
 ];
 
 const nutritionPie = [
-  { name: "Normal", value: 65, color: "#16a34a" },
-  { name: "Waspada", value: 25, color: "#eab308" },
-  { name: "Kritis", value: 10, color: "#ef4444" },
+  { name: "Normal", value: 65, color: "#2f6f46" },
+  { name: "Waspada", value: 25, color: "#d59b2d" },
+  { name: "Kritis", value: 10, color: "#c75b4a" },
 ];
 
 const categoryUsage = [
@@ -54,270 +67,845 @@ const categoryUsage = [
   { kategori: "Kacang", persen: 8 },
 ];
 
+const kpis = [
+  {
+    end: 12500,
+    suffix: "+",
+    label: "Penerima Manfaat Aktif",
+    desc: "Keluarga rentan yang menerima dukungan nutrisi",
+    icon: Users,
+  },
+  {
+    end: 45000,
+    suffix: "+",
+    label: "Voucher Tersalurkan",
+    desc: "E-voucher nutrisi berhasil dialokasikan",
+    icon: TicketCheck,
+  },
+  {
+    end: 4200,
+    prefix: "Rp",
+    suffix: "Jt",
+    label: "Dana Tersalurkan",
+    desc: "Total donasi yang telah disalurkan",
+    icon: Wallet,
+  },
+  {
+    end: 87,
+    suffix: "%",
+    label: "Tingkat Penukaran",
+    desc: "Voucher berhasil digunakan tepat sasaran",
+    icon: Percent,
+  },
+];
+
 function StatCounter({
   end,
   prefix = "",
   suffix = "",
-  label,
 }: {
   end: number;
   prefix?: string;
   suffix?: string;
-  label: string;
 }) {
   const { ref, display } = useCountUp({ end, prefix, suffix, separator: "." });
+
   return (
-    <div className="text-center">
-      <div
-        ref={ref as React.RefObject<HTMLDivElement>}
-        className="text-2xl md:text-3xl font-extrabold text-green-600 leading-none tracking-tight"
-      >
-        {display}
-      </div>
-      <div className="mt-1.5 text-xs text-gray-400 font-medium">{label}</div>
+    <div ref={ref as RefObject<HTMLDivElement>} className="impact-kpi-number">
+      {display}
     </div>
   );
 }
 
 const Dampak = () => {
   const titleRef = useScrollReveal({ y: 30 });
+  const kpiRef = useStaggerChildren({ stagger: 0.1 });
   const chartsRef = useStaggerChildren({ stagger: 0.1 });
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
+    <div className="impact-page min-h-screen relative overflow-hidden">
       <SEO
         title="Dampak & Transparansi"
         description="Lihat dampak nyata donasi Anda melalui dashboard transparan SeribuAsa. Data penerima manfaat, voucher tersalurkan, dan status gizi balita di seluruh Indonesia."
         canonical="https://seribuasa.id/dampak"
         keywords="dampak donasi, transparansi donasi, data penerima manfaat, status gizi indonesia, voucher tersalurkan"
       />
-      <Navbar />
-      <main className="pt-24 md:pt-28 pb-16 md:pb-20 relative z-10 overflow-hidden">
-        {/* Background decorations */}
-        <div
-          className="absolute inset-0 z-0 pointer-events-none"
-          style={{
+
+      <style>
+        {`
+          .impact-page,
+          .impact-page * {
+            box-sizing: border-box;
+          }
+
+          .impact-page {
+            position: relative;
             background:
-              "radial-gradient(ellipse 70% 40% at 50% 0%, rgba(34,197,94,0.09) 0%, transparent 60%)",
-          }}
-        />
-        <div
-          className="absolute -top-16 -left-24 w-96 h-96 rounded-full pointer-events-none z-0"
-          style={{ background: "rgba(34,197,94,0.07)", filter: "blur(90px)" }}
-        />
-        <div
-          className="absolute top-1/3 -right-20 w-80 h-80 rounded-full pointer-events-none z-0"
-          style={{ background: "rgba(74,222,128,0.06)", filter: "blur(80px)" }}
-        />
+              radial-gradient(circle at 0% 10%, rgba(47, 111, 70, 0.11) 0%, transparent 24%),
+              radial-gradient(circle at 100% 18%, rgba(47, 111, 70, 0.09) 0%, transparent 24%),
+              linear-gradient(180deg, #fbf6ec 0%, #f7f1e5 100%);
+            color: #173b2a;
+          }
 
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          {/* Header */}
-          <div ref={titleRef} className="text-center mb-12 md:mb-16">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight">
-              Dampak Nyata <span className="text-green-600">SeribuAsa</span>
-            </h1>
-          </div>
+          .impact-bg-left,
+          .impact-bg-right,
+          .impact-bg-small {
+            position: absolute;
+            pointer-events: none;
+            z-index: 0;
+            background: #2f6f46;
+          }
 
-          {/* KPI Grid — 2 cols on mobile, 4 on md+ */}
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-gray-100 rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md shadow-sm mb-8 overflow-hidden">
-            {[
-              { end: 12500, suffix: "+", label: "Penerima Manfaat Aktif" },
-              { end: 45000, suffix: "+", label: "Voucher Tersalurkan" },
-              { end: 4200, prefix: "Rp", suffix: "Jt", label: "Dana Tersalurkan" },
-              { end: 87, suffix: "%", label: "Tingkat Penukaran" },
-            ].map((s) => (
-              <div key={s.label} className="py-5 px-4">
-                <StatCounter {...s} />
-              </div>
-            ))}
-          </div>
+          .impact-bg-left {
+            left: -260px;
+            top: 110px;
+            width: 420px;
+            height: 490px;
+            opacity: 0.10;
+            border-radius: 52% 48% 62% 38% / 46% 58% 42% 54%;
+            transform: rotate(-18deg);
+          }
 
-          <div ref={chartsRef} className="flex flex-col gap-5">
-            {/* Regional bar chart */}
-            <div className="rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-5">
-                <MapPin size={16} className="text-green-600" /> Dampak per Wilayah
-              </div>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={regionData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                  <XAxis dataKey="provinsi" tick={{ fill: "#aaa", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "#aaa", fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "white",
-                      border: "1px solid rgba(0,0,0,0.08)",
-                      borderRadius: 8,
-                      fontSize: 13,
-                    }}
-                  />
-                  <Bar dataKey="penerima" fill="#16a34a" radius={[4, 4, 0, 0]} name="Penerima" />
-                  <Bar dataKey="voucher" fill="#4ade80" radius={[4, 4, 0, 0]} name="Voucher" />
-                </BarChart>
-              </ResponsiveContainer>
+          .impact-bg-right {
+            right: -300px;
+            top: 210px;
+            width: 480px;
+            height: 540px;
+            opacity: 0.10;
+            border-radius: 48% 52% 38% 62% / 54% 42% 58% 46%;
+            transform: rotate(16deg);
+          }
+
+          .impact-bg-small {
+            right: 12%;
+            top: 620px;
+            width: 140px;
+            height: 124px;
+            opacity: 0.055;
+            border-radius: 60% 40% 55% 45% / 52% 60% 40% 48%;
+            transform: rotate(-10deg);
+          }
+
+          .impact-main {
+            position: relative;
+            z-index: 2;
+          }
+
+          .impact-container {
+            width: 100%;
+            max-width: 1180px;
+            margin: 0 auto;
+            padding-inline: clamp(18px, 4vw, 34px);
+          }
+
+          .impact-hero {
+            position: relative;
+            width: 100%;
+            padding: clamp(32px, 6vw, 72px) 0 clamp(26px, 5vw, 52px);
+          }
+
+          .impact-hero-copy {
+            max-width: 760px;
+            margin-left: 0;
+          }
+
+          .impact-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(47, 111, 70, 0.08);
+            border: 1px solid rgba(47, 111, 70, 0.12);
+            color: #2f6f46;
+            font-size: 12px;
+            font-weight: 850;
+          }
+
+          .impact-title {
+            margin: 18px 0 0;
+            max-width: 760px;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(40px, 5.8vw, 72px);
+            line-height: 1;
+            letter-spacing: -0.055em;
+            font-weight: 850;
+            color: #154632;
+          }
+
+          .impact-subtitle {
+            max-width: 610px;
+            margin: 24px 0 0;
+            color: #617166;
+            font-size: clamp(14px, 1.5vw, 16px);
+            line-height: 1.9;
+          }
+
+          .impact-hero-line {
+            width: min(440px, 88%);
+            height: 1px;
+            margin-top: 30px;
+            background: linear-gradient(
+              90deg,
+              rgba(47, 111, 70, 0.28),
+              rgba(47, 111, 70, 0.08),
+              transparent
+            );
+          }
+
+          .impact-export {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            margin-top: 28px;
+            min-height: 44px;
+            padding: 11px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(47, 111, 70, 0.14);
+            background: rgba(255, 255, 255, 0.72);
+            color: #2f6f46;
+            font-size: 14px;
+            font-weight: 850;
+            text-decoration: none;
+            box-shadow:
+              0 14px 30px rgba(29, 68, 44, 0.07),
+              inset 0 1px 0 rgba(255, 255, 255, 0.80);
+            backdrop-filter: blur(10px);
+            transition:
+              transform 0.2s ease,
+              background 0.2s ease,
+              border-color 0.2s ease;
+          }
+
+          .impact-export:hover {
+            transform: translateY(-2px);
+            background: #ffffff;
+            border-color: rgba(47, 111, 70, 0.24);
+          }
+
+          .impact-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: clamp(14px, 2vw, 20px);
+            width: 100%;
+            margin: 0 0 clamp(30px, 5vw, 48px);
+          }
+
+          .impact-kpi-card {
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+            border-radius: 26px;
+            padding: 22px 20px;
+            background:
+              linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.66));
+            border: 1px solid rgba(47, 111, 70, 0.11);
+            box-shadow:
+              0 20px 42px rgba(29, 68, 44, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.80);
+            backdrop-filter: blur(10px);
+          }
+
+          .impact-kpi-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 100% 0%, rgba(47, 111, 70, 0.10), transparent 34%);
+            pointer-events: none;
+          }
+
+          .impact-kpi-content {
+            position: relative;
+            z-index: 2;
+          }
+
+          .impact-kpi-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #2f6f46;
+            color: #ffffff;
+            margin-bottom: 16px;
+            box-shadow: 0 12px 24px rgba(47, 111, 70, 0.16);
+          }
+
+          .impact-kpi-number {
+            color: #154632;
+            font-size: clamp(28px, 3.2vw, 38px);
+            line-height: 1;
+            font-weight: 950;
+            letter-spacing: -0.045em;
+          }
+
+          .impact-kpi-label {
+            margin-top: 9px;
+            color: #173b2a;
+            font-size: 13.5px;
+            line-height: 1.25;
+            font-weight: 850;
+          }
+
+          .impact-kpi-desc {
+            margin-top: 7px;
+            color: #6b786f;
+            font-size: 12.5px;
+            line-height: 1.55;
+          }
+
+          .charts-layout {
+            display: grid;
+            gap: clamp(18px, 2.5vw, 24px);
+            width: 100%;
+            margin: 0;
+          }
+
+          .chart-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 30px;
+            padding: clamp(20px, 3vw, 28px);
+            background:
+              linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.66));
+            border: 1px solid rgba(47, 111, 70, 0.11);
+            box-shadow:
+              0 20px 42px rgba(29, 68, 44, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.80);
+            backdrop-filter: blur(10px);
+          }
+
+          .chart-card.dark {
+            background:
+              radial-gradient(circle at 100% 0%, rgba(139, 195, 154, 0.20), transparent 34%),
+              linear-gradient(180deg, #123d28 0%, #0b2f1d 100%);
+            border-color: rgba(251, 246, 236, 0.16);
+            box-shadow:
+              0 28px 60px rgba(14, 37, 24, 0.22),
+              inset 0 1px 0 rgba(255, 255, 255, 0.09);
+          }
+
+          .chart-header {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 22px;
+          }
+
+          .chart-title-wrap {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            max-width: 680px;
+          }
+
+          .chart-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 16px;
+            background: rgba(47, 111, 70, 0.10);
+            color: #2f6f46;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+          }
+
+          .chart-card.dark .chart-icon {
+            background: rgba(251, 246, 236, 0.12);
+            color: #fbf6ec;
+          }
+
+          .chart-title {
+            margin: 0;
+            color: #154632;
+            font-size: clamp(18px, 2vw, 22px);
+            line-height: 1.15;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+          }
+
+          .chart-card.dark .chart-title {
+            color: #fbf6ec;
+          }
+
+          .chart-desc {
+            margin: 7px 0 0;
+            color: #6b786f;
+            font-size: 13px;
+            line-height: 1.55;
+          }
+
+          .chart-card.dark .chart-desc {
+            color: rgba(251, 246, 236, 0.68);
+          }
+
+          .chart-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 11px;
+            border-radius: 999px;
+            background: rgba(47, 111, 70, 0.08);
+            color: #2f6f46;
+            font-size: 11.5px;
+            font-weight: 850;
+            white-space: nowrap;
+          }
+
+          .chart-card.dark .chart-badge {
+            background: rgba(251, 246, 236, 0.10);
+            color: #fbf6ec;
+          }
+
+          .chart-grid-two {
+            display: grid;
+            grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+            gap: clamp(18px, 2.5vw, 24px);
+            align-items: stretch;
+          }
+
+          .chart-visual-wide {
+            width: 100%;
+            min-height: 310px;
+          }
+
+          .chart-visual-medium {
+            width: 100%;
+            min-height: 270px;
+          }
+
+          .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+          }
+
+          .category-row {
+            display: grid;
+            grid-template-columns: 104px minmax(0, 1fr) 48px;
+            gap: 16px;
+            align-items: center;
+            width: 100%;
+          }
+
+          .category-label {
+            color: #53645b;
+            font-size: 13px;
+            font-weight: 800;
+          }
+
+          .category-track {
+            height: 13px;
+            border-radius: 999px;
+            background: rgba(47, 111, 70, 0.08);
+            overflow: hidden;
+            width: 100%;
+          }
+
+          .category-fill {
+            height: 100%;
+            border-radius: inherit;
+            background:
+              linear-gradient(90deg, #2f6f46, #6aaf77);
+            transition: width 0.7s ease;
+          }
+
+          .category-value {
+            color: #154632;
+            font-size: 13px;
+            font-weight: 900;
+            text-align: right;
+          }
+
+          .recharts-wrapper,
+          .recharts-surface {
+            outline: none;
+          }
+
+          @media (max-width: 980px) {
+            .impact-kpi-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .chart-grid-two {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          @media (max-width: 640px) {
+            .impact-title {
+              font-size: clamp(36px, 11vw, 52px);
+            }
+
+            .impact-bg-left {
+              left: -310px;
+              top: 120px;
+              width: 400px;
+              height: 450px;
+              opacity: 0.08;
+            }
+
+            .impact-bg-right {
+              right: -340px;
+              top: 240px;
+              width: 430px;
+              height: 480px;
+              opacity: 0.075;
+            }
+
+            .impact-bg-small {
+              display: none;
+            }
+
+            .impact-kpi-grid {
+              grid-template-columns: 1fr;
+            }
+
+            .chart-header {
+              flex-direction: column;
+            }
+
+            .chart-badge {
+              width: fit-content;
+            }
+
+            .category-row {
+              grid-template-columns: 74px minmax(0, 1fr) 38px;
+              gap: 10px;
+            }
+
+            .category-label,
+            .category-value {
+              font-size: 12px;
+            }
+
+            .chart-card {
+              border-radius: 24px;
+            }
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .impact-export,
+            .category-fill {
+              transition: none;
+            }
+
+            .impact-export:hover {
+              transform: none;
+            }
+          }
+        `}
+      </style>
+
+      <div className="impact-bg-left" />
+      <div className="impact-bg-right" />
+      <div className="impact-bg-small" />
+
+      <Navbar />
+
+      <main className="impact-main pt-24 md:pt-28 pb-16 md:pb-20">
+        <div className="impact-container">
+          {/* Hero */}
+          <section ref={titleRef} className="impact-hero">
+            <div className="impact-hero-copy">
+              <h1 className="impact-title">
+                Transparansi bantuan nutrisi dalam satu tampilan.
+              </h1>
+
+              <p className="impact-subtitle">
+                Pantau bagaimana donasi tersalurkan, voucher digunakan, dan
+                perubahan kondisi pangan keluarga penerima dari waktu ke waktu.
+              </p>
+
+              <div className="impact-hero-line" />
+
+              <a href="#" className="impact-export">
+                <Download size={16} />
+                Unduh Laporan
+              </a>
             </div>
+          </section>
 
-            {/* FIES + Pie — 1 col on mobile, 2 on md+ */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md p-5 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-4">
-                  <TrendingUp size={16} className="text-green-600" /> Tren Ketahanan Pangan (FIES)
+          {/* KPI */}
+          <section ref={kpiRef} className="impact-kpi-grid">
+            {kpis.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <article key={item.label} className="impact-kpi-card">
+                  <div className="impact-kpi-content">
+                    <div className="impact-kpi-icon">
+                      <Icon size={20} />
+                    </div>
+
+                    <StatCounter
+                      end={item.end}
+                      prefix={item.prefix}
+                      suffix={item.suffix}
+                    />
+
+                    <div className="impact-kpi-label">{item.label}</div>
+                    <p className="impact-kpi-desc">{item.desc}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+
+          {/* Charts */}
+          <section ref={chartsRef} className="charts-layout">
+            <article className="chart-card dark">
+              <div className="chart-header">
+                <div className="chart-title-wrap">
+                  <div className="chart-icon">
+                    <MapPin size={20} />
+                  </div>
+
+                  <div>
+                    <h2 className="chart-title">Dampak per Wilayah</h2>
+                    <p className="chart-desc">
+                      Perbandingan jumlah penerima dan voucher yang tersalurkan
+                      di beberapa wilayah prioritas.
+                    </p>
+                  </div>
                 </div>
-                <ResponsiveContainer width="100%" height={230}>
-                  <LineChart data={fiesTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                    <XAxis dataKey="bulan" tick={{ fill: "#aaa", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "#aaa", fontSize: 11 }} />
+
+                <div className="chart-badge">
+                  <ArrowUpRight size={13} />
+                  Data wilayah
+                </div>
+              </div>
+
+              <div className="chart-visual-wide">
+                <ResponsiveContainer width="100%" height={310}>
+                  <BarChart
+                    data={regionData}
+                    margin={{ top: 10, right: 18, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(251,246,236,0.10)"
+                    />
+                    <XAxis
+                      dataKey="provinsi"
+                      tick={{ fill: "rgba(251,246,236,0.65)", fontSize: 11 }}
+                      axisLine={{ stroke: "rgba(251,246,236,0.16)" }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "rgba(251,246,236,0.65)", fontSize: 11 }}
+                      axisLine={{ stroke: "rgba(251,246,236,0.16)" }}
+                      tickLine={false}
+                    />
                     <Tooltip
+                      cursor={{ fill: "rgba(251,246,236,0.06)" }}
                       contentStyle={{
-                        background: "white",
-                        border: "1px solid rgba(0,0,0,0.08)",
-                        borderRadius: 8,
+                        background: "#fbf6ec",
+                        border: "1px solid rgba(47,111,70,0.14)",
+                        borderRadius: 14,
                         fontSize: 13,
+                        color: "#173b2a",
+                        boxShadow: "0 14px 30px rgba(0,0,0,0.14)",
                       }}
                     />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="rendah"
-                      stroke="#16a34a"
-                      name="Rendah"
-                      strokeWidth={2}
-                      dot={false}
+                    <Bar
+                      dataKey="penerima"
+                      fill="#fbf6ec"
+                      radius={[8, 8, 0, 0]}
+                      name="Penerima"
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="sedang"
-                      stroke="#eab308"
-                      name="Sedang"
-                      strokeWidth={2}
-                      dot={false}
+                    <Bar
+                      dataKey="voucher"
+                      fill="#7fbd8b"
+                      radius={[8, 8, 0, 0]}
+                      name="Voucher"
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="parah"
-                      stroke="#ef4444"
-                      name="Parah"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
+            </article>
 
-              <div className="rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md p-5 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-4">
-                  <Baby size={16} className="text-green-600" /> Status Gizi Balita
+            <div className="chart-grid-two">
+              <article className="chart-card">
+                <div className="chart-header">
+                  <div className="chart-title-wrap">
+                    <div className="chart-icon">
+                      <TrendingUp size={20} />
+                    </div>
+
+                    <div>
+                      <h2 className="chart-title">Tren Ketahanan Pangan</h2>
+                      <p className="chart-desc">
+                        Perubahan skor FIES dari bulan ke bulan.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <ResponsiveContainer width="100%" height={230}>
-                  <PieChart>
-                    <Pie
-                      data={nutritionPie}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={85}
-                      dataKey="value"
-                      label={({ name, value }: { name: string; value: number }) =>
-                        `${name}: ${value}%`
-                      }
-                      labelLine={false}
+
+                <div className="chart-visual-medium">
+                  <ResponsiveContainer width="100%" height={270}>
+                    <LineChart
+                      data={fiesTrend}
+                      margin={{ top: 10, right: 18, left: 0, bottom: 0 }}
                     >
-                      {nutritionPie.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: "white",
-                        border: "1px solid rgba(0,0,0,0.08)",
-                        borderRadius: 8,
-                        fontSize: 13,
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(47,111,70,0.10)"
+                      />
+                      <XAxis
+                        dataKey="bulan"
+                        tick={{ fill: "#7a8880", fontSize: 11 }}
+                        axisLine={{ stroke: "rgba(47,111,70,0.12)" }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: "#7a8880", fontSize: 11 }}
+                        axisLine={{ stroke: "rgba(47,111,70,0.12)" }}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "#ffffff",
+                          border: "1px solid rgba(47,111,70,0.14)",
+                          borderRadius: 14,
+                          fontSize: 13,
+                          boxShadow: "0 14px 30px rgba(29,68,44,0.10)",
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="rendah"
+                        stroke="#2f6f46"
+                        name="Rendah"
+                        strokeWidth={3}
+                        dot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="sedang"
+                        stroke="#d59b2d"
+                        name="Sedang"
+                        strokeWidth={3}
+                        dot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="parah"
+                        stroke="#c75b4a"
+                        name="Parah"
+                        strokeWidth={3}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </article>
+
+              <article className="chart-card">
+                <div className="chart-header">
+                  <div className="chart-title-wrap">
+                    <div className="chart-icon">
+                      <Baby size={20} />
+                    </div>
+
+                    <div>
+                      <h2 className="chart-title">Status Gizi Balita</h2>
+                      <p className="chart-desc">
+                        Distribusi status gizi dari penerima manfaat anak.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="chart-visual-medium">
+                  <ResponsiveContainer width="100%" height={270}>
+                    <PieChart>
+                      <Pie
+                        data={nutritionPie}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={62}
+                        outerRadius={92}
+                        dataKey="value"
+                        label={({
+                          name,
+                          value,
+                        }: {
+                          name: string;
+                          value: number;
+                        }) => `${name}: ${value}%`}
+                        labelLine={false}
+                      >
+                        {nutritionPie.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          background: "#ffffff",
+                          border: "1px solid rgba(47,111,70,0.14)",
+                          borderRadius: 14,
+                          fontSize: 13,
+                          boxShadow: "0 14px 30px rgba(29,68,44,0.10)",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </article>
             </div>
 
-            {/* Category usage */}
-            <div className="rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-5">
-                <Wheat size={16} className="text-green-600" /> Penggunaan Voucher per Kategori
-                Pangan
+            <article className="chart-card">
+              <div className="chart-header">
+                <div className="chart-title-wrap">
+                  <div className="chart-icon">
+                    <Wheat size={20} />
+                  </div>
+
+                  <div>
+                    <h2 className="chart-title">
+                      Penggunaan Voucher per Kategori Pangan
+                    </h2>
+                    <p className="chart-desc">
+                      Komposisi pembelian bahan pangan bergizi oleh penerima manfaat.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="chart-badge">
+                  <ArrowUpRight size={13} />
+                  Kategori pangan
+                </div>
               </div>
-              <div className="flex flex-col gap-3">
+
+              <div className="category-list">
                 {categoryUsage.map((cat) => (
-                  <div key={cat.kategori} className="flex items-center gap-3">
-                    <span className="w-16 sm:w-20 text-xs sm:text-sm text-gray-500 shrink-0">
-                      {cat.kategori}
-                    </span>
-                    <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div key={cat.kategori} className="category-row">
+                    <span className="category-label">{cat.kategori}</span>
+
+                    <div className="category-track">
                       <div
-                        className="h-full rounded-full bg-green-600 transition-all duration-700"
+                        className="category-fill"
                         style={{ width: `${cat.persen}%` }}
                       />
                     </div>
-                    <span className="w-9 text-right text-xs sm:text-sm font-semibold text-gray-700 shrink-0">
-                      {cat.persen}%
-                    </span>
+
+                    <span className="category-value">{cat.persen}%</span>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Table */}
-            <div className="rounded-2xl border border-gray-100 bg-white/85 backdrop-blur-md p-5 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
-                  <Users size={16} className="text-green-600" /> Detail per Provinsi
-                </div>
-                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-500 hover:border-green-600 hover:text-green-600 transition-colors">
-                  <Download size={13} /> Unduh CSV
-                </button>
-              </div>
-              <div className="overflow-x-auto -mx-2 px-2">
-                <table className="w-full text-sm border-collapse min-w-[360px]">
-                  <thead>
-                    <tr>
-                      {["Provinsi", "Penerima", "Voucher", "Penukaran"].map((h, i) => (
-                        <th
-                          key={h}
-                          className={`py-2.5 font-semibold text-gray-400 border-b border-gray-100 text-xs tracking-wide ${i === 0 ? "text-left" : "text-right"}`}
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {regionData.map((r) => (
-                      <tr key={r.provinsi}>
-                        <td className="py-3 font-semibold text-gray-900 border-b border-gray-50">
-                          {r.provinsi}
-                        </td>
-                        <td className="py-3 text-right text-gray-500 border-b border-gray-50">
-                          {r.penerima.toLocaleString("id-ID")}
-                        </td>
-                        <td className="py-3 text-right text-gray-500 border-b border-gray-50">
-                          {r.voucher.toLocaleString("id-ID")}
-                        </td>
-                        <td className="py-3 text-right border-b border-gray-50">
-                          <span
-                            className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${r.penukaran >= 85 ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}
-                          >
-                            {r.penukaran}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+            </article>
+          </section>
         </div>
       </main>
+
       <Footer />
     </div>
   );
