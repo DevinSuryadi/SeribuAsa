@@ -27,7 +27,6 @@ import {
   Wheat,
   Baby,
   Download,
-  BarChart3,
   TicketCheck,
   Wallet,
   Percent,
