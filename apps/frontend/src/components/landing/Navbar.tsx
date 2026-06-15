@@ -9,6 +9,7 @@ const navLinks = [
   { label: 'Paket Donasi', href: '/donasi' },
   { label: 'Tentang Kami', href: '/tentang' },
   { label: 'Dampak', href: '/dampak' },
+  { label: 'Mitra Kami', href: '/mitra' },
 ];
 
 const roleLabels: Record<string, string> = {
