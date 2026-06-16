@@ -5,12 +5,16 @@ import { Footer } from "@/components/landing/Footer";
 import { SEO } from "@/components/SEO";
 import { apiFetch } from "@/services/api";
 import { staticSWRConfig } from "@/lib/swr-config";
-import { Store, MapPin, Search, CalendarDays, X, CheckCircle, Navigation } from "lucide-react";
+import { Store, MapPin, Search, CalendarDays, X, CheckCircle, Navigation, Star, Clock } from "lucide-react";
 
 type PublicVendor = {
   store_name: string;
   store_address: string;
   join_date: string;
+  store_image_url: string;
+  operating_hours: string;
+  rating: number;
+  total_transactions: number;
 };
 
 export default function MitraKami() {
@@ -274,10 +278,20 @@ export default function MitraKami() {
                   className="mitra-card group"
                   onClick={() => setSelectedVendor(vendor)}
                 >
-                  <div className="mitra-card-icon-wrap">
-                    <Store className="w-6 h-6" />
+                  <div className="w-[calc(100%+48px)] h-40 bg-gray-100 -mt-6 -mx-6 mb-5 overflow-hidden">
+                    <img 
+                      src={vendor.store_image_url} 
+                      alt={vendor.store_name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
                   </div>
                   
+                  <div className="flex items-center gap-1 mb-1.5 text-amber-500">
+                    <Star className="w-4 h-4 fill-current" />
+                    <span className="font-bold text-sm text-[#173b2a]">{vendor.rating.toFixed(1)}</span>
+                    <span className="text-xs text-[#617166]">({vendor.total_transactions} transaksi)</span>
+                  </div>
+
                   <h3 className="font-bold text-[#154632] text-xl mb-4 line-clamp-1 group-hover:text-[#2f6f46] transition-colors">
                     {vendor.store_name}
                   </h3>
@@ -313,8 +327,16 @@ export default function MitraKami() {
               <X size={18} />
             </button>
 
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#2f6f46] to-[#6aaf77] flex items-center justify-center text-white mb-6 shadow-lg shadow-[#2f6f46]/20">
-              <Store size={32} />
+            <div className="w-full h-48 bg-gray-100 rounded-2xl overflow-hidden mb-6 mt-2 relative">
+              <img 
+                src={selectedVendor.store_image_url} 
+                alt={selectedVendor.store_name} 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-1.5 text-sm font-bold text-amber-600 shadow-sm">
+                <Star className="w-4 h-4 fill-current" />
+                {selectedVendor.rating.toFixed(1)} <span className="text-[#617166] text-xs font-medium ml-0.5">({selectedVendor.total_transactions})</span>
+              </div>
             </div>
 
             <h2 className="text-2xl font-bold text-[#154632] mb-2 pr-10">
@@ -341,6 +363,16 @@ export default function MitraKami() {
                   >
                     <Navigation size={14} /> Buka di Maps
                   </a>
+                </div>
+              </div>
+
+              <div className="flex gap-4 p-4 bg-white rounded-2xl border border-[rgba(47,111,70,0.1)] shadow-sm">
+                <Clock className="w-5 h-5 text-[#2f6f46] shrink-0 mt-1" />
+                <div>
+                  <div className="text-xs font-bold text-[#617166] uppercase tracking-wider mb-1">Jam Operasional</div>
+                  <div className="text-[#173b2a] font-medium text-sm leading-relaxed">
+                    {selectedVendor.operating_hours}
+                  </div>
                 </div>
               </div>
 

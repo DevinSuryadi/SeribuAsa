@@ -154,6 +154,10 @@ class VendorProfile(BaseModel):
     store_name = Column(String(255), nullable=False)
     store_address = Column(Text, nullable=False)
     store_phone = Column(String(20))
+    store_image_url = Column(String(500))
+    operating_hours = Column(String(100))
+    rating = Column(Numeric(3, 1))
+    total_transactions = Column(Integer, default=0)
     
     # Bank account for settlement
     bank_name = Column(String(100))

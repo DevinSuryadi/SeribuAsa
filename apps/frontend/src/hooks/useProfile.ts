@@ -16,6 +16,8 @@ interface UseProfileReturn extends AsyncState<BackendProfile> {
     gender?: "male" | "female" | null;
     store_name?: string | null;
     store_address?: string | null;
+    store_image_url?: string | null;
+    operating_hours?: string | null;
     bank_name?: string | null;
     bank_account_number?: string | null;
     bank_account_holder?: string | null;
@@ -49,6 +51,10 @@ export function useProfile(): UseProfileReturn {
         gender: profileData.gender || null,
         store_name: profileData.store_name || null,
         store_address: profileData.store_address || null,
+        store_image_url: profileData.store_image_url || null,
+        operating_hours: profileData.operating_hours || null,
+        rating: profileData.rating || null,
+        total_transactions: profileData.total_transactions || null,
         bank_name: profileData.bank_name || null,
         bank_account_number: profileData.bank_account_number || null,
         bank_account_holder: profileData.bank_account_holder || null,
@@ -72,6 +78,8 @@ export function useProfile(): UseProfileReturn {
       gender?: "male" | "female" | null;
       store_name?: string | null;
       store_address?: string | null;
+      store_image_url?: string | null;
+      operating_hours?: string | null;
       bank_name?: string | null;
       bank_account_number?: string | null;
       bank_account_holder?: string | null;
@@ -105,6 +113,10 @@ export function useProfile(): UseProfileReturn {
             gender: updatedProfile.gender || null,
             store_name: updatedProfile.store_name || profile.store_name || null,
             store_address: updatedProfile.store_address || profile.store_address || null,
+            store_image_url: updatedProfile.store_image_url || profile.store_image_url || null,
+            operating_hours: updatedProfile.operating_hours || profile.operating_hours || null,
+            rating: updatedProfile.rating || null,
+            total_transactions: updatedProfile.total_transactions || null,
             bank_name: updatedProfile.bank_name || profile.bank_name || null,
             bank_account_number: updatedProfile.bank_account_number || profile.bank_account_number || null,
             bank_account_holder: updatedProfile.bank_account_holder || profile.bank_account_holder || null,

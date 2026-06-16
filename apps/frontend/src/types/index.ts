@@ -36,6 +36,10 @@ export interface BackendProfile {
   gender: "male" | "female" | null;
   store_name?: string | null;
   store_address?: string | null;
+  store_image_url?: string | null;
+  operating_hours?: string | null;
+  rating?: number | null;
+  total_transactions?: number | null;
   bank_name?: string | null;
   bank_account_number?: string | null;
   bank_account_holder?: string | null;

@@ -48,6 +48,10 @@ class UserProfileResponse(BaseModel):
     avatar_url: str | None
     store_name: str | None = None
     store_address: str | None = None
+    store_image_url: str | None = None
+    operating_hours: str | None = None
+    rating: float | None = None
+    total_transactions: int | None = None
     bank_name: str | None = None
     bank_account_number: str | None = None
     bank_account_holder: str | None = None
@@ -93,6 +97,8 @@ class UserProfileUpdateRequest(BaseModel):
     gender: GenderType | None = Field(None)
     store_name: str | None = Field(None, max_length=255)
     store_address: str | None = Field(None)
+    store_image_url: str | None = Field(None, max_length=500)
+    operating_hours: str | None = Field(None, max_length=100)
     bank_name: str | None = Field(None, max_length=100)
     bank_account_number: str | None = Field(None, max_length=50)
     bank_account_holder: str | None = Field(None, max_length=255)
@@ -105,3 +111,7 @@ class PublicVendorResponse(BaseModel):
     store_name: str
     store_address: str
     join_date: datetime
+    store_image_url: str | None = None
+    operating_hours: str | None = None
+    rating: float | None = None
+    total_transactions: int | None = None

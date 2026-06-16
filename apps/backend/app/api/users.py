@@ -7,6 +7,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 import logging
 from uuid import UUID
+import random
+import hashlib
+
+def get_default_vendor_metrics(user_id: UUID | str) -> tuple[float, int]:
+    seed = int(hashlib.sha256(str(user_id).encode()).hexdigest(), 16)
+    random.seed(seed)
+    rating = round(random.uniform(4.5, 5.0), 1)
+    trx = random.randint(300, 2000)
+    return rating, trx
 
 from app.database import get_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, GenderEnum
@@ -60,6 +69,14 @@ def _build_user_profile_response(db: Session, user_profile: UserProfile) -> User
         avatar_url=user_profile.avatar_url,
         store_name=vendor_profile.store_name if vendor_profile else None,
         store_address=vendor_profile.store_address if vendor_profile else None,
+        store_image_url=vendor_profile.store_image_url if vendor_profile else None,
+        operating_hours=vendor_profile.operating_hours if vendor_profile else None,
+        rating=float(vendor_profile.rating) if vendor_profile and vendor_profile.rating else (
+            get_default_vendor_metrics(user_profile.user_id)[0] if resolved_role == "vendor" else None
+        ),
+        total_transactions=vendor_profile.total_transactions if vendor_profile else (
+            get_default_vendor_metrics(user_profile.user_id)[1] if resolved_role == "vendor" else None
+        ),
         bank_name=vendor_profile.bank_name if vendor_profile else None,
         bank_account_number=vendor_profile.bank_account_number if vendor_profile else None,
         bank_account_holder=vendor_profile.bank_account_holder if vendor_profile else None,
@@ -82,10 +99,17 @@ async def get_public_vendors(db: Session = Depends(get_db)):
     # We map it manually to match the schema
     result = []
     for v in vendors:
+        # Generate deterministic pseudo-random default values based on user_id
+        default_rating, default_trx = get_default_vendor_metrics(v.user_id)
+
         result.append(PublicVendorResponse(
             store_name=v.store_name or "Warung SeribuAsa",
             store_address=v.store_address or "Indonesia",
-            join_date=v.created_at
+            join_date=v.created_at,
+            store_image_url=v.store_image_url or "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800",
+            operating_hours=v.operating_hours or "Setiap Hari: 08.00 - 20.00",
+            rating=float(v.rating) if v.rating else default_rating,
+            total_transactions=v.total_transactions or default_trx
         ))
     
     return result
@@ -275,7 +299,7 @@ async def update_user_profile(
         gender = payload.get("gender")
         user_profile.gender = GenderEnum(gender) if gender else None
 
-    vendor_fields = {"bank_name", "bank_account_number", "bank_account_holder", "store_name", "store_address"}
+    vendor_fields = {"bank_name", "bank_account_number", "bank_account_holder", "store_name", "store_address", "store_image_url", "operating_hours"}
     if vendor_fields.intersection(payload):
         vendor_profile = db.query(VendorProfile).filter(VendorProfile.user_id == user_id).first()
         if not vendor_profile:
@@ -296,6 +320,14 @@ async def update_user_profile(
         if "store_address" in payload:
             store_address = payload.get("store_address")
             vendor_profile.store_address = store_address.strip() if isinstance(store_address, str) and store_address.strip() else ""
+
+        if "store_image_url" in payload:
+            store_image_url = payload.get("store_image_url")
+            vendor_profile.store_image_url = store_image_url.strip() if isinstance(store_image_url, str) and store_image_url.strip() else None
+
+        if "operating_hours" in payload:
+            operating_hours = payload.get("operating_hours")
+            vendor_profile.operating_hours = operating_hours.strip() if isinstance(operating_hours, str) and operating_hours.strip() else None
 
         if "bank_name" in payload:
             bank_name = payload.get("bank_name")
