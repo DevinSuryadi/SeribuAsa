@@ -8,20 +8,15 @@ test.describe('Donation Flow - Public Pages', () => {
     await expect(page.locator('body')).toBeVisible();
     
     // Should have donation-related content
-    await expect(page.getByText(/donasi/i).first()).toBeVisible();
+    await expect(page.locator('h1', { hasText: /pilih paket donasi/i })).toBeVisible();
   });
 
   test('donation page has call-to-action', async ({ page }) => {
     await page.goto('/donasi');
     
     // Should have a button or link to start donation
-    const ctaButton = page.getByRole('button', { name: /donasi|mulai|berikan/i }).first();
-    const ctaLink = page.getByRole('link', { name: /donasi|mulai|berikan/i }).first();
-    
-    const hasButton = await ctaButton.isVisible().catch(() => false);
-    const hasLink = await ctaLink.isVisible().catch(() => false);
-    
-    expect(hasButton || hasLink).toBeTruthy();
+    const cta = page.locator('text=/donasi sekarang/i').first();
+    await expect(cta).toBeVisible({ timeout: 10000 });
   });
 
   test('donation page has navigation', async ({ page }) => {

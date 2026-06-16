@@ -81,7 +81,7 @@ test.describe('Auth Flow - Login Page', () => {
     await passwordInput.fill('TestPassword123!');
     
     // Click toggle button
-    const toggleButton = page.locator('button').filter({ has: page.locator('svg') }).last();
+    const toggleButton = page.locator('button').filter({ has: page.locator('svg') }).first();
     await toggleButton.click();
     
     // Password should be visible now

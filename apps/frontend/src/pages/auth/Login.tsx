@@ -264,6 +264,7 @@ export default function Login() {
           {/* Form */}
           <form
             onSubmit={handleSubmit}
+            noValidate
             style={{ display: "flex", flexDirection: "column", gap: 16 }}
           >
             {/* Email */}
@@ -355,6 +356,7 @@ export default function Login() {
                 />
                 <button
                   type="button"
+                  aria-label={showPw ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                   onClick={() => setShowPw(!showPw)}
                   style={{
                     position: "absolute",

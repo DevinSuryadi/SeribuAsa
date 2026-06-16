@@ -84,7 +84,7 @@ describe("Donation Service", () => {
   });
 
   describe("updateDonationStatus", () => {
-    // skip since it's not exported
+    it.todo("skip since it's not exported");
   });
 
   describe("Metrics", () => {

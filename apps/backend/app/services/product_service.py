@@ -146,6 +146,8 @@ class ProductService:
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(product, key, value)
+            
+        product.approval_status = "pending"
 
         db.commit()
         db.refresh(product)

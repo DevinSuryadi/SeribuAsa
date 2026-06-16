@@ -43,32 +43,25 @@ const ResetPassword = () => {
     meetsStrengthRequirements;
 
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setTokenValid(true);
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-      }
-    });
-
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setTokenValid((current) => {
         if (current === null) return false;
         return current;
       });
     }, 5000);
 
-    return () => {
-      subscription.unsubscribe();
-      if (timeoutId) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setTokenValid(true);
         clearTimeout(timeoutId);
       }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutId);
     };
   }, []);
 

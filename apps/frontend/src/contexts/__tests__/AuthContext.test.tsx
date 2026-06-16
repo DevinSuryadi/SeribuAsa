@@ -21,6 +21,12 @@ vi.mock("@/integrations/supabase/client", () => ({
 describe("AuthContext", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ full_name: "Donor User", role: "donor" })
+    }) as any;
+
     // Default to no session
     vi.mocked(supabase.auth.getSession).mockResolvedValue({
       data: { session: null },
@@ -104,7 +110,7 @@ describe("AuthContext", () => {
       signInResult = await result.current.signIn("test@test.com", "password");
     });
 
-    expect(signInResult).toEqual({}); // Returns object with no error
+    expect(signInResult).toEqual({ error: null }); // Returns object with no error
     expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
       email: "test@test.com",
       password: "password",

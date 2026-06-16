@@ -92,13 +92,8 @@ test.describe('Donor Flow - Donation Page', () => {
     await page.goto('/donasi');
     
     // Should have a call-to-action
-    const ctaButton = page.getByRole('button', { name: /donasi|mulai|berikan/i }).first();
-    const ctaLink = page.getByRole('link', { name: /donasi|mulai|berikan/i }).first();
-    
-    const hasButton = await ctaButton.isVisible().catch(() => false);
-    const hasLink = await ctaLink.isVisible().catch(() => false);
-    
-    expect(hasButton || hasLink).toBeTruthy();
+    const cta = page.locator('text=/donasi sekarang/i').first();
+    await expect(cta).toBeVisible({ timeout: 10000 });
   });
 });
 

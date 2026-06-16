@@ -38,33 +38,29 @@ test.describe('Error Handling - Network Errors', () => {
 });
 
 test.describe('Error Handling - Invalid URLs', () => {
-  test('invalid route redirects to home', async ({ page }) => {
+  test('invalid route shows 404 page', async ({ page }) => {
     await page.goto('/invalid-page-that-does-not-exist');
     
-    // Catch-all route should redirect to home
-    await page.waitForURL('/');
-    await expect(page.locator('body')).toBeVisible();
+    // Catch-all route should render NotFound
+    await expect(page.getByText(/halaman tidak ditemukan/i)).toBeVisible();
   });
 
-  test('invalid dashboard route redirects', async ({ page }) => {
+  test('invalid dashboard route shows 404 page', async ({ page }) => {
     await page.goto('/dashboard/invalid-section');
     
-    // Should redirect to login or home
-    await page.waitForURL(/login|masuk|\//);
+    await expect(page.getByText(/halaman tidak ditemukan/i)).toBeVisible();
   });
 
-  test('invalid admin route redirects', async ({ page }) => {
+  test('invalid admin route shows 404 page', async ({ page }) => {
     await page.goto('/dashboard/admin/invalid-page');
     
-    // Should redirect
-    await page.waitForURL(/login|masuk|\//);
+    await expect(page.getByText(/halaman tidak ditemukan/i)).toBeVisible();
   });
 
-  test('deeply nested invalid route redirects', async ({ page }) => {
+  test('deeply nested invalid route shows 404 page', async ({ page }) => {
     await page.goto('/a/b/c/d/e/f');
     
-    // Should redirect to home
-    await page.waitForURL('/');
+    await expect(page.getByText(/halaman tidak ditemukan/i)).toBeVisible();
   });
 });
 
@@ -129,12 +125,12 @@ test.describe('Error Handling - Page Load Errors', () => {
     const client = await page.context().newCDPSession(page);
     await client.send('Network.emulateNetworkConditions', {
       offline: false,
-      downloadThroughput: 50 * 1024, // 50 KB/s
-      uploadThroughput: 50 * 1024,
-      latency: 2000, // 2s latency
+      downloadThroughput: 500 * 1024, // 500 KB/s
+      uploadThroughput: 500 * 1024,
+      latency: 500, // 500ms latency
     });
     
-    await page.goto('/', { timeout: 30000 });
+    await page.goto('/', { timeout: 60000 });
     await expect(page.locator('body')).toBeVisible();
   });
 

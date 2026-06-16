@@ -10,13 +10,6 @@ from uuid import UUID
 import random
 import hashlib
 
-def get_default_vendor_metrics(user_id: UUID | str) -> tuple[float, int]:
-    seed = int(hashlib.sha256(str(user_id).encode()).hexdigest(), 16)
-    random.seed(seed)
-    rating = round(random.uniform(4.5, 5.0), 1)
-    trx = random.randint(300, 2000)
-    return rating, trx
-
 from app.database import get_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, GenderEnum
 from app.schemas.user import (
@@ -27,6 +20,13 @@ from app.schemas.user import (
     UserRole,
     PublicVendorResponse
 )
+
+def get_default_vendor_metrics(user_id: UUID | str) -> tuple[float, int]:
+    seed = int(hashlib.sha256(str(user_id).encode()).hexdigest(), 16)
+    random.seed(seed)
+    rating = round(random.uniform(4.5, 5.0), 1)
+    trx = random.randint(300, 2000)
+    return rating, trx
 
 logger = logging.getLogger(__name__)
 

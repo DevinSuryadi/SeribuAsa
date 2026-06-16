@@ -73,12 +73,11 @@ test.describe('Navigation - Public Pages', () => {
 });
 
 test.describe('Navigation - 404 Handling', () => {
-  test('unknown routes redirect to home', async ({ page }) => {
-    await page.goto('/this-page-does-not-exist');
+  test('unknown routes show 404 page', async ({ page }) => {
+    await page.goto('/some/random/path');
     
-    // Should redirect to home (catch-all route)
-    await page.waitForURL('/');
-    await expect(page.locator('body')).toBeVisible();
+    // Catch-all route should render NotFound
+    await expect(page.getByText(/halaman tidak ditemukan/i)).toBeVisible();
   });
 
   test('unknown dashboard routes redirect', async ({ page }) => {
