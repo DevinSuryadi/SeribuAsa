@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,14 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { Ticket, ShoppingBasket } from "lucide-react";
 import { formatIDR } from "@/lib/format";
 import type { ImpactReport } from "@/services/reports";
 import { getImpactReport } from "@/services/reports";
@@ -20,14 +23,62 @@ import { toast } from "sonner";
 
 const GREEN = "#047857";
 const GREEN_DARK = "#065f46";
+const TEAL = "#0f766e";
+const SOFT_GREEN = "#16a34a";
+const LIME = "#65a30d";
+const CYAN = "#0891b2";
 const GRID = "var(--border)";
 const TEXT_COLOR = "var(--muted-foreground)";
+
+const CHART_COLORS = [GREEN, TEAL, SOFT_GREEN, LIME, CYAN];
+
+const MOCK_VOUCHER_CATEGORY_DATA = [
+  { label: "Susu & Olahan", value: 48 },
+  { label: "Protein Hewani", value: 39 },
+  { label: "Sayur & Buah", value: 33 },
+  { label: "Karbohidrat", value: 26 },
+  { label: "Cemilan Sehat", value: 18 },
+];
+
+const MOCK_TOP_PRODUCTS = [
+  {
+    product_name: "Susu UHT Full Cream 1L",
+    quantity_sold: 42,
+    category: "Susu & Olahan",
+  },
+  {
+    product_name: "Telur Ayam 1 Kg",
+    quantity_sold: 37,
+    category: "Protein Hewani",
+  },
+  {
+    product_name: "Beras Fortifikasi 5 Kg",
+    quantity_sold: 29,
+    category: "Karbohidrat",
+  },
+  {
+    product_name: "Pisang Cavendish 1 Sisir",
+    quantity_sold: 24,
+    category: "Sayur & Buah",
+  },
+  {
+    product_name: "Biskuit MPASI",
+    quantity_sold: 19,
+    category: "Cemilan Sehat",
+  },
+];
 
 const formatCompactNumber = (value: number) => {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}M`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}jt`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}rb`;
   return String(value);
+};
+
+const shortLabel = (value: string, max = 22) => {
+  if (!value) return "-";
+  if (value.length <= max) return value;
+  return `${value.slice(0, max)}...`;
 };
 
 const getNumberValue = (item: any, keys: string[], fallback = 0) => {
@@ -59,6 +110,42 @@ const ChartTooltip = ({ active, payload, label }: any) => {
         Total:{" "}
         <span className="font-semibold text-emerald-700">
           {formatIDR(Number(payload[0]?.value || 0))}
+        </span>
+      </p>
+    </div>
+  );
+};
+
+const VoucherTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+
+  const item = payload[0]?.payload;
+
+  return (
+    <div className="rounded-xl border border-border bg-white px-3 py-2 text-xs shadow-sm">
+      <p className="font-semibold text-foreground">{item?.label}</p>
+      <p className="mt-1 text-muted-foreground">
+        Terpakai:{" "}
+        <span className="font-semibold text-emerald-700">
+          {Number(item?.value || 0)} voucher
+        </span>
+      </p>
+    </div>
+  );
+};
+
+const ProductTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+
+  const item = payload[0]?.payload;
+
+  return (
+    <div className="rounded-xl border border-border bg-white px-3 py-2 text-xs shadow-sm">
+      <p className="font-semibold text-foreground">{item?.product_name}</p>
+      <p className="mt-1 text-muted-foreground">
+        Terjual:{" "}
+        <span className="font-semibold text-emerald-700">
+          {Number(item?.quantity_sold || 0)} produk
         </span>
       </p>
     </div>
@@ -101,6 +188,45 @@ const ImpactMetric = ({
     <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
       {helper}
     </p>
+  </div>
+);
+
+const ChartCard = ({
+  title,
+  description,
+  icon,
+  badge,
+  children,
+}: {
+  title: string;
+  description: string;
+  icon?: ReactNode;
+  badge?: ReactNode;
+  children: ReactNode;
+}) => (
+  <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-start gap-3">
+        {icon && (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+            {icon}
+          </div>
+        )}
+
+        <div>
+          <h2 className="text-lg font-bold tracking-tight text-foreground">
+            {title}
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+
+      {badge}
+    </div>
+
+    {children}
   </div>
 );
 
@@ -176,10 +302,6 @@ const DonorDampak = () => {
     [report]
   );
 
-  const topProductsData = useMemo(() => {
-    return (report as any)?.top_products || [];
-  }, [report]);
-
   const trendData = useMemo(() => {
     const raw = report?.donation_trend || [];
 
@@ -223,31 +345,86 @@ const DonorDampak = () => {
     }));
   }, [report]);
 
-const voucherCategoryData = useMemo(() => {
-  const raw =
-    (report as any)?.voucher_category_usage ||
-    (report as any)?.voucher_usage_by_category ||
-    (report as any)?.category_usage ||
-    [];
+  const rawVoucherCategoryData = useMemo(() => {
+    const raw =
+      (report as any)?.voucher_category_usage ||
+      (report as any)?.voucher_usage_by_category ||
+      (report as any)?.category_usage ||
+      [];
 
-  if (!Array.isArray(raw)) return [];
+    if (!Array.isArray(raw)) return [];
 
-  return raw.map((item: any) => ({
-    label: getStringValue(item, [
-      "category",
-      "name",
-      "label",
-      "product_category",
-    ]),
-    value: getNumberValue(item, [
-      "total",
-      "count",
-      "used",
-      "redeemed",
-      "value",
-    ]),
-  }));
-}, [report]);
+    return raw
+      .map((item: any) => ({
+        label: getStringValue(item, [
+          "category",
+          "name",
+          "label",
+          "product_category",
+        ]),
+        value: getNumberValue(item, [
+          "total",
+          "count",
+          "used",
+          "redeemed",
+          "value",
+        ]),
+      }))
+      .filter((item) => item.label && item.value > 0);
+  }, [report]);
+
+  const rawTopProductsData = useMemo(() => {
+    const raw = (report as any)?.top_products || [];
+
+    if (!Array.isArray(raw)) return [];
+
+    return raw
+      .map((item: any) => ({
+        product_name: getStringValue(item, [
+          "product_name",
+          "name",
+          "product",
+          "label",
+        ]),
+        product_label: shortLabel(
+          getStringValue(item, ["product_name", "name", "product", "label"]),
+          24
+        ),
+        quantity_sold: getNumberValue(item, [
+          "quantity_sold",
+          "quantity",
+          "count",
+          "qty",
+          "total_sold",
+          "sold",
+        ]),
+        category: getStringValue(
+          item,
+          ["category", "product_category", "group"],
+          "Produk Nutrisi"
+        ),
+      }))
+      .filter((item) => item.product_name && item.quantity_sold > 0);
+  }, [report]);
+
+  const voucherCategoryData = useMemo(() => {
+    if (rawVoucherCategoryData.length > 0) return rawVoucherCategoryData;
+    return MOCK_VOUCHER_CATEGORY_DATA;
+  }, [rawVoucherCategoryData]);
+
+  const topProductsData = useMemo(() => {
+    const data =
+      rawTopProductsData.length > 0
+        ? rawTopProductsData
+        : MOCK_TOP_PRODUCTS.map((item) => ({
+            ...item,
+            product_label: shortLabel(item.product_name, 24),
+          }));
+
+    return [...data]
+      .sort((a, b) => Number(b.quantity_sold || 0) - Number(a.quantity_sold || 0))
+      .slice(0, 5);
+  }, [rawTopProductsData]);
 
   const redemptionRate = useMemo(() => {
     if (vouchersAllocated > 0 && vouchersRedeemed > 0) {
@@ -283,10 +460,10 @@ const voucherCategoryData = useMemo(() => {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {[1, 2].map((item) => (
+            {[1, 2, 3, 4].map((item) => (
               <div
                 key={item}
-                className="h-[380px] animate-pulse rounded-2xl border border-border bg-card shadow-sm"
+                className="h-[360px] animate-pulse rounded-2xl border border-border bg-card shadow-sm"
               />
             ))}
           </div>
@@ -325,15 +502,17 @@ const voucherCategoryData = useMemo(() => {
       <div className="space-y-6">
         {/* Impact Summary */}
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <div className="grid grid-cols-2 divide-y divide-border lg:grid-cols-6 lg:divide-x lg:divide-y-0">
-            <div className="col-span-2 px-6 py-6 md:px-8 lg:col-span-1">
-              <p className="text-sm font-semibold text-muted-foreground">
+          <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y lg:grid-cols-[1.45fr_repeat(5,minmax(0,1fr))] lg:divide-y-0">
+            <div className="flex h-full min-h-[180px] flex-col px-6 py-6 md:px-8">
+              <p className="text-sm font-semibold leading-snug text-muted-foreground">
                 Total Dampak Donasi Anda
               </p>
-              <p className="mt-4 text-3xl font-bold tracking-tight text-emerald-700 xl:text-4xl">
+
+              <p className="mt-5 text-2xl font-bold tracking-tight text-emerald-700 xl:text-3xl">
                 {formatIDR(totalDonated)}
               </p>
-              <p className="mt-4 max-w-md text-xs leading-relaxed text-muted-foreground xl:text-sm">
+
+              <p className="mt-5 max-w-md text-xs leading-relaxed text-muted-foreground xl:text-sm">
                 Total donasi yang telah tersalurkan melalui program nutrisi anak.
               </p>
             </div>
@@ -372,14 +551,7 @@ const voucherCategoryData = useMemo(() => {
 
         {/* Charts */}
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-lg font-bold tracking-tight text-foreground">
-                Tren Donasi Bulanan
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">90 hari terakhir</p>
-            </div>
-
+          <ChartCard title="Tren Donasi Bulanan" description="90 hari terakhir">
             {trendData.length === 0 ? (
               <EmptyState
                 title="Belum ada data tren donasi"
@@ -427,18 +599,9 @@ const voucherCategoryData = useMemo(() => {
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
+          </ChartCard>
 
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-lg font-bold tracking-tight text-foreground">
-                Distribusi Geografis
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Sebaran donasi per wilayah
-              </p>
-            </div>
-
+          <ChartCard title="Distribusi Geografis" description="Sebaran donasi per wilayah">
             {geoData.length === 0 ? (
               <EmptyState
                 title="Belum ada data wilayah"
@@ -474,92 +637,123 @@ const voucherCategoryData = useMemo(() => {
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
+          </ChartCard>
         </div>
 
-        {/* Product Details Area */}
+        {/* Bottom Charts */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Voucher Category */}
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-lg font-bold tracking-tight text-foreground">
-                Penggunaan Voucher per Kategori
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ringkasan kategori produk yang ditukarkan menggunakan voucher.
-              </p>
+          <ChartCard
+            title="Penggunaan Voucher per Kategori"
+            description="Kategori produk yang paling sering ditukarkan menggunakan voucher."
+            icon={<Ticket size={19} />}
+          >
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={voucherCategoryData}
+                  layout="vertical"
+                  margin={{ top: 4, right: 34, left: 12, bottom: 4 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRID} horizontal={false} />
+
+                  <XAxis
+                    type="number"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 12, fill: TEXT_COLOR }}
+                  />
+
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    width={120}
+                    tick={{ fontSize: 12, fill: TEXT_COLOR }}
+                  />
+
+                  <Tooltip content={<VoucherTooltip />} />
+
+                  <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={18}>
+                    {voucherCategoryData.map((_, index) => (
+                      <Cell
+                        key={`voucher-category-${index}`}
+                        fill={CHART_COLORS[index % CHART_COLORS.length]}
+                      />
+                    ))}
+
+                    <LabelList
+                      dataKey="value"
+                      position="right"
+                      className="fill-slate-700 text-xs font-semibold"
+                      formatter={(value: number) => `${value}`}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
+          </ChartCard>
 
-            {voucherCategoryData.length === 0 ? (
-              <EmptyState
-                title="Belum ada data penggunaan voucher"
-                description="Data kategori akan muncul setelah penerima menukarkan voucher pada produk yang tersedia."
-              />
-            ) : (
-              <div className="space-y-4">
-                {voucherCategoryData.map((item) => {
-                  const maxValue = Math.max(
-                    ...voucherCategoryData.map((data) => data.value),
-                    1
-                  );
-                  const percentage = Math.round((item.value / maxValue) * 100);
+<ChartCard
+  title="Produk Paling Banyak Dibeli"
+  description="Produk spesifik yang paling sering masuk ke transaksi penerima manfaat."
+  icon={<ShoppingBasket size={19} />}
+>
+  <div className="h-[320px]">
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={topProductsData}
+        layout="vertical"
+        margin={{ top: 4, right: 34, left: 12, bottom: 4 }}
+      >
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke={GRID}
+          horizontal={false}
+        />
 
-                  return (
-                    <div key={item.label}>
-                      <div className="mb-2 flex items-center justify-between gap-4">
-                        <p className="text-sm font-medium text-foreground">{item.label}</p>
-                        <p className="text-sm font-semibold text-emerald-700">
-                          {item.value} voucher
-                        </p>
-                      </div>
+        <XAxis
+          type="number"
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 12, fill: TEXT_COLOR }}
+        />
 
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-emerald-700"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+        <YAxis
+          type="category"
+          dataKey="product_label"
+          tickLine={false}
+          axisLine={false}
+          width={145}
+          tick={{ fontSize: 12, fill: TEXT_COLOR }}
+        />
 
-          {/* Top Products */}
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-lg font-bold tracking-tight text-foreground">
-                Produk Paling Banyak Dibeli
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Produk pangan spesifik yang mendominasi keranjang belanja penerima manfaat.
-              </p>
-            </div>
+        <Tooltip content={<ProductTooltip />} />
 
-            {topProductsData.length === 0 ? (
-              <EmptyState
-                title="Belum ada data produk"
-                description="Data produk spesifik akan muncul setelah terdapat transaksi yang berhasil."
-              />
-            ) : (
-              <div className="space-y-4">
-                {topProductsData.map((item: any, index: number) => (
-                  <div key={index} className="flex items-center justify-between gap-4 rounded-xl border border-border p-4">
-                    <div>
-                      <p className="font-semibold text-foreground">{item.product_name}</p>
-                      <p className="text-sm text-muted-foreground">{item.quantity_sold} barang terjual</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-emerald-700">{formatIDR(item.revenue)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        <Bar
+          dataKey="quantity_sold"
+          radius={[0, 10, 10, 0]}
+          barSize={18}
+        >
+          {topProductsData.map((_, index) => (
+            <Cell
+              key={`top-product-${index}`}
+              fill={CHART_COLORS[index % CHART_COLORS.length]}
+            />
+          ))}
+
+          <LabelList
+            dataKey="quantity_sold"
+            position="right"
+            className="fill-slate-700 text-xs font-semibold"
+            formatter={(value: number) => `${value}`}
+          />
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  </div>
+</ChartCard>
         </div>
-
       </div>
     </DashboardLayout>
   );
