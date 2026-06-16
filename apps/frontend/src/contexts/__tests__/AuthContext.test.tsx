@@ -22,7 +22,7 @@ describe("AuthContext", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ full_name: "Donor User", role: "donor" })
     }) as any;
