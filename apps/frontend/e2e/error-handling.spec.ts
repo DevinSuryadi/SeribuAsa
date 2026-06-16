@@ -121,6 +121,7 @@ test.describe('Error Handling - Form Validation', () => {
 
 test.describe('Error Handling - Page Load Errors', () => {
   test('handles slow page load gracefully', async ({ page }) => {
+    test.setTimeout(60000);
     // Simulate slow network
     const client = await page.context().newCDPSession(page);
     await client.send('Network.emulateNetworkConditions', {
