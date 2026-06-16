@@ -7,7 +7,6 @@ import {
   Heart,
   Wallet,
   Users,
-  Store,
   Shield,
   LayoutDashboard,
   History,
@@ -81,12 +80,7 @@ const roleLabel: Record<string, string> = {
   admin: "Admin",
 };
 
-const roleColor: Record<string, string> = {
-  donor: "bg-green-600",
-  beneficiary: "bg-blue-600",
-  vendor: "bg-purple-600",
-  admin: "bg-red-600",
-};
+
 
 const RoleImageMap: Record<string, string> = {
   donor: roleDonatur,
@@ -109,7 +103,6 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
     "Pengguna";
   const roleImage = RoleImageMap[role];
   const FallbackIcon = Shield;
-  const colorClass = roleColor[role] || "bg-gray-600";
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-[#f7faf8]">

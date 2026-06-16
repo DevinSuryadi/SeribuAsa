@@ -686,7 +686,7 @@ const DonorDampak = () => {
                       dataKey="value"
                       position="right"
                       className="fill-slate-700 text-xs font-semibold"
-                      formatter={(value: number) => `${value}`}
+                      formatter={(value: any) => `${value}`}
                     />
                   </Bar>
                 </BarChart>
@@ -746,7 +746,7 @@ const DonorDampak = () => {
             dataKey="quantity_sold"
             position="right"
             className="fill-slate-700 text-xs font-semibold"
-            formatter={(value: number) => `${value}`}
+            formatter={(value: any) => `${value}`}
           />
         </Bar>
       </BarChart>
