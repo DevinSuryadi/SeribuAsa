@@ -18,7 +18,7 @@ app = FastAPI(title="NutriGuard API", version="1.0.0")
 
 # CORS configuration.
 # Merge .env-configured origins with common frontend dev origins.
-configured_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+configured_origins = [origin.strip().rstrip("/") for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
 DEV_ORIGINS = list(dict.fromkeys(configured_origins + [
     "http://localhost:5173",
     "http://localhost:5174",
@@ -38,11 +38,12 @@ DEV_ORIGINS = list(dict.fromkeys(configured_origins + [
 # - Local dev (http + https, any port)
 # - Any Vercel deployment (*.vercel.app)
 # - Any Railway deployment (*.up.railway.app)
+# - Custom domain (seribuasa.site)
 ALLOWED_ORIGIN_REGEX = (
     r"https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?"
-    r"|https://[a-zA-Z0-9-]+-[a-zA-Z0-9-]+\.vercel\.app"
-    r"|https://[a-zA-Z0-9-]+\.vercel\.app"
-    r"|https://[a-zA-Z0-9-]+\.up\.railway\.app"
+    r"|https://.*\.vercel\.app"
+    r"|https://.*\.up\.railway\.app"
+    r"|https://(www\.)?seribuasa\.site"
 )
 
 app.add_middleware(
