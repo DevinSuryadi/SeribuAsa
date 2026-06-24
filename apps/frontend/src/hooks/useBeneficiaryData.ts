@@ -11,7 +11,7 @@ export function useLatestFIESStatus() {
     async () => {
       try {
         return await getLatestFIESStatus(user!.id);
-      } catch (err) {
+      } catch {
         return null;
       }
     }
@@ -33,7 +33,7 @@ export function useLatestNutrition() {
     async () => {
       try {
         return await getLatestNutritionMeasurement(user!.id);
-      } catch (err) {
+      } catch {
         return null;
       }
     }

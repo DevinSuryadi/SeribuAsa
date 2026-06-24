@@ -209,8 +209,7 @@ async function syncGoogleProfile(
 let inFlightProfileRequest: Promise<{ role: UserRole; fullName: string; exists: boolean }> | null = null;
 
 async function getCombinedUserProfile(
-  userId: string,
-  _email?: string | null
+  userId: string
 ): Promise<{ role: UserRole; fullName: string; exists: boolean }> {
   if (inFlightProfileRequest) {
     return inFlightProfileRequest;
@@ -321,8 +320,7 @@ async function buildAuthUserFromSession(currentSession: Session): Promise<AuthUs
   }
 
   const profileData = await getCombinedUserProfile(
-    currentSession.user.id,
-    currentSession.user.email
+    currentSession.user.id
   );
 
   if (!isGoogleSession(currentSession) && !profileData.exists) {

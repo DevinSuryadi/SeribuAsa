@@ -505,16 +505,6 @@ export function CartManagement() {
                     ))}
                   </div>
                 ))}
-                {false && cartItems.map((item) => (
-                  <div key={item.id} className="flex justify-between text-xs">
-                    <span className="text-muted-foreground truncate mr-2 max-w-[130px]">
-                      {item.product_name} ×{item.quantity}
-                    </span>
-                    <span className="font-medium text-foreground flex-shrink-0">
-                      {formatIDR(Number(item.subtotal))}
-                    </span>
-                  </div>
-                ))}
               </div>
 
               <div className="border-t border-border pt-3 space-y-2">

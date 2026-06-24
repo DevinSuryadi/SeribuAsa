@@ -477,7 +477,7 @@ const Profile = () => {
         setStoreFormData((prev) => ({ ...prev, storeImageUrl: url }));
         toast.success("Foto toko berhasil diunggah");
       }
-    } catch (error: any) {
+    } catch {
       toast.error("Gagal mengunggah foto toko");
     } finally {
       setIsUploadingStoreImage(false);
