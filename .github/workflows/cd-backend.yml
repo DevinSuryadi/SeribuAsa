@@ -123,6 +123,10 @@ jobs:
           DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.STAGING_DEPLOY_USER }}
         run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST is not set. Skipping deployment."
+            exit 0
+          fi
           mkdir -p ~/.ssh
           echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
@@ -136,7 +140,13 @@ jobs:
           EOF
 
       - name: Health check
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
         run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST is not set. Skipping health check."
+            exit 0
+          fi
           for i in {1..30}; do
             if curl -f https://api-staging.nutriguard.id/health; then
               echo "✅ Staging deployment successful"
@@ -188,6 +198,10 @@ jobs:
           DEPLOY_HOST: ${{ secrets.PRODUCTION_DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.PRODUCTION_DEPLOY_USER }}
         run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST is not set. Skipping deployment."
+            exit 0
+          fi
           mkdir -p ~/.ssh
           echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
@@ -201,7 +215,13 @@ jobs:
           EOF
 
       - name: Health check
+        env:
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_DEPLOY_HOST }}
         run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST is not set. Skipping health check."
+            exit 0
+          fi
           for i in {1..30}; do
             if curl -f https://api.nutriguard.id/health; then
               echo "✅ Production deployment successful"

@@ -11,6 +11,16 @@ vi.mock("@/services/cart", () => ({
   clearCart: vi.fn(),
 }));
 
+// Mock supabase
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    auth: {
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } })
+    }
+  },
+}));
+
 // Mock AuthContext hook entirely
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
