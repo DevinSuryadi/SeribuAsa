@@ -6,6 +6,9 @@ node_modules/
 # Testing
 coverage/
 *.log
+apps/frontend/playwright-report/
+apps/frontend/test-results/
+apps/frontend/lint-results.json
 
 # Environment variables
 .env

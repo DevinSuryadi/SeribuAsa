@@ -36,7 +36,7 @@ See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
 ## Project Structure
 
 ```
-Project-PPL1/
+SeribuAsa/
 ├── apps/
 │   ├── backend/              # FastAPI backend
 │   │   ├── app/
