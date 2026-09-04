@@ -1,0 +1,121 @@
+"""
+Order Schemas
+Pydantic schemas for order management (E-Wallet Escrow flow)
+"""
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List
+from datetime import datetime
+from uuid import UUID
+from decimal import Decimal
+
+
+# ============================================
+# Order Item Schemas
+# ============================================
+class OrderItemCreate(BaseModel):
+    product_id: UUID
+    quantity: int = Field(..., gt=0)
+    price: Decimal = Field(..., gt=0)
+
+
+class OrderItemResponse(BaseModel):
+    id: UUID
+    order_id: UUID
+    product_id: UUID
+    quantity: int
+    price: Decimal
+    subtotal: Decimal
+    product_name: Optional[str] = None
+    category_name: Optional[str] = None
+    product_images: Optional[List[str]] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================
+# Order Create / Response
+# ============================================
+class OrderCreate(BaseModel):
+    vendor_id: UUID
+    items: List[OrderItemCreate] = Field(..., min_length=1)
+    notes: Optional[str] = None
+    # voucher_codes removed — wallet balance is used automatically
+
+
+class OrderResponse(BaseModel):
+    id: UUID
+    user_id: UUID                          = Field(alias="beneficiary_id")
+    vendor_id: UUID
+    cart_total: Decimal                    = Field(alias="total_amount")
+    voucher_discount: Decimal              = Field(alias="voucher_used")
+    cash_amount: Decimal                   = Field(alias="cash_paid")
+    status: str
+    payment_status: str
+    notes: Optional[str]                   = None
+    vendor_store_name: Optional[str]       = None
+    items: List[OrderItemResponse]         = []
+
+    # QR Pickup fields (new)
+    pickup_qr_code: Optional[str]          = None
+    pickup_expires_at: Optional[datetime]  = None
+    cancel_deadline: Optional[datetime]    = None
+    confirmed_by_vendor_id: Optional[UUID] = None
+
+    created_at: datetime
+    updated_at: Optional[datetime]         = None
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class OrderDetailResponse(OrderResponse):
+    items: List[OrderItemResponse] = []
+
+
+class OrderListResponse(BaseModel):
+    items: List[OrderResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+# ============================================
+# Order Status Update
+# ============================================
+class OrderStatusUpdate(BaseModel):
+    status: str = Field(..., pattern="^(processing|completed|cancelled)$")
+
+
+# ============================================
+# QR Pickup Confirm (vendor → scan beneficiary QR)
+# ============================================
+class ConfirmPickupRequest(BaseModel):
+    qr_code: str = Field(..., min_length=10, description="QR code value from beneficiary's app")
+
+
+# ============================================
+# Query Parameters
+# ============================================
+class OrderQueryParams(BaseModel):
+    page: int       = Field(default=1, ge=1)
+    page_size: int  = Field(default=20, ge=1, le=100)
+    status: Optional[str]  = None
+    search: Optional[str]  = None
+    start_date: Optional[str] = None
+    end_date: Optional[str]   = None
+
+
+# ============================================
+# Multi-Vendor Checkout
+# ============================================
+class MultiOrderCheckoutRequest(BaseModel):
+    cart_item_ids: List[UUID] = Field(default_factory=list, description="List of cart item IDs to checkout. Empty means all items.")
+    voucher_amount: Decimal = Field(default=Decimal(0), ge=0)
+
+
+class MultiOrderCheckoutResponse(BaseModel):
+    orders: List[OrderResponse]
+    total_orders_created: int
+    total_voucher_used: Decimal
+    total_cash_paid: Decimal
