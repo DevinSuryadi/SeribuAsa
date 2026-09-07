@@ -24,12 +24,18 @@ from sqlalchemy.orm import Session  # noqa: E402
 # Load environment variables
 load_dotenv()
 
-# Supabase configuration
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ydglsytahhjdoznvnfnc.supabase.co")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkZ2xzeXRhaGhqZG96bnZuZm5jIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTE5MzYyNiwiZXhwIjoyMDkwNzY5NjI2fQ.rPQJ7ktYpvxdQYWWZkHJz7m2Cwu3YvDypqzwBizRlis")
+def required_env(name: str) -> str:
+    """Return a required secret without providing an unsafe source-code fallback."""
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"{name} must be set before running the demo user seeder")
+    return value
 
-# Demo user configuration
-DEMO_PASSWORD = "Demo123!"
+
+# Seeder-only configuration. Keep these values in a local .env file or secret store.
+SUPABASE_URL = required_env("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = required_env("SUPABASE_SERVICE_KEY")
+DEMO_PASSWORD = required_env("DEMO_USER_PASSWORD")
 
 DEMO_USERS = [
     {

@@ -5,26 +5,55 @@ on:
     branches:
       - main
       - staging
-      - 'feature/**'
+      - "feature/**"
   pull_request:
     branches:
       - main
       - staging
 
 jobs:
+  build:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/frontend
+        run: npm ci
+
+      - name: Build production bundle
+        working-directory: apps/frontend
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-publishable-key
+          VITE_API_BASE_URL: https://api.example.com/api/v1
+          VITE_MIDTRANS_CLIENT_KEY: SB-Mid-client-ci
+          VITE_MIDTRANS_IS_PRODUCTION: "false"
+        run: npm run build
+
   lint:
     name: Lint Frontend
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: apps/frontend/package-lock.json
 
       - name: Install dependencies
@@ -41,13 +70,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: apps/frontend/package-lock.json
 
       - name: Install dependencies
@@ -61,17 +90,17 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [build, lint, test]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: apps/frontend/package-lock.json
 
       - name: Install dependencies
@@ -87,9 +116,14 @@ jobs:
         run: npx playwright test
         env:
           CI: true
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-publishable-key
+          VITE_API_BASE_URL: https://api.example.com/api/v1
+          VITE_MIDTRANS_CLIENT_KEY: SB-Mid-client-ci
+          VITE_MIDTRANS_IS_PRODUCTION: "false"
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: playwright-report
@@ -97,7 +131,7 @@ jobs:
           retention-days: 7
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: test-results

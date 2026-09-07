@@ -8,14 +8,14 @@ SeribuAsa enables donors to contribute to child nutrition programs, beneficiarie
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Recharts |
-| **Backend** | Python 3.11, FastAPI, SQLAlchemy, Pydantic |
-| **Database** | PostgreSQL (Supabase) |
-| **Auth** | Supabase Auth (JWT) + mock auth for demo |
-| **Testing** | Pytest (backend), Vitest (frontend), Playwright (E2E) |
-| **CI/CD** | GitHub Actions |
+| Layer        | Technology                                                    |
+| ------------ | ------------------------------------------------------------- |
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, Recharts |
+| **Backend**  | Python 3.11, FastAPI, SQLAlchemy, Pydantic                    |
+| **Database** | PostgreSQL (Supabase)                                         |
+| **Auth**     | Supabase Auth (JWT) + mock auth for demo                      |
+| **Testing**  | Pytest (backend), Vitest (frontend), Playwright (E2E)         |
+| **CI/CD**    | GitHub Actions                                                |
 
 ## Quick Start
 
@@ -31,7 +31,8 @@ npm install
 npm run dev
 ```
 
-See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
+See the [backend](apps/backend/README.md) and [frontend](apps/frontend/README.md)
+setup notes for application-specific instructions.
 
 ## Project Structure
 
@@ -70,24 +71,25 @@ SeribuAsa/
 
 ## API Documentation
 
-See [docs/API.md](docs/API.md) for the complete API reference with 26 endpoints.
+Run the backend and open `/docs` for the generated OpenAPI reference.
 
 ## Deployment
 
-Deployed on **Vercel** (frontend) + **Render/Railway** (backend) + **Supabase** (database + auth).
+Deployment targets are **Vercel** (frontend), **Railway** (backend), and
+**Supabase** (database and authentication).
 
 See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for deployment instructions.
 
 ## Status
 
-| Component | Status |
-|-----------|--------|
-| Backend APIs | ✅ 26 endpoints across 9 modules |
-| Frontend Pages | ✅ 15 dashboard pages (all connected) |
-| Authentication | ✅ Supabase Auth + mock demo |
-| Backend Tests | ✅ 50/50 passing |
-| E2E Tests | ✅ 5/5 passing |
-| CI/CD | ✅ All checks passing |
+| Component      | Status                                                    |
+| -------------- | --------------------------------------------------------- |
+| Backend APIs   | ✅ 26 endpoints across 9 modules                          |
+| Frontend Pages | ✅ 15 dashboard pages (all connected)                     |
+| Authentication | ✅ Supabase Auth + mock demo                              |
+| Backend Tests  | 228 passing in the latest local verification              |
+| Frontend Tests | 67 passing, 1 todo in the latest local verification       |
+| CI             | GitHub Actions validates build, lint, unit, and E2E flows |
 
 ## License
 

@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from decimal import Decimal
 import logging
-import os
 
+from app.config import settings
 from app.database import get_db
 from app.services.cart_service import CartService
 from app.middleware.auth import get_current_user, AuthenticatedUser
@@ -39,8 +39,7 @@ def _get_beneficiary_profile(db: Session, current_user: AuthenticatedUser) -> Be
     ).first()
 
     if not beneficiary:
-        dev_mode = os.getenv("DEV_MODE", "true").lower() == "true"
-        if dev_mode:
+        if settings.DEV_MODE:
             try:
                 user_profile = db.query(UserProfile).filter(
                     UserProfile.user_id == current_user.user_id
