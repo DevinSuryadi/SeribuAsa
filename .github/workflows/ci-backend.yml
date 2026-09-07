@@ -12,6 +12,27 @@ on:
       - staging
 
 jobs:
+  docker:
+    name: Validate Backend Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Build image
+        run: docker build --tag seribuasa-backend:ci apps/backend
+
+      - name: Verify application import
+        run: |
+          docker run --rm \
+            -e DATABASE_URL=sqlite:///:memory: \
+            -e TEST_MODE=true \
+            -e DEV_MODE=false \
+            -e SCHEDULER_ENABLED=false \
+            seribuasa-backend:ci \
+            python -c "from app.main import app; print(app.title)"
+
   lint:
     name: Lint Backend
     runs-on: ubuntu-latest
