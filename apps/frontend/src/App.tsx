@@ -1,11 +1,458 @@
-import { Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import ErrorBoundary from "./components/ErrorBoundary";
+import NotFound from "./pages/NotFound";
+import { Toaster } from "sonner";
 import Index from "./pages/Index";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import Privasi from "./pages/Privasi";
+import Syarat from "./pages/Syarat";
+import Kontak from "./pages/Kontak";
+import LupaSandi from "./pages/auth/LupaSandi";
+import ResetPassword from "./pages/auth/ResetPassword";
+import Onboarding from "./pages/auth/Onboarding";
+import ProtectedRoute from "./components/ProtectedRoute";
+import DonorDashboard from "./pages/dashboard/DonorDashboard";
+import BeneficiaryDashboard from "./pages/dashboard/BeneficiaryDashboard";
+import DonorRiwayat from "./pages/dashboard/DonorRiwayat";
+import Profile from "./pages/dashboard/Profile";
+import VendorDashboard from "./pages/dashboard/VendorDashboard";
+import AdminDashboard from "./pages/dashboard/AdminDashboard";
+import AdminUsersPage from "./pages/dashboard/admin/AdminUsersPage";
+import AdminProductsPage from "./pages/dashboard/admin/AdminProductsPage";
+import AdminBeneficiariesPage from "./pages/dashboard/admin/AdminBeneficiariesPage";
+import AdminDonationsPage from "./pages/dashboard/admin/AdminDonationsPage";
+import AdminOrdersPage from "./pages/dashboard/admin/AdminOrdersPage";
+import AdminVouchersPage from "./pages/dashboard/admin/AdminVouchersPage";
+import AdminReportsPage from "./pages/dashboard/admin/AdminReportsPage";
+import DonationCheckout from "./pages/donation/DonationCheckout";
+import CreateDonation from "./pages/donation/CreateDonation";
+import DonationSuccess from "./pages/donation/DonationSuccess";
+import { useAuth } from "./contexts/AuthContext";
+import ScrollToTop from "./components/ScrollToTop";
+
+// Heavy pages → lazy-loaded
+const Donasi = lazy(() => import("./pages/Donasi"));
+const Tentang = lazy(() => import("./pages/Tentang"));
+const Dampak = lazy(() => import("./pages/Dampak"));
+const MitraKami = lazy(() => import("./pages/landing/MitraKami"));
+const DonorDampak = lazy(() => import("./pages/dashboard/DonorDampak"));
+const PemantauanGizi = lazy(() => import("./pages/dashboard/PemantauanGizi"));
+const KatalogPangan = lazy(() => import("./pages/dashboard/KatalogPangan"));
+const DonorLangganan = lazy(() => import("./pages/dashboard/DonorLangganan"));
+const KelolaProduk = lazy(() => import("./pages/dashboard/KelolaProduk"));
+const VendorSettlement = lazy(() => import("./pages/dashboard/VendorSettlement"));
+const SurveiFIES = lazy(() => import("./pages/dashboard/SurveiFIES"));
+const DompetNutrisi = lazy(() => import("./pages/dashboard/DompetNutrisi"));
+const RekomendasiAI = lazy(() => import("./pages/dashboard/RekomendasiAI"));
+const CartManagement = lazy(() => import("./pages/dashboard/cart/CartManagement"));
+// OrderHistoryPage merged into DompetNutrisi — see /dashboard/dompet-nutrisi?tab=pesanan
+const OrderDetailPage = lazy(() => import("./pages/dashboard/orders/OrderDetailPage"));
+const CheckoutPage = lazy(() => import("./pages/checkout/CheckoutPage"));
+const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
+const VendorQrScanner = lazy(() => import("./pages/dashboard/VendorQrScanner"));
+
+function PageLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent" />
+    </div>
+  );
+}
+
+function DashboardRedirect() {
+  const { userRole, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (userRole === "donor") return <Navigate to="/dashboard/donor" replace />;
+  if (userRole === "beneficiary") return <Navigate to="/dashboard/beneficiary" replace />;
+  if (userRole === "vendor") return <Navigate to="/dashboard/vendor" replace />;
+  if (userRole === "admin") return <Navigate to="/dashboard/admin" replace />;
+  if (userRole === "unassigned") return <Navigate to="/onboarding" replace />;
+
+  return <Navigate to="/" replace />;
+}
+
+import { SWRConfig } from "swr";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-    </Routes>
+    <ErrorBoundary>
+      <SWRConfig 
+        value={{ 
+          revalidateOnFocus: false,
+          dedupingInterval: 5000,
+          errorRetryCount: 3
+        }}
+      >
+        <Toaster position="top-right" richColors />
+        <ScrollToTop />
+        <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public routes */}
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute allowedRoles={["unassigned"]}>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/donasi"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Donasi />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/tentang"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Tentang />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/dampak"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Dampak />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/mitra"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <MitraKami />
+            </Suspense>
+          }
+        />
+        <Route path="/lupa-sandi" element={<LupaSandi />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/privasi" element={<Privasi />} />
+        <Route path="/syarat" element={<Syarat />} />
+        <Route path="/kontak" element={<Kontak />} />
+
+        {/* Authenticated routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardRedirect />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/donor"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin"]}>
+              <DonorDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/beneficiary"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <BeneficiaryDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/riwayat"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin"]}>
+              <DonorRiwayat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/dampak"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <DonorDampak />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/langganan"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <DonorLangganan />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/katalog"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <KatalogPangan />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/survei-fies"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <SurveiFIES />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/pemantauan-gizi"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <PemantauanGizi />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/dompet-nutrisi"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <DompetNutrisi />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/rekomendasi-ai"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <RekomendasiAI />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        {/* Legacy penukaran-voucher route redirects to scan-qr */}
+        <Route
+          path="/dashboard/penukaran-voucher"
+          element={<Navigate to="/dashboard/scan-qr" replace />}
+        />
+        {/* Dedicated vendor QR scan route */}
+        <Route
+          path="/dashboard/scan-qr"
+          element={
+            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <VendorQrScanner />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/kelola-produk"
+          element={
+            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <KelolaProduk />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/settlement"
+          element={
+            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <VendorSettlement />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/vendor"
+          element={
+            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
+              <VendorDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/users"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminUsersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/products"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminProductsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/beneficiaries"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminBeneficiariesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/donations"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminDonationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/orders"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/vouchers"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminVouchersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/reports"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* New Cart & Voucher Dashboard Routes */}
+        <Route
+          path="/dashboard/cart"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <CartManagement />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        {/* Legacy /dashboard/vouchers redirects to DompetNutrisi */}
+        <Route
+          path="/dashboard/vouchers"
+          element={<Navigate to="/dashboard/dompet-nutrisi" replace />}
+        />
+        {/* /dashboard/orders redirects to unified Dompet & Aktivitas page */}
+        <Route
+          path="/dashboard/orders"
+          element={<Navigate to="/dashboard/dompet-nutrisi?tab=pesanan" replace />}
+        />
+        <Route
+          path="/dashboard/orders/:orderId"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <OrderDetailPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Checkout Routes */}
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <CheckoutPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkout/success/:orderId"
+          element={
+            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+              <Suspense fallback={<PageLoader />}>
+                <CheckoutSuccess />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Donation flow routes */}
+        <Route
+          path="/donation/checkout"
+          element={
+            <ProtectedRoute>
+              <DonationCheckout />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/donation/create"
+          element={
+            <ProtectedRoute allowedRoles={["donor", "admin", "corporate_donor"]}>
+              <CreateDonation />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/donation/success"
+          element={
+            <ProtectedRoute>
+              <DonationSuccess />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+        </Suspense>
+      </SWRConfig>
+    </ErrorBoundary>
   );
 }
 

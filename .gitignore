@@ -1,54 +1,78 @@
-# Dependencies
-node_modules/
+# Dependencies and package-manager caches
+**/node_modules/
 .pnp
-.pnp.js
+.pnp.*
+**/.npm/
+**/.yarn/
+**/.pnpm-store/
 
-# Testing
-coverage/
-*.log
+# Environment files and local secrets
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
 
-# Environment variables
-.env
-.env.*
-!.env.example
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Frontend build and tool output
+**/dist/
+**/dist-ssr/
+**/build/
+**/.next/
+**/.nuxt/
+**/.turbo/
+**/.vite/
+**/*.tsbuildinfo
 
-# Local deployment credentials
-apps/backend/.env.railway
-apps/frontend/.env.production
+# Tests and coverage
+**/coverage/
+**/htmlcov/
+**/playwright-report/
+**/test-results/
+**/blob-report/
+**/.nyc_output/
+**/.coverage
+**/.coverage.*
+**/coverage.xml
+**/junit.xml
+**/lint-results.json
 
-# Production
-build/
-dist/
-.turbo/
-.next/
+# Python caches, environments, and packaging output
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.hypothesis/
+**/.tox/
+**/.nox/
+**/.venv/
+**/venv/
+**/env/
+**/ENV/
+**/*.egg-info/
+**/.eggs/
+**/*.egg
+**/*.whl
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-ENV/
-.venv/
-*.egg-info/
-dist/
-build/
+# Logs and temporary files
+**/*.log
+**/*.tmp
+**/*.temp
+**/*.bak
+**/*.swp
+**/*.swo
+**/*~
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
+# IDE and operating-system metadata
+**/.vscode/
+**/.idea/
+**/.DS_Store
+**/Thumbs.db
+**/Desktop.ini
 
-# Misc
-.cache/
-.npm/
-.eslintcache
+# Local tooling caches
+**/.cache/
+**/.eslintcache
+**/.stylelintcache
+**/.parcel-cache/
+**/.sass-cache/

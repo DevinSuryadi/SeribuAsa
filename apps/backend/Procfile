@@ -1,0 +1,2 @@
+# Railway Production Configuration
+web: python -m app.main

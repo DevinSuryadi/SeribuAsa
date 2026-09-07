@@ -1,0 +1,6 @@
+# Railway deployment config - ensure it uses Dockerfile, not Nixpacks
+[phases.setup]
+nixPkgs = ["python311"]
+
+[start]
+cmd = "python -m app.main"

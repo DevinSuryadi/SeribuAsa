@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Block dashboard and authenticated routes
+Disallow: /dashboard/
+Disallow: /login
+Disallow: /register
+Disallow: /lupa-sandi
+Disallow: /reset-password
+Disallow: /onboarding
+Disallow: /checkout/
+Disallow: /donation/checkout
+Disallow: /donation/create
+Disallow: /donation/success
+
+# Sitemap location
+Sitemap: https://seribuasa.id/sitemap.xml

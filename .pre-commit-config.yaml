@@ -1,0 +1,77 @@
+repos:
+  # Python linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.14
+    hooks:
+      - id: ruff
+        args: [--fix]
+        stages: [commit]
+      - id: ruff-format
+        stages: [commit]
+
+  # Python type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+        args: [--ignore-missing-imports]
+        stages: [commit]
+
+  # Python security
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [-c, .bandit]
+        stages: [commit]
+
+  # YAML validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: debug-statements
+      - id: detect-private-key
+
+  # JavaScript/TypeScript linting
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.39.1
+    hooks:
+      - id: eslint
+        types: [javascript, typescript, jsx, tsx]
+        additional_dependencies:
+          - eslint
+          - eslint-plugin-react
+          - eslint-plugin-react-hooks
+          - '@typescript-eslint/eslint-plugin'
+          - '@typescript-eslint/parser'
+        stages: [commit]
+
+  # Prettier formatting
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.1
+    hooks:
+      - id: prettier
+        types_or: [javascript, typescript, jsx, tsx, json, yaml, markdown]
+        stages: [commit]
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+        stages: [commit]
+
+  # Commit message linting
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.12.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]

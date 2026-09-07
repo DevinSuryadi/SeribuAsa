@@ -1,0 +1,287 @@
+name: Backend CD
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+    paths:
+      - "apps/backend/**"
+      - ".github/workflows/cd-backend.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/backend
+
+jobs:
+  build:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image name to lowercase
+        run: echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  test-image:
+    name: Test Docker Image
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image name to lowercase
+        run: echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run container tests
+        run: |
+          docker run --rm \
+            -e DATABASE_URL=sqlite:///:memory: \
+            -e TEST_MODE=true \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:${{ github.ref_name }} \
+            python -c "import app.main; print('Successfully imported app.main')"
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: test-image
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://api-staging.nutriguard.id
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image name to lowercase
+        run: echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> $GITHUB_ENV
+
+      - name: Deploy to staging
+        env:
+          DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.STAGING_DEPLOY_USER }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST is not set. Skipping deployment."
+            exit 0
+          fi
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'EOF'
+            cd /app/backend
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:staging
+            docker-compose -f docker-compose.staging.yml up -d
+            docker exec backend-app alembic upgrade head
+          EOF
+
+      - name: Health check
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_DEPLOY_HOST }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST is not set. Skipping health check."
+            exit 0
+          fi
+          for i in {1..30}; do
+            if curl -f https://api-staging.nutriguard.id/health; then
+              echo "✅ Staging deployment successful"
+              exit 0
+            fi
+            echo "Waiting for service to be ready... ($i/30)"
+            sleep 2
+          done
+          echo "❌ Staging deployment failed - service not responding"
+          exit 1
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: test-image
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://api.nutriguard.id
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image name to lowercase
+        run: echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >> $GITHUB_ENV
+
+      - name: Create deployment
+        uses: actions/github-script@v7
+        id: deployment
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.ref,
+              environment: 'production',
+              required_contexts: [],
+              auto_merge: false,
+            });
+            return deployment.data.id;
+
+      - name: Deploy to production
+        env:
+          DEPLOY_KEY: ${{ secrets.PRODUCTION_DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.PRODUCTION_DEPLOY_USER }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST is not set. Skipping deployment."
+            exit 0
+          fi
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'EOF'
+            cd /app/backend
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:main
+            docker-compose -f docker-compose.prod.yml up -d
+            docker exec backend-app alembic upgrade head
+          EOF
+
+      - name: Health check
+        env:
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_DEPLOY_HOST }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST is not set. Skipping health check."
+            exit 0
+          fi
+          for i in {1..30}; do
+            if curl -f https://api.nutriguard.id/health; then
+              echo "✅ Production deployment successful"
+              exit 0
+            fi
+            echo "Waiting for service to be ready... ($i/30)"
+            sleep 2
+          done
+          echo "❌ Production deployment failed - service not responding"
+          exit 1
+
+      - name: Update deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const state = ${{ job.status == 'success' }} ? 'success' : 'failure';
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: state,
+              environment_url: 'https://api.nutriguard.id',
+              description: `Deployment ${state}`,
+            });
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "❌ Production deployment failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Backend Production Deployment Failed*\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "✅ Production deployment successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Backend Production Deployment Successful*\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
