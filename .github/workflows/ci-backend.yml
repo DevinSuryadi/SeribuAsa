@@ -11,6 +11,9 @@ on:
       - main
       - staging
 
+permissions:
+  contents: read
+
 jobs:
   docker:
     name: Validate Backend Image
@@ -58,12 +61,6 @@ jobs:
         working-directory: apps/backend
         run: ruff check .
 
-      - name: Run Mypy type checker
-        working-directory: apps/backend
-        run: |
-          pip install types-python-jose types-passlib types-requests
-          mypy app/ --ignore-missing-imports --disable-error-code=annotation-unchecked || true
-
   test:
     name: Test Backend
     runs-on: ubuntu-latest
@@ -85,25 +82,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create test .env file
-        working-directory: apps/backend
-        run: |
-          cat > .env << EOF
-          TEST_MODE=true
-          DATABASE_URL=sqlite:///:memory:
-          APP_NAME=NutriGuard API (Test)
-          JWT_SECRET_KEY=test-secret-key-for-ci-only
-          EOF
-
       - name: Run unit tests with coverage
         working-directory: apps/backend
+        env:
+          TEST_MODE: "true"
+          DEV_MODE: "false"
+          SCHEDULER_ENABLED: "false"
+          DATABASE_URL: "sqlite:///:memory:"
         run: |
-          pip install pytest-cov
-          pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=0
+          pytest tests/ -v --cov=app --cov-report=term-missing --cov-report=html
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v6
         with:
           name: coverage-report
           path: apps/backend/htmlcov/
+          if-no-files-found: error
         if: always()

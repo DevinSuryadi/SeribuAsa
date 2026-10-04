@@ -1,4 +1,5 @@
 import path from "path";
+import { fileURLToPath } from "url";
 
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
@@ -42,7 +43,7 @@ export default defineConfig(({ command, mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "./src"),
+        "@": path.resolve(path.dirname(fileURLToPath(import.meta.url)), "./src"),
       },
     },
     build: {

@@ -26,7 +26,6 @@ pytest
 
 ```bash
 ruff check .
-mypy app/
 ```
 
 ## Seed E2E Dummy Data
@@ -46,5 +45,5 @@ python seed_database.py --mode full-demo --reset
 Notes:
 
 - The seeder is idempotent (safe to run repeatedly).
-- `--reset` clears domain data before reseeding.
+- `--reset` clears domain data before reseeding. Never use it on the shared Supabase database.
 - Works for both SQLite fallback and PostgreSQL/Supabase dev (uses `DATABASE_URL`).
