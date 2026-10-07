@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Heart, Users, Store, Loader2 } from "lucide-react";
+import { Heart, Store, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/services/api";
 
-type Role = "donor" | "beneficiary" | "vendor";
+type Role = "donor" | "vendor";
 
 const roles: { id: Role; label: string; icon: React.ElementType; desc: string }[] = [
   { id: "donor", label: "Donatur", icon: Heart, desc: "Bantu penuhi nutrisi" },
-  { id: "beneficiary", label: "Penerima", icon: Users, desc: "Dapatkan dukungan pangan" },
   { id: "vendor", label: "Vendor", icon: Store, desc: "Sediakan bahan pangan" },
 ];
 

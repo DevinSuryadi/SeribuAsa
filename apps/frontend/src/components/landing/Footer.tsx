@@ -7,7 +7,7 @@ const footerLinks = [
     links: [
       { label: 'Paket Donasi', href: '/donasi' },
       { label: 'Jejaring Mitra Kami', href: '/mitra' },
-      { label: 'Daftar Jadi Penerima', href: '/daftar?role=beneficiary' },
+      { label: 'Daftar Fasilitas Kesehatan', href: '/register?role=health_facility' },
       { label: 'Daftar Jadi Vendor', href: '/daftar?role=vendor' },
     ],
   },
