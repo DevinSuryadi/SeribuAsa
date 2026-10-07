@@ -15,6 +15,7 @@ from app.services.supabase_auth import supabase_auth
 from app.config import settings
 from app.database import SessionLocal
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile
+from app.models.facility import HealthFacility
 from app.utils.cache import get_app_cache
 
 cache = get_app_cache()
@@ -29,6 +30,7 @@ DEV_ALLOWED_ROLES = {
     "admin",
     "government",
     "corporate_donor",
+    "health_facility",
 }
 
 
@@ -99,13 +101,15 @@ def _resolve_role_from_db(user_id: UUID, fallback_role: str | None) -> str | Non
     """Resolve role from local profile tables, fallback to provided role."""
     # Check cache first
     cached_role = cache.get("auth", str(user_id))
-    if cached_role:
+    if cached_role and cached_role != "health_facility":
         return cached_role
     
     resolved_role: str | None = None
     db = SessionLocal()
     try:
-        if db.query(BeneficiaryProfile).filter(BeneficiaryProfile.user_id == user_id).first():
+        if db.query(HealthFacility).filter(HealthFacility.account_user_id == user_id, HealthFacility.is_active.is_(True)).first():
+            resolved_role = "health_facility"
+        elif db.query(BeneficiaryProfile).filter(BeneficiaryProfile.user_id == user_id).first():
             resolved_role = "beneficiary"
         elif db.query(VendorProfile).filter(VendorProfile.user_id == user_id).first():
             resolved_role = "vendor"
@@ -234,10 +238,16 @@ async def get_current_user(
         user_info = supabase_auth.extract_user_info(token_data)
         
         token_role = _normalize_role(user_info.get("role"))
-        if token_role:
+        db_role = _resolve_role_from_db(UUID(str(user_info["user_id"])), None)
+        if db_role == "health_facility":
+            actual_role = db_role
+        elif token_role == "health_facility":
+            # User metadata is registration intent, never facility authorization.
+            actual_role = "unassigned"
+        elif token_role:
             actual_role = token_role
         else:
-            actual_role = _resolve_role_from_db(UUID(str(user_info["user_id"])), "donor")
+            actual_role = db_role or "donor"
             if not actual_role:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -259,6 +269,14 @@ async def get_current_user(
             user_info["email"],
             actual_role,
         )
+
+        # Existing protected endpoints belong to the donor, beneficiary, vendor,
+        # or admin flows. Facility APIs use their own verified facility dependency.
+        if actual_role == "health_facility":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Akun fasilitas hanya dapat mengakses API fasilitas kesehatan",
+            )
         
         return AuthenticatedUser(
             user_id=user_info["user_id"],
@@ -267,6 +285,8 @@ async def get_current_user(
             email_verified=user_info["email_verified"]
         )
         
+    except HTTPException:
+        raise
     except ValueError as e:
         if dev_mode:
             dev_user = _dev_user_from_headers(request)

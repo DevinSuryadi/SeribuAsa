@@ -480,6 +480,8 @@ class OrderService:
         elif role == "vendor":
             effective_vendor_id = vendor_uuid or user_uuid
             query = query.filter(Order.vendor_id == effective_vendor_id)
+        elif role != "admin":
+            return 0
 
         if params.status:
             query = query.filter(Order.status == params.status)
@@ -500,6 +502,8 @@ class OrderService:
         elif role == "vendor":
             effective_vendor_id = vendor_uuid or user_uuid
             query = query.filter(Order.vendor_id == effective_vendor_id)
+        elif role != "admin":
+            return []
 
         if params.status:
             query = query.filter(Order.status == params.status)
@@ -524,6 +528,8 @@ class OrderService:
             query = query.filter(Order.beneficiary_id == user_uuid)
         elif role == "vendor":
             query = query.filter(Order.vendor_id == user_uuid)
+        elif role != "admin":
+            return None
 
         return query.first()
 

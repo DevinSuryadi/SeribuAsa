@@ -8,7 +8,7 @@ from datetime import date, datetime
 from uuid import UUID
 
 # Role type
-UserRole = Literal["donor", "corporate_donor", "beneficiary", "vendor", "admin", "government"]
+UserRole = Literal["donor", "corporate_donor", "beneficiary", "vendor", "admin", "government", "health_facility"]
 GenderType = Literal["male", "female"]
 
 
@@ -73,7 +73,7 @@ class UserSignUpRequest(BaseModel):
 
     user_id: UUID = Field(..., description="Supabase auth user ID")
     full_name: str = Field(..., min_length=1, max_length=255)
-    role: UserRole = Field(...)
+    role: Literal["donor", "corporate_donor", "beneficiary", "vendor", "admin", "government"] = Field(...)
     phone: str | None = Field(None, max_length=20)
     address: str | None = Field(None)
 
