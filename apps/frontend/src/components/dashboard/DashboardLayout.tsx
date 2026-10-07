@@ -36,6 +36,9 @@ interface DashboardLayoutProps {
 type NavItem = { label: string; href: string; icon: React.ElementType };
 
 const navByRole: Record<string, NavItem[]> = {
+  health_facility: [
+    { label: "Dashboard", href: "/dashboard/health-facility", icon: LayoutDashboard },
+  ],
   donor: [
     { label: "Ringkasan", href: "/dashboard/donor", icon: LayoutDashboard },
     { label: "Langganan", href: "/dashboard/langganan", icon: CreditCard },
@@ -74,6 +77,7 @@ const navByRole: Record<string, NavItem[]> = {
 };
 
 const roleLabel: Record<string, string> = {
+  health_facility: "Fasilitas Kesehatan",
   donor: "Donatur",
   beneficiary: "Penerima",
   vendor: "Vendor",

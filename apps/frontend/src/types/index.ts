@@ -14,6 +14,7 @@ export type UserRole =
   | "admin"
   | "corporate_donor"
   | "government"
+  | "health_facility"
   | "unassigned";
 
 export interface User {

@@ -52,6 +52,7 @@ const OrderDetailPage = lazy(() => import("./pages/dashboard/orders/OrderDetailP
 const CheckoutPage = lazy(() => import("./pages/checkout/CheckoutPage"));
 const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
 const VendorQrScanner = lazy(() => import("./pages/dashboard/VendorQrScanner"));
+const HealthFacilityDashboard = lazy(() => import("./pages/dashboard/HealthFacilityDashboard"));
 
 function PageLoader() {
   return (
@@ -75,6 +76,7 @@ function DashboardRedirect() {
   if (userRole === "donor") return <Navigate to="/dashboard/donor" replace />;
   if (userRole === "beneficiary") return <Navigate to="/dashboard/beneficiary" replace />;
   if (userRole === "vendor") return <Navigate to="/dashboard/vendor" replace />;
+  if (userRole === "health_facility") return <Navigate to="/dashboard/health-facility" replace />;
   if (userRole === "admin") return <Navigate to="/dashboard/admin" replace />;
   if (userRole === "unassigned") return <Navigate to="/onboarding" replace />;
 
@@ -169,6 +171,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
               <BeneficiaryDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/health-facility"
+          element={
+            <ProtectedRoute allowedRoles={["health_facility"]}>
+              <HealthFacilityDashboard />
             </ProtectedRoute>
           }
         />

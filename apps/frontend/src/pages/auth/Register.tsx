@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Heart, Users, Store, Check } from "lucide-react";
+import { Eye, EyeOff, Heart, Users, Store, Check, Hospital } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ function GoogleIcon() {
   );
 }
 
-type Role = "donor" | "beneficiary" | "vendor";
+type Role = "donor" | "beneficiary" | "vendor" | "health_facility";
 
 const roles: { id: Role; label: string; icon: React.ElementType; desc: string; info: string }[] = [
   {
@@ -52,6 +52,13 @@ const roles: { id: Role; label: string; icon: React.ElementType; desc: string; i
     icon: Store,
     desc: "Jual pangan",
     info: "Penyedia Bahan Pangan Bergizi. Toko kelontong, tukang sayur, atau UMKM pangan terverifikasi yang menerima e-voucher sebagai alat pembayaran. Vendor menjual bahan pangan bergizi sesuai katalog yang telah disetujui sistem.",
+  },
+  {
+    id: "health_facility",
+    label: "Faskes",
+    icon: Hospital,
+    desc: "Catat keluarga",
+    info: "Fasilitas kesehatan mendaftarkan keluarga penerima dan memantau perkembangan anak. Satu fasilitas menggunakan satu akun.",
   },
 ];
 
@@ -83,6 +90,7 @@ export default function Register() {
   }, [searchParams]);
 
   const [fullName, setFullName] = useState("");
+  const [facilityName, setFacilityName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [email, setEmail] = useState("");
@@ -103,8 +111,13 @@ export default function Register() {
       return;
     }
 
-    if (!fullName.trim()) {
+    if (role !== "health_facility" && !fullName.trim()) {
       toast.error("Nama lengkap tidak boleh kosong");
+      return;
+    }
+
+    if (role === "health_facility" && !facilityName.trim()) {
+      toast.error("Nama fasilitas kesehatan tidak boleh kosong");
       return;
     }
 
@@ -134,9 +147,10 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const { error } = await signUp(email, password, fullName, role, {
+      const { error, requiresEmailConfirmation } = await signUp(email, password, role === "health_facility" ? facilityName : fullName, role, {
         phone,
         address,
+        facilityName,
       });
 
       if (error) {
@@ -153,8 +167,13 @@ export default function Register() {
         return;
       }
 
-      toast.success("Registrasi berhasil!");
-      navigate("/dashboard");
+      if (requiresEmailConfirmation) {
+        toast.success("Periksa email untuk verifikasi akun, lalu masuk.");
+        navigate("/login");
+      } else {
+        toast.success("Registrasi berhasil!");
+        navigate("/dashboard");
+      }
     } catch (err) {
       const error = err as Error;
       const errorMsg = error.message.toLowerCase();
@@ -172,6 +191,10 @@ export default function Register() {
   };
 
   const handleGoogleRegister = async () => {
+    if (role === "health_facility") {
+      toast.error("Pendaftaran faskes saat ini menggunakan email dan kata sandi");
+      return;
+    }
     if (!role) {
       toast.error("Pilih peran terlebih dahulu", {
         description: "Role akan dipakai untuk akun Google baru Anda.",
@@ -309,7 +332,7 @@ export default function Register() {
             >
               Anda adalah
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px" }}>
               {roles.map((r) => {
                 const Icon = r.icon;
                 const isSelected = role === r.id;
@@ -436,9 +459,28 @@ export default function Register() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {/* Full Name */}
+          {role === "health_facility" && (
             <div>
+              <label htmlFor="facility-name" style={{ fontSize: "12px", fontWeight: 600, color: "#333", display: "block", marginBottom: "4px" }}>
+                Nama fasilitas kesehatan
+              </label>
+              <input
+                id="facility-name"
+                type="text"
+                value={facilityName}
+                onChange={(e) => setFacilityName(e.target.value)}
+                maxLength={255}
+                required
+                disabled={loading}
+                placeholder="Contoh: Puskesmas Melati"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: role === "health_facility" ? "1fr" : "1fr 1fr", gap: "12px" }}>
+            {/* Full Name */}
+            {role !== "health_facility" && <div>
               <label
                 style={{
                   fontSize: "12px",
@@ -467,7 +509,7 @@ export default function Register() {
                 placeholder="Masukkan nama"
                 disabled={loading}
               />
-            </div>
+            </div>}
             {/* Phone */}
             <div>
               <label
@@ -745,7 +787,7 @@ export default function Register() {
             {loading ? "Mendaftar..." : "Daftar"}
           </Button>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {role !== "health_facility" && <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ flex: 1, height: "1px", background: "#eee" }} />
             <span
               style={{
@@ -758,9 +800,9 @@ export default function Register() {
               atau
             </span>
             <div style={{ flex: 1, height: "1px", background: "#eee" }} />
-          </div>
+          </div>}
 
-          <button
+          {role !== "health_facility" && <button
             type="button"
             onClick={handleGoogleRegister}
             disabled={loading || googleLoading || !role}
@@ -787,7 +829,7 @@ export default function Register() {
                 <GoogleIcon /> Daftar dengan Google
               </>
             )}
-          </button>
+          </button>}
 
           {!role && (
             <p style={{ fontSize: "10px", color: "#ef4444", textAlign: "center", margin: 0 }}>
