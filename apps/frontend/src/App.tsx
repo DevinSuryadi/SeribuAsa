@@ -53,6 +53,7 @@ const CheckoutPage = lazy(() => import("./pages/checkout/CheckoutPage"));
 const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
 const VendorQrScanner = lazy(() => import("./pages/dashboard/VendorQrScanner"));
 const HealthFacilityDashboard = lazy(() => import("./pages/dashboard/HealthFacilityDashboard"));
+const FacilityFamilyDetail = lazy(() => import("./pages/dashboard/facility/FamilyDetail"));
 
 function PageLoader() {
   return (
@@ -179,6 +180,30 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["health_facility"]}>
               <HealthFacilityDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/health-facility/families/:familyId"
+          element={
+            <ProtectedRoute allowedRoles={["health_facility"]}>
+              <FacilityFamilyDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/health-facility/families/:familyId/nutrition"
+          element={
+            <ProtectedRoute allowedRoles={["health_facility"]}>
+              <PemantauanGizi />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/health-facility/families/:familyId/fies"
+          element={
+            <ProtectedRoute allowedRoles={["health_facility"]}>
+              <SurveiFIES />
             </ProtectedRoute>
           }
         />

@@ -144,7 +144,8 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
 
           <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 py-4">
             {navItems.map((item) => {
-              const active = location.pathname === item.href;
+              const active = location.pathname === item.href ||
+                (role === "health_facility" && location.pathname.startsWith(`${item.href}/`));
 
               return (
                 <Link

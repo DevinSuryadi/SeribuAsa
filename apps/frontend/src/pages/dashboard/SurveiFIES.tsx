@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import {
 import { submitFies, getFiesHistory } from "@/services/fies";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
+import { getFamily, getFamilyFiesHistory, submitFamilyFies } from "@/services/facility-families";
 
 const fiesQuestions = [
   "Dalam 30 hari terakhir, apakah Anda khawatir makanan akan habis sebelum bisa membeli lagi?",
@@ -96,7 +97,9 @@ const surveyInfo = [
 
 const SurveiFIES = () => {
   const navigate = useNavigate();
+  const { familyId } = useParams<{ familyId: string }>();
   const { user } = useAuth();
+  const [familyName, setFamilyName] = useState("");
 
   const [started, setStarted] = useState(false);
   const [currentQ, setCurrentQ] = useState(0);
@@ -108,15 +111,27 @@ const SurveiFIES = () => {
 
   const progress = ((currentQ + 1) / fiesQuestions.length) * 100;
   const score = answers.filter((a) => a === "ya").length;
+  const now = new Date();
+  const familySurveyThisMonth = Boolean(familyId && history.some((item) =>
+    item.survey_month === now.getMonth() + 1 && item.survey_year === now.getFullYear()
+  ));
 
   useEffect(() => {
-    if (user?.id) {
-      getFiesHistory(user.id)
+    if (familyId || user?.id) {
+      (familyId ? getFamilyFiesHistory(familyId) : getFiesHistory(user!.id))
         .then((res) => setHistory(res.data?.surveys || []))
-        .catch(() => setHistory([]))
+        .catch((error: unknown) => {
+          toast.error(error instanceof Error ? error.message : "Gagal memuat riwayat survei");
+          setHistory([]);
+        })
         .finally(() => setHistoryLoading(false));
     }
-  }, [user]);
+  }, [user, familyId]);
+
+  useEffect(() => {
+    if (!familyId) return;
+    getFamily(familyId).then((family) => setFamilyName(family.head_name)).catch(() => setFamilyName(""));
+  }, [familyId]);
 
   const handleAnswer = (answer: Answer) => {
     const newAnswers = [...answers];
@@ -140,7 +155,7 @@ const SurveiFIES = () => {
   };
 
   const handleSubmit = async () => {
-    if (!user?.id) return;
+    if (!familyId && !user?.id) return;
 
     setSubmitting(true);
 
@@ -151,7 +166,7 @@ const SurveiFIES = () => {
         responses[`q${i + 1}`] = a === "ya" ? 1 : 0;
       });
 
-      const res = await submitFies({ responses });
+      const res = familyId ? await submitFamilyFies(familyId, { responses }) : await submitFies({ responses });
 
       if (res.success) {
         setCompleted(true);
@@ -170,9 +185,10 @@ const SurveiFIES = () => {
     return (
       <DashboardLayout
         title="Survei FIES"
-        subtitle="Survei ketahanan pangan bulanan."
+        subtitle={familyId ? `Survei ketahanan pangan keluarga ${familyName || "terpilih"}.` : "Survei ketahanan pangan bulanan."}
       >
         <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-4 pb-3 lg:h-[calc(100svh-200px)] lg:max-h-[calc(100svh-200px)] lg:min-h-0 lg:overflow-hidden lg:pb-0">
+          {familyId && <Link to={`/dashboard/health-facility/families/${familyId}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ChevronLeft className="h-4 w-4" /> Kembali ke keluarga {familyName}</Link>}
           <Card className="shrink-0 overflow-hidden rounded-[20px] border border-border/70 shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
             <CardContent className="p-0">
               <div className="grid gap-0 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.75fr)]">
@@ -192,17 +208,17 @@ const SurveiFIES = () => {
                         </h2>
 
                         <p className="max-w-[460px] text-sm leading-6 text-white/90">
-                          Terima kasih telah mengisi survei ketahanan pangan bulan
-                          ini. Hasil Anda akan digunakan untuk membantu menentukan
-                          prioritas bantuan.
+                          {familyId
+                            ? "Survei ketahanan pangan keluarga ini telah tersimpan. Hasilnya dapat digunakan untuk memantau kondisi pangan keluarga."
+                            : "Terima kasih telah mengisi survei ketahanan pangan bulan ini. Hasil Anda akan digunakan untuk membantu menentukan prioritas bantuan."}
                         </p>
                       </div>
 
                       <Button
                         className="h-10 rounded-2xl bg-white px-5 text-sm font-semibold text-primary hover:bg-white/90"
-                        onClick={() => navigate("/dashboard/beneficiary")}
+                        onClick={() => navigate(familyId ? `/dashboard/health-facility/families/${familyId}` : "/dashboard/beneficiary")}
                       >
-                        Kembali ke Dashboard
+                        {familyId ? "Kembali ke Keluarga" : "Kembali ke Dashboard"}
                         <ChevronRight className="ml-2 h-4 w-4" />
                       </Button>
                     </div>
@@ -212,7 +228,7 @@ const SurveiFIES = () => {
                 <div className="bg-background p-5 lg:p-6">
                   <div className="rounded-[20px] border border-border/70 bg-secondary/15 p-5">
                     <p className="text-sm font-medium text-muted-foreground">
-                      Skor FIES Anda
+                      {familyId ? "Skor FIES Keluarga" : "Skor FIES Anda"}
                     </p>
 
                     <div className="mt-4 flex flex-col gap-4">
@@ -234,12 +250,12 @@ const SurveiFIES = () => {
                       </div>
 
                       <p className="text-sm leading-6 text-muted-foreground">
-                        {severity.desc}
+                        {familyId ? "Hasil ini membantu fasilitas kesehatan memantau ketahanan pangan keluarga." : severity.desc}
                       </p>
                     </div>
                   </div>
 
-                  {score > 5 && (
+                  {score > 5 && !familyId && (
                     <div className="mt-4 flex items-start gap-3 rounded-[18px] border border-amber-200 bg-amber-50 p-4">
                       <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                       <div>
@@ -266,7 +282,7 @@ const SurveiFIES = () => {
                     Apa yang terjadi setelah ini?
                   </p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Hasil survei Anda akan diproses untuk membantu penentuan
+                    Hasil survei {familyId ? "keluarga" : "Anda"} akan diproses untuk membantu penentuan
                     kondisi ketahanan pangan dan prioritas bantuan.
                   </p>
                 </div>
@@ -277,7 +293,7 @@ const SurveiFIES = () => {
                   </p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     Survei FIES diisi secara berkala setiap bulan agar data
-                    bantuan tetap akurat dan kondisi keluarga Anda bisa terus
+                    bantuan tetap akurat dan kondisi keluarga {familyId ? "ini" : "Anda"} bisa terus
                     dipantau.
                   </p>
                 </div>
@@ -293,9 +309,10 @@ const SurveiFIES = () => {
     return (
       <DashboardLayout
         title="Survei FIES"
-        subtitle="Survei ketahanan pangan bulanan."
+        subtitle={familyId ? `Survei ketahanan pangan keluarga ${familyName || "terpilih"}.` : "Survei ketahanan pangan bulanan."}
       >
         <div className="mx-auto w-full max-w-[1540px] pb-3 lg:h-[calc(100svh-200px)] lg:max-h-[calc(100svh-200px)] lg:min-h-0 lg:overflow-hidden lg:pb-0">
+          {familyId && <Link to={`/dashboard/health-facility/families/${familyId}`} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ChevronLeft className="h-4 w-4" /> Kembali ke keluarga {familyName}</Link>}
           <div className="grid h-full min-h-0 gap-4 lg:grid-rows-[auto_minmax(0,1fr)]">
             <div className="grid min-h-0 w-full shrink-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,424px)]">
               <Card className="h-[300px] overflow-hidden rounded-[18px] border-border/70 bg-background shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
@@ -319,15 +336,16 @@ const SurveiFIES = () => {
 
                       <p className="max-w-xl text-sm leading-6 text-white/85 sm:text-[15px]">
                         Survei bulanan untuk mengukur tingkat ketahanan pangan
-                        keluarga Anda.
+                        keluarga {familyId ? familyName || "terpilih" : "Anda"}.
                       </p>
                     </div>
 
                     <Button
                       onClick={() => setStarted(true)}
+                      disabled={Boolean(familyId && historyLoading) || familySurveyThisMonth}
                       className="mt-5 h-10 w-full rounded-xl bg-white px-5 text-sm font-semibold text-primary shadow-lg shadow-black/10 hover:bg-white/90 sm:w-fit"
                     >
-                      Mulai Survei
+                      {familySurveyThisMonth ? "Survei bulan ini sudah diisi" : "Mulai Survei"}
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
@@ -413,8 +431,8 @@ const SurveiFIES = () => {
                         </h4>
 
                         <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                          Mulai survei pertama Anda untuk membantu kami memahami
-                          kondisi ketahanan pangan keluarga Anda.
+                          Mulai survei pertama untuk membantu memahami
+                          kondisi ketahanan pangan keluarga {familyId ? "ini" : "Anda"}.
                         </p>
                       </div>
                     </div>
@@ -463,9 +481,10 @@ const SurveiFIES = () => {
   return (
     <DashboardLayout
       title="Survei FIES"
-      subtitle="Survei ketahanan pangan bulanan."
+      subtitle={familyId ? `Survei ketahanan pangan keluarga ${familyName || "terpilih"}.` : "Survei ketahanan pangan bulanan."}
     >
       <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-4 pb-3 lg:h-[calc(100svh-200px)] lg:max-h-[calc(100svh-200px)] lg:min-h-0 lg:overflow-hidden lg:pb-0">
+        {familyId && <Link to={`/dashboard/health-facility/families/${familyId}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ChevronLeft className="h-4 w-4" /> Kembali ke keluarga {familyName}</Link>}
         <Card className="shrink-0 rounded-[18px] border-border/70 shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
           <CardContent className="p-4">
             <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -506,7 +525,7 @@ const SurveiFIES = () => {
                       </p>
 
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Pilih jawaban yang paling sesuai dengan kondisi Anda.
+                        Pilih jawaban yang paling sesuai dengan kondisi {familyId ? "keluarga ini" : "Anda"}.
                       </p>
                     </div>
                   </div>
@@ -657,7 +676,7 @@ const SurveiFIES = () => {
                 <p className="text-sm font-semibold text-foreground">Catatan</p>
 
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  Jawaban Anda digunakan untuk membantu menentukan prioritas
+                  Jawaban {familyId ? "keluarga ini" : "Anda"} digunakan untuk membantu menentukan prioritas
                   bantuan pangan.
                 </p>
               </div>
