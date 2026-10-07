@@ -5,7 +5,7 @@ Nutrition and System Models
 - Settlement: Vendor settlements
 - AuditLog: System audit trail
 """
-from sqlalchemy import Column, String, Date, DateTime, Integer, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB
+from sqlalchemy import CheckConstraint, Column, String, Date, DateTime, Integer, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB
 from sqlalchemy.orm import relationship
 import enum
 from app.models.base import BaseModel
@@ -38,6 +38,7 @@ class NutritionMeasurement(BaseModel):
     
     # Foreign key
     child_id = Column(UUID(as_uuid=True), ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True)
+    recorded_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL"), nullable=True)
     
     # Measurement data
     measurement_date = Column(Date, nullable=False, index=True)
@@ -72,9 +73,18 @@ class NutritionMeasurement(BaseModel):
 # ============================================
 class FIESSurvey(BaseModel):
     __tablename__ = "fies_surveys"
+    __table_args__ = (
+        CheckConstraint(
+            "(beneficiary_id IS NOT NULL) <> (family_id IS NOT NULL)",
+            name="ck_fies_surveys_one_subject",
+        ),
+        Index("ix_fies_surveys_family_date", "family_id", "survey_date"),
+    )
     
     # Foreign key
-    beneficiary_id = Column(UUID(as_uuid=True), ForeignKey("beneficiary_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    beneficiary_id = Column(UUID(as_uuid=True), ForeignKey("beneficiary_profiles.user_id", ondelete="CASCADE"), nullable=True, index=True)
+    family_id = Column(UUID(as_uuid=True), ForeignKey("recipient_families.id", ondelete="RESTRICT"), nullable=True)
+    recorded_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL"), nullable=True)
     
     # Survey responses (8 questions)
     responses = Column(JSONB, nullable=False)
@@ -90,6 +100,7 @@ class FIESSurvey(BaseModel):
     
     # Relationship
     beneficiary_profile = relationship("BeneficiaryProfile", back_populates="fies_surveys")
+    recipient_family = relationship("RecipientFamily", back_populates="fies_surveys")
     
     def __repr__(self):
         return f"<FIESSurvey {self.beneficiary_id} - Score: {self.score} ({self.classification})>"

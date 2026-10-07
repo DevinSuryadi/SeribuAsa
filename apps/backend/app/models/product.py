@@ -5,7 +5,7 @@ Product and Order Models
 - Order: Orders from beneficiaries
 - OrderItem: Order line items
 """
-from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB, DateTime
+from sqlalchemy import CheckConstraint, Column, String, Text, Integer, Numeric, ForeignKey, ForeignKeyConstraint, Index, UniqueConstraint, Uuid as UUID, JSON as JSONB, DateTime
 from sqlalchemy.orm import relationship
 import enum
 from app.models.base import BaseModel
@@ -91,10 +91,31 @@ class Product(BaseModel):
 # ============================================
 class Order(BaseModel):
     __tablename__ = "orders"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["family_id", "health_facility_id"],
+            ["recipient_families.id", "recipient_families.health_facility_id"],
+            ondelete="RESTRICT",
+            name="fk_orders_family_facility",
+        ),
+        CheckConstraint(
+            "(order_flow = 'legacy_pickup' AND beneficiary_id IS NOT NULL "
+            "AND family_id IS NULL AND health_facility_id IS NULL) OR "
+            "(order_flow = 'facility_delivery' AND beneficiary_id IS NULL "
+            "AND family_id IS NOT NULL AND health_facility_id IS NOT NULL)",
+            name="ck_orders_flow_owner",
+        ),
+        UniqueConstraint("id", "family_id", name="uq_orders_id_family"),
+    )
     
     # Foreign keys
-    beneficiary_id = Column(UUID(as_uuid=True), ForeignKey("beneficiary_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    beneficiary_id = Column(UUID(as_uuid=True), ForeignKey("beneficiary_profiles.user_id", ondelete="CASCADE"), nullable=True, index=True)
     vendor_id = Column(UUID(as_uuid=True), ForeignKey("vendor_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    family_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    health_facility_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    placed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL"), nullable=True)
+    order_flow = Column(String(30), nullable=False, default="legacy_pickup")
+    delivery_address_snapshot = Column(Text)
     
     # Order details
     total_amount = Column(Numeric(15, 2), nullable=False)
@@ -116,6 +137,7 @@ class Order(BaseModel):
     
     # Relationships
     beneficiary_profile = relationship("BeneficiaryProfile", foreign_keys=[beneficiary_id], back_populates="orders")
+    recipient_family = relationship("RecipientFamily")
     vendor_profile      = relationship("VendorProfile",      foreign_keys=[vendor_id],      back_populates="orders")
     confirming_vendor   = relationship("VendorProfile",      foreign_keys=[confirmed_by_vendor_id])
 
@@ -142,6 +164,9 @@ class Order(BaseModel):
 # ============================================
 class OrderItem(BaseModel):
     __tablename__ = "order_items"
+    __table_args__ = (
+        UniqueConstraint("id", "order_id", name="uq_order_items_id_order"),
+    )
     
     # Foreign keys
     order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
