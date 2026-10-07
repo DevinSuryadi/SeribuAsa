@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { SEO } from "@/components/SEO";
 import logo from "@/assets/logo.svg";
 
@@ -49,6 +50,8 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
   const { signIn, signInWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -89,12 +92,16 @@ export default function Login() {
     }
 
     setLoading(true);
+    setNeedsEmailConfirmation(false);
 
     const { error } = await signIn(email, password);
 
     if (error) {
       let errorMessage = error;
-      if (error.toLowerCase().includes("invalid") || error.toLowerCase().includes("credentials")) {
+      if (error.toLowerCase().includes("email not confirmed") || error.toLowerCase().includes("email belum dikonfirmasi")) {
+        errorMessage = "Email belum diverifikasi. Periksa kotak masuk atau kirim ulang email verifikasi.";
+        setNeedsEmailConfirmation(true);
+      } else if (error.toLowerCase().includes("invalid") || error.toLowerCase().includes("credentials")) {
         errorMessage = "Email atau password salah. Silakan coba lagi.";
       } else if (error.toLowerCase().includes("email")) {
         errorMessage = "Email belum terdaftar. Silakan daftar terlebih dahulu.";
@@ -110,6 +117,25 @@ export default function Login() {
       navigate("/donation/create");
     } else {
       navigate("/dashboard");
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    setResendingEmail(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/login` },
+      });
+      if (error) throw error;
+      toast.success("Email verifikasi dikirim ulang. Periksa kotak masuk dan folder spam.");
+    } catch (error) {
+      toast.error("Gagal mengirim ulang email verifikasi", {
+        description: error instanceof Error ? error.message : "Coba lagi nanti.",
+      });
+    } finally {
+      setResendingEmail(false);
     }
   };
 
@@ -458,6 +484,17 @@ export default function Login() {
               )}
             </button>
           </form>
+
+          {needsEmailConfirmation && (
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={resendingEmail || !email}
+              className="mt-4 w-full rounded-xl border border-green-600 px-4 py-3 text-sm font-semibold text-green-700 disabled:opacity-60"
+            >
+              {resendingEmail ? "Mengirim ulang..." : "Kirim ulang email verifikasi"}
+            </button>
+          )}
 
           {/* Google Login */}
           <div style={{ marginTop: 16 }}>

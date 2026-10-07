@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Heart, Users, Store, Check, Hospital } from "lucide-react";
+import { Eye, EyeOff, Heart, Store, Check, Hospital } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ function GoogleIcon() {
   );
 }
 
-type Role = "donor" | "beneficiary" | "vendor" | "health_facility";
+type Role = "donor" | "vendor" | "health_facility";
 
 const roles: { id: Role; label: string; icon: React.ElementType; desc: string; info: string }[] = [
   {
@@ -38,13 +38,6 @@ const roles: { id: Role; label: string; icon: React.ElementType; desc: string; i
     icon: Heart,
     desc: "Bantu nutrisi",
     info: "Penyumbang Dana & Dukungan. Individu, korporasi, atau lembaga yang menyumbangkan dana untuk program nutrisi. Donasi Anda dikelola transparan melalui sistem e-voucher yang tepat sasaran untuk keluarga rentan.",
-  },
-  {
-    id: "beneficiary",
-    label: "Penerima",
-    icon: Users,
-    desc: "Terima dukungan",
-    info: "Keluarga Rentan & Anak Usia Dini. Keluarga dengan anak usia 1000 hari pertama yang membutuhkan dukungan nutrisi. Prioritas bantuan ditentukan berdasarkan skor FIES (Food Insecurity Experience Scale) untuk memastikan yang paling rentan mendapat bantuan terlebih dahulu.",
   },
   {
     id: "vendor",
@@ -147,7 +140,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const { error, requiresEmailConfirmation } = await signUp(email, password, role === "health_facility" ? facilityName : fullName, role, {
+      const { error, requiresManualLogin } = await signUp(email, password, role === "health_facility" ? facilityName : fullName, role, {
         phone,
         address,
         facilityName,
@@ -167,8 +160,8 @@ export default function Register() {
         return;
       }
 
-      if (requiresEmailConfirmation) {
-        toast.success("Periksa email untuk verifikasi akun, lalu masuk.");
+      if (requiresManualLogin) {
+        toast.success("Akun faskes dibuat. Silakan masuk dengan email dan kata sandi.");
         navigate("/login");
       } else {
         toast.success("Registrasi berhasil!");
@@ -332,7 +325,7 @@ export default function Register() {
             >
               Anda adalah
             </label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
               {roles.map((r) => {
                 const Icon = r.icon;
                 const isSelected = role === r.id;
