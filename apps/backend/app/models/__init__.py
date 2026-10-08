@@ -61,6 +61,7 @@ from app.models.wallet import (
 from app.models.facility import (
     HealthFacility,
     RecipientFamily,
+    FamilyAidPlan,
     OrderFundingAllocation,
     OrderHandoverToken,
     FacilityOrderReceipt,
@@ -127,6 +128,7 @@ __all__ = [
     "WalletTransaction",
     "HealthFacility",
     "RecipientFamily",
+    "FamilyAidPlan",
     "OrderFundingAllocation",
     "OrderHandoverToken",
     "FacilityOrderReceipt",

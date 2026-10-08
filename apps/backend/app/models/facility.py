@@ -5,11 +5,13 @@ from datetime import datetime
 from sqlalchemy import (
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
@@ -71,6 +73,27 @@ class RecipientFamily(BaseModel):
     health_facility = relationship("HealthFacility", back_populates="families")
     children = relationship("Child", back_populates="recipient_family")
     fies_surveys = relationship("FIESSurvey", back_populates="recipient_family")
+    aid_plans = relationship("FamilyAidPlan", back_populates="family")
+
+
+class FamilyAidPlan(BaseModel):
+    """Immutable plan revision recorded against a family's assessment sources."""
+
+    __tablename__ = "family_aid_plans"
+    __table_args__ = (
+        CheckConstraint("priority IN ('low', 'medium', 'high')", name="ck_family_aid_plans_priority"),
+        Index("ix_family_aid_plans_family_created", "family_id", "created_at"),
+    )
+
+    family_id = Column(UUID(as_uuid=True), ForeignKey("recipient_families.id", ondelete="RESTRICT"), nullable=False)
+    recorded_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="RESTRICT"), nullable=False)
+    priority = Column(String(20), nullable=False)
+    needs_summary = Column(Text, nullable=False)
+    planned_action = Column(Text, nullable=False)
+    review_date = Column(Date)
+    basis_snapshot = Column(JSON, nullable=False)
+
+    family = relationship("RecipientFamily", back_populates="aid_plans")
 
 
 class OrderFundingAllocation(BaseModel):

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -60,6 +60,18 @@ class FamilyResponse(FamilyFields):
     id: UUID
     health_facility_id: UUID
     created_at: datetime
+
+
+class LatestFamilyFIES(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    score: int
+    classification: str
+    survey_date: datetime
+
+
+class FamilyListResponse(FamilyResponse):
+    latest_fies: LatestFamilyFIES | None = None
 
 
 class ChildCreate(BaseModel):
@@ -142,17 +154,35 @@ def child_response(child: Child) -> ChildResponse:
     )
 
 
-@router.get("", response_model=list[FamilyResponse])
+@router.get("", response_model=list[FamilyListResponse])
 def list_families(
     search: str | None = Query(default=None, max_length=255),
     db: Session = Depends(get_db),
     facility: HealthFacility = Depends(current_facility),
 ):
-    query = db.query(RecipientFamily).filter_by(health_facility_id=facility.id, is_active=True)
+    latest_survey_id = (
+        select(FIESSurvey.id)
+        .where(FIESSurvey.family_id == RecipientFamily.id, FIESSurvey.is_active.is_(True))
+        .order_by(FIESSurvey.survey_date.desc(), FIESSurvey.created_at.desc(), FIESSurvey.id.desc())
+        .limit(1)
+        .correlate(RecipientFamily)
+        .scalar_subquery()
+    )
+    query = (
+        db.query(RecipientFamily, FIESSurvey)
+        .outerjoin(FIESSurvey, FIESSurvey.id == latest_survey_id)
+        .filter(RecipientFamily.health_facility_id == facility.id, RecipientFamily.is_active.is_(True))
+    )
     if search and search.strip():
         term = f"%{search.strip()}%"
         query = query.filter(or_(RecipientFamily.head_name.ilike(term), RecipientFamily.kk_number.ilike(term)))
-    return query.order_by(RecipientFamily.created_at.desc()).all()
+    rows = query.order_by(RecipientFamily.created_at.desc()).all()
+    return [
+        FamilyListResponse.model_validate(family).model_copy(update={
+            "latest_fies": LatestFamilyFIES.model_validate(survey) if survey else None,
+        })
+        for family, survey in rows
+    ]
 
 
 @router.post("", response_model=FamilyResponse, status_code=status.HTTP_201_CREATED)

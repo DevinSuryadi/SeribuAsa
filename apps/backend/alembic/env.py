@@ -22,7 +22,7 @@ from app.models import (  # noqa: F401
     NutritionMeasurement, FIESSurvey, Settlement, AuditLog,
     Withdrawal,
     WalletAllocation, WalletTransaction,
-    HealthFacility, RecipientFamily, OrderFundingAllocation,
+    HealthFacility, RecipientFamily, FamilyAidPlan, OrderFundingAllocation,
     OrderHandoverToken, FacilityOrderReceipt, AidDistribution,
     AidDistributionItem,
 )
