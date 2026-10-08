@@ -58,6 +58,16 @@ from app.models.wallet import (
     WalletAllocation,
     WalletTransaction,
 )
+from app.models.facility import (
+    HealthFacility,
+    RecipientFamily,
+    FamilyAidPlan,
+    OrderFundingAllocation,
+    OrderHandoverToken,
+    FacilityOrderReceipt,
+    AidDistribution,
+    AidDistributionItem,
+)
 
 __all__ = [
     # Base
@@ -116,4 +126,12 @@ __all__ = [
     # E-Wallet models (new)
     "WalletAllocation",
     "WalletTransaction",
+    "HealthFacility",
+    "RecipientFamily",
+    "FamilyAidPlan",
+    "OrderFundingAllocation",
+    "OrderHandoverToken",
+    "FacilityOrderReceipt",
+    "AidDistribution",
+    "AidDistributionItem",
 ]

@@ -65,6 +65,7 @@ export async function ensureUserProfile(
   fullName: string,
   userRole: UserRole | null
 ): Promise<boolean> {
+  if (userRole === "health_facility") return false;
   // Try sync first
   const synced = await syncGoogleAuth(fullName);
   if (synced) return true;

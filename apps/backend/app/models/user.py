@@ -7,7 +7,7 @@ User Profile Models
 - Child: Children of beneficiaries
 """
 from decimal import Decimal
-from sqlalchemy import Column, String, Text, Date, Enum, ForeignKey, Integer, Numeric, Uuid as UUID
+from sqlalchemy import CheckConstraint, Column, String, Text, Date, Enum, ForeignKey, Integer, Numeric, Uuid as UUID
 from sqlalchemy.orm import relationship
 import enum
 from app.models.base import BaseModel
@@ -195,9 +195,16 @@ class VendorProfile(BaseModel):
 # ============================================
 class Child(BaseModel):
     __tablename__ = "children"
+    __table_args__ = (
+        CheckConstraint(
+            "(beneficiary_id IS NOT NULL) <> (family_id IS NOT NULL)",
+            name="ck_children_one_owner",
+        ),
+    )
     
     # Foreign key to beneficiary
-    beneficiary_id = Column(UUID(as_uuid=True), ForeignKey("beneficiary_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    beneficiary_id = Column(UUID(as_uuid=True), ForeignKey("beneficiary_profiles.user_id", ondelete="CASCADE"), nullable=True, index=True)
+    family_id = Column(UUID(as_uuid=True), ForeignKey("recipient_families.id", ondelete="RESTRICT"), nullable=True, index=True)
     
     # Child information
     full_name = Column(String(255), nullable=False)
@@ -206,6 +213,7 @@ class Child(BaseModel):
     
     # Relationship
     beneficiary_profile = relationship("BeneficiaryProfile", back_populates="children")
+    recipient_family = relationship("RecipientFamily", back_populates="children")
     nutrition_measurements = relationship("NutritionMeasurement", back_populates="child", cascade="all, delete-orphan")
     
     def __repr__(self):

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { formatIDR, formatDate } from "@/lib/format";
 import { getDonations, getPaymentLink, simulatePayment } from "@/services/donations";
+import { getMyDonationUsage, type DonationUsage } from "@/services/funding";
 import { loadMidtransScript } from "@/utils/midtrans";
 import {
   downloadDonationReceipt,
@@ -61,6 +62,7 @@ const DonorRiwayat = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [donations, setDonations] = useState<Donation[]>([]);
+  const [usageById, setUsageById] = useState<Record<string, DonationUsage>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -77,8 +79,9 @@ const DonorRiwayat = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getDonations();
+      const [data, usage] = await Promise.all([getDonations(), getMyDonationUsage()]);
       setDonations(data || []);
+      setUsageById(Object.fromEntries(usage.map((item) => [item.donation_id, item])));
     } catch (err: unknown) {
       if ((err as Error)?.name === "AbortError") return;
       const msg = err instanceof Error ? err.message : "Gagal memuat riwayat donasi";
@@ -200,6 +203,10 @@ const DonorRiwayat = () => {
       filtered.filter((d) => d.status === "success").reduce((sum, d) => sum + Number(d.amount || 0), 0),
     [filtered]
   );
+  const totalSpent = useMemo(
+    () => filtered.reduce((sum, donation) => sum + (usageById[donation.id]?.spent_amount || 0), 0),
+    [filtered, usageById]
+  );
 
   const totalCount = donations.length;
   const successCount = useMemo(
@@ -245,7 +252,7 @@ const DonorRiwayat = () => {
       <div className="space-y-5">
         {/* Stats Summary */}
 <div className="rounded-2xl border border-border bg-card shadow-sm">
-  <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+  <div className="grid grid-cols-1 divide-y divide-border md:grid-cols-4 md:divide-x md:divide-y-0">
     <div className="px-6 py-6 md:px-8">
       <p className="text-sm font-semibold text-muted-foreground">Total Donasi</p>
       <p className="mt-3 text-3xl font-bold tracking-tight text-emerald-700">
@@ -253,6 +260,10 @@ const DonorRiwayat = () => {
       </p>
     </div>
 
+    <div className="px-6 py-6 md:px-8">
+      <p className="text-sm font-semibold text-muted-foreground">Tersalurkan melalui Faskes</p>
+      <p className="mt-3 text-3xl font-bold tracking-tight text-emerald-700">{formatIDR(totalSpent)}</p>
+    </div>
     <div className="px-6 py-6 md:px-8">
       <p className="text-sm font-semibold text-muted-foreground">Total Transaksi</p>
       <p className="mt-3 text-2xl font-bold tracking-tight text-foreground">
@@ -348,6 +359,7 @@ const DonorRiwayat = () => {
 
         <div className="divide-y divide-border">
           {paginatedDonations.map((d) => {
+            const usage = usageById[d.id];
             const typeLabel =
               d.type === "subscription" ? "Donasi Langganan" : "Donasi Satu Kali";
 
@@ -428,6 +440,11 @@ const DonorRiwayat = () => {
                     </Button>
                   )}
                 </div>
+                {usage && d.status === "success" && <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-sm md:col-span-5">
+                  <div className="flex flex-wrap gap-x-6 gap-y-1"><span>Donasi: <strong>{formatIDR(d.amount)}</strong></span><span>Tersalurkan: <strong>{formatIDR(usage.spent_amount)}</strong></span><span>Dicadangkan: <strong>{formatIDR(usage.reserved_amount)}</strong></span><span>Belum digunakan: <strong>{formatIDR(usage.available_amount)}</strong></span></div>
+                  {usage.recipients.length ? <div className="mt-3 border-t border-emerald-100 pt-3"><p className="mb-2 font-semibold">Keluarga penerima</p>{usage.recipients.map((recipient) => <p key={recipient.order_id} className="text-muted-foreground">{recipient.family_name || "Keluarga"} · {recipient.facility_name || "Fasilitas kesehatan"} · {formatIDR(recipient.amount)}</p>)}</div> : <p className="mt-2 text-muted-foreground">Belum tersalurkan kepada keluarga.</p>}
+                </div>}
+                {!usage && d.status === "success" && <p className="text-xs text-muted-foreground md:col-span-5">Donasi ini mengikuti alur lama dan tidak termasuk pool faskes.</p>}
               </div>
             );
           })}

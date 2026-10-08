@@ -3,13 +3,12 @@ import type { Donation, DashboardMetrics, ImpactReport } from "@/types/donation"
 
 export async function getDonations(): Promise<Donation[]> {
   const res = await apiFetch("/donations/");
-  // Backend returns { items: [...], total: n, page: 1, ... }
-  // Handle various response structures
-  if (res?.data?.items && Array.isArray(res.data.items)) {
-    return res.data.items;
-  }
-  if (res?.items && Array.isArray(res.items)) {
-    return res.items;
+  const firstPage = res?.data?.items ? res.data : res;
+  if (Array.isArray(firstPage?.items)) {
+    const pages = Number(firstPage.total_pages || 1);
+    const rest = pages > 1 ? await Promise.all(Array.from({ length: pages - 1 }, (_, index) =>
+      apiFetch(`/donations/?page=${index + 2}&page_size=${firstPage.page_size || 10}`))) : [];
+    return [...firstPage.items, ...rest.flatMap((page) => page?.data?.items || page?.items || [])];
   }
   if (Array.isArray(res?.data)) {
     return res.data;

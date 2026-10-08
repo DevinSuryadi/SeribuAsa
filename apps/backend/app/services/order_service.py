@@ -471,7 +471,7 @@ class OrderService:
     # ──────────────────────────────────────────────────────────────────────────
     @staticmethod
     def count_orders(db: Session, user_id: str, role: str, params: OrderQueryParams, vendor_id: Optional[str] = None) -> int:
-        query = db.query(Order).filter(Order.is_active)
+        query = db.query(Order).filter(Order.is_active, Order.order_flow == "legacy_pickup")
         user_uuid   = OrderService._to_uuid(user_id)
         vendor_uuid = OrderService._to_uuid(vendor_id) if vendor_id else None
 
@@ -480,6 +480,8 @@ class OrderService:
         elif role == "vendor":
             effective_vendor_id = vendor_uuid or user_uuid
             query = query.filter(Order.vendor_id == effective_vendor_id)
+        elif role != "admin":
+            return 0
 
         if params.status:
             query = query.filter(Order.status == params.status)
@@ -488,7 +490,7 @@ class OrderService:
 
     @staticmethod
     def get_orders(db: Session, user_id: str, role: str, params: OrderQueryParams, vendor_id: Optional[str] = None) -> List[Order]:
-        query = db.query(Order).filter(Order.is_active).options(
+        query = db.query(Order).filter(Order.is_active, Order.order_flow == "legacy_pickup").options(
             joinedload(Order.vendor_profile),
             joinedload(Order.items),
         )
@@ -500,6 +502,8 @@ class OrderService:
         elif role == "vendor":
             effective_vendor_id = vendor_uuid or user_uuid
             query = query.filter(Order.vendor_id == effective_vendor_id)
+        elif role != "admin":
+            return []
 
         if params.status:
             query = query.filter(Order.status == params.status)
@@ -515,7 +519,7 @@ class OrderService:
     def get_order_by_id(db: Session, order_id: str, user_id: str, role: str) -> Optional[Order]:
         order_uuid = OrderService._to_uuid(order_id)
         user_uuid  = OrderService._to_uuid(user_id)
-        query = db.query(Order).filter(Order.id == order_uuid).options(
+        query = db.query(Order).filter(Order.id == order_uuid, Order.order_flow == "legacy_pickup").options(
             joinedload(Order.vendor_profile),
             joinedload(Order.items).joinedload(OrderItem.product),
         )
@@ -524,6 +528,8 @@ class OrderService:
             query = query.filter(Order.beneficiary_id == user_uuid)
         elif role == "vendor":
             query = query.filter(Order.vendor_id == user_uuid)
+        elif role != "admin":
+            return None
 
         return query.first()
 
@@ -546,6 +552,7 @@ class OrderService:
         ).filter(
             Order.id == order_uuid,
             Order.vendor_id == vendor_uuid,
+            Order.order_flow == "legacy_pickup",
             Order.is_active,
         ).first()
 

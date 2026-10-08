@@ -2,7 +2,7 @@
 Recommendations Router
 Handles AI-powered nutrition recommendations
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -23,7 +23,9 @@ async def get_recommendations(
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
-    """Get AI-generated recommendations based on FIES and nutrition data"""
+    """Keep the legacy beneficiary recommendation view available to admins only."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Rekomendasi keluarga dikelola fasilitas kesehatan")
     result = RecommendationEngine.generate(
         db=db,
         beneficiary_id=current_user.user_id,

@@ -68,9 +68,45 @@ class DonationAllocationService:
         if donation_uuid is None:
             raise ValueError("Donation ID is required")
 
-        donation = db.query(Donation).filter(Donation.id == donation_uuid).first()
+        donation = db.query(Donation).filter(Donation.id == donation_uuid).with_for_update().first()
         if not donation:
             raise ValueError(f"Donation {donation_id} not found")
+
+        if donation.funding_flow == "pooled":
+            if donation.status == DonationStatusEnum.success:
+                return {
+                    "success": True, "already_processed": True, "donation_id": str(donation.id),
+                    "amount": float(donation.amount), "transaction_id": donation.midtrans_transaction_id,
+                    "pooled": True, "wallet_credited": False, "voucher_created": False,
+                    "allocated_beneficiaries": 0, "allocations": [],
+                    "impact": {"children_helped": 0, "months_of_support": 0, "days_of_support": 0,
+                               "message": "Donasi tersimpan di pool dan menunggu pesanan keluarga."},
+                }
+            if donation.status != DonationStatusEnum.pending:
+                raise ValueError(f"Donation status is {donation.status.value}, must be 'pending'")
+            donation.status = DonationStatusEnum.success
+            donation.midtrans_transaction_id = transaction_id or f"POOL-{uuid.uuid4().hex[:12].upper()}"
+            if donation.subscription_id:
+                from app.models.subscription import BillingHistory, BillingStatusEnum
+                billing = db.query(BillingHistory).filter_by(
+                    subscription_id=donation.subscription_id,
+                    transaction_id=str(donation.id),
+                    status=BillingStatusEnum.pending,
+                ).first()
+                if billing:
+                    billing.status = BillingStatusEnum.success
+                    billing.transaction_id = donation.midtrans_transaction_id
+            DonationAllocationService._update_donor_metrics(db, donation.donor_id, donation.amount)
+            db.commit()
+            db.refresh(donation)
+            return {
+                "success": True, "donation_id": str(donation.id), "amount": float(donation.amount),
+                "transaction_id": donation.midtrans_transaction_id, "pooled": True,
+                "wallet_credited": False, "voucher_created": False,
+                "allocated_beneficiaries": 0, "allocations": [],
+                "impact": {"children_helped": 0, "months_of_support": 0, "days_of_support": 0,
+                           "message": "Donasi tersimpan di pool dan menunggu pesanan keluarga."},
+            }
 
         if donation.status != DonationStatusEnum.pending:
             raise ValueError(

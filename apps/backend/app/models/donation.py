@@ -4,7 +4,7 @@ Donation and Voucher Models
 - Voucher: Voucher definitions
 - VoucherRedemption: Redemption tracking
 """
-from sqlalchemy import Column, String, Date, DateTime, Enum, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB
+from sqlalchemy import CheckConstraint, Column, String, Date, DateTime, Enum, Numeric, ForeignKey, Index, Uuid as UUID, JSON as JSONB
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
@@ -39,6 +39,12 @@ class VoucherStatusEnum(str, enum.Enum):
 # ============================================
 class Donation(BaseModel):
     __tablename__ = "donations"
+    __table_args__ = (
+        CheckConstraint(
+            "funding_flow IN ('legacy_wallet', 'pooled')",
+            name="ck_donations_funding_flow",
+        ),
+    )
     
     # Foreign keys
     donor_id = Column(UUID(as_uuid=True), ForeignKey("donor_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
@@ -49,6 +55,7 @@ class Donation(BaseModel):
     amount = Column(Numeric(15, 2), nullable=False)
     type = Column(Enum(DonationTypeEnum), nullable=False, default=DonationTypeEnum.one_time)
     status = Column(Enum(DonationStatusEnum), nullable=False, default=DonationStatusEnum.pending, index=True)
+    funding_flow = Column(String(30), nullable=False, default="legacy_wallet")
     
     # Payment information
     payment_method = Column(String(50), default="midtrans")

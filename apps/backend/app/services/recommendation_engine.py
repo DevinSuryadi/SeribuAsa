@@ -8,11 +8,82 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from app.models.nutrition import FIESSurvey, NutritionMeasurement
+from app.models.user import Child
 
 logger = logging.getLogger(__name__)
 
 
 class RecommendationEngine:
+    @staticmethod
+    def generate_for_family(
+        fies: Optional[FIESSurvey],
+        child_facts: List[tuple[Child, Optional[NutritionMeasurement]]],
+    ) -> List[Dict[str, Any]]:
+        """Adapt the existing FIES/growth rules to a facility's family record.
+
+        These are review prompts, not product prescriptions or clinical diagnoses.
+        """
+        recommendations: List[Dict[str, Any]] = []
+
+        if fies and fies.score > 2:
+            severe = fies.score > 5
+            recommendations.append({
+                "id": f"family_fies_{fies.id}",
+                "category": "food_security",
+                "priority": "high" if severe else "medium",
+                "title": "Tinjau akses pangan keluarga",
+                "description": f"Skor FIES terakhir {fies.score}/8. Tinjau hambatan keluarga dalam memperoleh pangan yang cukup dan bergizi.",
+                "action_items": [
+                    "Konfirmasi kondisi pangan dan jumlah anggota keluarga",
+                    "Susun kebutuhan bantuan pangan yang sesuai kondisi keluarga",
+                    "Tinjau kembali kondisi pada asesmen berikutnya",
+                ],
+                "based_on": {"fies_survey_id": str(fies.id), "fies_score": fies.score},
+            })
+
+        for child, measurement in child_facts:
+            if measurement is None:
+                continue
+            for metric, score, title in (
+                ("height", measurement.z_score_height, "tinggi badan"),
+                ("weight", measurement.z_score_weight, "berat badan"),
+            ):
+                if score is None or float(score) >= -2:
+                    continue
+                recommendations.append({
+                    "id": f"family_{metric}_{measurement.id}",
+                    "category": "nutrition",
+                    "priority": "high" if float(score) < -3 else "medium",
+                    "title": f"Tinjau pertumbuhan {title} {child.full_name}",
+                    "description": f"Z-score {title} pada pengukuran {measurement.measurement_date.isoformat()} berada di bawah -2. Verifikasi hasil dan tentukan tindak lanjut oleh fasilitas kesehatan.",
+                    "action_items": [
+                        "Periksa ulang pengukuran dan riwayat pertumbuhan",
+                        "Tentukan dukungan pangan sesuai usia dan kondisi anak",
+                        "Jadwalkan pemantauan berikutnya",
+                    ],
+                    "based_on": {
+                        "child_id": str(child.id),
+                        "measurement_id": str(measurement.id),
+                        "z_score": float(score),
+                    },
+                })
+
+        if not recommendations and (fies or any(measurement for _, measurement in child_facts)):
+            recommendations.append({
+                "id": "family_monitoring",
+                "category": "monitoring",
+                "priority": "low",
+                "title": "Lanjutkan pemantauan keluarga",
+                "description": "Data terbaru belum memunculkan prioritas dari aturan ini. Tetap tinjau kondisi keluarga secara berkala.",
+                "action_items": [
+                    "Perbarui survei FIES secara berkala",
+                    "Catat pengukuran pertumbuhan anak berikutnya",
+                ],
+                "based_on": {"status": "no_rule_triggered"},
+            })
+
+        return recommendations
+
     @staticmethod
     def generate(
         db: Session,

@@ -68,7 +68,7 @@ export default function CreateDonation() {
     }
     setLoading(true);
     try {
-      // Step 1: Buat donasi (tanpa recipient_id — sistem auto-assign)
+      // Donasi baru masuk ke pool setelah pembayaran berhasil.
       const donation = await createDonation({
         amount: parseInt(amount),
         type: donationType,

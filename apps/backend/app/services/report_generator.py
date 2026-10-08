@@ -207,6 +207,7 @@ class ReportGenerator:
         vendor_uuid = ReportGenerator._to_uuid(vendor_id)
         query = db.query(Order).filter(
             Order.vendor_id == vendor_uuid,
+            Order.order_flow == "legacy_pickup",
             Order.is_active,
         )
 
@@ -229,7 +230,7 @@ class ReportGenerator:
             )
             .join(OrderItem, Product.id == OrderItem.product_id)
             .join(Order, OrderItem.order_id == Order.id)
-            .filter(Order.vendor_id == vendor_uuid)
+            .filter(Order.vendor_id == vendor_uuid, Order.order_flow == "legacy_pickup")
             .group_by(Product.name)
             .order_by(func.sum(OrderItem.subtotal).desc())
             .limit(10)
@@ -244,7 +245,7 @@ class ReportGenerator:
                 func.sum(Order.total_amount).label("total"),
             )
             .select_from(Order)
-            .filter(Order.vendor_id == vendor_uuid, Order.is_active)
+            .filter(Order.vendor_id == vendor_uuid, Order.order_flow == "legacy_pickup", Order.is_active)
             .group_by(func.date(Order.created_at))
             .order_by(func.date(Order.created_at).desc())
             .limit(30)

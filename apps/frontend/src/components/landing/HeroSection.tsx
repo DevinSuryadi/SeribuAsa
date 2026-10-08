@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ArrowRight } from 'lucide-react';
+import { Hospital, ArrowRight } from 'lucide-react';
 import gsap from 'gsap';
 import bgHero from '@/assets/bg-hero.svg';
 
@@ -221,7 +221,7 @@ export function HeroSection() {
             </Link>
 
             <Link
-              to="/register?role=beneficiary"
+              to="/register?role=health_facility"
               className="hero-cta"
               style={{
                 display: 'inline-flex',
@@ -241,8 +241,8 @@ export function HeroSection() {
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
               }}
             >
-              <Users size={17} />
-              Daftar Penerima Manfaat
+              <Hospital size={17} />
+              Daftar Fasilitas Kesehatan
             </Link>
           </div>
         </div>
