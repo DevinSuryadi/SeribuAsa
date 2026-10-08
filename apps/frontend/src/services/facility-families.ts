@@ -44,7 +44,11 @@ export async function addFamilyChild(familyId: string, data: {
 }
 
 export async function getFamilyMeasurementHistory(familyId: string, childId: string) {
-  return apiFetch(`${familyPath(familyId)}/children/${encodeURIComponent(childId)}/measurements`);
+  const response = await apiFetch(`${familyPath(familyId)}/children/${encodeURIComponent(childId)}/measurements`);
+  if (!Array.isArray(response?.data?.measurements)) {
+    throw new Error("Format riwayat pengukuran tidak valid");
+  }
+  return response.data;
 }
 
 export async function addFamilyMeasurement(familyId: string, data: {
