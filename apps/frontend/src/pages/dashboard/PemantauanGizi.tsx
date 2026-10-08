@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Link, useParams } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import {
 } from "@/services/nutrition";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
+import { addFamilyChild, addFamilyMeasurement, getFamily, getFamilyChildren, getFamilyMeasurementHistory } from "@/services/facility-families";
 
 // ── Types ─────────────────────────────────────────────────────
 type ChildData = {
@@ -193,6 +195,8 @@ function ChildCard({
 // ── Main Page ─────────────────────────────────────────────────
 const PemantauanGizi = () => {
   const { user } = useAuth();
+  const { familyId } = useParams<{ familyId: string }>();
+  const [familyName, setFamilyName] = useState("");
   const gridRef = useStaggerChildren({ stagger: 0.1 });
 
   const [showForm, setShowForm] = useState(false);
@@ -232,7 +236,7 @@ const PemantauanGizi = () => {
     const entries = await Promise.all(
       childList.map(async (child) => {
         try {
-          const result = await getMeasurementHistory(child.id);
+          const result = familyId ? await getFamilyMeasurementHistory(familyId, child.id) : await getMeasurementHistory(child.id);
           const latest = getLatestMeasurementFromList(result?.measurements || []);
           return [child.id, latest] as const;
         } catch {
@@ -242,16 +246,16 @@ const PemantauanGizi = () => {
     );
 
     setLatestMeasurementsByChild(Object.fromEntries(entries));
-  }, []);
+  }, [familyId]);
 
   const fetchChildren = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getChildren();
+      const data = familyId ? await getFamilyChildren(familyId) : await getChildren();
       const childList = Array.isArray(data) ? data : [];
 
       setChildren(childList);
-      setSelectedChild((current) => current ?? childList[0] ?? null);
+      setSelectedChild((current) => childList.find((child: ChildData) => child.id === current?.id) ?? childList[0] ?? null);
       await fetchLatestMeasurementsForChildren(childList);
     } catch (err: unknown) {
       toast.error("Gagal memuat data anak", { description: err instanceof Error ? err.message : undefined });
@@ -260,14 +264,19 @@ const PemantauanGizi = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchLatestMeasurementsForChildren]);
+  }, [familyId, fetchLatestMeasurementsForChildren]);
+
+  useEffect(() => {
+    if (!familyId) return;
+    getFamily(familyId).then((family) => setFamilyName(family.head_name)).catch(() => setFamilyName(""));
+  }, [familyId]);
 
   useEffect(() => { if (user) fetchChildren(); }, [user, fetchChildren]);
 
   const fetchMeasurements = useCallback(async (childId: string) => {
     try {
       setLoading(true);
-      const result = await getMeasurementHistory(childId);
+      const result = familyId ? await getFamilyMeasurementHistory(familyId, childId) : await getMeasurementHistory(childId);
       const list = result?.measurements || [];
       setMeasurements(
         [...list].sort(
@@ -282,7 +291,7 @@ const PemantauanGizi = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [familyId]);
 
   useEffect(() => { if (user && selectedChild) fetchMeasurements(selectedChild.id); }, [user, selectedChild, fetchMeasurements]);
 
@@ -326,19 +335,21 @@ const PemantauanGizi = () => {
 
       if (existingOnDate) {
         toast.error("Sudah ada pengukuran pada tanggal ini", {
-          description: "Jika ingin mengganti data, hapus data lama terlebih dahulu lalu input ulang.",
+          description: familyId ? "Hubungi pengelola data jika pengukuran perlu dikoreksi." : "Jika ingin mengganti data, hapus data lama terlebih dahulu lalu input ulang.",
         });
         setSubmitting(false);
         return;
       }
 
-      await addMeasurement({
+      const measurement = {
         child_id: selectedChild.id,
         measurement_date: formDate,
         weight,
         height,
         muac: formMuac ? parseFloat(formMuac) : undefined,
-      });
+      };
+      if (familyId) await addFamilyMeasurement(familyId, measurement);
+      else await addMeasurement(measurement);
 
       toast.success("Data pengukuran berhasil disimpan");
 
@@ -378,7 +389,9 @@ const PemantauanGizi = () => {
     if (Object.keys(errors).length > 0) return;
     try {
       setSubmitting(true);
-      await addChild({ full_name: childFormName.trim(), date_of_birth: childFormDob, gender: childFormGender });
+      const child = { full_name: childFormName.trim(), date_of_birth: childFormDob, gender: childFormGender };
+      if (familyId) await addFamilyChild(familyId, child);
+      else await addChild(child);
       toast.success("Anak berhasil ditambahkan");
       setShowAddChild(false); setChildFormName(""); setChildFormDob("");
       setChildFormGender("male"); setChildFormErrors({});
@@ -422,7 +435,7 @@ const PemantauanGizi = () => {
   // ── Skeleton ─────────────────────────────────────────────────
   if (loading && children.length === 0) {
     return (
-      <DashboardLayout title="Pemantauan Gizi" subtitle="Pantau tumbuh kembang dan status gizi anak Anda.">
+      <DashboardLayout title="Pemantauan Gizi" subtitle={familyId ? `Pemantauan anak keluarga ${familyName || "terpilih"}.` : "Pantau tumbuh kembang dan status gizi anak Anda."}>
         <div className="mx-auto w-full max-w-[1600px] space-y-4 sm:space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-2">
@@ -448,11 +461,13 @@ const PemantauanGizi = () => {
   }
 
   return (
-    <DashboardLayout title="Pemantauan Gizi" subtitle="Pantau tumbuh kembang dan status gizi anak Anda.">
+    <DashboardLayout title="Pemantauan Gizi" subtitle={familyId ? `Pemantauan anak keluarga ${familyName || "terpilih"}.` : "Pantau tumbuh kembang dan status gizi anak Anda."}>
       <div className="mx-auto w-full max-w-[1600px] space-y-4 sm:space-y-5">
 
+        {familyId && <Link to={`/dashboard/health-facility/families/${familyId}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ChevronLeft className="h-4 w-4" /> Kembali ke keluarga {familyName}</Link>}
+
         {/* Top Actions */}
-        <div className="-mt-14 mb-4 flex justify-end max-md:mt-0 max-md:mb-3">
+        <div className={`${familyId ? "mt-0" : "-mt-14 max-md:mt-0"} mb-4 flex justify-end max-md:mb-3`}>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <Button
               variant="outline"
@@ -654,7 +669,7 @@ const PemantauanGizi = () => {
                           <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground">Tinggi (cm)</th>
                           <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground">Z-Score</th>
                           <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground">Status</th>
-                          <th className="px-5 py-3 text-right text-xs font-semibold text-muted-foreground">Aksi</th>
+                          {!familyId && <th className="px-5 py-3 text-right text-xs font-semibold text-muted-foreground">Aksi</th>}
                         </tr>
                       </thead>
 
@@ -686,7 +701,7 @@ const PemantauanGizi = () => {
                                   {cfg.label}
                                 </Badge>
                               </td>
-                              <td className="px-5 py-4">
+                              {!familyId && <td className="px-5 py-4">
                                 <div className="flex justify-end gap-1">
                                   <Button
                                     variant="ghost"
@@ -698,7 +713,7 @@ const PemantauanGizi = () => {
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
                                 </div>
-                              </td>
+                              </td>}
                             </tr>
                           );
                         })}

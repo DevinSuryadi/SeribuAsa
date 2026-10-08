@@ -7,6 +7,8 @@ type SupabaseUserMetadata = {
   role?: string | null;
   phone?: string | null;
   address?: string | null;
+  facility_name?: string | null;
+  facility_type?: string | null;
 };
 
 type Session = {
@@ -30,6 +32,7 @@ type UserRole =
   | "admin"
   | "government"
   | "corporate_donor"
+  | "health_facility"
   | "unassigned"
   | null;
 
@@ -52,13 +55,14 @@ interface AuthContextType {
     password: string,
     fullName: string,
     role: string,
-    profileData?: { phone?: string; address?: string }
-  ) => Promise<{ error: string | null }>;
+    profileData?: { phone?: string; address?: string; facilityName?: string; facilityType?: string }
+  ) => Promise<{ error: string | null; requiresManualLogin?: boolean }>;
   signInAsDemo: (role: UserRole) => void;
   signOut: () => Promise<void>;
 }
 
 const AUTH_KEY = "nutriguard-auth";
+const BENEFICIARY_LOGIN_MESSAGE = "Akun penerima manfaat sekarang dikelola oleh fasilitas kesehatan. Silakan hubungi fasilitas kesehatan Anda.";
 const GOOGLE_ROLE_KEY = "nutriguard-google-role";
 const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 const KNOWN_ROLES = new Set([
@@ -68,6 +72,7 @@ const KNOWN_ROLES = new Set([
   "admin",
   "government",
   "corporate_donor",
+  "health_facility",
   "unassigned",
 ]);
 const BACKEND_SIGNUP_ROLES = new Set([
@@ -305,7 +310,43 @@ async function ensureBackendProfileForSessionIfNeeded(
   }
 }
 
+async function syncFacilityProfile(currentSession: Session): Promise<string> {
+  const metadata = currentSession.user.user_metadata;
+  const headers = { Authorization: `Bearer ${currentSession.access_token}` };
+  let response = await fetch(`${BACKEND_BASE_URL}/facilities/me`, { headers });
+
+  if (response.status === 404 && metadata?.role === "health_facility") {
+    response = await fetch(`${BACKEND_BASE_URL}/facilities/register`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        full_name: resolveFullNameFromMetadata(metadata, currentSession.user.email) || "User",
+        name: metadata.facility_name,
+        facility_type: metadata.facility_type || null,
+        phone: normalizeOptionalProfileField(metadata.phone),
+        address: normalizeOptionalProfileField(metadata.address),
+      }),
+    });
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || "Akun fasilitas kesehatan belum tersedia");
+  }
+  const facility = await response.json();
+  return facility.name;
+}
+
 async function buildAuthUserFromSession(currentSession: Session): Promise<AuthUser> {
+  if (currentSession.user.user_metadata?.role === "health_facility") {
+    const facilityName = await syncFacilityProfile(currentSession);
+    return {
+      id: currentSession.user.id,
+      email: currentSession.user.email || "",
+      fullName: facilityName,
+      role: "health_facility",
+    };
+  }
   let syncedRole: UserRole = null;
   let syncedFullName: string | null = null;
 
@@ -322,6 +363,20 @@ async function buildAuthUserFromSession(currentSession: Session): Promise<AuthUs
   const profileData = await getCombinedUserProfile(
     currentSession.user.id
   );
+
+  if (syncedRole === "beneficiary" || profileData.role === "beneficiary" || currentSession.user.user_metadata?.role === "beneficiary") {
+    throw new Error(BENEFICIARY_LOGIN_MESSAGE);
+  }
+
+  if (profileData.role === "health_facility") {
+    const facilityName = await syncFacilityProfile(currentSession);
+    return {
+      id: currentSession.user.id,
+      email: currentSession.user.email || "",
+      fullName: facilityName,
+      role: "health_facility",
+    };
+  }
 
   if (!isGoogleSession(currentSession) && !profileData.exists) {
     try {
@@ -361,9 +416,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const authUser = await buildAuthUserFromSession(currentSession);
               setUser(authUser);
               setUserRole(authUser.role);
-            } catch {
+            } catch (error) {
+              if (error instanceof Error && error.message === BENEFICIARY_LOGIN_MESSAGE) {
+                setUser(null);
+                setUserRole(null);
+                setSession(null);
+                void supabase.auth.signOut();
+                setLoading(false);
+                return;
+              }
+              if (currentSession.user.user_metadata?.role === "health_facility") {
+                setUser(null);
+                setUserRole(null);
+                setLoading(false);
+                return;
+              }
               const email = currentSession.user.email || "";
-              const role = resolveRoleFromEmail(email) || "donor";
+              const role = currentSession.user.user_metadata?.role === "health_facility"
+                ? "unassigned" : resolveRoleFromEmail(email) || "donor";
               setUser({
                 id: currentSession.user.id,
                 email,
@@ -399,9 +469,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(authUser);
             setUserRole(authUser.role);
           })
-          .catch(() => {
+          .catch((error) => {
+            if (error instanceof Error && error.message === BENEFICIARY_LOGIN_MESSAGE) {
+              setUser(null);
+              setUserRole(null);
+              setSession(null);
+              void supabase.auth.signOut();
+              return;
+            }
+            if (newSession.user.user_metadata?.role === "health_facility") {
+              setUser(null);
+              setUserRole(null);
+              return;
+            }
             const email = newSession.user.email || "";
-            const role = resolveRoleFromEmail(email) || "donor";
+            const role = newSession.user.user_metadata?.role === "health_facility"
+              ? "unassigned" : resolveRoleFromEmail(email) || "donor";
             setUser({
               id: newSession.user.id,
               email,
@@ -432,8 +515,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserRole(authUser.role);
       }
       return { error: null };
-    } catch {
-      return { error: "Login gagal. Silakan coba lagi." };
+    } catch (error) {
+      if (error instanceof Error && error.message === BENEFICIARY_LOGIN_MESSAGE) {
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setUserRole(null);
+      }
+      return { error: error instanceof Error ? error.message : "Login gagal. Silakan coba lagi." };
     }
   };
 
@@ -463,12 +552,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     fullName: string,
     role: string,
-    profileData?: { phone?: string; address?: string }
+    profileData?: { phone?: string; address?: string; facilityName?: string; facilityType?: string }
   ) => {
     try {
       console.log("[SIGNUP] Starting registration for:", email, "role:", role);
       const normalizedPhone = normalizeOptionalProfileField(profileData?.phone);
       const normalizedAddress = normalizeOptionalProfileField(profileData?.address);
+
+      if (role === "health_facility") {
+        const response = await fetch(`${BACKEND_BASE_URL}/facilities/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            password,
+            name: profileData?.facilityName?.trim() || fullName.trim(),
+            facility_type: profileData?.facilityType?.trim() || null,
+            phone: normalizedPhone,
+            address: normalizedAddress,
+          }),
+        });
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          return { error: typeof result.detail === "string" ? result.detail : "Pendaftaran fasilitas gagal. Silakan coba lagi." };
+        }
+
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError || !signInData.session) {
+          return { error: null, requiresManualLogin: true };
+        }
+        let authUser: AuthUser;
+        try {
+          authUser = await buildAuthUserFromSession(signInData.session);
+        } catch {
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setUserRole(null);
+          return { error: null, requiresManualLogin: true };
+        }
+        setSession(signInData.session);
+        localStorage.removeItem(AUTH_KEY);
+        setUser(authUser);
+        setUserRole(authUser.role);
+        return { error: null };
+      }
 
       // Step 1: Create auth user in Supabase
       console.log("[SIGNUP] Step 1: Creating Supabase auth user...");
@@ -482,7 +610,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             phone: normalizedPhone,
             address: normalizedAddress,
           },
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}/login`,
         },
       });
       if (error) {

@@ -12,6 +12,7 @@ import hashlib
 
 from app.database import get_db
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, GenderEnum
+from app.models.facility import HealthFacility
 from app.schemas.user import (
     UserSignUpRequest,
     UserSignUpResponse,
@@ -35,6 +36,9 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 def _resolve_user_role(db: Session, user_id: UUID) -> UserRole | None:
     """Resolve user role from role-specific profile tables."""
+    if db.query(HealthFacility).filter(HealthFacility.account_user_id == user_id).first():
+        return "health_facility"
+
     donor_profile = db.query(DonorProfile).filter(DonorProfile.user_id == user_id).first()
     if donor_profile:
         if donor_profile.corporate_name:

@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -9,10 +9,13 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base
 from app.models import FIESSurvey  # noqa: F401
 from app.models.donation import Donation, DonationStatusEnum, DonationTypeEnum
+from app.models.subscription import BillingHistory, BillingStatusEnum, Subscription
 from app.models.wallet import WalletAllocation
 from app.models.user import BeneficiaryProfile, DonorProfile, UserProfile
+from app.schemas.donation import DonationCreate
 from app.services.donation_allocation_service import DonationAllocationService
 from app.services.donation_service import DonationService
+from app.services.subscription_service import SubscriptionService
 
 
 def _build_session():
@@ -152,6 +155,59 @@ def test_successful_donation_without_eligible_survey_creates_no_voucher():
         assert donor is not None
         assert donor.total_donated == Decimal("500000.00")
 
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_new_pooled_donation_is_counted_once_without_wallet_credit():
+    db, engine = _build_session()
+    try:
+        donor_id = _create_donor(db)
+        beneficiary_id = _create_beneficiary(db, "Legacy beneficiary")
+        _add_survey(db, beneficiary_id, 8, datetime.utcnow())
+        donation = DonationService.create_donation(
+            db, str(donor_id), DonationCreate(amount=Decimal("50000.00"), type="one_time", payment_method="qris"),
+        )
+        assert donation.funding_flow == "pooled"
+
+        result = DonationAllocationService.process_successful_donation(db, str(donation.id), "payment-50000")
+        repeated = DonationAllocationService.process_successful_donation(db, str(donation.id), "payment-50000")
+        db.refresh(donation)
+        assert result["pooled"] is True
+        assert repeated["already_processed"] is True
+        assert donation.status == DonationStatusEnum.success
+        assert donation.midtrans_transaction_id == "payment-50000"
+        assert db.query(WalletAllocation).count() == 0
+        assert db.query(DonorProfile).filter_by(user_id=donor_id).first().total_donated == Decimal("50000.00")
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+def test_recurring_bill_waits_for_verified_payment_before_entering_pool():
+    db, engine = _build_session()
+    try:
+        donor_id = _create_donor(db)
+        subscription = Subscription(
+            donor_id=donor_id, plan_name="Bulanan", amount=Decimal("20000"),
+            next_billing_date=date.today(), payment_method="qris",
+        )
+        db.add(subscription)
+        db.commit()
+
+        result = SubscriptionService.process_billing(db, subscription)
+        assert result["success"] is True
+        assert result["payment_status"] == "pending"
+        donation = db.query(Donation).filter_by(id=UUID(result["donation_id"])).first()
+        assert donation.funding_flow == "pooled"
+        assert donation.status == DonationStatusEnum.pending
+        assert db.query(WalletAllocation).count() == 0
+        assert db.query(BillingHistory).filter_by(subscription_id=subscription.id).first().status == BillingStatusEnum.pending
+
+        DonationAllocationService.process_successful_donation(db, str(donation.id), "verified-payment")
+        assert db.query(BillingHistory).filter_by(subscription_id=subscription.id).first().status == BillingStatusEnum.success
+        assert db.query(DonorProfile).filter_by(user_id=donor_id).first().total_donated == Decimal("20000")
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)

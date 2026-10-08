@@ -11,6 +11,9 @@ on:
       - main
       - staging
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build Frontend

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatIDR } from "@/lib/format";
 import { apiFetch } from "@/services/api";
+import { getAdminPool, type AdminPool } from "@/services/funding";
 import { formatDateTime, shortId } from "./adminUtils";
 import { toast } from "sonner";
 import {
@@ -27,7 +28,7 @@ type DonationItem = {
 };
 type DonationListResponse = { items: DonationItem[]; total: number; total_pages?: number };
 type StatusFilter = "all" | "success" | "pending" | "failed" | "refunded";
-type AllocFilter  = "all" | "allocated" | "no_eligible_beneficiary" | "pending_payment";
+type AllocFilter  = "all" | "allocated" | "pooled" | "no_eligible_beneficiary" | "pending_payment";
 const PAGE_SIZE = 20;
 
 const psConfig: Record<string, { label: string; dot: string; cls: string }> = {
@@ -38,6 +39,7 @@ const psConfig: Record<string, { label: string; dot: string; cls: string }> = {
 };
 const asConfig: Record<string, { label: string }> = {
   allocated:               { label: "Dialokasi" },
+  pooled:                  { label: "Dalam Pool" },
   no_eligible_beneficiary: { label: "Tdk ada penerima" },
   pending_payment:         { label: "Menunggu bayar" },
   failed:                  { label: "Gagal" },
@@ -96,6 +98,7 @@ function DonationRow({ item }: { item: DonationItem }) {
 
 export default function AdminDonationsPage() {
   const [allItems, setAllItems] = useState<DonationItem[]>([]);
+  const [pool, setPool] = useState<AdminPool | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
   const [search, setSearch]     = useState("");
@@ -106,7 +109,11 @@ export default function AdminDonationsPage() {
   const loadDonations = useCallback(async () => {
     try {
       setLoading(true); setError(null);
-      const first = (await apiFetch(`/admin/donations?page=1&page_size=100`)) as DonationListResponse;
+      const [first, poolData] = await Promise.all([
+        apiFetch(`/admin/donations?page=1&page_size=100`) as Promise<DonationListResponse>,
+        getAdminPool(),
+      ]);
+      setPool(poolData);
       const totalPages = first.total_pages ?? 1;
       const all = [...(first.items ?? [])];
       if (totalPages > 1) {
@@ -149,7 +156,7 @@ export default function AdminDonationsPage() {
   }), [allItems]);
 
   return (
-    <DashboardLayout title="Kelola Donasi" subtitle="Monitor transaksi donasi, status pembayaran, dan alokasi E-Wallet.">
+    <DashboardLayout title="Kelola Donasi" subtitle="Pantau pool donasi faskes serta transaksi dan alokasi lama.">
       <div className="space-y-5">
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -172,6 +179,22 @@ export default function AdminDonationsPage() {
           ))}
         </div>
 
+        {pool && <section className="space-y-3 rounded-2xl border border-emerald-100 bg-card p-5 shadow-sm" aria-label="Pool donasi faskes">
+          <div><h2 className="text-lg font-bold">Pool Donasi Faskes</h2><p className="text-sm text-muted-foreground">Hanya donasi baru yang berhasil dibayar masuk ke pool. Donasi lama tidak dihitung ulang.</p></div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: "Terkumpul", value: pool.total_received },
+              { label: "Tersedia", value: pool.available_balance },
+              { label: "Dicadangkan", value: pool.total_reserved },
+              { label: "Tersalurkan", value: pool.total_spent },
+            ].map((metric) => <div key={metric.label} className="rounded-xl bg-emerald-50/60 p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 text-lg font-bold text-emerald-800">{formatIDR(metric.value)}</p></div>)}
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div><h3 className="mb-2 text-sm font-semibold">Donasi dalam pool</h3><div className="max-h-72 space-y-2 overflow-y-auto">{pool.donations.length ? pool.donations.map((donation) => <div key={donation.donation_id} className="rounded-xl border border-border/70 p-3 text-sm"><div className="flex justify-between gap-3"><span className="font-semibold">{donation.donor_name}</span><strong>{formatIDR(donation.amount)}</strong></div><p className="mt-1 text-xs text-muted-foreground">Tersalurkan {formatIDR(donation.spent_amount)} · Dicadangkan {formatIDR(donation.reserved_amount)} · Sisa {formatIDR(donation.available_amount)}</p></div>) : <p className="text-sm text-muted-foreground">Belum ada donasi pool yang berhasil dibayar.</p>}</div></div>
+            <div><h3 className="mb-2 text-sm font-semibold">Alokasi ke keluarga</h3><div className="max-h-72 space-y-2 overflow-y-auto">{pool.allocations.length ? pool.allocations.map((allocation) => <div key={`${allocation.donation_id}-${allocation.order_id}`} className="rounded-xl border border-border/70 p-3 text-sm"><div className="flex justify-between gap-3"><span className="font-semibold">{allocation.family_name || "Keluarga"}</span><strong>{formatIDR(allocation.amount)}</strong></div><p className="mt-1 text-xs text-muted-foreground">{allocation.facility_name || "Faskes"} · {allocation.status === "spent" ? "Tersalurkan" : "Dicadangkan"}</p></div>) : <p className="text-sm text-muted-foreground">Belum ada alokasi dari pool.</p>}</div></div>
+          </div>
+        </section>}
+
         {/* Filters */}
         <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <div className="flex items-center gap-1 p-3 border-b border-border/60 flex-wrap">
@@ -184,7 +207,7 @@ export default function AdminDonationsPage() {
             ))}
             <div className="w-px h-4 bg-border mx-1" />
             <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1">Alokasi:</span>
-            {(["all", "allocated", "no_eligible_beneficiary", "pending_payment"] as AllocFilter[]).map((f) => (
+            {(["all", "allocated", "pooled", "no_eligible_beneficiary", "pending_payment"] as AllocFilter[]).map((f) => (
               <button key={f} onClick={() => setAllocFilter(f)}
                 className={`inline-flex items-center rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${allocFilter === f ? "bg-emerald-700 text-white shadow-sm" : "text-muted-foreground hover:bg-secondary"}`}>
                 {f === "all" ? "Semua" : (asConfig[f]?.label ?? f)}

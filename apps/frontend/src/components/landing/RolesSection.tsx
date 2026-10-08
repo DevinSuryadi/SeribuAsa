@@ -25,12 +25,12 @@ const roles = [
     title: "Distributor",
     subtitle: "Puskesmas & Klinik",
     desc: [
-      "Puskesmas atau klinik yang menerima bahan pangan bergizi dari vendor.",
-      "Distributor menyalurkannya kepada keluarga penerima manfaat yang terdaftar.",
+      "Keluarga dengan anak usia 1000 hari pertama yang membutuhkan dukungan nutrisi.",
+      "Data keluarga penerima dicatat oleh fasilitas kesehatan; prioritas bantuan ditentukan berdasarkan skor FIES.",
     ],
-    iconColor: "#c2410c",
-    borderColor: "#f5c9a8",
-    registerHref: "/register?role=distributor",
+    iconColor: "#2563eb",
+    borderColor: "#9ec5ff",
+    registerHref: null,
   },
   
   {
@@ -532,18 +532,12 @@ export function RolesSection() {
           </svg>
 
           <div ref={timelineRef} className="roles-card-wrap">
-            {roles.map((role) => (
-              <Link
-                key={role.title}
-                to={role.registerHref}
-                className="role-card"
-                style={
-                  {
-                    "--role-color": role.iconColor,
-                    "--role-border": role.borderColor,
-                  } as CSSProperties
-                }
-              >
+            {roles.map((role) => {
+              const cardStyle = {
+                "--role-color": role.iconColor,
+                "--role-border": role.borderColor,
+              } as CSSProperties;
+              const cardContent = <>
                 <div className="role-avatar">
                   <img
                     src={role.image}
@@ -570,15 +564,24 @@ export function RolesSection() {
                 </div>
 
                 <div className="role-link-hint">
-                  Klik untuk mendaftar
-                  <ArrowRight
+                  {role.registerHref ? "Klik untuk mendaftar" : "Didata oleh fasilitas kesehatan"}
+                  {role.registerHref && <ArrowRight
                     className="role-arrow"
                     size={15}
                     strokeWidth={2.5}
-                  />
+                  />}
                 </div>
-              </Link>
-            ))}
+              </>;
+              return role.registerHref ? (
+                <Link key={role.title} to={role.registerHref} className="role-card" style={cardStyle}>
+                  {cardContent}
+                </Link>
+              ) : (
+                <div key={role.title} className="role-card" style={cardStyle}>
+                  {cardContent}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
