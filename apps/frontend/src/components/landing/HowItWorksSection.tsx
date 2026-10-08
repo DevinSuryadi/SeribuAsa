@@ -16,11 +16,16 @@ const steps = [
   },
   {
     number: "3",
-    title: "Belanja Pangan Bergizi",
-    desc: "Penerima menggunakan e-voucher untuk membeli bahan pangan bergizi di mitra vendor terverifikasi.",
+    title: "Vendor Menyiapkan Pangan",
+    desc: "Mitra vendor terverifikasi menyiapkan bahan pangan bergizi sesuai katalog yang telah disetujui sistem.",
   },
   {
     number: "4",
+    title: "Distribusi via Puskesmas/Klinik",
+    desc: "Bahan pangan disalurkan ke puskesmas atau klinik, lalu diteruskan kepada keluarga penerima manfaat.",
+  },
+  {
+    number: "5",
     title: "Pantau Dampak",
     desc: "Pertumbuhan anak dipantau, skor ketahanan pangan diukur, dan dampak dilaporkan secara transparan.",
   },

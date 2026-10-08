@@ -21,17 +21,18 @@ const roles = [
     registerHref: "/register?role=donor",
   },
   {
-    image: penerima,
-    title: "Penerima Manfaat",
-    subtitle: "Keluarga Rentan & Anak Usia Dini",
+    image: vendor, // sementara pakai gambar yang sudah ada
+    title: "Distributor",
+    subtitle: "Puskesmas & Klinik",
     desc: [
-      "Keluarga dengan anak usia 1000 hari pertama yang membutuhkan dukungan nutrisi.",
-      "Prioritas bantuan ditentukan berdasarkan skor FIES untuk memastikan yang paling rentan mendapat bantuan terlebih dahulu.",
+      "Puskesmas atau klinik yang menerima bahan pangan bergizi dari vendor.",
+      "Distributor menyalurkannya kepada keluarga penerima manfaat yang terdaftar.",
     ],
-    iconColor: "#2563eb",
-    borderColor: "#9ec5ff",
-    registerHref: "/register?role=beneficiary",
+    iconColor: "#c2410c",
+    borderColor: "#f5c9a8",
+    registerHref: "/register?role=distributor",
   },
+  
   {
     image: vendor,
     title: "Mitra Vendor",
@@ -43,6 +44,18 @@ const roles = [
     iconColor: "#6d28d9",
     borderColor: "#d6b7ef",
     registerHref: "/register?role=vendor",
+  },
+  {
+    image: penerima,
+    title: "Penerima Manfaat",
+    subtitle: "Keluarga Rentan & Anak Usia Dini",
+    desc: [
+      "Keluarga dengan anak usia 1000 hari pertama yang membutuhkan dukungan nutrisi.",
+      "Prioritas bantuan ditentukan berdasarkan skor FIES untuk memastikan yang paling rentan mendapat bantuan terlebih dahulu.",
+    ],
+    iconColor: "#2563eb",
+    borderColor: "#9ec5ff",
+    registerHref: "/register?role=beneficiary",
   },
 ];
 
@@ -71,7 +84,7 @@ export function RolesSection() {
             position: relative;
             z-index: 2;
             width: 100%;
-            max-width: 1120px;
+            max-width: 1140px;
             margin: 0 auto;
             padding-inline: clamp(18px, 5vw, 32px);
           }
@@ -104,7 +117,7 @@ export function RolesSection() {
           .roles-stage {
             position: relative;
             width: 100%;
-            max-width: 1040px;
+            max-width: 1160px;
             margin: 0 auto;
           }
 
@@ -152,7 +165,7 @@ export function RolesSection() {
             position: relative;
             z-index: 2;
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: clamp(22px, 3vw, 42px);
             width: 100%;
             padding-top: 54px;
@@ -492,7 +505,7 @@ export function RolesSection() {
           <h2 className="roles-title">Peran dalam Ekosistem SeribuAsa</h2>
 
           <p className="roles-subtitle">
-            Tiga pilar utama yang saling terhubung menciptakan ekosistem
+            Empat pilar utama yang saling terhubung menciptakan ekosistem
             ketahanan pangan yang berkelanjutan.
           </p>
         </div>
