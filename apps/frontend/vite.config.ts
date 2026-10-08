@@ -2,6 +2,7 @@ import path from "path";
 
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 
 const REQUIRED_BUILD_VARIABLES = [
   "VITE_SUPABASE_URL",
@@ -39,7 +40,7 @@ export default defineConfig(({ command, mode }) => {
   }
 
   return {
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
