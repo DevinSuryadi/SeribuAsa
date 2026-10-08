@@ -19,7 +19,6 @@ import {
   ClipboardList,
   Activity,
   CreditCard,
-  Sparkles,
   ShoppingCart,
   QrCode,
 } from "lucide-react";
@@ -38,6 +37,10 @@ type NavItem = { label: string; href: string; icon: React.ElementType };
 const navByRole: Record<string, NavItem[]> = {
   health_facility: [
     { label: "Dashboard", href: "/dashboard/health-facility", icon: LayoutDashboard },
+    { label: "Keluarga", href: "/dashboard/health-facility/families", icon: Users },
+    { label: "Katalog Pangan", href: "/dashboard/health-facility/catalog", icon: Package },
+    { label: "Pesanan", href: "/dashboard/health-facility/orders", icon: ShoppingCart },
+    { label: "Terima Pesanan", href: "/dashboard/health-facility/handover", icon: QrCode },
   ],
   donor: [
     { label: "Ringkasan", href: "/dashboard/donor", icon: LayoutDashboard },
@@ -53,12 +56,12 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Dompet & Aktivitas", href: "/dashboard/dompet-nutrisi", icon: Wallet },
     { label: "Survei FIES", href: "/dashboard/survei-fies", icon: ClipboardList },
     { label: "Pemantauan Gizi", href: "/dashboard/pemantauan-gizi", icon: Activity },
-    { label: "Rekomendasi AI", href: "/dashboard/rekomendasi-ai", icon: Sparkles },
     { label: "Profil", href: "/dashboard/profile", icon: Settings },
   ],
   vendor: [
     { label: "Ringkasan", href: "/dashboard/vendor", icon: LayoutDashboard },
     { label: "Kelola Produk", href: "/dashboard/kelola-produk", icon: Package },
+    { label: "Pesanan Faskes", href: "/dashboard/vendor/facility-orders", icon: ShoppingCart },
     { label: "Scan QR Pickup", href: "/dashboard/scan-qr", icon: QrCode },
     { label: "Pencairan", href: "/dashboard/settlement", icon: CreditCard },
     { label: "Profil", href: "/dashboard/profile", icon: Settings },
@@ -99,7 +102,15 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const role = userRole || "donor";
+  const familyPath = role === "health_facility"
+    ? location.pathname.match(/^\/dashboard\/health-facility\/families\/[^/]+/)?.[0]
+    : undefined;
   const navItems = navByRole[role] || navByRole.donor;
+  const familyTabs = familyPath ? [
+    { label: "Ringkasan", href: familyPath, icon: LayoutDashboard },
+    { label: "Survei FIES", href: `${familyPath}/fies`, icon: ClipboardList },
+    { label: "Pengukuran Anak", href: `${familyPath}/nutrition`, icon: Activity },
+  ] : [];
   const displayName =
     (user as any)?.fullName ||
     (user as any)?.full_name ||
@@ -145,7 +156,7 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
           <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 py-4">
             {navItems.map((item) => {
               const active = location.pathname === item.href ||
-                (role === "health_facility" && location.pathname.startsWith(`${item.href}/`));
+                (role === "health_facility" && item.href === "/dashboard/health-facility/families" && location.pathname.startsWith(`${item.href}/`));
 
               return (
                 <Link
@@ -252,7 +263,8 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
 
             <nav className="flex-1 space-y-1.5 overflow-y-auto p-3">
               {navItems.map((item) => {
-                const active = location.pathname === item.href;
+                const active = location.pathname === item.href ||
+                  (role === "health_facility" && item.href === "/dashboard/health-facility/families" && location.pathname.startsWith(`${item.href}/`));
 
                 return (
                   <Link
@@ -391,6 +403,28 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
                 {subtitle}
               </p>
             </div>
+
+            {familyPath && (
+              <nav aria-label="Halaman keluarga" className="sticky top-0 z-30 grid grid-cols-3 gap-2 rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
+                {familyTabs.map((tab) => {
+                  const active = location.pathname === tab.href;
+                  return (
+                    <Link
+                      key={tab.href}
+                      to={tab.href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "flex min-w-0 items-center justify-center gap-2 rounded-xl px-1.5 py-3 text-center text-[11px] font-bold leading-tight transition-colors sm:px-4 sm:text-sm",
+                        active ? "bg-emerald-600 text-white shadow-sm" : "bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800"
+                      )}
+                    >
+                      <tab.icon className="hidden h-4 w-4 shrink-0 sm:block" />
+                      <span>{tab.label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            )}
 
             {children}
           </div>

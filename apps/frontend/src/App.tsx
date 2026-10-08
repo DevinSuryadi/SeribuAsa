@@ -53,7 +53,13 @@ const CheckoutPage = lazy(() => import("./pages/checkout/CheckoutPage"));
 const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
 const VendorQrScanner = lazy(() => import("./pages/dashboard/VendorQrScanner"));
 const HealthFacilityDashboard = lazy(() => import("./pages/dashboard/HealthFacilityDashboard"));
+const FacilityFamilyList = lazy(() => import("./pages/dashboard/facility/FamilyList"));
 const FacilityFamilyDetail = lazy(() => import("./pages/dashboard/facility/FamilyDetail"));
+const FacilityFamilyAssessment = lazy(() => import("./pages/dashboard/facility/FamilyAssessment"));
+const FacilityCatalog = lazy(() => import("./pages/dashboard/facility/FacilityCatalog"));
+const FacilityOrders = lazy(() => import("./pages/dashboard/facility/FacilityOrders"));
+const FacilityHandover = lazy(() => import("./pages/dashboard/facility/FacilityHandover"));
+const VendorFacilityOrders = lazy(() => import("./pages/dashboard/VendorFacilityOrders"));
 
 function PageLoader() {
   return (
@@ -184,6 +190,14 @@ function App() {
           }
         />
         <Route
+          path="/dashboard/health-facility/families"
+          element={
+            <ProtectedRoute allowedRoles={["health_facility"]}>
+              <FacilityFamilyList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/dashboard/health-facility/families/:familyId"
           element={
             <ProtectedRoute allowedRoles={["health_facility"]}>
@@ -207,6 +221,25 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/dashboard/health-facility/families/:familyId/assessment"
+          element={
+            <ProtectedRoute allowedRoles={["health_facility"]}>
+              <FacilityFamilyAssessment />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/health-facility/families/:familyId/catalog"
+          element={
+            <ProtectedRoute allowedRoles={["health_facility"]}>
+              <FacilityCatalog />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/dashboard/health-facility/catalog" element={<ProtectedRoute allowedRoles={["health_facility"]}><FacilityCatalog /></ProtectedRoute>} />
+        <Route path="/dashboard/health-facility/orders" element={<ProtectedRoute allowedRoles={["health_facility"]}><FacilityOrders /></ProtectedRoute>} />
+        <Route path="/dashboard/health-facility/handover" element={<ProtectedRoute allowedRoles={["health_facility"]}><FacilityHandover /></ProtectedRoute>} />
         <Route
           path="/dashboard/riwayat"
           element={
@@ -278,7 +311,7 @@ function App() {
         <Route
           path="/dashboard/rekomendasi-ai"
           element={
-            <ProtectedRoute allowedRoles={["beneficiary", "admin"]}>
+            <ProtectedRoute allowedRoles={["admin"]}>
               <Suspense fallback={<PageLoader />}>
                 <RekomendasiAI />
               </Suspense>
@@ -329,6 +362,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/dashboard/vendor/facility-orders" element={<ProtectedRoute allowedRoles={["vendor"]}><VendorFacilityOrders /></ProtectedRoute>} />
         <Route
           path="/dashboard/admin"
           element={

@@ -246,16 +246,6 @@ export default function StuntingRiskCard({ className = "" }: Props) {
                   />
                   Perbarui
                 </Button>
-                <Button
-                  size="sm"
-                  asChild
-                  className="h-8 bg-emerald-700 text-xs hover:bg-emerald-800"
-                >
-                  <Link to="/dashboard/rekomendasi-ai">
-                    Lihat Rekomendasi
-                    <ArrowRight className="ml-1.5 h-3 w-3" />
-                  </Link>
-                </Button>
               </div>
             </article>
           );

@@ -12,6 +12,7 @@ export type Family = FamilyInput & {
   id: string;
   health_facility_id: string;
   created_at: string;
+  latest_fies?: { score: number; classification: string; survey_date: string } | null;
 };
 
 export type Facility = {
