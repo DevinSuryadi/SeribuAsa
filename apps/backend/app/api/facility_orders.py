@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -34,8 +34,11 @@ class FacilityOrderInput(BaseModel):
     client_request_id: UUID
 
 
-class ReceiveInput(BaseModel):
+class HandoverTokenInput(BaseModel):
     token: str = Field(min_length=30, max_length=200)
+
+
+class ReceiveInput(HandoverTokenInput):
     notes: str | None = Field(default=None, max_length=1000)
 
 
@@ -59,8 +62,8 @@ def order_payload(db: Session, order: Order, *, vendor_view: bool = False) -> di
         "status": order.status,
         "payment_status": order.payment_status,
         "funding_status": "not_connected",
-        "created_at": order.created_at,
-        "received_at": receipt.received_at if receipt else None,
+        "created_at": order.created_at.replace(tzinfo=timezone.utc) if order.created_at else None,
+        "received_at": receipt.received_at.replace(tzinfo=timezone.utc) if receipt else None,
         "receipt_notes": receipt.notes if receipt else None,
     }
 
@@ -77,6 +80,32 @@ def vendor_account(db: Session, user: AuthenticatedUser) -> VendorProfile:
 @facility_router.get("")
 def list_facility_orders(db: Session = Depends(get_db), facility: HealthFacility = Depends(current_facility)):
     orders = db.query(Order).filter_by(order_flow="facility_delivery", health_facility_id=facility.id, is_active=True).order_by(Order.created_at.desc()).all()
+    return [order_payload(db, order) for order in orders]
+
+
+@facility_router.get("/history")
+def list_facility_redemptions(
+    family_id: UUID | None = Query(default=None),
+    db: Session = Depends(get_db),
+    facility: HealthFacility = Depends(current_facility),
+):
+    """Completed vendor handovers, optionally scoped to one owned family."""
+    if family_id is not None:
+        owned_family(family_id, facility, db)
+    query = (
+        db.query(Order)
+        .join(FacilityOrderReceipt, FacilityOrderReceipt.order_id == Order.id)
+        .filter(
+            Order.order_flow == "facility_delivery",
+            Order.health_facility_id == facility.id,
+            Order.status == "completed",
+            Order.is_active.is_(True),
+            FacilityOrderReceipt.is_active.is_(True),
+        )
+    )
+    if family_id is not None:
+        query = query.filter(Order.family_id == family_id)
+    orders = query.order_by(FacilityOrderReceipt.received_at.desc(), Order.id.desc()).all()
     return [order_payload(db, order) for order in orders]
 
 
@@ -155,6 +184,26 @@ def cancel_facility_order(order_id: UUID, db: Session = Depends(get_db), facilit
     return order_payload(db, order)
 
 
+@facility_router.post("/preview-handover")
+def preview_handover(
+    data: HandoverTokenInput,
+    db: Session = Depends(get_db),
+    facility: HealthFacility = Depends(current_facility),
+):
+    token_hash = hashlib.sha256(data.token.encode("utf-8")).hexdigest()
+    handover = db.query(OrderHandoverToken).filter_by(token_hash=token_hash).first()
+    if not handover or handover.consumed_at or handover.expires_at <= datetime.utcnow():
+        raise HTTPException(status_code=400, detail="QR tidak valid, sudah dipakai, atau kedaluwarsa")
+    order = db.query(Order).filter_by(
+        id=handover.order_id, order_flow="facility_delivery", health_facility_id=facility.id, is_active=True,
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan untuk faskes ini tidak ditemukan")
+    if order.status != "processing":
+        raise HTTPException(status_code=409, detail="Pesanan belum siap diserahterimakan")
+    return order_payload(db, order)
+
+
 @facility_router.post("/receive")
 def receive_order(
     data: ReceiveInput,
@@ -166,7 +215,7 @@ def receive_order(
     handover = db.query(OrderHandoverToken).filter_by(token_hash=token_hash).first()
     if not handover:
         raise HTTPException(status_code=400, detail="QR tidak valid, sudah dipakai, atau kedaluwarsa")
-    order = db.query(Order).filter_by(id=handover.order_id, order_flow="facility_delivery", health_facility_id=facility.id).with_for_update().first()
+    order = db.query(Order).filter_by(id=handover.order_id, order_flow="facility_delivery", health_facility_id=facility.id, is_active=True).with_for_update().first()
     if not order:
         raise HTTPException(status_code=404, detail="Pesanan untuk faskes ini tidak ditemukan")
     handover = db.query(OrderHandoverToken).filter_by(id=handover.id).populate_existing().with_for_update().first()

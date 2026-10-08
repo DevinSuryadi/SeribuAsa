@@ -73,6 +73,8 @@ def test_facility_order_handover_and_stock(monkeypatch):
         assert client.post(url, json=payload, headers=facility_headers).json()["id"] == order_id
         assert client.post(url, json={**payload, "items": [{"product_id": str(product_id), "quantity": 1}]}, headers=facility_headers).status_code == 409
         assert client.get(url, headers=other_headers).json() == []
+        assert client.get(f"{url}/history", headers=facility_headers).json() == []
+        assert client.get(f"{url}/history?family_id={other_family_id}", headers=facility_headers).status_code == 404
         with sessions() as db:
             assert db.get(Product, product_id).stock_quantity == 3
             assert db.query(Order).count() == 1
@@ -91,6 +93,12 @@ def test_facility_order_handover_and_stock(monkeypatch):
         old_token = qr.json()["token"]
         qr = client.post(f"{vendor_url}/handover-token")
         token = qr.json()["token"]
+        assert client.post(f"{url}/preview-handover", json={"token": old_token}, headers=facility_headers).status_code == 400
+        assert client.post(f"{url}/preview-handover", json={"token": token}, headers=other_headers).status_code == 404
+        preview = client.post(f"{url}/preview-handover", json={"token": token}, headers=facility_headers)
+        assert preview.status_code == 200
+        assert preview.json()["id"] == order_id
+        assert preview.json()["items"][0]["quantity"] == 2
         assert client.post(f"{url}/receive", json={"token": old_token}, headers=facility_headers).status_code == 400
         assert client.post(f"{url}/receive", json={"token": token}, headers=other_headers).status_code == 404
         received = client.post(f"{url}/receive", json={"token": token, "notes": "Barang sesuai"}, headers=facility_headers)
@@ -98,6 +106,13 @@ def test_facility_order_handover_and_stock(monkeypatch):
         assert received.json()["status"] == "completed"
         assert received.json()["receipt_notes"] == "Barang sesuai"
         assert client.post(f"{url}/receive", json={"token": token}, headers=facility_headers).status_code == 400
+        assert client.post(f"{url}/preview-handover", json={"token": token}, headers=facility_headers).status_code == 400
+        history = client.get(f"{url}/history", headers=facility_headers)
+        assert history.status_code == 200
+        assert [entry["id"] for entry in history.json()] == [order_id]
+        assert history.json()[0]["received_at"] is not None
+        assert [entry["id"] for entry in client.get(f"{url}/history?family_id={family_id}", headers=facility_headers).json()] == [order_id]
+        assert client.get(f"{url}/history", headers=other_headers).json() == []
         with sessions() as db:
             assert db.query(FacilityOrderReceipt).filter_by(order_id=UUID(order_id)).count() == 1
             assert db.get(Product, product_id).stock_quantity == 3

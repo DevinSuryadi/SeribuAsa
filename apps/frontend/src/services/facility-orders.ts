@@ -19,12 +19,16 @@ export type FacilityOrder = {
 };
 
 export const listFacilityOrders = (): Promise<FacilityOrder[]> => apiFetch("/facilities/orders");
+export const listFacilityRedemptions = (familyId?: string): Promise<FacilityOrder[]> =>
+  apiFetch(`/facilities/orders/history${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`);
 export const createFacilityOrder = (data: { family_id: string; client_request_id: string; items: { product_id: string; quantity: number }[] }): Promise<FacilityOrder> =>
   apiFetch("/facilities/orders", { method: "POST", body: JSON.stringify(data) });
 export const cancelFacilityOrder = (id: string): Promise<FacilityOrder> =>
   apiFetch(`/facilities/orders/${encodeURIComponent(id)}/cancel`, { method: "POST" });
 export const receiveFacilityOrder = (token: string, notes?: string): Promise<FacilityOrder> =>
   apiFetch("/facilities/orders/receive", { method: "POST", body: JSON.stringify({ token, notes }) });
+export const previewFacilityHandover = (token: string): Promise<FacilityOrder> =>
+  apiFetch("/facilities/orders/preview-handover", { method: "POST", body: JSON.stringify({ token }) });
 export const listVendorFacilityOrders = (): Promise<FacilityOrder[]> => apiFetch("/vendor/facility-orders");
 export const dispatchFacilityOrder = (id: string): Promise<FacilityOrder> =>
   apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/dispatch`, { method: "POST" });

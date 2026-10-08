@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import FacilityHandoverQrModal from "@/components/order/FacilityHandoverQrModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,12 @@ export default function VendorFacilityOrders() {
 
   async function refresh() {
     setLoading(true);
-    try { setOrders(await listVendorFacilityOrders()); setError(""); }
+    try {
+      const rows = await listVendorFacilityOrders();
+      setOrders(rows);
+      setQr((current) => current && rows.some((order) => order.id === current.orderId && order.status === "processing") ? current : null);
+      setError("");
+    }
     catch (err) { setError(err instanceof Error ? err.message : "Gagal memuat pesanan faskes"); }
     finally { setLoading(false); }
   }
@@ -45,8 +50,8 @@ export default function VendorFacilityOrders() {
         <CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Kirim ke: {order.delivery_address || "Alamat faskes belum diisi"}</p>{order.items.map((item) => <div key={item.product_id} className="flex justify-between text-sm"><span>{item.quantity}× {item.product_name}</span><span>{formatIDR(item.subtotal)}</span></div>)}<p className="border-t pt-3 font-semibold">Total {formatIDR(order.total_amount)}</p><p className="text-xs text-amber-800">Pendanaan belum terhubung; status pembayaran masih menunggu.</p>
           {order.status === "pending" && <Button disabled={busy === order.id} onClick={() => { void dispatch(order.id); }}>Proses dan kirim</Button>}
           {order.status === "processing" && <Button variant="outline" disabled={busy === order.id} onClick={() => { void showQr(order.id); }}><QrCode className="mr-2 h-4 w-4" /> Tampilkan QR serah terima</Button>}
-          {qr?.orderId === order.id && order.status === "processing" && <div className="space-y-3 rounded-xl border bg-white p-5 text-center"><div className="flex justify-center"><QRCodeSVG value={qr.token} size={220} /></div><p className="text-sm font-medium">Minta faskes memindai QR ini saat barang diterima.</p><p className="text-xs text-muted-foreground">Berlaku sampai {new Date(qr.expiresAt).toLocaleString("id-ID")}. QR baru membatalkan QR sebelumnya.</p><Button variant="outline" onClick={() => { void showQr(order.id); }}>Buat QR baru</Button></div>}
         </CardContent></Card>)}
+      <FacilityHandoverQrModal order={qr ? orders.find((order) => order.id === qr.orderId) || null : null} qr={qr} onClose={() => setQr(null)} onRenew={() => { if (qr) void showQr(qr.orderId); }} renewing={Boolean(qr && busy === qr.orderId)} />
     </div>
   </DashboardLayout>;
 }
