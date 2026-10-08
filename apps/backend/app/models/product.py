@@ -115,6 +115,7 @@ class Order(BaseModel):
     health_facility_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     placed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL"), nullable=True)
     order_flow = Column(String(30), nullable=False, default="legacy_pickup")
+    client_request_id = Column(UUID(as_uuid=True), unique=True, nullable=True, index=True)
     delivery_address_snapshot = Column(Text)
     
     # Order details

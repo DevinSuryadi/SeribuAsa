@@ -42,6 +42,7 @@ export interface VendorProduct {
   category: string;
   category_id?: string;
   category_name?: string;
+  vendor_store_name?: string;
   approval_status: ProductApprovalStatus;
   created_at: string;
   images?: string[];

@@ -471,7 +471,7 @@ class OrderService:
     # ──────────────────────────────────────────────────────────────────────────
     @staticmethod
     def count_orders(db: Session, user_id: str, role: str, params: OrderQueryParams, vendor_id: Optional[str] = None) -> int:
-        query = db.query(Order).filter(Order.is_active)
+        query = db.query(Order).filter(Order.is_active, Order.order_flow == "legacy_pickup")
         user_uuid   = OrderService._to_uuid(user_id)
         vendor_uuid = OrderService._to_uuid(vendor_id) if vendor_id else None
 
@@ -490,7 +490,7 @@ class OrderService:
 
     @staticmethod
     def get_orders(db: Session, user_id: str, role: str, params: OrderQueryParams, vendor_id: Optional[str] = None) -> List[Order]:
-        query = db.query(Order).filter(Order.is_active).options(
+        query = db.query(Order).filter(Order.is_active, Order.order_flow == "legacy_pickup").options(
             joinedload(Order.vendor_profile),
             joinedload(Order.items),
         )
@@ -519,7 +519,7 @@ class OrderService:
     def get_order_by_id(db: Session, order_id: str, user_id: str, role: str) -> Optional[Order]:
         order_uuid = OrderService._to_uuid(order_id)
         user_uuid  = OrderService._to_uuid(user_id)
-        query = db.query(Order).filter(Order.id == order_uuid).options(
+        query = db.query(Order).filter(Order.id == order_uuid, Order.order_flow == "legacy_pickup").options(
             joinedload(Order.vendor_profile),
             joinedload(Order.items).joinedload(OrderItem.product),
         )
@@ -552,6 +552,7 @@ class OrderService:
         ).filter(
             Order.id == order_uuid,
             Order.vendor_id == vendor_uuid,
+            Order.order_flow == "legacy_pickup",
             Order.is_active,
         ).first()
 
