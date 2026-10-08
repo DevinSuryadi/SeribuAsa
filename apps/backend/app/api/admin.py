@@ -234,6 +234,8 @@ def _build_admin_donation_item(donation: Donation) -> AdminDonationItem:
         allocation_status = "failed"
     elif donation.status == DonationStatusEnum.refunded:
         allocation_status = "refunded"
+    elif donation.funding_flow == "pooled":
+        allocation_status = "pooled"
     elif allocated_beneficiaries > 0:
         allocation_status = "allocated"
     else:
@@ -942,7 +944,7 @@ async def list_admin_donations(
     normalized_payment_status = _normalize_status(payment_status)
     normalized_allocation_status = _normalize_status(allocation_status)
     allowed_payment_statuses = {None, "pending", "success", "failed", "refunded"}
-    allowed_allocation_statuses = {None, "pending_payment", "allocated", "no_eligible_beneficiary", "failed", "refunded"}
+    allowed_allocation_statuses = {None, "pending_payment", "allocated", "pooled", "no_eligible_beneficiary", "failed", "refunded"}
 
     if normalized_payment_status not in allowed_payment_statuses:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status filter")

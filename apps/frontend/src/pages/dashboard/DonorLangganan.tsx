@@ -405,9 +405,9 @@ const DonorLangganan = () => {
                       helper: isCancelled
                         ? "Akan berakhir di akhir periode berjalan"
                         : isPaused
-                          ? "Pembayaran otomatis dihentikan sementara"
+                          ? "Tagihan berikutnya dijeda"
                           : isActive
-                            ? "Pembayaran otomatis aktif"
+                            ? "Tagihan berikutnya dibayar melalui Riwayat Donasi"
                             : undefined,
                     },
                   ].map((item) => (

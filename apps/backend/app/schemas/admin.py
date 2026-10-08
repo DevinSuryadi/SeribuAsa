@@ -15,6 +15,7 @@ ApprovalRole = Literal["beneficiary", "vendor"]
 AllocationStatus = Literal[
     "pending_payment",
     "allocated",
+    "pooled",
     "no_eligible_beneficiary",
     "failed",
     "refunded",
