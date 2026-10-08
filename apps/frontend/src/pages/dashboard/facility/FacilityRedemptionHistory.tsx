@@ -66,7 +66,7 @@ export default function FacilityRedemptionHistory() {
             </CardContent>
           </Card>
         ))}
-        <p className="text-xs leading-5 text-muted-foreground">Riwayat ini mencatat penerimaan dari vendor oleh faskes. Penyaluran kepada keluarga dan penggunaan dana donasi belum dicatat dalam alur ini.</p>
+        <p className="text-xs leading-5 text-muted-foreground">Riwayat ini mencatat penerimaan pesanan oleh faskes. Dana donasi untuk pesanan yang didanai pool tercatat tersalurkan setelah QR dikonfirmasi.</p>
       </div>
     </DashboardLayout>
   );

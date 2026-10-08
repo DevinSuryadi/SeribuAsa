@@ -44,7 +44,7 @@ export default function FacilityOrders() {
         <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle className="text-base">{order.family_name || "Keluarga"}</CardTitle><p className="mt-1 text-xs text-muted-foreground">Pesanan {order.id.slice(0, 8)} · {formatDate(order.created_at)} · {order.vendor_name || "Vendor"}</p></div><Badge variant="outline">{statusLabel[order.status]}</Badge></CardHeader>
         <CardContent className="space-y-3"><div className="space-y-1">{order.items.map((item) => <div key={item.product_id} className="flex justify-between gap-3 text-sm"><span>{item.quantity}× {item.product_name}</span><span>{formatIDR(item.subtotal)}</span></div>)}</div>
           <div className="flex justify-between border-t pt-3 font-semibold"><span>Total</span><span>{formatIDR(order.total_amount)}</span></div>
-          <p className="text-xs text-amber-800">Pendanaan belum terhubung; dana donasi belum dialokasikan.</p>
+          <p className="text-xs text-muted-foreground">{order.funding_status === "spent" ? "Dana donasi tersalurkan dan tercatat untuk donatur." : order.funding_status === "reserved" ? "Dana donasi dicadangkan hingga QR penerimaan dikonfirmasi." : "Pesanan lama ini belum memiliki catatan pendanaan pool."}</p>
           {order.received_at && <p className="text-sm text-emerald-700">Diterima faskes pada {formatDate(order.received_at)}.</p>}
           {order.status === "pending" && <Button variant="outline" disabled={busy === order.id} onClick={() => cancel(order.id)}>Batalkan pesanan</Button>}
           {order.status === "processing" && <Button asChild><Link to="/dashboard/health-facility/handover"><QrCode className="mr-2 h-4 w-4" /> Scan QR vendor</Link></Button>}

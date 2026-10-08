@@ -12,7 +12,9 @@ export type FacilityOrder = {
   total_amount: number;
   status: "pending" | "processing" | "completed" | "cancelled";
   payment_status: string;
-  funding_status: "not_connected";
+  funding_status: "not_connected" | "partial" | "reserved" | "spent";
+  funded_amount: number;
+  spent_amount: number;
   created_at: string;
   received_at: string | null;
   receipt_notes: string | null;

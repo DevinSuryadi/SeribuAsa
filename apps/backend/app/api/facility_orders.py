@@ -18,6 +18,10 @@ from app.middleware.auth import AuthenticatedUser, get_current_user
 from app.models.facility import FacilityOrderReceipt, HealthFacility, OrderHandoverToken
 from app.models.product import Order, OrderItem, Product
 from app.models.user import VendorProfile
+from app.services.facility_funding import (
+    InsufficientPoolFunds, order_funding, release_order_funding,
+    reserve_order_funding, spend_order_funding,
+)
 
 facility_router = APIRouter(prefix="/facilities/orders", tags=["facility orders"])
 vendor_router = APIRouter(prefix="/vendor/facility-orders", tags=["vendor facility orders"])
@@ -61,7 +65,7 @@ def order_payload(db: Session, order: Order, *, vendor_view: bool = False) -> di
         "total_amount": order.total_amount,
         "status": order.status,
         "payment_status": order.payment_status,
-        "funding_status": "not_connected",
+        **order_funding(db, order),
         "created_at": order.created_at.replace(tzinfo=timezone.utc) if order.created_at else None,
         "received_at": receipt.received_at.replace(tzinfo=timezone.utc) if receipt else None,
         "receipt_notes": receipt.notes if receipt else None,
@@ -144,6 +148,8 @@ def create_facility_order(
             raise HTTPException(status_code=400, detail=f"Stok {product.name} tidak mencukupi")
 
     total = sum((Decimal(product.price) * quantities[product.id] for product in products), Decimal("0"))
+    if total <= 0:
+        raise HTTPException(status_code=400, detail="Total pesanan harus lebih dari nol")
     order = Order(
         order_flow="facility_delivery", client_request_id=data.client_request_id,
         family_id=family.id, health_facility_id=facility.id, placed_by_user_id=facility.account_user_id,
@@ -158,7 +164,11 @@ def create_facility_order(
         db.add(OrderItem(order_id=order.id, product_id=product.id, quantity=quantity,
                          price=product.price, subtotal=Decimal(product.price) * quantity))
     try:
+        reserve_order_funding(db, order)
         db.commit()
+    except InsufficientPoolFunds as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except IntegrityError:
         db.rollback()
         existing = db.query(Order).filter_by(client_request_id=data.client_request_id, health_facility_id=facility.id, family_id=family.id).first()
@@ -180,6 +190,8 @@ def cancel_facility_order(order_id: UUID, db: Session = Depends(get_db), facilit
         product = db.query(Product).filter_by(id=item.product_id).with_for_update().first()
         product.stock_quantity += item.quantity
     order.status = "cancelled"
+    release_order_funding(db, order)
+    order.payment_status = "refunded"
     db.commit()
     return order_payload(db, order)
 
@@ -224,12 +236,20 @@ def receive_order(
     if order.status != "processing":
         raise HTTPException(status_code=409, detail="Pesanan belum siap diserahterimakan")
     now = datetime.utcnow()
+    try:
+        if order_funding(db, order)["funding_status"] == "not_connected":
+            reserve_order_funding(db, order)
+        spend_order_funding(db, order)
+    except InsufficientPoolFunds as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     handover.consumed_at = now
     handover.consumed_by_user_id = UUID(str(identity["id"]))
     db.add(FacilityOrderReceipt(order_id=order.id, handover_token_id=handover.id,
                                 received_by_user_id=UUID(str(identity["id"])), received_at=now,
                                 notes=data.notes))
     order.status = "completed"
+    order.payment_status = "paid"
     db.commit()
     return order_payload(db, order)
 
@@ -249,6 +269,14 @@ def dispatch_facility_order(order_id: UUID, db: Session = Depends(get_db), user:
         raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
     if order.status != "pending":
         raise HTTPException(status_code=409, detail="Pesanan tidak dapat diproses pada status ini")
+    if order_funding(db, order)["funding_status"] == "not_connected":
+        try:
+            reserve_order_funding(db, order)
+        except InsufficientPoolFunds as exc:
+            db.rollback()
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if order_funding(db, order)["funding_status"] != "reserved":
+        raise HTTPException(status_code=409, detail="Pesanan belum didanai sepenuhnya oleh pool donasi")
     order.status = "processing"
     db.commit()
     return order_payload(db, order, vendor_view=True)
