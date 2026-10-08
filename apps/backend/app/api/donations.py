@@ -8,6 +8,7 @@ from typing import Optional
 from datetime import date
 
 from app.database import get_db, SessionLocal
+from app.config import settings
 from app.services.donation_service import DonationService
 from app.middleware.auth import get_current_user, AuthenticatedUser, RequireRole
 from app.schemas.donation import (
@@ -55,6 +56,9 @@ async def create_donation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Please complete your donor profile before creating a donation"
         )
+
+    if donation_data.recipient_id is not None:
+        raise HTTPException(status_code=400, detail="Donasi baru masuk ke pool dan tidak ditujukan langsung ke akun penerima")
     
     logger.info(f"[DONATION] Donor profile verified for user {current_user.user_id}")
 
@@ -276,10 +280,34 @@ async def export_donation_history(
         writer = csv.writer(output)
         
         # Header
-        writer.writerow(["ID", "Amount", "Currency", "Type", "Status", "Payment Method", "Date"])
+        writer.writerow(["ID", "Amount", "Currency", "Type", "Status", "Payment Method", "Date", "Funding Flow", "Spent Amount", "Reserved Amount", "Available Amount", "Recipient Families"])
         
+        def spreadsheet_safe(value: str) -> str:
+            return "'" + value if value.startswith(("=", "+", "-", "@")) else value
+
         # Data
         for d in donations:
+            spent_amount = reserved_amount = available_amount = ""
+            recipients = ""
+            if d.funding_flow == "pooled":
+                from decimal import Decimal
+                from app.models.facility import OrderFundingAllocation
+                from app.models.product import Order
+                allocations = db.query(OrderFundingAllocation).filter(
+                    OrderFundingAllocation.donation_id == d.id,
+                    OrderFundingAllocation.status.in_(("reserved", "spent")),
+                    OrderFundingAllocation.is_active.is_(True),
+                ).all()
+                spent = sum((Decimal(row.amount) for row in allocations if row.status == "spent"), Decimal("0"))
+                reserved = sum((Decimal(row.amount) for row in allocations if row.status == "reserved"), Decimal("0"))
+                spent_amount, reserved_amount = str(spent), str(reserved)
+                available_amount = str(max(Decimal("0"), Decimal(d.amount) - spent - reserved)) if d.status == DonationStatusEnum.success else "0"
+                recipients = "; ".join(
+                    f"{spreadsheet_safe(order.recipient_family.head_name)}: {row.amount}"
+                    for row in allocations if row.status == "spent"
+                    for order in [db.get(Order, row.order_id)]
+                    if order and order.recipient_family
+                )
             writer.writerow([
                 str(d.id),
                 str(d.amount),
@@ -287,7 +315,9 @@ async def export_donation_history(
                 d.type.value,
                 d.status.value,
                 d.payment_method,
-                d.created_at.isoformat() if d.created_at else ""
+                d.created_at.isoformat() if d.created_at else "",
+                d.funding_flow,
+                spent_amount, reserved_amount, available_amount, recipients,
             ])
         
         output.seek(0)
@@ -393,62 +423,17 @@ async def download_donation_receipt(
     })
 
 
-async def _process_donation_allocation_async(
-    db_session_factory,
-    donation_id: str,
-    donor_id: str
-):
-    """Background task to process donation allocation and subscription creation."""
-    db = db_session_factory()
-    try:
-        from app.services.donation_allocation_service import DonationAllocationService
-        from app.models.subscription import Subscription
-        from app.services.subscription_service import SubscriptionService
-        from app.models.donation import Donation
-        from uuid import UUID
-
-        result = DonationAllocationService.process_successful_donation(
-            db=db,
-            donation_id=donation_id
-        )
-        logger.info(f"[BG_TASK] Allocation completed for donation {donation_id}: {result}")
-
-        # If this is a subscription donation with no subscription record yet, create one
-        donation = db.query(Donation).filter(Donation.id == UUID(str(donation_id))).first()
-        if donation and donation.type and donation.type.value == "subscription":
-            existing_sub = db.query(Subscription).filter(
-                Subscription.donor_id == donation.donor_id
-            ).first()
-            if not existing_sub:
-                try:
-                    plan_id = None
-                    if donation.subscription_config:
-                        plan_id = donation.subscription_config.get("plan_id")
-                    SubscriptionService.create_from_donation(db=db, donation=donation, plan_id=plan_id)
-                    logger.info(f"[BG_TASK] Created subscription for donation {donation_id}")
-                except Exception as sub_err:
-                    logger.warning(f"[BG_TASK] Could not create subscription: {sub_err}")
-        
-        db.commit()
-        logger.info(f"[BG_TASK] Donation {donation_id} processing completed successfully")
-    except Exception as e:
-        db.rollback()
-        logger.error(f"[BG_TASK] Failed to process donation {donation_id}: {e}")
-    finally:
-        db.close()
-
-
 @router.post("/{donation_id}/simulate-payment")
 async def simulate_payment(
     donation_id: str,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     """
-    Mark payment as successful and trigger allocation logic in background.
-    Returns immediately while heavy allocation work happens asynchronously.
+    Development-only payment simulation with synchronous donation recording.
     """
+    if settings.MIDTRANS_IS_PRODUCTION:
+        raise HTTPException(status_code=404, detail="Endpoint simulasi tidak tersedia")
     logger.info(f"[SIMULATE_PAYMENT] Called with donation_id: {donation_id}, user: {current_user.user_id}")
     
     from app.models.donation import Donation
@@ -467,26 +452,20 @@ async def simulate_payment(
     if str(donation.donor_id) != str(current_user.user_id):
         raise HTTPException(status_code=403, detail="Not authorized to simulate payment for this donation")
     
-    # Update status synchronously
-    donation.status = DonationStatusEnum.success
-    db.commit()
-    db.refresh(donation)
-    
-    # Enqueue heavy allocation work in background
-    background_tasks.add_task(
-        _process_donation_allocation_async,
-        SessionLocal,
-        donation_id,
-        str(current_user.user_id)
-    )
-    
-    logger.info(f"[SIMULATE_PAYMENT] Payment confirmed, allocation processing in background for donation {donation_id}")
+    from app.services.donation_allocation_service import DonationAllocationService
+    try:
+        DonationAllocationService.process_successful_donation(db=db, donation_id=donation_id)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    logger.info(f"[SIMULATE_PAYMENT] Payment confirmed for donation {donation_id}")
     
     return {
         "success": True,
         "donation_id": donation_id,
         "status": "success",
-        "message": "Payment confirmed. Allocation processing in background."
+        "message": "Payment confirmed and donation recorded."
     }
 
 
@@ -499,6 +478,8 @@ async def fix_pending_donations(
     Dev utility: Mark all pending donations for the current user as successful.
     Useful when Midtrans webhooks can't reach localhost.
     """
+    if settings.MIDTRANS_IS_PRODUCTION:
+        raise HTTPException(status_code=404, detail="Endpoint simulasi tidak tersedia")
     from app.models.donation import Donation, DonationStatusEnum
     from app.models.subscription import Subscription
     from app.services.donation_allocation_service import DonationAllocationService

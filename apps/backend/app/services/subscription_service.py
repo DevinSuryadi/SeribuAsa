@@ -147,20 +147,20 @@ class SubscriptionService:
         """
         Process billing for a subscription
         
-        Creates a new donation and processes payment
+        Creates a pending donation. Funds enter the pool only after payment confirmation.
         """
-        from app.services.donation_allocation_service import DonationAllocationService
-        
         logger.info(f"[BILLING] Processing billing for subscription {subscription.id}")
         
         try:
             # Create new donation for this billing
             donation = Donation(
                 donor_id=subscription.donor_id,
+                subscription_id=subscription.id,
                 amount=subscription.amount,
                 type=DonationTypeEnum.subscription,
                 payment_method=subscription.payment_method,
                 status=DonationStatusEnum.pending,
+                funding_flow="pooled",
                 subscription_config={
                     "subscription_id": str(subscription.id),
                     "billing_cycle": len(subscription.billing_history) + 1,
@@ -170,43 +170,21 @@ class SubscriptionService:
             db.add(donation)
             db.flush()  # Get ID without committing
             
-            # Process payment
-            result = DonationAllocationService.process_successful_donation(
-                db=db,
-                donation_id=str(donation.id),
-                transaction_id=f"SUBSCRIPTION-{donation.id}",
-            )
-            
-            if result.get("success"):
-                # Create billing history
-                billing = BillingHistory(
-                    subscription_id=subscription.id,
-                    amount=subscription.amount,
-                    status=BillingStatusEnum.success,
-                    payment_method=subscription.payment_method,
-                    transaction_id=result.get("transaction_id"),
-                    billing_date=date.today()
-                )
-                db.add(billing)
-                
-                # Update subscription next billing date
-                subscription.next_billing_date = date.today() + timedelta(days=30)
-                
-                db.commit()
-                
-                logger.info(f"[BILLING] Successfully processed subscription {subscription.id}")
-                return {
-                    "success": True,
-                    "donation_id": str(donation.id),
-                    "transaction_id": result.get("transaction_id")
-                }
-            
-            # Payment processing failed
-            db.rollback()
-            logger.error(f"[BILLING] Payment processing failed for subscription {subscription.id}")
+            db.add(BillingHistory(
+                subscription_id=subscription.id,
+                amount=subscription.amount,
+                status=BillingStatusEnum.pending,
+                payment_method=subscription.payment_method,
+                transaction_id=str(donation.id),
+                billing_date=date.today(),
+            ))
+            subscription.next_billing_date = date.today() + timedelta(days=30)
+            db.commit()
+            logger.info(f"[BILLING] Created pending donation for subscription {subscription.id}")
             return {
-                "success": False,
-                "error": "Payment processing failed"
+                "success": True,
+                "payment_status": "pending",
+                "donation_id": str(donation.id),
             }
                 
         except Exception as e:

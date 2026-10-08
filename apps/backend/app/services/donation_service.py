@@ -36,15 +36,14 @@ class DonationService:
     ) -> Donation:
         """Create new donation"""
         donor_uuid = DonationService._to_uuid(donor_id)
-        recipient_uuid = DonationService._to_uuid(donation_data.recipient_id)
-
         donation = Donation(
             donor_id=donor_uuid,
-            recipient_id=recipient_uuid,
+            recipient_id=None,
             amount=donation_data.amount,
             type=donation_data.type,
             payment_method=donation_data.payment_method,
             status=DonationStatusEnum.pending,
+            funding_flow="pooled",
             subscription_config=donation_data.subscription_config
         )
         
@@ -141,6 +140,20 @@ class DonationService:
         
         if not donation:
             return None
+
+        if donation.status == DonationStatusEnum.success and status in (DonationStatusEnum.failed, DonationStatusEnum.cancelled):
+            logger.warning("Ignoring stale status %s for successful donation %s", status, donation.id)
+            return donation
+
+        if donation.funding_flow == "pooled" and donation.status == DonationStatusEnum.success and status == DonationStatusEnum.refunded:
+            from app.models.facility import OrderFundingAllocation
+            active_funding = db.query(OrderFundingAllocation).filter(
+                OrderFundingAllocation.donation_id == donation.id,
+                OrderFundingAllocation.status.in_(("reserved", "spent")),
+                OrderFundingAllocation.is_active.is_(True),
+            ).first()
+            if active_funding:
+                raise ValueError("Donasi yang sudah mendanai pesanan memerlukan proses pengembalian terpisah")
         
         donation.status = status
         
