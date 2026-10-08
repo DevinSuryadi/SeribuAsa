@@ -41,6 +41,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Katalog Pangan", href: "/dashboard/health-facility/catalog", icon: Package },
     { label: "Pesanan", href: "/dashboard/health-facility/orders", icon: ShoppingCart },
     { label: "Terima Pesanan", href: "/dashboard/health-facility/handover", icon: QrCode },
+    { label: "Riwayat Penukaran", href: "/dashboard/health-facility/redemptions", icon: History },
   ],
   donor: [
     { label: "Ringkasan", href: "/dashboard/donor", icon: LayoutDashboard },
@@ -110,6 +111,7 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
     { label: "Ringkasan", href: familyPath, icon: LayoutDashboard },
     { label: "Survei FIES", href: `${familyPath}/fies`, icon: ClipboardList },
     { label: "Pengukuran Anak", href: `${familyPath}/nutrition`, icon: Activity },
+    { label: "Riwayat Penukaran", href: `${familyPath}/redemptions`, icon: History },
   ] : [];
   const displayName =
     (user as any)?.fullName ||
@@ -405,7 +407,7 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
             </div>
 
             {familyPath && (
-              <nav aria-label="Halaman keluarga" className="sticky top-0 z-30 grid grid-cols-3 gap-2 rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
+              <nav aria-label="Halaman keluarga" className="sticky top-0 z-30 grid grid-cols-4 gap-2 rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
                 {familyTabs.map((tab) => {
                   const active = location.pathname === tab.href;
                   return (
@@ -414,7 +416,7 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
                       to={tab.href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex min-w-0 items-center justify-center gap-2 rounded-xl px-1.5 py-3 text-center text-[11px] font-bold leading-tight transition-colors sm:px-4 sm:text-sm",
+                        "flex min-w-0 items-center justify-center gap-2 rounded-xl px-1 py-3 text-center text-[10px] font-bold leading-tight transition-colors sm:px-3 sm:text-sm",
                         active ? "bg-emerald-600 text-white shadow-sm" : "bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800"
                       )}
                     >

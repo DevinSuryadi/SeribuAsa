@@ -59,6 +59,7 @@ const FacilityFamilyAssessment = lazy(() => import("./pages/dashboard/facility/F
 const FacilityCatalog = lazy(() => import("./pages/dashboard/facility/FacilityCatalog"));
 const FacilityOrders = lazy(() => import("./pages/dashboard/facility/FacilityOrders"));
 const FacilityHandover = lazy(() => import("./pages/dashboard/facility/FacilityHandover"));
+const FacilityRedemptionHistory = lazy(() => import("./pages/dashboard/facility/FacilityRedemptionHistory"));
 const VendorFacilityOrders = lazy(() => import("./pages/dashboard/VendorFacilityOrders"));
 
 function PageLoader() {
@@ -240,6 +241,8 @@ function App() {
         <Route path="/dashboard/health-facility/catalog" element={<ProtectedRoute allowedRoles={["health_facility"]}><FacilityCatalog /></ProtectedRoute>} />
         <Route path="/dashboard/health-facility/orders" element={<ProtectedRoute allowedRoles={["health_facility"]}><FacilityOrders /></ProtectedRoute>} />
         <Route path="/dashboard/health-facility/handover" element={<ProtectedRoute allowedRoles={["health_facility"]}><FacilityHandover /></ProtectedRoute>} />
+        <Route path="/dashboard/health-facility/redemptions" element={<ProtectedRoute allowedRoles={["health_facility"]}><FacilityRedemptionHistory /></ProtectedRoute>} />
+        <Route path="/dashboard/health-facility/families/:familyId/redemptions" element={<ProtectedRoute allowedRoles={["health_facility"]}><FacilityRedemptionHistory /></ProtectedRoute>} />
         <Route
           path="/dashboard/riwayat"
           element={

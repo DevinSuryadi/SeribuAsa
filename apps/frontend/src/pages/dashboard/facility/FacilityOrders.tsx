@@ -48,6 +48,7 @@ export default function FacilityOrders() {
           {order.received_at && <p className="text-sm text-emerald-700">Diterima faskes pada {formatDate(order.received_at)}.</p>}
           {order.status === "pending" && <Button variant="outline" disabled={busy === order.id} onClick={() => cancel(order.id)}>Batalkan pesanan</Button>}
           {order.status === "processing" && <Button asChild><Link to="/dashboard/health-facility/handover"><QrCode className="mr-2 h-4 w-4" /> Scan QR vendor</Link></Button>}
+          {order.status === "completed" && <Button asChild variant="outline"><Link to={`/dashboard/health-facility/families/${order.family_id}/redemptions`}>Lihat riwayat penukaran</Link></Button>}
         </CardContent>
       </Card>)}
     </div>
