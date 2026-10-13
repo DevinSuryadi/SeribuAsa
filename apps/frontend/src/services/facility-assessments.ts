@@ -38,5 +38,5 @@ export type FamilyAssessment = {
 const assessmentPath = (familyId: string) =>
   `/facilities/families/${encodeURIComponent(familyId)}/assessment`;
 
-export const getFamilyAssessment = (familyId: string): Promise<FamilyAssessment> =>
-  apiFetch(assessmentPath(familyId));
+export const getFamilyAssessment = (familyId: string, forceRefresh = false): Promise<FamilyAssessment> =>
+  apiFetch(assessmentPath(familyId), forceRefresh ? { cache: "no-store" } : undefined);

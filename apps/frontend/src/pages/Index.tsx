@@ -1,7 +1,7 @@
 import { Navbar } from "../components/landing/Navbar";
 import { HeroSection } from "../components/landing/HeroSection";
 import { HowItWorksSection } from "../components/landing/HowItWorksSection";
-import { RolesSection } from "../components/landing/RolesSection";
+import { EcosystemSection } from "../components/landing/EcosystemSection";
 import { ImpactSection } from "../components/landing/ImpactSection";
 import { SDGSection } from "../components/landing/SDGSection";
 import { TrustSection } from "../components/landing/TrustSection";
@@ -22,7 +22,7 @@ const Index = () => {
       <main>
         <HeroSection />
         <ImpactSection />
-        <RolesSection />
+        <EcosystemSection />
         <HowItWorksSection />
         <SDGSection />
         <TrustSection />

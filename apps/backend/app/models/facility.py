@@ -4,6 +4,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     CheckConstraint,
+    Boolean,
     Column,
     Date,
     DateTime,
@@ -47,7 +48,9 @@ class RecipientFamily(BaseModel):
     __tablename__ = "recipient_families"
     __table_args__ = (
         CheckConstraint("length(kk_number) = 16", name="ck_recipient_families_kk_length"),
-        CheckConstraint("family_size IS NULL OR family_size > 0", name="ck_recipient_families_family_size"),
+        CheckConstraint(
+            "family_size IS NULL OR family_size > 0", name="ck_recipient_families_family_size"
+        ),
         UniqueConstraint("kk_number", name="uq_recipient_families_kk_number"),
         UniqueConstraint("legacy_beneficiary_user_id", name="uq_recipient_families_legacy_user_id"),
         UniqueConstraint("id", "health_facility_id", name="uq_recipient_families_id_facility"),
@@ -81,12 +84,18 @@ class FamilyAidPlan(BaseModel):
 
     __tablename__ = "family_aid_plans"
     __table_args__ = (
-        CheckConstraint("priority IN ('low', 'medium', 'high')", name="ck_family_aid_plans_priority"),
+        CheckConstraint(
+            "priority IN ('low', 'medium', 'high')", name="ck_family_aid_plans_priority"
+        ),
         Index("ix_family_aid_plans_family_created", "family_id", "created_at"),
     )
 
-    family_id = Column(UUID(as_uuid=True), ForeignKey("recipient_families.id", ondelete="RESTRICT"), nullable=False)
-    recorded_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="RESTRICT"), nullable=False)
+    family_id = Column(
+        UUID(as_uuid=True), ForeignKey("recipient_families.id", ondelete="RESTRICT"), nullable=False
+    )
+    recorded_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="RESTRICT"), nullable=False
+    )
     priority = Column(String(20), nullable=False)
     needs_summary = Column(Text, nullable=False)
     planned_action = Column(Text, nullable=False)
@@ -109,8 +118,12 @@ class OrderFundingAllocation(BaseModel):
         Index("ix_order_funding_allocations_donation_status", "donation_id", "status"),
     )
 
-    donation_id = Column(UUID(as_uuid=True), ForeignKey("donations.id", ondelete="RESTRICT"), nullable=False)
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False)
+    donation_id = Column(
+        UUID(as_uuid=True), ForeignKey("donations.id", ondelete="RESTRICT"), nullable=False
+    )
+    order_id = Column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False
+    )
     amount = Column(Numeric(15, 2), nullable=False)
     status = Column(String(20), nullable=False, default="reserved")
     reserved_at = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -125,11 +138,15 @@ class OrderHandoverToken(BaseModel):
         UniqueConstraint("token_hash", name="uq_order_handover_tokens_hash"),
     )
 
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False, index=True)
+    order_id = Column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
     token_hash = Column(String(64), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     consumed_at = Column(DateTime)
-    consumed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL"))
+    consumed_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL")
+    )
 
 
 class FacilityOrderReceipt(BaseModel):
@@ -145,9 +162,15 @@ class FacilityOrderReceipt(BaseModel):
         UniqueConstraint("handover_token_id", name="uq_facility_order_receipts_token_id"),
     )
 
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False)
-    handover_token_id = Column(UUID(as_uuid=True), nullable=False)
-    received_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="RESTRICT"), nullable=False)
+    order_id = Column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False
+    )
+    # QR handover tokens are kept for historical receipts. New receipts are
+    # recorded automatically when the family acceptance proof is uploaded.
+    handover_token_id = Column(UUID(as_uuid=True), nullable=True)
+    received_by_user_id = Column(
+        UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="RESTRICT"), nullable=False
+    )
     received_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     notes = Column(Text)
 
@@ -156,19 +179,28 @@ class AidDistribution(BaseModel):
     __tablename__ = "aid_distributions"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["order_id", "family_id"], ["orders.id", "orders.family_id"],
-            ondelete="RESTRICT", name="fk_aid_distributions_order_family",
+            ["order_id", "family_id"],
+            ["orders.id", "orders.family_id"],
+            ondelete="RESTRICT",
+            name="fk_aid_distributions_order_family",
         ),
         UniqueConstraint("id", "order_id", name="uq_aid_distributions_id_order"),
+        UniqueConstraint("order_id", name="uq_aid_distributions_order_id"),
         Index("ix_aid_distributions_family_date", "family_id", "distributed_at"),
     )
 
     order_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    family_id = Column(UUID(as_uuid=True), ForeignKey("recipient_families.id", ondelete="RESTRICT"), nullable=False)
+    family_id = Column(
+        UUID(as_uuid=True), ForeignKey("recipient_families.id", ondelete="RESTRICT"), nullable=False
+    )
     recorded_by_user_id = Column(
         UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="RESTRICT"), nullable=False
     )
     distributed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    recipient_name = Column(String(255))
+    recipient_relation = Column(String(100))
+    evidence_url = Column(Text)
+    items_complete = Column(Boolean, nullable=False, default=True)
     notes = Column(Text)
 
     items = relationship("AidDistributionItem", back_populates="distribution")
@@ -182,12 +214,14 @@ class AidDistributionItem(BaseModel):
         ForeignKeyConstraint(
             ["distribution_id", "order_id"],
             ["aid_distributions.id", "aid_distributions.order_id"],
-            ondelete="RESTRICT", name="fk_aid_distribution_items_distribution_order",
+            ondelete="RESTRICT",
+            name="fk_aid_distribution_items_distribution_order",
         ),
         ForeignKeyConstraint(
             ["order_item_id", "order_id"],
             ["order_items.id", "order_items.order_id"],
-            ondelete="RESTRICT", name="fk_aid_distribution_items_item_order",
+            ondelete="RESTRICT",
+            name="fk_aid_distribution_items_item_order",
         ),
     )
 

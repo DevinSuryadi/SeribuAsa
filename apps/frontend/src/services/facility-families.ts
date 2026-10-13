@@ -24,9 +24,15 @@ export type Facility = {
 
 const familyPath = (familyId: string) => `/facilities/families/${encodeURIComponent(familyId)}`;
 
-export const getMyFacility = (): Promise<Facility> => apiFetch("/facilities/me");
-export const listFamilies = (): Promise<Family[]> => apiFetch("/facilities/families");
-export const getFamily = (familyId: string): Promise<Family> => apiFetch(familyPath(familyId));
+const refreshOptions = (forceRefresh: boolean): RequestInit | undefined =>
+  forceRefresh ? { cache: "no-store" } : undefined;
+
+export const getMyFacility = (forceRefresh = false): Promise<Facility> =>
+  apiFetch("/facilities/me", refreshOptions(forceRefresh));
+export const listFamilies = (forceRefresh = false): Promise<Family[]> =>
+  apiFetch("/facilities/families", refreshOptions(forceRefresh));
+export const getFamily = (familyId: string, forceRefresh = false): Promise<Family> =>
+  apiFetch(familyPath(familyId), refreshOptions(forceRefresh));
 export const createFamily = (data: FamilyInput): Promise<Family> =>
   apiFetch("/facilities/families", { method: "POST", body: JSON.stringify(data) });
 export const updateFamily = (familyId: string, data: FamilyInput): Promise<Family> =>

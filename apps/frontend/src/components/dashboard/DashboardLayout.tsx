@@ -28,8 +28,9 @@ import roleVendor from "@/assets/role-vendor.svg";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  title: string;
+  title: React.ReactNode;
   subtitle: string;
+  actions?: React.ReactNode;
 }
 
 type NavItem = { label: string; href: string; icon: React.ElementType };
@@ -40,8 +41,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Keluarga", href: "/dashboard/health-facility/families", icon: Users },
     { label: "Katalog Pangan", href: "/dashboard/health-facility/catalog", icon: Package },
     { label: "Pesanan", href: "/dashboard/health-facility/orders", icon: ShoppingCart },
-    { label: "Terima Pesanan", href: "/dashboard/health-facility/handover", icon: QrCode },
-    { label: "Riwayat Penukaran", href: "/dashboard/health-facility/redemptions", icon: History },
+    { label: "Riwayat Penyaluran", href: "/dashboard/health-facility/redemptions", icon: History },
   ],
   donor: [
     { label: "Ringkasan", href: "/dashboard/donor", icon: LayoutDashboard },
@@ -96,7 +96,7 @@ const RoleImageMap: Record<string, string> = {
   vendor: roleVendor,
 };
 
-function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
+function DashboardLayout({ children, title, subtitle, actions }: DashboardLayoutProps) {
   const { user, userRole, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -111,7 +111,7 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
     { label: "Ringkasan", href: familyPath, icon: LayoutDashboard },
     { label: "Survei FIES", href: `${familyPath}/fies`, icon: ClipboardList },
     { label: "Pengukuran Anak", href: `${familyPath}/nutrition`, icon: Activity },
-    { label: "Riwayat Penukaran", href: `${familyPath}/redemptions`, icon: History },
+    { label: "Bantuan & Riwayat", href: `${familyPath}/redemptions`, icon: History },
   ] : [];
   const displayName =
     (user as any)?.fullName ||
@@ -397,13 +397,16 @@ function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
               </div>
             </header>
 
-            <div className="px-1 pt-1">
-              <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-                {title}
-              </h1>
-              <p className="mt-1 max-w-2xl text-sm font-medium leading-relaxed text-slate-500">
-                {subtitle}
-              </p>
+            <div className="flex flex-col gap-4 px-1 pt-1 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                  {title}
+                </h1>
+                <p className="mt-1 max-w-2xl text-sm font-medium leading-relaxed text-slate-500">
+                  {subtitle}
+                </p>
+              </div>
+              {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
             </div>
 
             {familyPath && (
