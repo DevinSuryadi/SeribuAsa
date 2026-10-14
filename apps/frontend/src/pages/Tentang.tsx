@@ -13,11 +13,13 @@ import {
   BarChart3,
 } from "lucide-react";
 
-import faruq from "../assets/faruq.svg";
-import keyna from "../assets/keyna.svg";
 import devin from "../assets/devin.svg";
-import ilham from "../assets/ilham.svg";
+import keyna from "../assets/keyna.svg";
+import nadia from "../assets/cinad.svg";
+import hisyam from "../assets/hisyam.svg";
+import dandy from "../assets/dandy.svg";
 import dosbing from "../assets/dosbing.svg";
+
 
 const faqs = [
   {
@@ -66,10 +68,10 @@ const values = [
 
 const team = [
   {
-    name: "Achmad Faruq Mahdison",
+    name: "Devin Suryadi",
     role: "Project Manager",
-    photo: faruq,
-    photoClass: "team-photo-faruq",
+    photo: devin,
+    photoClass: "team-photo-devin",
   },
   {
     name: "Keyna Fatima Abinalibrata",
@@ -78,16 +80,22 @@ const team = [
     photoClass: "team-photo-keyna",
   },
   {
-    name: "Devin Suryadi",
-    role: "Backend Engineer",
-    photo: devin,
-    photoClass: "team-photo-devin",
+    name: "Nadia Mulyadi",
+    role: "Frontend Engineer",
+    photo: nadia,
+    photoClass: "team-photo-nadia",
   },
   {
-    name: "Muhammad Ilhamsyah Ridwan",
+    name: "Muhammad Hisyam Az-Zahran",
     role: "Backend Engineer",
-    photo: ilham,
-    photoClass: "team-photo-ilham",
+    photo: hisyam,
+    photoClass: "team-photo-hisyam",
+  },
+  {
+    name: "Dandy Erlangga",
+    role: "Backend Engineer",
+    photo: dandy,
+    photoClass: "team-photo-dandy",
   },
   {
     name: "Dosen Pembimbing",
@@ -265,9 +273,9 @@ const Tentang = () => {
           }
 
           .team-container {
-            max-width: 1180px;
+            max-width: 1320px;
             margin: 0 auto;
-            padding: 0 clamp(18px, 5vw, 34px);
+            padding: 0 clamp(18px, 3vw, 28px);
             position: relative;
             z-index: 2;
           }
@@ -308,7 +316,7 @@ const Tentang = () => {
           .team-grid {
             margin-top: clamp(34px, 5vw, 52px);
             display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-columns: repeat(6, minmax(0, 1fr));
             gap: clamp(14px, 2vw, 20px);
             align-items: stretch;
           }
@@ -517,13 +525,13 @@ const Tentang = () => {
               padding: 48px 0 58px;
             }
 
+            .team-card {
+              border-radius: 22px;
+            }
+
             .team-grid {
               grid-template-columns: 1fr;
               max-width: 270px;
-            }
-
-            .team-card {
-              border-radius: 22px;
             }
 
             .team-photo-area {

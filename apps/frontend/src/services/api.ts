@@ -13,11 +13,17 @@ let isRefreshingToken = false;
 // Track in-flight requests to prevent duplicate simultaneous API calls
 // Maps request key (method:endpoint) → pending promise
 const inflightRequests = new Map<string, Promise<any>>();
+// Keep successful GET responses for the current login session. They are
+// invalidated by mutations, an explicit refresh, or an auth-state change.
+const responseCache = new Map<string, unknown>();
 
 function getRequestKey(endpoint: string, options: RequestInit = {}): string {
   const method = (options.method || "GET").toUpperCase();
-  // For GET requests, include query params in key for accurate dedup
-  return `${method}:${endpoint}`;
+  return `${method}:${endpoint}:${options.cache || "default"}`;
+}
+
+function getResponseCacheKey(endpoint: string): string {
+  return `GET:${endpoint}`;
 }
 
 type StoredAuthUser = {
@@ -97,6 +103,7 @@ async function refreshSessionToken(): Promise<string | null> {
 
 supabase.auth.onAuthStateChange((_event, session) => {
   accessTokenCache = session?.access_token ?? null;
+  responseCache.clear();
 });
 
 class ApiError extends Error {
@@ -289,6 +296,12 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
   // must always go through to avoid silently dropping different payloads.
   if (method === "GET") {
     const requestKey = getRequestKey(endpoint, options);
+    const responseCacheKey = getResponseCacheKey(endpoint);
+    const hasCachedResponse = responseCache.has(responseCacheKey);
+
+    if (options.cache !== "no-store" && hasCachedResponse) {
+      return responseCache.get(responseCacheKey);
+    }
 
     // If this GET request is already in-flight, return the existing promise
     if (inflightRequests.has(requestKey)) {
@@ -297,16 +310,24 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
     }
 
     // Create new request promise
-    const promise = apiFetchWithRetry(endpoint, options, 0).finally(() => {
-      inflightRequests.delete(requestKey);
-    });
+    const promise = apiFetchWithRetry(endpoint, options, 0)
+      .then((data) => {
+        responseCache.set(responseCacheKey, data);
+        return data;
+      })
+      .finally(() => {
+        inflightRequests.delete(requestKey);
+      });
 
     inflightRequests.set(requestKey, promise);
     return promise;
   }
 
-  // Mutations go through directly without dedup
-  return apiFetchWithRetry(endpoint, options, 0);
+  // A successful mutation may affect multiple dashboard endpoints. Clearing the
+  // shared GET cache keeps subsequent tabs accurate without manual bookkeeping.
+  const result = await apiFetchWithRetry(endpoint, options, 0);
+  responseCache.clear();
+  return result;
 }
 
 export { apiFetch, API_BASE_URL, ApiError };

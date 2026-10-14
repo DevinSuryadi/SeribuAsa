@@ -18,21 +18,39 @@ export type FacilityOrder = {
   created_at: string;
   received_at: string | null;
   receipt_notes: string | null;
+  distribution: {
+    id: string;
+    recipient_name: string | null;
+    recipient_relation: string | null;
+    evidence_url: string | null;
+    items_complete: boolean;
+    notes: string | null;
+    distributed_at: string;
+  } | null;
 };
 
-export const listFacilityOrders = (): Promise<FacilityOrder[]> => apiFetch("/facilities/orders");
-export const listFacilityRedemptions = (familyId?: string): Promise<FacilityOrder[]> =>
-  apiFetch(`/facilities/orders/history${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`);
+const refreshOptions = (forceRefresh: boolean): RequestInit | undefined =>
+  forceRefresh ? { cache: "no-store" } : undefined;
+
+export const listFacilityOrders = (familyId?: string, forceRefresh = false): Promise<FacilityOrder[]> =>
+  apiFetch(`/facilities/orders${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`, refreshOptions(forceRefresh));
+export const listFacilityRedemptions = (familyId?: string, forceRefresh = false): Promise<FacilityOrder[]> =>
+  apiFetch(`/facilities/orders/history${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`, refreshOptions(forceRefresh));
 export const createFacilityOrder = (data: { family_id: string; client_request_id: string; items: { product_id: string; quantity: number }[] }): Promise<FacilityOrder> =>
   apiFetch("/facilities/orders", { method: "POST", body: JSON.stringify(data) });
 export const cancelFacilityOrder = (id: string): Promise<FacilityOrder> =>
   apiFetch(`/facilities/orders/${encodeURIComponent(id)}/cancel`, { method: "POST" });
-export const receiveFacilityOrder = (token: string, notes?: string): Promise<FacilityOrder> =>
-  apiFetch("/facilities/orders/receive", { method: "POST", body: JSON.stringify({ token, notes }) });
-export const previewFacilityHandover = (token: string): Promise<FacilityOrder> =>
-  apiFetch("/facilities/orders/preview-handover", { method: "POST", body: JSON.stringify({ token }) });
+export const distributeFacilityOrder = (id: string, data: {
+  recipient_name: string;
+  recipient_relation?: string;
+  evidence_url: string;
+  items_complete: boolean;
+  notes?: string;
+}): Promise<FacilityOrder> =>
+  apiFetch(`/facilities/orders/${encodeURIComponent(id)}/distribute`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 export const listVendorFacilityOrders = (): Promise<FacilityOrder[]> => apiFetch("/vendor/facility-orders");
 export const dispatchFacilityOrder = (id: string): Promise<FacilityOrder> =>
   apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/dispatch`, { method: "POST" });
-export const createHandoverToken = (id: string): Promise<{ token: string; expires_at: string; order_id: string }> =>
-  apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/handover-token`, { method: "POST" });

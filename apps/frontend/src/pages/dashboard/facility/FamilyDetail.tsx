@@ -48,7 +48,8 @@ export default function FamilyDetail() {
     let active = true;
     setLoading(true);
     setError("");
-    Promise.all([getFamily(familyId), getFamilyAssessment(familyId)])
+    const forceRefresh = refreshKey > 0;
+    Promise.all([getFamily(familyId, forceRefresh), getFamilyAssessment(familyId, forceRefresh)])
       .then(([familyData, assessmentData]) => {
         if (active) {
           setFamily(familyData);
