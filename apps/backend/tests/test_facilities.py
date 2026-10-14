@@ -26,6 +26,7 @@ def test_facility_registration_and_account_access(monkeypatch):
     identities = {
         "facility": {"id": "00000000-0000-0000-0000-000000000051", "user_metadata": {"role": "health_facility"}},
         "other": {"id": "00000000-0000-0000-0000-000000000052", "user_metadata": {"role": "donor"}},
+        "admin": {"id": "00000000-0000-0000-0000-000000000054", "email": "admin@example.org", "user_metadata": {}, "app_metadata": {"role": "admin"}},
     }
 
     async def verify_token(token):
@@ -58,6 +59,18 @@ def test_facility_registration_and_account_access(monkeypatch):
         assert created.json()["approval_status"] == "pending"
         assert client.post("/api/v1/facilities/register", json=payload, headers=facility_header).json()["id"] == created.json()["id"]
         assert client.get("/api/v1/facilities/me", headers=facility_header).json()["id"] == created.json()["id"]
+        assert client.get("/api/v1/facilities/families", headers=facility_header).status_code == 403
+        assert client.get("/api/v1/admin/facilities", headers=facility_header).status_code == 403
+        with session_factory() as db:
+            db.add(UserProfile(user_id=UUID(identities["admin"]["id"]), full_name="Admin"))
+            db.commit()
+        admin_header = {"Authorization": "Bearer admin"}
+        assert client.get("/api/v1/admin/facilities", headers=admin_header).status_code == 200
+        approved = client.post(f"/api/v1/admin/facilities/{created.json()['id']}/approve", headers=admin_header)
+        assert approved.status_code == 200, approved.text
+        assert approved.json()["approval_status"] == "approved"
+        assert client.post(f"/api/v1/admin/facilities/{created.json()['id']}/approve", headers=admin_header).status_code == 200
+        assert client.get("/api/v1/facilities/me", headers=facility_header).json()["approval_status"] == "approved"
         assert client.get("/api/v1/facilities/me", headers={"Authorization": "Bearer other"}).status_code == 404
 
         with session_factory() as db:

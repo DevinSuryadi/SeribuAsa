@@ -53,6 +53,13 @@ class Category(BaseModel):
 # ============================================
 class Product(BaseModel):
     __tablename__ = "products"
+    __table_args__ = (
+        CheckConstraint(
+            "(service_province_code IS NULL AND service_regency_code IS NULL) OR "
+            "(service_province_code IS NOT NULL AND service_regency_code IS NOT NULL)",
+            name="ck_products_service_area_pair",
+        ),
+    )
     
     # Foreign keys
     vendor_id = Column(UUID(as_uuid=True), ForeignKey("vendor_profiles.user_id", ondelete="CASCADE"), nullable=False, index=True)
@@ -65,6 +72,8 @@ class Product(BaseModel):
     voucher_price = Column(Numeric(15, 2), nullable=False)  # Price in voucher credits
     stock_quantity = Column(Integer, default=0)
     unit = Column(String(50), default="pcs")  # pcs, kg, liter, etc.
+    service_province_code = Column(String(2), nullable=True, index=True)
+    service_regency_code = Column(String(5), nullable=True, index=True)
     
     # Product images (stored as JSON array)
     images = Column(JSONB, default=list)
@@ -117,6 +126,13 @@ class Order(BaseModel):
     order_flow = Column(String(30), nullable=False, default="legacy_pickup")
     client_request_id = Column(UUID(as_uuid=True), unique=True, nullable=True, index=True)
     delivery_address_snapshot = Column(Text)
+    service_province_code = Column(String(2), nullable=True)
+    service_regency_code = Column(String(5), nullable=True)
+    dispatched_at = Column(DateTime, nullable=True)
+    allocation_status = Column(String(30), nullable=True)
+    allocation_decided_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL"), nullable=True)
+    allocation_decided_at = Column(DateTime, nullable=True)
+    allocation_reason = Column(Text, nullable=True)
     
     # Order details
     total_amount = Column(Numeric(15, 2), nullable=False)

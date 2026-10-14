@@ -36,7 +36,7 @@ def test_facility_family_assessments_and_ownership(monkeypatch):
             db.add(UserProfile(user_id=identities[name], full_name=name))
         db.flush()
         for name in ("first", "second"):
-            db.add(HealthFacility(account_user_id=identities[name], name=name, approval_status="pending"))
+            db.add(HealthFacility(account_user_id=identities[name], name=name, approval_status="approved"))
         db.commit()
 
     def override_db():

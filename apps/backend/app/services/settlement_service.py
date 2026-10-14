@@ -111,6 +111,7 @@ class SettlementService:
                 .join(Order, VoucherRedemption.order_id == Order.id)
                 .filter(
                     Order.vendor_id == vendor.user_id,
+                    Order.order_flow == "legacy_pickup",
                     Order.status == OrderStatusEnum.completed,
                     Order.created_at >= period_start,
                     Order.created_at <= period_end,
@@ -162,6 +163,7 @@ class SettlementService:
             .join(VoucherRedemption, VoucherRedemption.order_id == Order.id)
             .filter(
                 Order.vendor_id == settlement.vendor_id,
+                Order.order_flow == "legacy_pickup",
                 Order.status == OrderStatusEnum.completed,
                 Order.created_at >= settlement.period_start,
                 Order.created_at <= settlement.period_end,

@@ -1,5 +1,6 @@
 """Registration and account access for single-account health facilities."""
 
+from datetime import datetime, timezone
 from uuid import UUID
 import re
 
@@ -14,12 +15,14 @@ from gotrue.errors import AuthApiError
 
 from app.config import settings
 from app.database import get_db
+from app.middleware.auth import AuthenticatedUser, RequireRole
 from app.models.facility import HealthFacility
 from app.models.user import UserProfile
 from app.services.supabase_auth import supabase_auth
 from app.utils.cache import get_app_cache
 
 router = APIRouter(prefix="/facilities", tags=["facilities"])
+admin_router = APIRouter(prefix="/admin/facilities", tags=["admin facilities"])
 security = HTTPBearer(auto_error=True)
 
 
@@ -79,6 +82,75 @@ class FacilityAccount(BaseModel):
     address: str | None
     phone: str | None
     approval_status: str
+    review_reason: str | None = None
+
+
+class FacilityRejectionInput(BaseModel):
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+def admin_facility_payload(facility: HealthFacility) -> dict:
+    return {
+        "id": facility.id,
+        "name": facility.name,
+        "facility_type": facility.facility_type,
+        "address": facility.address,
+        "phone": facility.phone,
+        "approval_status": facility.approval_status,
+        "review_reason": facility.review_reason,
+        "reviewed_at": facility.reviewed_at.replace(tzinfo=timezone.utc) if facility.reviewed_at else None,
+    }
+
+
+@admin_router.get("")
+def list_admin_facilities(
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(RequireRole(["admin"])),
+):
+    facilities = db.query(HealthFacility).filter_by(is_active=True).order_by(HealthFacility.created_at.desc()).all()
+    return [admin_facility_payload(facility) for facility in facilities]
+
+
+@admin_router.post("/{facility_id}/approve")
+def approve_facility(
+    facility_id: UUID,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(RequireRole(["admin"])),
+):
+    facility = db.query(HealthFacility).filter_by(id=facility_id, is_active=True).with_for_update().first()
+    if not facility:
+        raise HTTPException(status_code=404, detail="Fasilitas tidak ditemukan")
+    if facility.approval_status == "approved":
+        return admin_facility_payload(facility)
+    if facility.approval_status != "pending":
+        raise HTTPException(status_code=409, detail="Fasilitas sudah ditolak")
+    if facility.account_user_id == user.user_id:
+        raise HTTPException(status_code=403, detail="Fasilitas tidak dapat menyetujui dirinya sendiri")
+    facility.approval_status = "approved"
+    facility.reviewed_by_user_id = user.user_id
+    facility.reviewed_at = datetime.utcnow()
+    db.commit()
+    return admin_facility_payload(facility)
+
+
+@admin_router.post("/{facility_id}/reject")
+def reject_facility(
+    facility_id: UUID,
+    data: FacilityRejectionInput,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(RequireRole(["admin"])),
+):
+    facility = db.query(HealthFacility).filter_by(id=facility_id, is_active=True).with_for_update().first()
+    if not facility:
+        raise HTTPException(status_code=404, detail="Fasilitas tidak ditemukan")
+    if facility.approval_status != "pending":
+        raise HTTPException(status_code=409, detail="Fasilitas sudah diputuskan")
+    facility.approval_status = "rejected"
+    facility.review_reason = data.reason.strip()
+    facility.reviewed_by_user_id = user.user_id
+    facility.reviewed_at = datetime.utcnow()
+    db.commit()
+    return admin_facility_payload(facility)
 
 
 async def verified_facility_identity(

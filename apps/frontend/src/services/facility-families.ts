@@ -20,6 +20,7 @@ export type Facility = {
   name: string;
   facility_type: string | null;
   approval_status: string;
+  review_reason?: string | null;
 };
 
 const familyPath = (familyId: string) => `/facilities/families/${encodeURIComponent(familyId)}`;

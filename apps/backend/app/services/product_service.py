@@ -8,7 +8,9 @@ from typing import Optional, List
 import logging
 
 from app.models.product import Category, Product, Order
+from app.models.user import VendorProfile
 from app.schemas.product import CategoryCreate, ProductCreate, ProductUpdate, ProductQueryParams
+from app.services.regions import valid_area
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +47,19 @@ class ProductService:
             joinedload(Product.vendor_profile),
         )
         if not include_unapproved:
-            query = query.filter(Product.approval_status == "approved")
+            query = query.join(Product.vendor_profile).filter(
+                Product.approval_status == "approved",
+                VendorProfile.approval_status == "approved",
+                VendorProfile.settlement_status == "active",
+                VendorProfile.is_active.is_(True),
+            )
 
         if params.category_id:
             query = query.filter(Product.category_id == params.category_id)
         if params.vendor_id:
             query = query.filter(Product.vendor_id == params.vendor_id)
+        if params.service_regency_code:
+            query = query.filter(Product.service_regency_code == params.service_regency_code)
         if params.search:
             query = query.filter(Product.name.ilike(f"%{params.search}%"))
         if params.min_price is not None:
@@ -78,12 +87,19 @@ class ProductService:
     ) -> int:
         query = db.query(Product).filter(Product.is_active)
         if not include_unapproved:
-            query = query.filter(Product.approval_status == "approved")
+            query = query.join(Product.vendor_profile).filter(
+                Product.approval_status == "approved",
+                VendorProfile.approval_status == "approved",
+                VendorProfile.settlement_status == "active",
+                VendorProfile.is_active.is_(True),
+            )
 
         if params.category_id:
             query = query.filter(Product.category_id == params.category_id)
         if params.vendor_id:
             query = query.filter(Product.vendor_id == params.vendor_id)
+        if params.service_regency_code:
+            query = query.filter(Product.service_regency_code == params.service_regency_code)
         if params.search:
             query = query.filter(Product.name.ilike(f"%{params.search}%"))
         if params.min_price is not None:
@@ -109,11 +125,18 @@ class ProductService:
             joinedload(Product.vendor_profile),
         )
         if not include_unapproved:
-            query = query.filter(Product.approval_status == "approved")
+            query = query.join(Product.vendor_profile).filter(
+                Product.approval_status == "approved",
+                VendorProfile.approval_status == "approved",
+                VendorProfile.settlement_status == "active",
+                VendorProfile.is_active.is_(True),
+            )
         return query.first()
 
     @staticmethod
     def create_product(db: Session, vendor_id: str, data: ProductCreate) -> Product:
+        if not valid_area(data.service_province_code, data.service_regency_code):
+            raise ValueError("Kota/kabupaten tidak sesuai dengan provinsi")
         product = Product(
             vendor_id=vendor_id,
             category_id=data.category_id,
@@ -124,6 +147,8 @@ class ProductService:
             stock_quantity=data.stock_quantity,
             unit=data.unit,
             images=data.images or [],
+            service_province_code=data.service_province_code,
+            service_regency_code=data.service_regency_code,
             approval_status="pending",
         )
         db.add(product)
@@ -144,6 +169,10 @@ class ProductService:
             return None
 
         update_data = data.model_dump(exclude_unset=True)
+        province_code = update_data.get("service_province_code", product.service_province_code)
+        regency_code = update_data.get("service_regency_code", product.service_regency_code)
+        if not valid_area(province_code, regency_code):
+            raise ValueError("Kota/kabupaten tidak sesuai dengan provinsi")
         for key, value in update_data.items():
             setattr(product, key, value)
             

@@ -79,8 +79,6 @@ const BACKEND_SIGNUP_ROLES = new Set([
   "donor",
   "beneficiary",
   "vendor",
-  "admin",
-  "government",
   "corporate_donor",
 ]);
 
@@ -92,8 +90,6 @@ function resolveRoleFromEmail(email?: string | null): UserRole {
   const lowered = email.toLowerCase();
   if (lowered.includes("penerima") || lowered.includes("beneficiary")) return "beneficiary";
   if (lowered.includes("vendor")) return "vendor";
-  if (lowered.includes("admin")) return "admin";
-  if (lowered.includes("government")) return "government";
   if (lowered.includes("corporate")) return "corporate_donor";
   return "donor";
 }
@@ -108,18 +104,22 @@ function isBackendSignupRole(value: unknown): value is Exclude<UserRole, "unassi
 
 async function getSessionMetadataRole(): Promise<UserRole> {
   const { data: sessionData } = await supabase.auth.getSession();
+  const trustedRole = sessionData?.session?.user?.app_metadata?.role;
+  if (trustedRole === "admin" || trustedRole === "government") return trustedRole;
   const metadataRole =
-    sessionData?.session?.user?.user_metadata?.role ||
-    sessionData?.session?.user?.app_metadata?.role;
+    sessionData?.session?.user?.user_metadata?.role;
+  if (metadataRole === "admin" || metadataRole === "government") return null;
 
   return isKnownRole(metadataRole) ? metadataRole : null;
 }
 
 async function getSessionRoleFallback(): Promise<UserRole> {
   const { data: sessionData } = await supabase.auth.getSession();
+  const trustedRole = sessionData?.session?.user?.app_metadata?.role;
+  if (trustedRole === "admin" || trustedRole === "government") return trustedRole;
   const metadataRole =
-    sessionData?.session?.user?.user_metadata?.role ||
-    sessionData?.session?.user?.app_metadata?.role;
+    sessionData?.session?.user?.user_metadata?.role;
+  if (metadataRole === "admin" || metadataRole === "government") return "donor";
   if (isKnownRole(metadataRole)) {
     return metadataRole;
   }
@@ -280,6 +280,7 @@ async function ensureBackendProfileForSessionIfNeeded(
   currentSession: Session,
   profileExists: boolean
 ): Promise<void> {
+  if (["admin", "government"].includes(String((currentSession.user.app_metadata as Record<string, unknown>)?.role || ""))) return;
   if (isGoogleSession(currentSession)) return;
   if (profileExists) return;
 
@@ -294,6 +295,7 @@ async function ensureBackendProfileForSessionIfNeeded(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${currentSession.access_token}`,
     },
     body: JSON.stringify({
       user_id: currentSession.user.id,
@@ -623,6 +625,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       console.log("[SIGNUP] ✓ Supabase auth user created:", data.user.id);
 
+      let signupSession = data.session;
+      if (!signupSession) {
+        const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
+        signupSession = signInData.session;
+      }
+      if (!signupSession) return { error: null, requiresManualLogin: true };
+
       // Step 2: Create user profile in backend database
       console.log("[SIGNUP] Step 2: Creating backend user profile...");
       let backendSuccess = false;
@@ -631,6 +640,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${signupSession.access_token}`,
           },
           body: JSON.stringify({
             user_id: data.user.id,
@@ -669,40 +679,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Step 3: Auto-login after signup
       console.log("[SIGNUP] Step 3: Auto-logging in...");
-      let session = data.session;
-      if (!session) {
-        // If no immediate session (email verification required), try to sign in directly
-        console.log("[SIGNUP] No immediate session, attempting direct signin...");
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (!signInError && signInData.session) {
-          session = signInData.session;
-          console.log("[SIGNUP] ✓ Auto-login successful");
-        } else {
-          console.log("[SIGNUP] Auto-login failed, user will need to login manually");
-        }
-      }
-
-      if (session) {
-        setSession(session);
-        localStorage.removeItem(AUTH_KEY);
-        const authUser = await buildAuthUserFromSession(session);
-        setUser(authUser);
-        setUserRole(authUser.role);
-        console.log("[SIGNUP] ✓ Registration complete and logged in");
-      } else {
-        // Fallback: set user data without session (will require manual login)
-        setUser({
-          id: data.user.id,
-          email: data.user.email || "",
-          fullName,
-          role: role as UserRole,
-        });
-        setUserRole(role as UserRole);
-        console.log("[SIGNUP] ✓ Registration complete, please login");
-      }
+      setSession(signupSession);
+      localStorage.removeItem(AUTH_KEY);
+      const authUser = await buildAuthUserFromSession(signupSession);
+      setUser(authUser);
+      setUserRole(authUser.role);
       return { error: null };
     } catch (error) {
       console.error("[SIGNUP] Unexpected error:", error);

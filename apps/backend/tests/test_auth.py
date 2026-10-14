@@ -15,6 +15,7 @@ def _build_fake_jwt(payload: dict) -> str:
 
 
 def test_google_sync_supports_dev_mode_token_fallback(client, monkeypatch):
+    monkeypatch.setattr("app.api.auth.is_dev_mode", lambda: True)
     async def fake_verify_token(_token: str) -> dict:
         raise ValueError(
             "Supabase auth is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY or enable DEV_MODE=true for local mock auth."

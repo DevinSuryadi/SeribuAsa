@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import FacilityReceiptDialog from "@/components/order/FacilityReceiptDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,10 +24,13 @@ import { toast } from "sonner";
 type OrderTab =
   | "all"
   | "waiting"
+  | "approval"
   | "processing"
   | "shipped"
+  | "received"
   | "finished"
-  | "cancelled";
+  | "cancelled"
+  | "rejected";
 
 const previewOrders: FacilityOrder[] = [
   {
@@ -79,32 +83,46 @@ const previewOrders: FacilityOrder[] = [
 
 const tabItems: { key: OrderTab; label: string }[] = [
   { key: "all", label: "Semua" },
+  { key: "approval", label: "Persetujuan Admin" },
   { key: "waiting", label: "Menunggu vendor" },
   { key: "processing", label: "Diproses" },
   { key: "shipped", label: "Dikirim" },
+  { key: "received", label: "Diterima Faskes" },
   { key: "finished", label: "Selesai" },
   { key: "cancelled", label: "Dibatalkan" },
+  { key: "rejected", label: "Ditolak" },
 ];
 
 function statusKey(order: FacilityOrder): Exclude<OrderTab, "all" | "processing"> {
   if (order.status === "cancelled") return "cancelled";
+  if (order.status === "rejected") return "rejected";
+  if (order.status === "pending_approval") return "approval";
   if (order.distribution || order.status === "completed") return "finished";
+  if (order.status === "received") return "received";
   if (order.status === "processing") return "shipped";
   return "waiting";
 }
 
 function statusLabel(order: FacilityOrder) {
+  if (order.receipt_status === "discrepancy") return "Barang bermasalah";
   const key = statusKey(order);
   if (key === "cancelled") return "Dibatalkan";
+  if (key === "rejected") return "Ditolak Admin";
+  if (key === "approval") return "Menunggu persetujuan Admin";
   if (key === "finished") return order.distribution ? "Selesai" : "Menunggu bukti";
+  if (key === "received") return "Diterima Faskes";
   if (key === "shipped") return "Dikirim";
   return "Menunggu vendor";
 }
 
 function statusClass(order: FacilityOrder) {
+  if (order.receipt_status === "discrepancy") return "border-red-200 bg-red-50 text-red-700";
   const key = statusKey(order);
   if (key === "cancelled") return "border-red-200 bg-red-50 text-red-700";
+  if (key === "rejected") return "border-red-200 bg-red-50 text-red-700";
+  if (key === "approval") return "border-amber-200 bg-amber-50 text-amber-800";
   if (key === "finished") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (key === "received") return "border-teal-200 bg-teal-50 text-teal-700";
   if (key === "shipped") return "border-blue-200 bg-blue-50 text-blue-700";
   return "border-amber-200 bg-amber-50 text-amber-800";
 }
@@ -118,9 +136,11 @@ function itemSummary(order: FacilityOrder) {
 }
 
 function progressIndex(order: FacilityOrder) {
-  if (order.status === "cancelled") return -1;
-  if (order.distribution || order.status === "completed") return 3;
-  if (order.status === "processing") return 2;
+  if (order.status === "cancelled" || order.status === "rejected") return -1;
+  if (order.distribution || order.status === "completed") return 5;
+  if (order.status === "received") return 4;
+  if (order.status === "processing") return 3;
+  if (order.status === "pending") return 1;
   return 0;
 }
 
@@ -131,6 +151,7 @@ export default function FacilityOrdersTable() {
   const [busy, setBusy] = useState("");
   const [activeTab, setActiveTab] = useState<OrderTab>("all");
   const [selected, setSelected] = useState<FacilityOrder | null>(null);
+  const [receiptOrder, setReceiptOrder] = useState<FacilityOrder | null>(null);
 
   async function refresh(forceRefresh = false) {
     setLoading(true);
@@ -163,11 +184,14 @@ export default function FacilityOrdersTable() {
   const counts = useMemo(() => {
     const result: Record<OrderTab, number> = {
       all: rows.length,
+      approval: 0,
       waiting: 0,
       processing: 0,
       shipped: 0,
+      received: 0,
       finished: 0,
       cancelled: 0,
+      rejected: 0,
     };
     rows.forEach((order) => {
       result[statusKey(order)] += 1;
@@ -204,9 +228,11 @@ export default function FacilityOrdersTable() {
 
   const steps = selected
     ? [
+        { label: "Persetujuan Admin", note: "Menunggu review alokasi" },
         { label: "Menunggu vendor", note: "Vendor belum mengonfirmasi" },
         { label: "Diproses vendor", note: "Belum" },
         { label: "Dikirim ke faskes", note: "Belum" },
+        { label: "Diterima Faskes", note: "Menunggu pemeriksaan" },
         { label: "Diterima keluarga", note: "Belum" },
       ]
     : [];
@@ -224,7 +250,7 @@ export default function FacilityOrdersTable() {
           )}
         </span>
       }
-      subtitle="Pantau status pesanan pangan. Bukti penerimaan diunggah dari detail pesanan."
+      subtitle="Pantau pesanan, konfirmasi barang tiba di Faskes, lalu catat penyaluran kepada keluarga."
       actions={
         <>
           <Button variant="outline" className="rounded-xl bg-white" onClick={() => void refresh(true)} disabled={loading}>
@@ -392,6 +418,9 @@ export default function FacilityOrdersTable() {
               </section>
 
               <section className="px-6 py-5">
+                {selected.allocation_status === "rejected" && <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">Alokasi ditolak: {selected.allocation_reason || "Tidak memenuhi syarat"}</p>}
+                {selected.receipt_status === "discrepancy" && <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">Ketidaksesuaian: {selected.discrepancy_notes}. Periksa kembali setelah Vendor melengkapi barang.</p>}
+                {selected.arrived_at && <p className="mb-3 text-sm text-slate-600">Barang tiba: {new Date(selected.arrived_at).toLocaleString("id-ID")}. {selected.payout_due_at && `Batas transfer Vendor: ${new Date(selected.payout_due_at).toLocaleString("id-ID")}.`}</p>}
                 <h3 className="mb-3 text-sm font-bold text-slate-900">Rincian</h3>
                 <div className="divide-y divide-slate-100">
                   {selected.items.map((item) => (
@@ -409,7 +438,7 @@ export default function FacilityOrdersTable() {
             </div>
 
             <footer className="flex items-center justify-between gap-3 border-t border-slate-200 bg-white px-6 py-4">
-              {selected.status === "pending" ? (
+              {(selected.status === "pending" || selected.status === "pending_approval") ? (
                 <Button
                   variant="outline"
                   className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
@@ -420,7 +449,8 @@ export default function FacilityOrdersTable() {
                 </Button>
               ) : <span />}
 
-              {!selected.distribution && selected.status !== "cancelled" && (
+              {selected.status === "processing" && selected.receipt_status !== "accepted" && !showingPreview && <Button className="rounded-xl" onClick={() => { setReceiptOrder(selected); setSelected(null); }}>Konfirmasi barang tiba</Button>}
+              {!selected.distribution && (selected.status === "received" || selected.status === "completed") && (
                 showingPreview ? (
                   <Button className="rounded-xl" onClick={() => toast.info("Aksi unggah tersedia untuk pesanan asli.")}>
                     Unggah bukti penerimaan
@@ -444,6 +474,7 @@ export default function FacilityOrdersTable() {
           </aside>
         </div>
       )}
+      <FacilityReceiptDialog order={receiptOrder} onClose={() => setReceiptOrder(null)} onSaved={(updated) => { setSelected(updated); setOrders((rows) => rows.map((row) => row.id === updated.id ? updated : row)); }} />
     </DashboardLayout>
   );
 }

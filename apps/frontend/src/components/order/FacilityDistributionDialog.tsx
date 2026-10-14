@@ -35,6 +35,7 @@ export default function FacilityDistributionDialog({ order, onClose, onDistribut
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!order || saving) return;
+    if (order.receipt_status !== "accepted") { toast.error("Konfirmasi barang diterima lengkap oleh Faskes terlebih dahulu"); return; }
     if (!recipientName.trim()) { toast.error("Nama penerima wajib diisi"); return; }
     if (!photo) { toast.error("Foto bukti penyaluran wajib diunggah"); return; }
     if (!itemsComplete) { toast.error("Pastikan seluruh barang sudah diserahkan"); return; }

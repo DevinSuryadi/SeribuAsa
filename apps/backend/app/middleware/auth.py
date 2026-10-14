@@ -45,18 +45,12 @@ class AuthenticatedUser:
         self.email_verified = email_verified
 
 
-def _has_supabase_auth_config() -> bool:
-    """Check whether required Supabase auth settings are available."""
-    return bool(settings.SUPABASE_URL and settings.SUPABASE_ANON_KEY)
-
-
 def is_dev_mode() -> bool:
-    # Check whether auth should use local mock mode.
-    # First check OS environment variable, then pydantic settings (from .env)
-    dev_env = os.getenv("DEV_MODE", "").lower()
-    if dev_env == "true":
-        return True
-    return settings.DEV_MODE or not _has_supabase_auth_config()
+    # Mock identities require explicit opt-in and a local SQLite database.
+    enabled = os.getenv("DEV_MODE", "").lower() == "true" or settings.DEV_MODE
+    database_url = settings.DATABASE_URL or ""
+    local_database = not database_url or database_url.startswith("sqlite")
+    return enabled and local_database and not settings.MIDTRANS_IS_PRODUCTION
 
 
 def _mock_dev_user() -> AuthenticatedUser:
@@ -238,16 +232,21 @@ async def get_current_user(
         user_info = supabase_auth.extract_user_info(token_data)
         
         token_role = _normalize_role(user_info.get("role"))
+        app_metadata = token_data.get("app_metadata") if isinstance(token_data.get("app_metadata"), dict) else {}
+        trusted_role = _normalize_role(app_metadata.get("role"))
         db_role = _resolve_role_from_db(UUID(str(user_info["user_id"])), None)
-        if db_role == "health_facility":
+        if trusted_role in {"admin", "government"}:
+            actual_role = trusted_role
+        elif db_role == "health_facility":
             actual_role = db_role
+        elif token_role in {"admin", "government"}:
+            # user_metadata is editable by the account owner.
+            actual_role = db_role if db_role in {"donor", "corporate_donor", "beneficiary", "vendor"} else "unassigned"
         elif token_role == "health_facility":
             # User metadata is registration intent, never facility authorization.
             actual_role = "unassigned"
-        elif token_role:
-            actual_role = token_role
         else:
-            actual_role = db_role or "donor"
+            actual_role = db_role or token_role or "donor"
             if not actual_role:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,

@@ -73,7 +73,7 @@ class UserSignUpRequest(BaseModel):
 
     user_id: UUID = Field(..., description="Supabase auth user ID")
     full_name: str = Field(..., min_length=1, max_length=255)
-    role: Literal["donor", "corporate_donor", "beneficiary", "vendor", "admin", "government"] = Field(...)
+    role: Literal["donor", "corporate_donor", "beneficiary", "vendor"] = Field(...)
     phone: str | None = Field(None, max_length=20)
     address: str | None = Field(None)
 

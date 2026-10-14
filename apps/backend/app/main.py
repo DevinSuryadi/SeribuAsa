@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 import logging
 
-from app.api import auth, donations, vouchers, admin, orders, cart, products, fies, nutrition, recommendations, reports, settlements, subscriptions, users, facilities, facility_families, facility_assessments, facility_orders, funding
+from app.api import auth, donations, vouchers, admin, orders, cart, products, fies, nutrition, recommendations, reports, settlements, subscriptions, users, facilities, facility_families, facility_assessments, facility_orders, facility_payouts, funding, regions
 from app.api import wallet as wallet_api
 from app.api import vendor_wallet as vendor_wallet_api
 from app.api import sandbox as sandbox_api
@@ -67,6 +67,7 @@ app.include_router(admin.router, prefix="/api/v1")
 app.include_router(wallet_api.router, prefix="/api/v1")
 app.include_router(cart.router, prefix="/api/v1")
 app.include_router(products.router, prefix="/api/v1")
+app.include_router(regions.router, prefix="/api/v1")
 app.include_router(fies.router, prefix="/api/v1")
 app.include_router(nutrition.router, prefix="/api/v1")
 app.include_router(recommendations.router, prefix="/api/v1")
@@ -75,10 +76,15 @@ app.include_router(settlements.router, prefix="/api/v1")
 app.include_router(subscriptions.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(facilities.router, prefix="/api/v1")
+app.include_router(facilities.admin_router, prefix="/api/v1")
 app.include_router(facility_families.router, prefix="/api/v1")
 app.include_router(facility_assessments.router, prefix="/api/v1")
 app.include_router(facility_orders.facility_router, prefix="/api/v1")
+app.include_router(facility_orders.catalog_router, prefix="/api/v1")
 app.include_router(facility_orders.vendor_router, prefix="/api/v1")
+app.include_router(facility_orders.admin_router, prefix="/api/v1")
+app.include_router(facility_payouts.admin_router, prefix="/api/v1")
+app.include_router(facility_payouts.vendor_router, prefix="/api/v1")
 app.include_router(funding.router, prefix="/api/v1")
 app.include_router(vendor_wallet_api.router, prefix="/api/v1")
 

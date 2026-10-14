@@ -65,6 +65,7 @@ from app.models.facility import (
     OrderFundingAllocation,
     OrderHandoverToken,
     FacilityOrderReceipt,
+    FacilityVendorPayout,
     AidDistribution,
     AidDistributionItem,
 )
@@ -132,6 +133,7 @@ __all__ = [
     "OrderFundingAllocation",
     "OrderHandoverToken",
     "FacilityOrderReceipt",
+    "FacilityVendorPayout",
     "AidDistribution",
     "AidDistributionItem",
 ]

@@ -43,6 +43,7 @@ import {
   getCategories,
 } from "@/services/products";
 import { uploadImage } from "@/services/upload";
+import { getProvinces, getRegencies, type Province, type Regency } from "@/services/regions";
 import type { VendorProduct } from "@/types/vendor";
 import type { Category } from "@/services/products";
 import { toast } from "sonner";
@@ -58,6 +59,8 @@ interface ProductFormState {
   voucherPrice: string;
   stock: string;
   unit: string;
+  serviceProvinceCode: string;
+  serviceRegencyCode: string;
   images: string[];
 }
 
@@ -68,6 +71,8 @@ const DEFAULT_FORM: ProductFormState = {
   voucherPrice: "",
   stock: "",
   unit: "pcs",
+  serviceProvinceCode: "",
+  serviceRegencyCode: "",
   images: [],
 };
 
@@ -130,6 +135,9 @@ const KelolaProduk = () => {
 
   const [products, setProducts] = useState<VendorProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [regencies, setRegencies] = useState<Regency[]>([]);
+  const [regionError, setRegionError] = useState("");
   const [searchQ, setSearchQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
@@ -175,6 +183,19 @@ const KelolaProduk = () => {
     if (user) fetchData();
   }, [user, fetchData]);
 
+  useEffect(() => {
+    getProvinces().then(setProvinces).catch(() => setRegionError("Daftar provinsi gagal dimuat."));
+  }, []);
+
+  useEffect(() => {
+    if (!form.serviceProvinceCode) { setRegencies([]); return; }
+    let active = true;
+    getRegencies(form.serviceProvinceCode)
+      .then((rows) => { if (active) { setRegencies(rows); setRegionError(""); } })
+      .catch(() => { if (active) { setRegencies([]); setRegionError("Daftar kota/kabupaten gagal dimuat."); } });
+    return () => { active = false; };
+  }, [form.serviceProvinceCode]);
+
   const totalCount = products.length;
 
   const activeCount = useMemo(
@@ -211,6 +232,8 @@ const KelolaProduk = () => {
         voucherPrice: String(product.voucher_price),
         stock: String(product.stock),
         unit: product.unit || "pcs",
+        serviceProvinceCode: product.service_province_code || "",
+        serviceRegencyCode: product.service_regency_code || "",
         images: product.images || [],
       });
     } else {
@@ -228,7 +251,7 @@ const KelolaProduk = () => {
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.price || form.voucherPrice === "") {
+    if (!form.name || !form.price || form.voucherPrice === "" || !form.serviceProvinceCode || !form.serviceRegencyCode) {
       toast.error("Lengkapi semua field wajib");
       return;
     }
@@ -257,6 +280,11 @@ const KelolaProduk = () => {
       return;
     }
 
+    if (!regencies.some((region) => region.code === form.serviceRegencyCode)) {
+      toast.error("Pilih kota/kabupaten yang sesuai dengan provinsi.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -268,6 +296,8 @@ const KelolaProduk = () => {
         stock_quantity: stockNum,
         unit: form.unit,
         images: form.images.length > 0 ? form.images : undefined,
+        service_province_code: form.serviceProvinceCode,
+        service_regency_code: form.serviceRegencyCode,
       };
 
       if (editingProduct) {
@@ -536,6 +566,11 @@ const KelolaProduk = () => {
                           <p className="mt-1 truncate text-[10.5px] font-medium text-slate-500">
                             {categoryLabel}
                           </p>
+                          <p className="mt-1 truncate text-[10.5px] text-slate-500">
+                            {product.service_regency_name && product.service_province_name
+                              ? `${product.service_regency_name}, ${product.service_province_name}`
+                              : "Wilayah layanan belum diisi"}
+                          </p>
                         </div>
                       </div>
 
@@ -750,6 +785,26 @@ const KelolaProduk = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div>
+                <Label className="mb-2 block text-sm font-bold text-slate-700" htmlFor="product-province">Provinsi layanan</Label>
+                <select id="product-province" className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm" value={form.serviceProvinceCode}
+                  onChange={(event) => setForm((current) => ({ ...current, serviceProvinceCode: event.target.value, serviceRegencyCode: "" }))}>
+                  <option value="">Pilih provinsi</option>
+                  {provinces.map((province) => <option key={province.code} value={province.code}>{province.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <Label className="mb-2 block text-sm font-bold text-slate-700" htmlFor="product-regency">Kota/kabupaten layanan</Label>
+                <select id="product-regency" className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm" value={form.serviceRegencyCode}
+                  disabled={!form.serviceProvinceCode || !regencies.length}
+                  onChange={(event) => setField("serviceRegencyCode")(event.target.value)}>
+                  <option value="">Pilih kota/kabupaten</option>
+                  {regencies.map((regency) => <option key={regency.code} value={regency.code}>{regency.name}</option>)}
+                </select>
+              </div>
+              {regionError && <p role="alert" className="sm:col-span-2 text-sm text-destructive">{regionError}</p>}
 
               <div>
                 <Label className="mb-2 block text-sm font-bold text-slate-700">

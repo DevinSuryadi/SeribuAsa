@@ -9,6 +9,8 @@ import { formatIDR } from "@/lib/format";
 import { getCategories, getProducts, type Category } from "@/services/products";
 import { listFamilies, type Family } from "@/services/facility-families";
 import { createFacilityOrder } from "@/services/facility-orders";
+import { listEligibleVendors, type EligibleVendor } from "@/services/facility-orders";
+import { getProvinces, getRegencies, type Province, type Regency } from "@/services/regions";
 import type { VendorProduct } from "@/types/vendor";
 import { ArrowLeft, Minus, Plus, Search, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +25,14 @@ export default function FacilityCatalog() {
   const [selectedFamilyId, setSelectedFamilyId] = useState(familyId || "");
   const [products, setProducts] = useState<VendorProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [regencies, setRegencies] = useState<Regency[]>([]);
+  const [vendors, setVendors] = useState<EligibleVendor[]>([]);
+  const [provinceCode, setProvinceCode] = useState("");
+  const [regencyCode, setRegencyCode] = useState("");
+  const [selectedVendorId, setSelectedVendorId] = useState("");
+  const [regionError, setRegionError] = useState("");
+  const [vendorLoading, setVendorLoading] = useState(false);
   const [categoryId, setCategoryId] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -43,18 +53,41 @@ export default function FacilityCatalog() {
       if (familyId && !rows.some((family) => family.id === familyId)) setFamilyError("Keluarga tidak ditemukan pada fasilitas ini.");
     }).catch((err: unknown) => { if (active) setFamilyError(err instanceof Error ? err.message : "Gagal memuat keluarga"); });
     getCategories().then((rows) => { if (active) setCategories(rows); }).catch(() => {});
+    getProvinces().then((rows) => { if (active) setProvinces(rows); }).catch(() => { if (active) setRegionError("Daftar provinsi gagal dimuat."); });
     return () => { active = false; };
   }, [familyId]);
 
   useEffect(() => {
+    if (!provinceCode) { setRegencies([]); return; }
+    let active = true;
+    getRegencies(provinceCode)
+      .then((rows) => { if (active) { setRegencies(rows); setRegionError(""); } })
+      .catch(() => { if (active) { setRegencies([]); setRegionError("Daftar kota/kabupaten gagal dimuat."); } });
+    return () => { active = false; };
+  }, [provinceCode]);
+
+  useEffect(() => {
+    if (!provinceCode || !regencyCode) { setVendors([]); return; }
+    let active = true;
+    setVendorLoading(true);
+    listEligibleVendors(provinceCode, regencyCode)
+      .then((rows) => { if (active) { setVendors(rows); setRegionError(""); } })
+      .catch((err: unknown) => { if (active) { setVendors([]); setRegionError(err instanceof Error ? err.message : "Daftar vendor gagal dimuat."); } })
+      .finally(() => { if (active) setVendorLoading(false); });
+    return () => { active = false; };
+  }, [provinceCode, regencyCode]);
+
+  useEffect(() => {
+    if (!selectedVendorId || !regencyCode) { setProducts([]); setTotalPages(1); setLoading(false); return; }
     let active = true;
     setLoading(true);
-    getProducts({ page, page_size: 12, search: search || undefined, category_id: categoryId || undefined })
+    getProducts({ page, page_size: 12, search: search || undefined, category_id: categoryId || undefined,
+      vendor_id: selectedVendorId, service_regency_code: regencyCode, in_stock_only: true })
       .then((result) => { if (active) { setProducts(result.items); setTotalPages(Math.max(1, result.total_pages)); setError(""); } })
       .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat katalog"); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [page, search, categoryId]);
+  }, [page, search, categoryId, selectedVendorId, regencyCode]);
 
   const vendorId = cart[0]?.product.vendor_id;
   const total = useMemo(() => cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0), [cart]);
@@ -77,15 +110,21 @@ export default function FacilityCatalog() {
     if (submitting || !cart.length) return;
     if (!selectedFamilyId) { toast.error("Pilih keluarga sebelum memesan."); return; }
     if (familyError || !families.some((family) => family.id === selectedFamilyId)) { toast.error("Keluarga belum dapat diverifikasi."); return; }
+    if (!provinceCode || !regencyCode || !selectedVendorId || cart.some(({ product }) => product.vendor_id !== selectedVendorId || product.service_regency_code !== regencyCode)) {
+      toast.error("Pilih daerah dan vendor yang sesuai dengan seluruh produk."); return;
+    }
     setSubmitting(true);
     try {
       await createFacilityOrder({
         family_id: selectedFamilyId,
+        vendor_id: selectedVendorId,
+        service_province_code: provinceCode,
+        service_regency_code: regencyCode,
         client_request_id: crypto.randomUUID(),
         items: cart.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
       });
       setCart([]);
-      toast.success("Pesanan tercatat dan dana donasi sudah dicadangkan.");
+      toast.success("Permintaan tercatat dan menunggu persetujuan alokasi Admin.");
       navigate("/dashboard/health-facility/orders");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Pesanan gagal dibuat");
@@ -93,9 +132,16 @@ export default function FacilityCatalog() {
   }
 
   return (
-    <DashboardLayout title="Katalog Pangan" subtitle="Pilih pangan untuk keluarga terdaftar. Pesanan dikirim ke fasilitas kesehatan Anda.">
+    <DashboardLayout title="Katalog Pangan" subtitle="Pilih provinsi, kota/kabupaten, dan vendor sebelum memesan pangan untuk keluarga terdaftar.">
       <div className="mx-auto max-w-[1400px] space-y-5">
         {familyId && <Button asChild variant="ghost" className="pl-0 text-primary"><Link to={`/dashboard/health-facility/families/${familyId}`}><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke keluarga</Link></Button>}
+        <Card className="rounded-2xl border-border/70 shadow-sm"><CardHeader><CardTitle className="text-base">Pilih daerah dan vendor</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3">
+          <div><label htmlFor="catalog-province" className="mb-1 block text-sm font-medium">Provinsi</label><select id="catalog-province" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={provinceCode} onChange={(event) => { setProvinceCode(event.target.value); setRegencies([]); setRegencyCode(""); setVendors([]); setSelectedVendorId(""); setCart([]); setPage(1); }}><option value="">Pilih provinsi</option>{provinces.map((province) => <option key={province.code} value={province.code}>{province.name}</option>)}</select></div>
+          <div><label htmlFor="catalog-regency" className="mb-1 block text-sm font-medium">Kota/kabupaten</label><select id="catalog-regency" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={regencyCode} disabled={!provinceCode || !regencies.length} onChange={(event) => { setRegencyCode(event.target.value); setVendors([]); setSelectedVendorId(""); setCart([]); setPage(1); }}><option value="">Pilih kota/kabupaten</option>{regencies.map((regency) => <option key={regency.code} value={regency.code}>{regency.name}</option>)}</select></div>
+          <div><label htmlFor="catalog-vendor" className="mb-1 block text-sm font-medium">Vendor</label><select id="catalog-vendor" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={selectedVendorId} disabled={!regencyCode || vendorLoading || !vendors.length} onChange={(event) => { setSelectedVendorId(event.target.value); setCart([]); setPage(1); }}><option value="">{vendorLoading ? "Memuat vendor..." : "Pilih vendor"}</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.store_name} ({vendor.product_count} produk)</option>)}</select></div>
+          {regionError && <p role="alert" className="sm:col-span-3 text-sm text-destructive">{regionError}</p>}
+          {regencyCode && !vendorLoading && !regionError && vendors.length === 0 && <p className="sm:col-span-3 text-sm text-muted-foreground">Belum ada vendor aktif dengan produk tersedia di daerah ini.</p>}
+        </CardContent></Card>
         <Card className="rounded-2xl border-border/70 shadow-sm"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row">
           <form className="flex flex-1 gap-2" onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(searchInput.trim()); }}>
             <Input aria-label="Cari pangan" placeholder="Cari nama pangan..." value={searchInput} onChange={(event) => setSearchInput(event.target.value)} />
@@ -108,7 +154,7 @@ export default function FacilityCatalog() {
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-4">
             {error && <p className="rounded-xl bg-destructive/5 p-4 text-destructive">{error}</p>}
-            {loading ? <p className="p-6 text-muted-foreground">Memuat katalog...</p> : products.length === 0 ? <p className="rounded-xl border bg-white p-6 text-muted-foreground">Belum ada produk untuk ditampilkan.</p> : (
+            {!selectedVendorId ? <p className="rounded-xl border bg-white p-6 text-muted-foreground">Pilih provinsi, kota/kabupaten, lalu vendor untuk melihat produk.</p> : loading ? <p className="p-6 text-muted-foreground">Memuat katalog...</p> : products.length === 0 ? <p className="rounded-xl border bg-white p-6 text-muted-foreground">Vendor ini belum memiliki produk yang cocok dengan pencarian.</p> : (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{products.map((product) => {
                 const quantity = cart.find((line) => line.product.id === product.id)?.quantity || 0;
                 return <Card key={product.id} className="overflow-hidden rounded-2xl border-border/70 shadow-sm">
@@ -126,8 +172,8 @@ export default function FacilityCatalog() {
             <div><label htmlFor="order-family" className="mb-1 block text-sm font-medium">Keluarga penerima</label><select id="order-family" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={selectedFamilyId} disabled={Boolean(familyId)} onChange={(event) => setSelectedFamilyId(event.target.value)}><option value="">Pilih keluarga saat akan memesan</option>{families.map((family) => <option key={family.id} value={family.id}>{family.head_name}</option>)}</select>{familyError && <p className="mt-1 text-xs text-destructive">{familyError}</p>}</div>
             {cart.length ? <div className="space-y-2 border-t pt-3">{cart.map(({ product, quantity }) => <div key={product.id} className="flex justify-between gap-2 text-sm"><span>{quantity}× {product.name}</span><span>{formatIDR(product.price * quantity)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">Pilih pangan untuk mulai memesan. Katalog dapat dilihat tanpa memilih keluarga.</p>}
             <div className="flex justify-between border-t pt-3 font-semibold"><span>Total</span><span>{formatIDR(total)}</span></div>
-            <p className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-primary">Total pesanan akan dicadangkan dari pool donasi. Pesanan hanya dapat dibuat jika saldo pool mencukupi.</p>
-            <Button className="w-full rounded-xl" disabled={!cart.length || !selectedFamilyId || !familyName || Boolean(familyError) || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
+            <p className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-primary">Permintaan akan ditinjau Admin. Dana pool baru dicadangkan setelah alokasi disetujui; Vendor dapat memproses pesanan sesudahnya.</p>
+            <Button className="w-full rounded-xl" disabled={!cart.length || !selectedFamilyId || !familyName || !selectedVendorId || Boolean(familyError) || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
           </CardContent></Card>
         </div>
       </div>

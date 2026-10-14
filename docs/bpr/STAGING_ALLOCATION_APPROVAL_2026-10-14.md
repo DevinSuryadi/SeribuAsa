@@ -1,0 +1,7 @@
+# Persetujuan alokasi bantuan Faskes di staging
+
+Permintaan Faskes sekarang disimpan sebagai `pending_approval` dan belum mengunci dana donasi. Stok produk ditahan sementara untuk permintaan itu. Admin melihat antrean permintaan, rincian keluarga/produk/Vendor/daerah, lalu menyetujui atau menolak dengan alasan.
+
+Persetujuan memeriksa ulang status Vendor dan produk serta ketersediaan pool, mencadangkan dana secara atomik, mencatat aktor/waktu keputusan, dan baru kemudian membuka order untuk Vendor (`pending`). Pengaju tidak dapat menyetujui permintaannya sendiri. Penolakan mengembalikan stok dan menutup permintaan (`rejected`); Faskes dapat membatalkan permintaan yang masih menunggu maupun yang sudah disetujui selama Vendor belum memprosesnya. Order historis dengan `allocation_status=NULL` tidak dimigrasi secara spekulatif; dispatch historis tetap memerlukan dana yang sudah dicadangkan.
+
+Migrasi `a20261014allocation` menambah status/aktor/waktu/alasan persetujuan pada `orders` serta metadata review Faskes. Belum diterapkan ke database jaringan. Tes backend mencakup larangan Vendor memproses sebelum persetujuan, self approval, idempotensi, dana kurang, penolakan, pembatalan, hingga pencairan setelah Faskes menerima barang. SQL offline migrasi berhasil dibuat; backend 243 tes lulus setelah pembaruan otorisasi. Masih ada gap audit BPR lain, terutama pemisahan jabatan Admin lebih rinci, verifikasi legal Vendor, serta jalur transaksi lama.

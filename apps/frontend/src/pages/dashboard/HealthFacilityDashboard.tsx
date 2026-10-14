@@ -17,8 +17,9 @@ export default function HealthFacilityDashboard() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([getMyFacility(), listFamilies()])
-      .then(([facilityData, familyData]) => {
+    getMyFacility()
+      .then(async (facilityData) => {
+        const familyData = facilityData.approval_status === "approved" ? await listFamilies() : [];
         if (active) { setFacility(facilityData); setFamilies(familyData); }
       })
       .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat data fasilitas"); })
@@ -38,11 +39,12 @@ export default function HealthFacilityDashboard() {
               <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{facility?.name || "Kelola penerima manfaat"}</h2>
               <p className="mt-2 max-w-xl text-sm text-white/85">Pilih menu Keluarga untuk mendaftar atau mengelola keluarga, lalu buka ringkasan, survei, dan pengukuran tiap keluarga.</p>
             </div>
-            <Button asChild className="shrink-0 rounded-xl bg-white text-primary hover:bg-white/90"><Link to="/dashboard/health-facility/families">Lihat Keluarga <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+            {facility?.approval_status === "approved" && <Button asChild className="shrink-0 rounded-xl bg-white text-primary hover:bg-white/90"><Link to="/dashboard/health-facility/families">Lihat Keluarga <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>}
           </div>
         </div>
 
         {error && <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
+        {facility && facility.approval_status !== "approved" && <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{facility.approval_status === "rejected" ? `Pendaftaran Faskes ditolak: ${facility.review_reason || "Hubungi Admin untuk penjelasan."}` : "Pendaftaran Faskes menunggu persetujuan Admin. Pengelolaan keluarga dan pemesanan tersedia setelah disetujui."}</p>}
         <Card className="rounded-2xl border-border/70 shadow-sm">
           <CardHeader><CardTitle className="text-lg">Keluarga Terdaftar</CardTitle></CardHeader>
           <CardContent className="flex items-center gap-4">

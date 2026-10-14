@@ -26,6 +26,8 @@ import AdminDonationsPage from "./pages/dashboard/admin/AdminDonationsPage";
 import AdminOrdersPage from "./pages/dashboard/admin/AdminOrdersPage";
 import AdminVouchersPage from "./pages/dashboard/admin/AdminVouchersPage";
 import AdminReportsPage from "./pages/dashboard/admin/AdminReportsPage";
+import AdminFacilityAllocations from "./pages/dashboard/admin/AdminFacilityAllocations";
+import AdminFacilities from "./pages/dashboard/admin/AdminFacilities";
 import DonationCheckout from "./pages/donation/DonationCheckout";
 import CreateDonation from "./pages/donation/CreateDonation";
 import DonationSuccess from "./pages/donation/DonationSuccess";
@@ -61,6 +63,7 @@ const FacilityOrders = lazy(() => import("./pages/dashboard/facility/FacilityOrd
 const FacilityRedemptionHistory = lazy(() => import("./pages/dashboard/facility/FacilityRedemptionHistory"));
 const FacilityDistributionHistory = lazy(() => import("./pages/dashboard/facility/FacilityDistributionHistory"));
 const VendorFacilityOrders = lazy(() => import("./pages/dashboard/VendorFacilityOrders"));
+const FacilityPayouts = lazy(() => import("./pages/dashboard/FacilityPayouts"));
 
 function PageLoader() {
   return (
@@ -365,6 +368,7 @@ function App() {
           }
         />
         <Route path="/dashboard/vendor/facility-orders" element={<ProtectedRoute allowedRoles={["vendor"]}><VendorFacilityOrders /></ProtectedRoute>} />
+        <Route path="/dashboard/vendor/facility-payouts" element={<ProtectedRoute allowedRoles={["vendor"]}><FacilityPayouts /></ProtectedRoute>} />
         <Route
           path="/dashboard/admin"
           element={
@@ -373,6 +377,9 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/dashboard/admin/facility-payouts" element={<ProtectedRoute allowedRoles={["admin"]}><FacilityPayouts admin /></ProtectedRoute>} />
+        <Route path="/dashboard/admin/facility-allocations" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFacilityAllocations /></ProtectedRoute>} />
+        <Route path="/dashboard/admin/facilities" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFacilities /></ProtectedRoute>} />
         <Route
           path="/dashboard/admin/users"
           element={

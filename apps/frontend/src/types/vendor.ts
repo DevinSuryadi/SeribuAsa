@@ -43,6 +43,10 @@ export interface VendorProduct {
   category_id?: string;
   category_name?: string;
   vendor_store_name?: string;
+  service_province_code?: string | null;
+  service_regency_code?: string | null;
+  service_province_name?: string | null;
+  service_regency_name?: string | null;
   approval_status: ProductApprovalStatus;
   created_at: string;
   images?: string[];

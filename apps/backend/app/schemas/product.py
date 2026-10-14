@@ -49,6 +49,10 @@ class ProductResponse(BaseModel):
     approval_status: str = "pending"
     category_name: Optional[str] = None
     vendor_store_name: Optional[str] = None
+    service_province_code: Optional[str] = None
+    service_regency_code: Optional[str] = None
+    service_province_name: Optional[str] = None
+    service_regency_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -64,6 +68,8 @@ class ProductCreate(BaseModel):
     stock_quantity: int = Field(default=0, ge=0)
     unit: str = Field(default="pcs", max_length=50)
     images: Optional[List[str]] = None
+    service_province_code: str = Field(..., min_length=2, max_length=2)
+    service_regency_code: str = Field(..., min_length=5, max_length=5)
 
     def model_post_init(self, __context) -> None:
         if self.voucher_price > self.price:
@@ -79,6 +85,8 @@ class ProductUpdate(BaseModel):
     stock_quantity: Optional[int] = Field(None, ge=0)
     unit: Optional[str] = Field(None, max_length=50)
     images: Optional[List[str]] = None
+    service_province_code: Optional[str] = Field(None, min_length=2, max_length=2)
+    service_regency_code: Optional[str] = Field(None, min_length=5, max_length=5)
 
 
 class ProductListResponse(BaseModel):
@@ -101,3 +109,4 @@ class ProductQueryParams(BaseModel):
     min_price: Optional[Decimal] = None
     max_price: Optional[Decimal] = None
     in_stock_only: bool = False
+    service_regency_code: Optional[str] = None

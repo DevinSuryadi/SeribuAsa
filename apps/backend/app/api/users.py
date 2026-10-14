@@ -11,6 +11,7 @@ import random
 import hashlib
 
 from app.database import get_db
+from app.middleware.auth import AuthenticatedUser, get_current_user
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, GenderEnum
 from app.models.facility import HealthFacility
 from app.schemas.user import (
@@ -122,7 +123,8 @@ async def get_public_vendors(db: Session = Depends(get_db)):
 @router.post("/signup", response_model=UserSignUpResponse, status_code=status.HTTP_201_CREATED)
 async def create_user_on_signup(
     user_data: UserSignUpRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """
     Create a new user profile after Supabase signup.
@@ -133,6 +135,10 @@ async def create_user_on_signup(
     2. Creates role-specific profile (donor_profiles, beneficiary_profiles, or vendor_profiles)
     """
     logger.info(f"[SIGNUP] Starting signup for user: {user_data.user_id}, role: {user_data.role}, name: {user_data.full_name}")
+    if user_data.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Hanya pemilik akun yang dapat membuat profilnya")
+    if user_data.role != current_user.role:
+        raise HTTPException(status_code=403, detail="Peran profil tidak sesuai dengan sesi terverifikasi")
     
     try:
         # Check if user already exists
@@ -193,11 +199,6 @@ async def create_user_on_signup(
             db.add(vendor_profile)
             logger.info(f"[SIGNUP] vendor_profile added for user {user_data.user_id}")
 
-        elif user_data.role in {"admin", "government"}:
-            # Admin/government users only need the base user_profile.
-            # Their authorization role comes from Supabase metadata/JWT.
-            logger.info(f"[SIGNUP] Base profile only for privileged role {user_data.role}")
-        
         else:
             logger.warning(f"[SIGNUP] Unknown role: {user_data.role}")
             raise HTTPException(

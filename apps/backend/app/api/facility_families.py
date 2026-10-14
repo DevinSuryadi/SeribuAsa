@@ -124,6 +124,8 @@ def current_facility(
     ).first()
     if facility is None:
         raise HTTPException(status_code=403, detail="Akun fasilitas tidak aktif atau tidak ditemukan")
+    if facility.approval_status != "approved":
+        raise HTTPException(status_code=403, detail="Fasilitas kesehatan belum disetujui Admin")
     return facility
 
 

@@ -40,6 +40,9 @@ class HealthFacility(BaseModel):
     address = Column(Text)
     phone = Column(String(20))
     approval_status = Column(String(30), nullable=False, default="pending")
+    reviewed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL"))
+    reviewed_at = Column(DateTime)
+    review_reason = Column(Text)
 
     families = relationship("RecipientFamily", back_populates="health_facility")
 
@@ -165,14 +168,43 @@ class FacilityOrderReceipt(BaseModel):
     order_id = Column(
         UUID(as_uuid=True), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False
     )
-    # QR handover tokens are kept for historical receipts. New receipts are
-    # recorded automatically when the family acceptance proof is uploaded.
+    # QR handover tokens are kept for historical receipts only.
     handover_token_id = Column(UUID(as_uuid=True), nullable=True)
     received_by_user_id = Column(
         UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="RESTRICT"), nullable=False
     )
     received_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    arrived_at = Column(DateTime, nullable=True)
+    status = Column(String(20), nullable=False, default="accepted")
+    evidence_url = Column(Text)
+    discrepancy_notes = Column(Text)
     notes = Column(Text)
+
+
+class FacilityVendorPayout(BaseModel):
+    __tablename__ = "facility_vendor_payouts"
+    __table_args__ = (
+        UniqueConstraint("order_id", name="uq_facility_vendor_payouts_order"),
+        UniqueConstraint("transfer_reference", name="uq_facility_vendor_payouts_transfer_reference"),
+        CheckConstraint("amount > 0", name="ck_facility_vendor_payouts_positive_amount"),
+        CheckConstraint("status IN ('pending_approval', 'approved', 'paid')", name="ck_facility_vendor_payouts_status"),
+        Index("ix_facility_vendor_payouts_status_due", "status", "due_at"),
+    )
+
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False)
+    vendor_id = Column(UUID(as_uuid=True), ForeignKey("vendor_profiles.user_id", ondelete="RESTRICT"), nullable=False)
+    amount = Column(Numeric(15, 2), nullable=False)
+    status = Column(String(20), nullable=False, default="pending_approval")
+    due_at = Column(DateTime, nullable=False)
+    approved_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="RESTRICT"))
+    approved_at = Column(DateTime)
+    paid_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="RESTRICT"))
+    paid_at = Column(DateTime)
+    recorded_at = Column(DateTime)
+    transfer_reference = Column(String(120))
+    bank_name = Column(String(100))
+    bank_account_number = Column(String(50))
+    bank_account_holder = Column(String(255))
 
 
 class AidDistribution(BaseModel):

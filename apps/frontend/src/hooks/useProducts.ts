@@ -155,6 +155,8 @@ export function useProducts() {
       voucher_price: number;
       stock_quantity?: number;
       unit?: string;
+      service_province_code: string;
+      service_regency_code: string;
     }) => {
       setIsLoading(true);
       setError(null);

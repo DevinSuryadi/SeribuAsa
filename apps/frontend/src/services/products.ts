@@ -20,6 +20,8 @@ type ApiProduct = Partial<VendorProduct> & {
   stock_quantity?: number | string | null;
   price?: number | string;
   voucher_price?: number | string;
+  service_province_code?: string | null;
+  service_regency_code?: string | null;
 };
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -61,6 +63,7 @@ export async function getProducts(params?: {
   min_price?: string;
   max_price?: string;
   in_stock_only?: boolean;
+  service_regency_code?: string;
 }): Promise<ProductsResponse> {
   const qs = new URLSearchParams();
   if (params) {
@@ -102,6 +105,8 @@ export async function createProduct(data: {
   stock_quantity?: number;
   unit?: string;
   images?: string[];
+  service_province_code: string;
+  service_regency_code: string;
 }): Promise<VendorProduct> {
   const res = await apiFetch("/products/", {
     method: "POST",
@@ -121,6 +126,8 @@ export async function updateProduct(
     stock_quantity?: number;
     unit?: string;
     images?: string[];
+    service_province_code?: string;
+    service_regency_code?: string;
   }
 ): Promise<VendorProduct> {
   const res = await apiFetch(`/products/${id}`, {

@@ -34,6 +34,8 @@ def sample_product():
     product.stock_quantity = 100
     product.is_active = True
     product.approval_status = "approved"
+    product.service_province_code = "15"
+    product.service_regency_code = "15.71"
     product.created_at = datetime.utcnow()
     return product
 
@@ -76,7 +78,9 @@ class TestProductServiceCreate:
             stock_quantity=50,
             unit="pcs",
             category_id=category_id,
-            images=[]
+            images=[],
+            service_province_code="15",
+            service_regency_code="15.71",
         )
         
         product = ProductService.create_product(
@@ -91,43 +95,52 @@ class TestProductServiceCreate:
         assert mock_db.add.called
         assert mock_db.commit.called
 
+    def test_rejects_regency_from_another_province(self, mock_db):
+        data = ProductCreate(
+            name="Beras", price=Decimal("10000"), voucher_price=Decimal("10000"),
+            service_province_code="11", service_regency_code="15.71",
+        )
+        with pytest.raises(ValueError, match="tidak sesuai"):
+            ProductService.create_product(mock_db, str(uuid4()), data)
+        mock_db.add.assert_not_called()
+
 
 class TestProductServiceRead:
     """Test product retrieval"""
 
     def test_get_product_by_id(self, mock_db, sample_product):
         """Test getting product by ID"""
-        mock_db.query.return_value.filter.return_value.options.return_value.filter.return_value.first.return_value = sample_product
+        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = sample_product
         
-        result = ProductService.get_product_by_id(db=mock_db, product_id=sample_product.id)
+        result = ProductService.get_product_by_id(db=mock_db, product_id=sample_product.id, include_unapproved=True)
         
         assert result == sample_product
         assert result.name == "Test Product"
 
     def test_get_product_not_found(self, mock_db):
         """Test getting non-existent product"""
-        mock_db.query.return_value.filter.return_value.options.return_value.filter.return_value.first.return_value = None
+        mock_db.query.return_value.filter.return_value.options.return_value.first.return_value = None
         
-        result = ProductService.get_product_by_id(db=mock_db, product_id=str(uuid4()))
+        result = ProductService.get_product_by_id(db=mock_db, product_id=str(uuid4()), include_unapproved=True)
         
         assert result is None
 
     def test_get_products(self, mock_db, sample_product):
         """Test getting products with params"""
         products = [sample_product, sample_product]
-        mock_db.query.return_value.filter.return_value.options.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = products
+        mock_db.query.return_value.filter.return_value.options.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = products
         
         params = ProductQueryParams()
-        result = ProductService.get_products(db=mock_db, params=params)
+        result = ProductService.get_products(db=mock_db, params=params, include_unapproved=True)
         
         assert len(result) == 2
 
     def test_get_products_count(self, mock_db):
         """Test getting products count"""
-        mock_db.query.return_value.filter.return_value.filter.return_value.count.return_value = 5
+        mock_db.query.return_value.filter.return_value.count.return_value = 5
         
         params = ProductQueryParams()
-        count = ProductService.get_products_count(db=mock_db, params=params)
+        count = ProductService.get_products_count(db=mock_db, params=params, include_unapproved=True)
         
         assert count == 5
 

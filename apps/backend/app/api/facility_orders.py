@@ -1,6 +1,6 @@
 """Facility food orders and evidence-backed family distribution."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -12,26 +12,29 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.api.facility_families import current_facility, owned_family
 from app.database import get_db
-from app.middleware.auth import AuthenticatedUser, get_current_user
+from app.middleware.auth import AuthenticatedUser, RequireRole, get_current_user
 from app.models.facility import (
     AidDistribution,
     AidDistributionItem,
     FacilityOrderReceipt,
+    FacilityVendorPayout,
     HealthFacility,
     OrderFundingAllocation,
 )
 from app.models.product import Order, OrderItem, Product
 from app.models.user import VendorProfile
+from app.services.regions import valid_area
 from app.services.facility_funding import (
     InsufficientPoolFunds,
     order_funding,
     release_order_funding,
     reserve_order_funding,
-    spend_order_funding,
 )
 
 facility_router = APIRouter(prefix="/facilities/orders", tags=["facility orders"])
+catalog_router = APIRouter(prefix="/facilities/catalog", tags=["facility catalog"])
 vendor_router = APIRouter(prefix="/vendor/facility-orders", tags=["vendor facility orders"])
+admin_router = APIRouter(prefix="/admin/facility-orders", tags=["admin facility orders"])
 
 
 class OrderLineInput(BaseModel):
@@ -41,6 +44,9 @@ class OrderLineInput(BaseModel):
 
 class FacilityOrderInput(BaseModel):
     family_id: UUID
+    vendor_id: UUID
+    service_province_code: str = Field(min_length=2, max_length=2)
+    service_regency_code: str = Field(min_length=5, max_length=5)
     items: list[OrderLineInput] = Field(min_length=1, max_length=50)
     client_request_id: UUID
 
@@ -68,6 +74,22 @@ class DistributionInput(BaseModel):
         return value
 
 
+class ReceiptInput(BaseModel):
+    arrived_at: datetime
+    items_complete: bool
+    evidence_url: str | None = Field(default=None, max_length=8_000_000)
+    notes: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("evidence_url")
+    @classmethod
+    def valid_evidence_url(cls, value: str | None) -> str | None:
+        return DistributionInput.valid_evidence_url(value) if value else None
+
+
+class AllocationRejectionInput(BaseModel):
+    reason: str = Field(min_length=5, max_length=1000)
+
+
 def _funding_payload(total_amount: Decimal, amounts: dict[str, Decimal]) -> dict:
     reserved = Decimal(amounts.get("reserved") or 0)
     spent = Decimal(amounts.get("spent") or 0)
@@ -91,7 +113,7 @@ def _order_payload_context(db: Session, orders: list[Order]) -> dict:
     order_ids = [order.id for order in orders]
     facility_ids = {order.health_facility_id for order in orders if order.health_facility_id}
     if not order_ids:
-        return {"facilities": {}, "receipts": {}, "distributions": {}, "funding": {}}
+        return {"facilities": {}, "receipts": {}, "distributions": {}, "funding": {}, "payouts": {}}
 
     facilities = {
         row.id: row
@@ -107,6 +129,12 @@ def _order_payload_context(db: Session, orders: list[Order]) -> dict:
         row.order_id: row
         for row in db.query(AidDistribution)
         .filter(AidDistribution.order_id.in_(order_ids), AidDistribution.is_active.is_(True))
+        .all()
+    }
+    payouts = {
+        row.order_id: row
+        for row in db.query(FacilityVendorPayout)
+        .filter(FacilityVendorPayout.order_id.in_(order_ids), FacilityVendorPayout.is_active.is_(True))
         .all()
     }
     amounts_by_order: dict[UUID, dict[str, Decimal]] = {}
@@ -129,7 +157,7 @@ def _order_payload_context(db: Session, orders: list[Order]) -> dict:
         order.id: _funding_payload(order.total_amount, amounts_by_order.get(order.id, {}))
         for order in orders
     }
-    return {"facilities": facilities, "receipts": receipts, "distributions": distributions, "funding": funding}
+    return {"facilities": facilities, "receipts": receipts, "distributions": distributions, "funding": funding, "payouts": payouts}
 
 
 def order_payload(
@@ -143,11 +171,13 @@ def order_payload(
         facility = db.query(HealthFacility).filter_by(id=order.health_facility_id).first()
         receipt = db.query(FacilityOrderReceipt).filter_by(order_id=order.id, is_active=True).first()
         distribution = db.query(AidDistribution).filter_by(order_id=order.id, is_active=True).first()
+        payout = db.query(FacilityVendorPayout).filter_by(order_id=order.id, is_active=True).first()
         funding = order_funding(db, order)
     else:
         facility = context["facilities"].get(order.health_facility_id)
         receipt = context["receipts"].get(order.id)
         distribution = context["distributions"].get(order.id)
+        payout = context["payouts"].get(order.id)
         funding = context["funding"][order.id]
     return {
         "id": order.id,
@@ -157,6 +187,8 @@ def order_payload(
         else (order.recipient_family.head_name if order.recipient_family else None),
         "health_facility_name": facility.name if facility else None,
         "delivery_address": order.delivery_address_snapshot,
+        "service_province_code": order.service_province_code,
+        "service_regency_code": order.service_regency_code,
         "vendor_id": order.vendor_id,
         "vendor_name": order.vendor_profile.store_name if order.vendor_profile else None,
         "items": [
@@ -172,10 +204,20 @@ def order_payload(
         "total_amount": order.total_amount,
         "status": order.status,
         "payment_status": order.payment_status,
+        "allocation_status": order.allocation_status,
+        "allocation_decided_at": order.allocation_decided_at.replace(tzinfo=timezone.utc) if order.allocation_decided_at else None,
+        "allocation_reason": order.allocation_reason,
         **funding,
         "created_at": order.created_at.replace(tzinfo=timezone.utc) if order.created_at else None,
+        "dispatched_at": order.dispatched_at.replace(tzinfo=timezone.utc) if order.dispatched_at else None,
         "received_at": receipt.received_at.replace(tzinfo=timezone.utc) if receipt else None,
+        "arrived_at": receipt.arrived_at.replace(tzinfo=timezone.utc) if receipt and receipt.arrived_at else None,
+        "receipt_status": receipt.status if receipt else None,
+        "receipt_evidence_url": receipt.evidence_url if receipt else None,
+        "discrepancy_notes": receipt.discrepancy_notes if receipt else None,
         "receipt_notes": receipt.notes if receipt else None,
+        "payout_status": payout.status if payout else None,
+        "payout_due_at": payout.due_at.replace(tzinfo=timezone.utc) if payout else None,
         "distribution": {
             "id": distribution.id,
             "recipient_name": distribution.recipient_name,
@@ -210,6 +252,35 @@ def vendor_account(db: Session, user: AuthenticatedUser) -> VendorProfile:
     if not vendor:
         raise HTTPException(status_code=403, detail="Profil vendor tidak ditemukan")
     return vendor
+
+
+@catalog_router.get("/vendors")
+def list_eligible_vendors(
+    province_code: str = Query(min_length=2, max_length=2),
+    regency_code: str = Query(min_length=5, max_length=5),
+    db: Session = Depends(get_db),
+    facility: HealthFacility = Depends(current_facility),
+):
+    if not valid_area(province_code, regency_code):
+        raise HTTPException(status_code=422, detail="Kota/kabupaten tidak sesuai dengan provinsi")
+    rows = (
+        db.query(VendorProfile.user_id, VendorProfile.store_name, func.count(Product.id))
+        .join(Product, Product.vendor_id == VendorProfile.user_id)
+        .filter(
+            VendorProfile.approval_status == "approved",
+            VendorProfile.settlement_status == "active",
+            VendorProfile.is_active.is_(True),
+            Product.approval_status == "approved",
+            Product.is_active.is_(True),
+            Product.stock_quantity > 0,
+            Product.service_province_code == province_code,
+            Product.service_regency_code == regency_code,
+        )
+        .group_by(VendorProfile.user_id, VendorProfile.store_name)
+        .order_by(VendorProfile.store_name)
+        .all()
+    )
+    return [{"id": vendor_id, "store_name": store_name, "product_count": count} for vendor_id, store_name, count in rows]
 
 
 @facility_router.get("")
@@ -264,9 +335,17 @@ def create_facility_order(
     facility: HealthFacility = Depends(current_facility),
 ):
     family = owned_family(data.family_id, facility, db)
+    if not valid_area(data.service_province_code, data.service_regency_code):
+        raise HTTPException(status_code=422, detail="Kota/kabupaten tidak sesuai dengan provinsi")
     existing = db.query(Order).filter_by(client_request_id=data.client_request_id).first()
     if existing:
-        if existing.health_facility_id != facility.id or existing.family_id != family.id:
+        if (
+            existing.health_facility_id != facility.id
+            or existing.family_id != family.id
+            or existing.vendor_id != data.vendor_id
+            or existing.service_province_code != data.service_province_code
+            or existing.service_regency_code != data.service_regency_code
+        ):
             raise HTTPException(status_code=409, detail="Identitas permintaan sudah dipakai")
         existing_lines = {item.product_id: item.quantity for item in existing.items}
         submitted_lines = {item.product_id: item.quantity for item in data.items}
@@ -293,15 +372,23 @@ def create_facility_order(
     )
     if len(products) != len(quantities):
         raise HTTPException(status_code=400, detail="Ada produk yang tidak ditemukan")
-    if len({product.vendor_id for product in products}) != 1:
+    if any(product.vendor_id != data.vendor_id for product in products):
         raise HTTPException(
-            status_code=400, detail="Satu pesanan hanya boleh berisi produk dari satu vendor"
+            status_code=400, detail="Semua produk harus berasal dari vendor yang dipilih"
         )
+    vendor = db.query(VendorProfile).filter_by(user_id=data.vendor_id, is_active=True).first()
+    if not vendor or vendor.approval_status != "approved" or vendor.settlement_status != "active":
+        raise HTTPException(status_code=409, detail="Vendor belum disetujui atau sedang tidak aktif")
     for product in products:
         if not product.is_active or product.approval_status != "approved":
             raise HTTPException(status_code=400, detail=f"Produk {product.name} belum tersedia")
         if product.stock_quantity < quantities[product.id]:
             raise HTTPException(status_code=400, detail=f"Stok {product.name} tidak mencukupi")
+        if (
+            product.service_province_code != data.service_province_code
+            or product.service_regency_code != data.service_regency_code
+        ):
+            raise HTTPException(status_code=400, detail=f"Produk {product.name} tidak melayani daerah terpilih")
 
     total = sum(
         (Decimal(product.price) * quantities[product.id] for product in products), Decimal("0")
@@ -314,12 +401,15 @@ def create_facility_order(
         family_id=family.id,
         health_facility_id=facility.id,
         placed_by_user_id=facility.account_user_id,
-        vendor_id=products[0].vendor_id,
+        vendor_id=data.vendor_id,
+        service_province_code=data.service_province_code,
+        service_regency_code=data.service_regency_code,
         delivery_address_snapshot=facility.address,
         total_amount=total,
         voucher_used=0,
         cash_paid=0,
-        status="pending",
+        status="pending_approval",
+        allocation_status="requested",
         payment_status="pending",
     )
     db.add(order)
@@ -337,11 +427,7 @@ def create_facility_order(
             )
         )
     try:
-        reserve_order_funding(db, order)
         db.commit()
-    except InsufficientPoolFunds as exc:
-        db.rollback()
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except IntegrityError:
         db.rollback()
         existing = (
@@ -374,7 +460,7 @@ def cancel_facility_order(
     )
     if not order:
         raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
-    if order.status != "pending":
+    if order.status not in {"pending_approval", "pending"}:
         raise HTTPException(
             status_code=409, detail="Hanya pesanan yang belum diproses dapat dibatalkan"
         )
@@ -382,8 +468,9 @@ def cancel_facility_order(
         product = db.query(Product).filter_by(id=item.product_id).with_for_update().first()
         product.stock_quantity += item.quantity
     order.status = "cancelled"
+    if order.allocation_status == "requested":
+        order.allocation_status = "cancelled"
     release_order_funding(db, order)
-    order.payment_status = "refunded"
     db.commit()
     return order_payload(db, order)
 
@@ -411,10 +498,11 @@ def distribute_order_to_family(
     existing = db.query(AidDistribution).filter_by(order_id=order.id, is_active=True).first()
     if existing:
         return order_payload(db, order)
-    if order.status not in {"processing", "completed"}:
+    receipt = db.query(FacilityOrderReceipt).filter_by(order_id=order.id, is_active=True).first()
+    if not receipt or receipt.status != "accepted":
         raise HTTPException(
             status_code=409,
-            detail="Bukti penerimaan hanya dapat diunggah setelah vendor mengirim pesanan",
+            detail="Faskes harus mengonfirmasi penerimaan barang lengkap lebih dulu",
         )
     if not data.items_complete:
         raise HTTPException(
@@ -428,29 +516,8 @@ def distribute_order_to_family(
         raise HTTPException(status_code=422, detail="Nama penerima dan foto bukti wajib diisi")
 
     try:
-        receipt = (
-            db.query(FacilityOrderReceipt)
-            .filter_by(order_id=order.id, is_active=True)
-            .first()
-        )
-        if not receipt:
-            db.add(
-                FacilityOrderReceipt(
-                    order_id=order.id,
-                    handover_token_id=None,
-                    received_by_user_id=facility.account_user_id,
-                    received_at=datetime.utcnow(),
-                    notes="Tercatat otomatis saat bukti penerimaan keluarga diunggah",
-                )
-            )
         order.status = "completed"
-        funding_status = order_funding(db, order)["funding_status"]
-        if funding_status == "not_connected":
-            reserve_order_funding(db, order)
-            funding_status = "reserved"
-        if funding_status == "reserved":
-            spend_order_funding(db, order)
-        elif funding_status != "spent":
+        if order_funding(db, order)["funding_status"] not in {"reserved", "spent"}:
             raise InsufficientPoolFunds("Pendanaan pesanan belum lengkap.")
         distribution = AidDistribution(
             order_id=order.id,
@@ -478,7 +545,6 @@ def distribute_order_to_family(
                 for item in order.items
             ]
         )
-        order.payment_status = "paid"
         db.commit()
     except InsufficientPoolFunds as exc:
         db.rollback()
@@ -492,6 +558,73 @@ def distribute_order_to_family(
     return order_payload(db, order)
 
 
+@facility_router.post("/{order_id}/receipt")
+def confirm_facility_receipt(
+    order_id: UUID,
+    data: ReceiptInput,
+    db: Session = Depends(get_db),
+    facility: HealthFacility = Depends(current_facility),
+):
+    order = (
+        db.query(Order)
+        .filter_by(id=order_id, order_flow="facility_delivery", health_facility_id=facility.id, is_active=True)
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
+    if order.status not in {"processing", "received"}:
+        raise HTTPException(status_code=409, detail="Vendor harus mengirim pesanan lebih dulu")
+    now = datetime.utcnow()
+    arrival = data.arrived_at.astimezone(timezone.utc).replace(tzinfo=None) if data.arrived_at.tzinfo else data.arrived_at
+    earliest = order.dispatched_at or order.created_at
+    if arrival > now or (earliest and arrival < earliest - timedelta(seconds=1)):
+        raise HTTPException(status_code=422, detail="Waktu kedatangan harus setelah pesanan dikirim dan tidak di masa depan")
+    if not data.items_complete and not (data.notes and data.notes.strip()):
+        raise HTTPException(status_code=422, detail="Jelaskan barang yang rusak, kurang, atau tidak sesuai")
+    receipt = db.query(FacilityOrderReceipt).filter_by(order_id=order.id, is_active=True).with_for_update().first()
+    if receipt and receipt.status == "accepted":
+        return order_payload(db, order)
+    if receipt and receipt.status == "discrepancy" and not data.items_complete:
+        return order_payload(db, order)
+    if receipt and arrival != receipt.arrived_at:
+        raise HTTPException(status_code=409, detail="Waktu kedatangan awal tidak dapat diubah")
+    if not receipt:
+        receipt = FacilityOrderReceipt(
+            order_id=order.id,
+            handover_token_id=None,
+            received_by_user_id=facility.account_user_id,
+            arrived_at=arrival,
+            received_at=now,
+            status="accepted" if data.items_complete else "discrepancy",
+            evidence_url=data.evidence_url,
+            notes=data.notes.strip() if data.notes else None,
+            discrepancy_notes=data.notes.strip() if not data.items_complete and data.notes else None,
+        )
+        db.add(receipt)
+    else:
+        receipt.status = "accepted"
+        receipt.received_at = now
+        receipt.received_by_user_id = facility.account_user_id
+        receipt.notes = data.notes.strip() if data.notes else None
+        receipt.evidence_url = data.evidence_url or receipt.evidence_url
+    if data.items_complete:
+        order.status = "received"
+        db.add(FacilityVendorPayout(
+            order_id=order.id,
+            vendor_id=order.vendor_id,
+            amount=order.total_amount,
+            status="pending_approval",
+            due_at=arrival + timedelta(days=3),
+        ))
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Konfirmasi bersamaan, perbarui pesanan") from exc
+    return order_payload(db, order)
+
+
 @vendor_router.get("")
 def list_vendor_facility_orders(
     db: Session = Depends(get_db), user: AuthenticatedUser = Depends(get_current_user)
@@ -501,6 +634,7 @@ def list_vendor_facility_orders(
         db.query(Order)
         .options(*_order_list_options())
         .filter_by(order_flow="facility_delivery", vendor_id=vendor.user_id, is_active=True)
+        .filter(Order.status.notin_(["pending_approval", "rejected"]))
         .order_by(Order.created_at.desc())
         .all()
     )
@@ -524,6 +658,8 @@ def dispatch_facility_order(
         raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
     if order.status != "pending":
         raise HTTPException(status_code=409, detail="Pesanan tidak dapat diproses pada status ini")
+    if order.allocation_status not in {"approved", None}:
+        raise HTTPException(status_code=409, detail="Alokasi pesanan belum disetujui Admin")
     if order_funding(db, order)["funding_status"] == "not_connected":
         try:
             reserve_order_funding(db, order)
@@ -535,5 +671,80 @@ def dispatch_facility_order(
             status_code=409, detail="Pesanan belum didanai sepenuhnya oleh pool donasi"
         )
     order.status = "processing"
+    order.dispatched_at = datetime.utcnow()
     db.commit()
     return order_payload(db, order, vendor_view=True)
+
+
+@admin_router.get("")
+def list_admin_facility_orders(
+    pending_only: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(RequireRole(["admin"])),
+):
+    query = db.query(Order).options(*_order_list_options()).filter_by(
+        order_flow="facility_delivery", is_active=True
+    )
+    if pending_only:
+        query = query.filter(Order.allocation_status == "requested")
+    orders = query.order_by(Order.created_at.desc()).all()
+    return order_payloads(db, orders)
+
+
+@admin_router.post("/{order_id}/approve")
+def approve_facility_allocation(
+    order_id: UUID,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(RequireRole(["admin"])),
+):
+    order = db.query(Order).filter_by(id=order_id, order_flow="facility_delivery", is_active=True).with_for_update().first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Permintaan tidak ditemukan")
+    if order.allocation_status == "approved":
+        return order_payload(db, order)
+    if order.status != "pending_approval" or order.allocation_status != "requested":
+        raise HTTPException(status_code=409, detail="Permintaan sudah diputuskan")
+    if order.placed_by_user_id == user.user_id:
+        raise HTTPException(status_code=403, detail="Pengaju tidak dapat menyetujui alokasinya sendiri")
+    vendor = db.query(VendorProfile).filter_by(user_id=order.vendor_id, is_active=True).first()
+    if not vendor or vendor.approval_status != "approved" or vendor.settlement_status != "active":
+        raise HTTPException(status_code=409, detail="Vendor tidak memenuhi syarat")
+    for item in order.items:
+        if not item.product or not item.product.is_active or item.product.approval_status != "approved":
+            raise HTTPException(status_code=409, detail="Ada produk yang tidak lagi disetujui")
+    try:
+        reserve_order_funding(db, order)
+        order.allocation_status = "approved"
+        order.allocation_decided_by_user_id = user.user_id
+        order.allocation_decided_at = datetime.utcnow()
+        order.status = "pending"
+        db.commit()
+    except InsufficientPoolFunds as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return order_payload(db, order)
+
+
+@admin_router.post("/{order_id}/reject")
+def reject_facility_allocation(
+    order_id: UUID,
+    data: AllocationRejectionInput,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(RequireRole(["admin"])),
+):
+    order = db.query(Order).filter_by(id=order_id, order_flow="facility_delivery", is_active=True).with_for_update().first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Permintaan tidak ditemukan")
+    if order.status != "pending_approval" or order.allocation_status != "requested":
+        raise HTTPException(status_code=409, detail="Permintaan sudah diputuskan")
+    for item in order.items:
+        product = db.query(Product).filter_by(id=item.product_id).with_for_update().first()
+        if product:
+            product.stock_quantity += item.quantity
+    order.status = "rejected"
+    order.allocation_status = "rejected"
+    order.allocation_decided_by_user_id = user.user_id
+    order.allocation_decided_at = datetime.utcnow()
+    order.allocation_reason = data.reason.strip()
+    db.commit()
+    return order_payload(db, order)

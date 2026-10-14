@@ -20,6 +20,7 @@ from app.schemas.product import (
     ProductListResponse,
     ProductQueryParams,
 )
+from app.services.regions import REGENCIES, area_names
 import logging
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ async def list_products(
     min_price: Optional[str] = None,
     max_price: Optional[str] = None,
     in_stock_only: bool = False,
+    service_regency_code: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: Optional[AuthenticatedUser] = Depends(OptionalAuth),
 ):
@@ -66,7 +68,10 @@ async def list_products(
         min_price=Decimal(min_price) if min_price else None,
         max_price=Decimal(max_price) if max_price else None,
         in_stock_only=in_stock_only,
+        service_regency_code=service_regency_code,
     )
+    if service_regency_code and service_regency_code not in REGENCIES:
+        raise HTTPException(status_code=422, detail="Kota/kabupaten tidak valid")
 
     include_unapproved = bool(
         current_user
@@ -88,6 +93,9 @@ async def list_products(
             p_dict["category_name"] = p.category.name
         if p.vendor_profile:
             p_dict["vendor_store_name"] = p.vendor_profile.store_name
+        p_dict["service_province_name"], p_dict["service_regency_name"] = area_names(
+            p.service_province_code, p.service_regency_code
+        )
         items.append(ProductResponse(**p_dict))
 
     return ProductListResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
@@ -115,6 +123,9 @@ async def get_product(
         p_dict["category_name"] = product.category.name
     if product.vendor_profile:
         p_dict["vendor_store_name"] = product.vendor_profile.store_name
+    p_dict["service_province_name"], p_dict["service_regency_name"] = area_names(
+        product.service_province_code, product.service_regency_code
+    )
     return ProductResponse(**p_dict)
 
 
@@ -125,7 +136,12 @@ async def create_product(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Create a new product (vendor only, auto-set approval_status=pending)"""
-    return ProductService.create_product(db, current_user.user_id, data)
+    if current_user.role != "vendor":
+        raise HTTPException(status_code=403, detail="Khusus akun vendor")
+    try:
+        return ProductService.create_product(db, current_user.user_id, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
@@ -136,13 +152,19 @@ async def update_product(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Update own product (vendor only, keeps existing approval status)"""
-    product = ProductService.update_product(db, product_id, current_user.user_id, data)
+    try:
+        product = ProductService.update_product(db, product_id, current_user.user_id, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found or not yours")
 
     p_dict = ProductResponse.model_validate(product).model_dump()
     if product.category:
         p_dict["category_name"] = product.category.name
+    p_dict["service_province_name"], p_dict["service_regency_name"] = area_names(
+        product.service_province_code, product.service_regency_code
+    )
     return ProductResponse(**p_dict)
 
 

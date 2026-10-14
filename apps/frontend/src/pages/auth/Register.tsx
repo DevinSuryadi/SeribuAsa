@@ -161,7 +161,7 @@ export default function Register() {
       }
 
       if (requiresManualLogin) {
-        toast.success("Akun faskes dibuat. Silakan masuk dengan email dan kata sandi.");
+        toast.success("Akun dibuat. Periksa email jika perlu verifikasi, lalu masuk untuk melengkapi profil.");
         navigate("/login");
       } else {
         toast.success("Registrasi berhasil!");

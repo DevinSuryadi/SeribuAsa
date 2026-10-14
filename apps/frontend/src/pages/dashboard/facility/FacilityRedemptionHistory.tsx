@@ -146,10 +146,13 @@ export default function FacilityRedemptionHistory() {
   const showingPreview = import.meta.env.DEV && !familyId && actualHistory.length === 0;
   const history = showingPreview ? previewHistory : actualHistory;
   const readyForProof = useMemo(() => familyId
-    ? orders.filter((order) => !order.distribution && (order.status === "processing" || order.status === "completed"))
+    ? orders.filter((order) => !order.distribution && order.receipt_status === "accepted")
     : [], [familyId, orders]);
   const waitingForVendor = useMemo(() => familyId
     ? orders.filter((order) => !order.distribution && order.status === "pending")
+    : [], [familyId, orders]);
+  const waitingForApproval = useMemo(() => familyId
+    ? orders.filter((order) => order.status === "pending_approval")
     : [], [familyId, orders]);
   const filteredHistory = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -208,9 +211,10 @@ export default function FacilityRedemptionHistory() {
         {!loading && !error && familyId && waitingForVendor.length > 0 && (
           <div className="flex gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
             <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
-            <div><p className="font-semibold text-blue-950">{waitingForVendor.length} pesanan sedang disiapkan vendor</p><p className="mt-1 text-sm text-blue-800">Upload bukti tersedia setelah vendor mengirim pesanan.</p></div>
+            <div><p className="font-semibold text-blue-950">{waitingForVendor.length} pesanan sedang disiapkan vendor</p><p className="mt-1 text-sm text-blue-800">Bukti penyaluran tersedia setelah Faskes mengonfirmasi barang diterima lengkap.</p></div>
           </div>
         )}
+        {!loading && !error && familyId && waitingForApproval.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{waitingForApproval.length} permintaan bantuan menunggu persetujuan alokasi Admin. Vendor belum dapat memprosesnya.</div>}
 
         <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">
           <CardHeader className="gap-4 border-b border-border/70 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">

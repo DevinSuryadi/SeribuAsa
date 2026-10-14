@@ -1,6 +1,6 @@
 """Facility orders track arrival and evidence-backed family distribution."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
@@ -16,6 +16,7 @@ from app.models.facility import (
     AidDistribution,
     AidDistributionItem,
     FacilityOrderReceipt,
+    FacilityVendorPayout,
     HealthFacility,
     OrderFundingAllocation,
     RecipientFamily,
@@ -43,6 +44,7 @@ def test_facility_order_distribution_and_stock(monkeypatch):
         Order,
         OrderItem,
         FacilityOrderReceipt,
+        FacilityVendorPayout,
         OrderFundingAllocation,
         AidDistribution,
         AidDistributionItem,
@@ -55,6 +57,7 @@ def test_facility_order_distribution_and_stock(monkeypatch):
     other_vendor_user = uuid4()
     donor_user = uuid4()
     other_donor_user = uuid4()
+    admin_user = uuid4()
     vendor_identity = {"id": vendor_user, "role": "vendor"}
 
     async def verify_token(token):
@@ -69,6 +72,7 @@ def test_facility_order_distribution_and_stock(monkeypatch):
             (other_vendor_user, "Vendor B"),
             (donor_user, "Donor A"),
             (other_donor_user, "Donor B"),
+            (admin_user, "Admin"),
         ):
             db.add(UserProfile(user_id=user_id, full_name=name))
         db.flush()
@@ -98,16 +102,16 @@ def test_facility_order_distribution_and_stock(monkeypatch):
             ]
         )
         facility = HealthFacility(
-            account_user_id=facility_user, name="Faskes A", address="Alamat A"
+            account_user_id=facility_user, name="Faskes A", address="Alamat A", approval_status="approved"
         )
-        other_facility = HealthFacility(account_user_id=other_facility_user, name="Faskes B")
+        other_facility = HealthFacility(account_user_id=other_facility_user, name="Faskes B", approval_status="approved")
         db.add_all(
             [
                 facility,
                 other_facility,
-                VendorProfile(user_id=vendor_user, store_name="Toko A", store_address="Jalan A"),
+                VendorProfile(user_id=vendor_user, store_name="Toko A", store_address="Jalan A", approval_status="approved", bank_name="Bank Uji", bank_account_number="1234567890", bank_account_holder="Toko A"),
                 VendorProfile(
-                    user_id=other_vendor_user, store_name="Toko B", store_address="Jalan B"
+                    user_id=other_vendor_user, store_name="Toko B", store_address="Jalan B", approval_status="approved"
                 ),
             ]
         )
@@ -127,6 +131,8 @@ def test_facility_order_distribution_and_stock(monkeypatch):
             voucher_price=35000,
             stock_quantity=5,
             approval_status="approved",
+            service_province_code="15",
+            service_regency_code="15.71",
         )
         other_product = Product(
             vendor_id=other_vendor_user,
@@ -135,6 +141,8 @@ def test_facility_order_distribution_and_stock(monkeypatch):
             voucher_price=20000,
             stock_quantity=3,
             approval_status="approved",
+            service_province_code="15",
+            service_regency_code="15.72",
         )
         db.add_all([family, other_family, product, other_product])
         db.commit()
@@ -163,9 +171,35 @@ def test_facility_order_distribution_and_stock(monkeypatch):
         url = "/api/v1/facilities/orders"
         payload = {
             "family_id": str(family_id),
+            "vendor_id": str(vendor_user),
+            "service_province_code": "15",
+            "service_regency_code": "15.71",
             "client_request_id": str(uuid4()),
             "items": [{"product_id": str(product_id), "quantity": 2}],
         }
+        provinces = client.get("/api/v1/regions/provinces")
+        assert provinces.status_code == 200
+        assert any(row["code"] == "15" for row in provinces.json())
+        assert client.get("/api/v1/regions/provinces/15/regencies").status_code == 200
+        assert client.get("/api/v1/regions/provinces/invalid/regencies").status_code == 404
+        eligible = client.get(
+            "/api/v1/facilities/catalog/vendors?province_code=15&regency_code=15.71",
+            headers=facility_headers,
+        )
+        assert eligible.status_code == 200, eligible.text
+        assert [vendor["id"] for vendor in eligible.json()] == [str(vendor_user)]
+        regional_products = client.get("/api/v1/products/?service_regency_code=15.71")
+        assert regional_products.status_code == 200, regional_products.text
+        assert [item["id"] for item in regional_products.json()["items"]] == [str(product_id)]
+        assert client.get(
+            "/api/v1/facilities/catalog/vendors?province_code=11&regency_code=15.71",
+            headers=facility_headers,
+        ).status_code == 422
+        assert client.post(
+            url,
+            json={**payload, "service_regency_code": "15.72"},
+            headers=facility_headers,
+        ).status_code == 400
         assert (
             client.post(
                 url, json={**payload, "family_id": str(other_family_id)}, headers=facility_headers
@@ -187,7 +221,10 @@ def test_facility_order_distribution_and_stock(monkeypatch):
         created = client.post(url, json=payload, headers=facility_headers)
         assert created.status_code == 201, created.text
         order_id = created.json()["id"]
-        assert created.json()["funding_status"] == "reserved"
+        assert created.json()["funding_status"] == "not_connected"
+        assert created.json()["status"] == "pending_approval"
+        assert created.json()["allocation_status"] == "requested"
+        assert created.json()["service_regency_code"] == "15.71"
         assert created.json()["total_amount"] == 70000
         assert client.post(url, json=payload, headers=facility_headers).json()["id"] == order_id
         assert (
@@ -207,8 +244,21 @@ def test_facility_order_distribution_and_stock(monkeypatch):
             },
             headers=facility_headers,
         )
-        assert insufficient.status_code == 409
-        assert "pool" in insufficient.json()["detail"].lower()
+        assert insufficient.status_code == 201
+        assert client.get("/api/v1/vendor/facility-orders").json() == []
+        assert client.post(f"/api/v1/vendor/facility-orders/{order_id}/dispatch").status_code == 409
+        assert client.get("/api/v1/admin/facility-orders").status_code == 403
+        vendor_identity.update(id=facility_user, role="admin")
+        assert client.post(f"/api/v1/admin/facility-orders/{order_id}/approve").status_code == 403
+        vendor_identity.update(id=admin_user, role="admin")
+        assert client.get("/api/v1/admin/facility-orders").status_code == 200
+        assert client.post(f"/api/v1/admin/facility-orders/{order_id}/approve").status_code == 200
+        assert client.post(f"/api/v1/admin/facility-orders/{order_id}/approve").status_code == 200
+        no_funds = client.post(f"/api/v1/admin/facility-orders/{insufficient.json()['id']}/approve")
+        assert no_funds.status_code == 409
+        assert "pool" in no_funds.json()["detail"].lower()
+        assert client.post(f"/api/v1/admin/facility-orders/{insufficient.json()['id']}/reject", json={"reason": "Dana donasi belum mencukupi"}).status_code == 200
+        vendor_identity.update(id=vendor_user, role="vendor")
         assert client.get(url, headers=other_headers).json() == []
         assert client.get(f"{url}/history", headers=facility_headers).json() == []
         assert (
@@ -219,7 +269,7 @@ def test_facility_order_distribution_and_stock(monkeypatch):
         )
         with sessions() as db:
             assert db.get(Product, product_id).stock_quantity == 3
-            assert db.query(Order).count() == 1
+            assert db.query(Order).count() == 2
             assert sorted(int(row.amount) for row in db.query(OrderFundingAllocation).all()) == [
                 20000,
                 50000,
@@ -240,6 +290,7 @@ def test_facility_order_distribution_and_stock(monkeypatch):
         assert client.post(f"{vendor_url}/dispatch").status_code == 404
         vendor_identity["id"] = vendor_user
         assert client.get("/api/v1/vendor/facility-orders").json()[0]["family_name"] is None
+        assert client.get("/api/v1/vendor/facility-payouts").json() == []
         distribution_payload = {
             "recipient_name": "Ibu Keluarga A",
             "recipient_relation": "Pasangan",
@@ -275,17 +326,82 @@ def test_facility_order_distribution_and_stock(monkeypatch):
                 json={**distribution_payload, "items_complete": False},
                 headers=facility_headers,
             ).status_code
-            == 422
+            == 409
         )
+        arrival = datetime.now(timezone.utc).isoformat()
+        receipt_url = f"{url}/{order_id}/receipt"
+        assert client.post(receipt_url, json={"arrived_at": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(), "items_complete": True}, headers=facility_headers).status_code == 422
+        assert client.post(receipt_url, json={"arrived_at": arrival, "items_complete": False}, headers=facility_headers).status_code == 422
+        assert client.post(receipt_url, json={"arrived_at": arrival, "items_complete": True}, headers=other_headers).status_code == 404
+        discrepancy = client.post(receipt_url, json={
+            "arrived_at": arrival, "items_complete": False, "notes": "Satu barang rusak",
+        }, headers=facility_headers)
+        assert discrepancy.status_code == 200, discrepancy.text
+        assert discrepancy.json()["receipt_status"] == "discrepancy"
+        assert discrepancy.json()["payout_status"] is None
+        assert client.post(f"{url}/{order_id}/distribute", json=distribution_payload, headers=facility_headers).status_code == 409
+        accepted = client.post(receipt_url, json={
+            "arrived_at": arrival, "items_complete": True, "notes": "Barang pengganti diterima lengkap",
+            "evidence_url": "https://example.org/receipt.jpg",
+        }, headers=facility_headers)
+        assert accepted.status_code == 200, accepted.text
+        assert accepted.json()["status"] == "received"
+        assert accepted.json()["receipt_status"] == "accepted"
+        assert accepted.json()["payout_status"] == "pending_approval"
+        assert accepted.json()["payment_status"] == "pending"
+        assert accepted.json()["funding_status"] == "reserved"
+        assert datetime.fromisoformat(accepted.json()["payout_due_at"]) - datetime.fromisoformat(accepted.json()["arrived_at"]) == timedelta(days=3)
+        assert accepted.json()["discrepancy_notes"] == "Satu barang rusak"
+        assert client.post(f"{url}/{order_id}/distribute", json={**distribution_payload, "items_complete": False}, headers=facility_headers).status_code == 422
+        assert client.post(receipt_url, json={"arrived_at": arrival, "items_complete": True}, headers=facility_headers).status_code == 200
+        assert client.get("/api/v1/admin/facility-payouts").status_code == 403
+        vendor_payouts = client.get("/api/v1/vendor/facility-payouts")
+        assert vendor_payouts.status_code == 200
+        assert len(vendor_payouts.json()) == 1
+        payout_id = vendor_payouts.json()[0]["id"]
+        assert client.post(f"/api/v1/admin/facility-payouts/{payout_id}/approve").status_code == 403
+        vendor_identity.update(id=facility_user, role="admin")
+        admin_payouts = client.get("/api/v1/admin/facility-payouts")
+        assert admin_payouts.status_code == 200
+        assert len(admin_payouts.json()) == 1
+        assert admin_payouts.json()[0]["bank_account_number"] == "1234567890"
+        transfer_payload = {"transfer_reference": "BANK-001", "transferred_at": datetime.now(timezone.utc).isoformat()}
+        assert client.post(f"/api/v1/admin/facility-payouts/{payout_id}/record-transfer", json=transfer_payload).status_code == 409
+        with sessions() as db:
+            db.query(VendorProfile).filter_by(user_id=vendor_user).first().settlement_status = "suspended"
+            db.commit()
+        assert client.post(f"/api/v1/admin/facility-payouts/{payout_id}/approve").status_code == 409
+        with sessions() as db:
+            db.query(VendorProfile).filter_by(user_id=vendor_user).first().settlement_status = "active"
+            db.commit()
+        approved = client.post(f"/api/v1/admin/facility-payouts/{payout_id}/approve")
+        assert approved.status_code == 200, approved.text
+        assert approved.json()["status"] == "approved"
+        transfer_payload["transferred_at"] = datetime.now(timezone.utc).isoformat()
+        with sessions() as db:
+            db.query(VendorProfile).filter_by(user_id=vendor_user).first().settlement_status = "suspended"
+            db.commit()
+        assert client.post(f"/api/v1/admin/facility-payouts/{payout_id}/record-transfer", json=transfer_payload).status_code == 409
+        with sessions() as db:
+            db.query(VendorProfile).filter_by(user_id=vendor_user).first().settlement_status = "active"
+            db.commit()
+        transfer_payload["transferred_at"] = datetime.now(timezone.utc).isoformat()
+        paid = client.post(f"/api/v1/admin/facility-payouts/{payout_id}/record-transfer", json=transfer_payload)
+        assert paid.status_code == 200, paid.text
+        assert paid.json()["status"] == "paid"
+        assert next(row for row in client.get(url, headers=facility_headers).json() if row["id"] == order_id)["funding_status"] == "spent"
+        assert client.post(f"/api/v1/admin/facility-payouts/{payout_id}/record-transfer", json=transfer_payload).status_code == 200
+        assert client.post(f"/api/v1/admin/facility-payouts/{payout_id}/record-transfer", json={**transfer_payload, "transfer_reference": "BANK-002"}).status_code == 409
+        assert client.get("/api/v1/admin/facility-payouts?unpaid_only=true").json() == []
+        vendor_identity.update(id=vendor_user, role="vendor")
         distributed = client.post(
             f"{url}/{order_id}/distribute", json=distribution_payload, headers=facility_headers
         )
         assert distributed.status_code == 200, distributed.text
         assert distributed.json()["status"] == "completed"
         assert distributed.json()["funding_status"] == "spent"
-        assert distributed.json()["receipt_notes"] == (
-            "Tercatat otomatis saat bukti penerimaan keluarga diunggah"
-        )
+        assert distributed.json()["receipt_notes"] == "Barang pengganti diterima lengkap"
+        assert distributed.json()["payment_status"] == "paid"
         assert distributed.json()["distribution"]["recipient_name"] == "Ibu Keluarga A"
         assert (
             distributed.json()["distribution"]["evidence_url"]
@@ -305,7 +421,7 @@ def test_facility_order_distribution_and_stock(monkeypatch):
             f"{url}?family_id={family_id}", headers=facility_headers
         )
         assert family_orders.status_code == 200
-        assert [entry["id"] for entry in family_orders.json()] == [order_id]
+        assert {entry["id"] for entry in family_orders.json()} == {order_id, insufficient.json()["id"]}
         assert (
             client.get(
                 f"{url}?family_id={other_family_id}", headers=facility_headers
@@ -353,7 +469,10 @@ def test_facility_order_distribution_and_stock(monkeypatch):
         cancel_payload = {**payload, "client_request_id": str(uuid4())}
         cancelled = client.post(url, json=cancel_payload, headers=facility_headers)
         assert cancelled.status_code == 201
-        assert cancelled.json()["funding_status"] == "reserved"
+        assert cancelled.json()["funding_status"] == "not_connected"
+        vendor_identity.update(id=admin_user, role="admin")
+        assert client.post(f"/api/v1/admin/facility-orders/{cancelled.json()['id']}/approve").status_code == 200
+        vendor_identity.update(id=vendor_user, role="vendor")
         with sessions() as db:
             donor_two_donations = db.query(Donation).filter_by(donor_id=other_donor_user).all()
             assert len(donor_two_donations) == 1
