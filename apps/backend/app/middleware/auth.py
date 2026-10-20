@@ -4,6 +4,7 @@ Supports both Supabase JWT validation (production) and mock auth (development)
 """
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from starlette.concurrency import run_in_threadpool
 from typing import Optional, List
 import logging
 import os
@@ -234,7 +235,11 @@ async def get_current_user(
         token_role = _normalize_role(user_info.get("role"))
         app_metadata = token_data.get("app_metadata") if isinstance(token_data.get("app_metadata"), dict) else {}
         trusted_role = _normalize_role(app_metadata.get("role"))
-        db_role = _resolve_role_from_db(UUID(str(user_info["user_id"])), None)
+        # Role lookup uses synchronous SQLAlchemy/psycopg2. Keep database I/O
+        # off the event loop so concurrent dashboard requests can make progress.
+        db_role = await run_in_threadpool(
+            _resolve_role_from_db, UUID(str(user_info["user_id"])), None
+        )
         if trusted_role in {"admin", "government"}:
             actual_role = trusted_role
         elif db_role == "health_facility":

@@ -29,7 +29,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 
 @router.get("/categories", response_model=list[CategoryResponse])
-async def list_categories(db: Session = Depends(get_db)):
+def list_categories(db: Session = Depends(get_db)):
     """List all active categories"""
     return ProductService.get_categories(db)
 
@@ -45,7 +45,7 @@ async def create_category(
 
 
 @router.get("/", response_model=ProductListResponse)
-async def list_products(
+def list_products(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     category_id: Optional[str] = None,

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { getOrders } from "@/services/orders";
 import { getProducts } from "@/services/products";
 import { getWalletBalance } from "@/services/vendor-wallet";
@@ -52,6 +53,8 @@ export interface UseVendorDataReturn {
  * status loading, error, dan fungsi refetch (total & individual)
  */
 export function useVendorData(): UseVendorDataReturn {
+  const { user } = useAuth();
+  const vendorId = user?.id;
   const [orders, setOrders] = useState<VendorOrder[]>([]);
   const [products, setProducts] = useState<VendorProduct[]>([]);
   const [wallet, setWallet] = useState<VendorWallet | null>(null);
@@ -69,14 +72,15 @@ export function useVendorData(): UseVendorDataReturn {
   }, []);
 
   const refetchProducts = useCallback(async () => {
+    if (!vendorId) return;
     try {
-      const res = await getProducts();
+      const res = await getProducts({ vendor_id: vendorId });
       setProducts((res.items || []) as unknown as VendorProduct[]);
     } catch (err: unknown) {
       console.error("Failed to fetch products", err);
       throw err;
     }
-  }, []);
+  }, [vendorId]);
 
   const refetchWallet = useCallback(async () => {
     try {
@@ -113,8 +117,8 @@ export function useVendorData(): UseVendorDataReturn {
   }, [refetchOrders, refetchProducts, refetchWallet]);
 
   useEffect(() => {
-    refetch();
-  }, [refetch]);
+    if (vendorId) void refetch();
+  }, [refetch, vendorId]);
 
   return {
     data: { orders, products, wallet },

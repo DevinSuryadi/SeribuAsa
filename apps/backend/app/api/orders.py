@@ -236,7 +236,7 @@ async def checkout_cart_multi_vendor(
 
 
 @router.get("/", response_model=OrderListResponse)
-async def list_orders(
+def list_orders(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     status_filter: Optional[str] = Query(None, alias="status"),

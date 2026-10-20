@@ -87,7 +87,7 @@ def _serialize_withdrawal(withdrawal: Withdrawal) -> dict:
 
 
 @router.get("/balance", response_model=VendorWalletBalanceResponse)
-async def get_wallet_balance(
+def get_wallet_balance(
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ):

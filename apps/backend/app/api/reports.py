@@ -42,7 +42,7 @@ async def get_impact_report(
 
 
 @router.get("/sales", response_model=SalesReportResponse)
-async def get_sales_report(
+def get_sales_report(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
