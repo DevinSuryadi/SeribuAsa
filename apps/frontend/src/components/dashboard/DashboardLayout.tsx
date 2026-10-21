@@ -76,7 +76,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Verifikasi Faskes", href: "/dashboard/admin/facilities", icon: Shield },
     { label: "Kelola Donasi", href: "/dashboard/admin/donations", icon: Heart },
     { label: "Kelola Pesanan", href: "/dashboard/admin/orders", icon: ShoppingCart },
-    { label: "Alokasi Faskes", href: "/dashboard/admin/facility-allocations", icon: ClipboardList },
+    { label: "Monitoring Pesanan", href: "/dashboard/admin/facility-allocations", icon: ClipboardList },
     { label: "Pencairan Faskes", href: "/dashboard/admin/facility-payouts", icon: CreditCard },
     { label: "Kelola Voucher", href: "/dashboard/admin/vouchers", icon: Wallet },
     { label: "Laporan & Ekspor", href: "/dashboard/admin/reports", icon: TrendingUp },

@@ -5,7 +5,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { adminSWRConfig } from "@/lib/swr-config";
 import type { AdminStats } from "./admin/types";
 import type { FacilityPayout } from "@/services/facility-payouts";
-import type { FacilityOrder } from "@/services/facility-orders";
+import { listAdminFacilityOrders, type FacilityOrder } from "@/services/facility-orders";
 import type { AdminFacility } from "@/services/admin-facilities";
 import {
   KPICards,
@@ -25,7 +25,7 @@ function AdminDashboardContent() {
     mutate,
   } = useSWR<AdminStats>("/admin/stats", adminSWRConfig);
   const { data: facilityPayouts } = useSWR<FacilityPayout[]>("/admin/facility-payouts?unpaid_only=true", adminSWRConfig);
-  const { data: facilityAllocations } = useSWR<FacilityOrder[]>("/admin/facility-orders?pending_only=true", adminSWRConfig);
+  const { data: facilityOrders } = useSWR<FacilityOrder[]>("/admin/facility-orders?pending_only=true", () => listAdminFacilityOrders(true), adminSWRConfig);
   const { data: facilities } = useSWR<AdminFacility[]>("/admin/facilities", adminSWRConfig);
   const pendingFacilities = facilities?.filter((item) => item.approval_status === "pending").length || 0;
   const unpaid = facilityPayouts?.filter((item) => item.status !== "paid") || [];
@@ -56,7 +56,7 @@ function AdminDashboardContent() {
           <strong>{overdue ? `${overdue} pencairan Vendor melewati batas tiga hari` : `${unpaid.length} pencairan Vendor perlu ditindaklanjuti`}</strong>
           <span className="ml-2 underline">Buka antrean pencairan</span>
         </Link>}
-        {Boolean(facilityAllocations?.length) && <Link to="/dashboard/admin/facility-allocations" className="relative rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><strong>{facilityAllocations?.length} permintaan Faskes menunggu persetujuan alokasi</strong><span className="ml-2 underline">Tinjau permintaan</span></Link>}
+        {Boolean(facilityOrders?.length) && <Link to="/dashboard/admin/facility-allocations" className="relative rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><strong>{facilityOrders?.length} pesanan Faskes menunggu proses vendor</strong><span className="ml-2 underline">Pantau pesanan</span></Link>}
         {pendingFacilities > 0 && <Link to="/dashboard/admin/facilities" className="relative rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><strong>{pendingFacilities} Faskes menunggu verifikasi</strong><span className="ml-2 underline">Tinjau Faskes</span></Link>}
 
         {/* KPI Cards */}

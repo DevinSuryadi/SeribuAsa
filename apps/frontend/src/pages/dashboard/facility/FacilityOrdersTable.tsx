@@ -24,7 +24,7 @@ import { toast } from "sonner";
 type OrderTab =
   | "all"
   | "waiting"
-  | "approval"
+  | "funding"
   | "processing"
   | "shipped"
   | "received"
@@ -83,7 +83,7 @@ const previewOrders: FacilityOrder[] = [
 
 const tabItems: { key: OrderTab; label: string }[] = [
   { key: "all", label: "Semua" },
-  { key: "approval", label: "Persetujuan Admin" },
+  { key: "funding", label: "Menunggu dana" },
   { key: "waiting", label: "Menunggu vendor" },
   { key: "processing", label: "Diproses" },
   { key: "shipped", label: "Dikirim" },
@@ -96,7 +96,7 @@ const tabItems: { key: OrderTab; label: string }[] = [
 function statusKey(order: FacilityOrder): Exclude<OrderTab, "all" | "processing"> {
   if (order.status === "cancelled") return "cancelled";
   if (order.status === "rejected") return "rejected";
-  if (order.status === "pending_approval") return "approval";
+  if (order.status === "pending_approval") return "funding";
   if (order.distribution || order.status === "completed") return "finished";
   if (order.status === "received") return "received";
   if (order.status === "processing") return "shipped";
@@ -108,7 +108,7 @@ function statusLabel(order: FacilityOrder) {
   const key = statusKey(order);
   if (key === "cancelled") return "Dibatalkan";
   if (key === "rejected") return "Ditolak Admin";
-  if (key === "approval") return "Menunggu persetujuan Admin";
+  if (key === "funding") return "Pesanan lama belum didanai";
   if (key === "finished") return order.distribution ? "Selesai" : "Menunggu bukti";
   if (key === "received") return "Diterima Faskes";
   if (key === "shipped") return "Dikirim";
@@ -120,7 +120,7 @@ function statusClass(order: FacilityOrder) {
   const key = statusKey(order);
   if (key === "cancelled") return "border-red-200 bg-red-50 text-red-700";
   if (key === "rejected") return "border-red-200 bg-red-50 text-red-700";
-  if (key === "approval") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (key === "funding") return "border-amber-200 bg-amber-50 text-amber-800";
   if (key === "finished") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (key === "received") return "border-teal-200 bg-teal-50 text-teal-700";
   if (key === "shipped") return "border-blue-200 bg-blue-50 text-blue-700";
@@ -137,11 +137,11 @@ function itemSummary(order: FacilityOrder) {
 
 function progressIndex(order: FacilityOrder) {
   if (order.status === "cancelled" || order.status === "rejected") return -1;
-  if (order.distribution || order.status === "completed") return 5;
-  if (order.status === "received") return 4;
-  if (order.status === "processing") return 3;
-  if (order.status === "pending") return 1;
-  return 0;
+  if (order.distribution || order.status === "completed") return 4;
+  if (order.status === "received") return 3;
+  if (order.status === "processing") return 2;
+  if (order.status === "pending") return 0;
+  return -1;
 }
 
 export default function FacilityOrdersTable() {
@@ -184,7 +184,7 @@ export default function FacilityOrdersTable() {
   const counts = useMemo(() => {
     const result: Record<OrderTab, number> = {
       all: rows.length,
-      approval: 0,
+      funding: 0,
       waiting: 0,
       processing: 0,
       shipped: 0,
@@ -228,7 +228,6 @@ export default function FacilityOrdersTable() {
 
   const steps = selected
     ? [
-        { label: "Persetujuan Admin", note: "Menunggu review alokasi" },
         { label: "Menunggu vendor", note: "Vendor belum mengonfirmasi" },
         { label: "Diproses vendor", note: "Belum" },
         { label: "Dikirim ke faskes", note: "Belum" },
@@ -268,7 +267,7 @@ export default function FacilityOrdersTable() {
     >
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <nav className="flex overflow-x-auto border-b border-slate-200 px-4" aria-label="Filter status pesanan">
-          {tabItems.map((tab) => (
+          {tabItems.filter((tab) => tab.key !== "funding" || counts.funding > 0).map((tab) => (
             <button
               key={tab.key}
               type="button"

@@ -151,7 +151,7 @@ export default function FacilityRedemptionHistory() {
   const waitingForVendor = useMemo(() => familyId
     ? orders.filter((order) => !order.distribution && order.status === "pending")
     : [], [familyId, orders]);
-  const waitingForApproval = useMemo(() => familyId
+  const waitingForFunding = useMemo(() => familyId
     ? orders.filter((order) => order.status === "pending_approval")
     : [], [familyId, orders]);
   const filteredHistory = useMemo(() => {
@@ -214,7 +214,7 @@ export default function FacilityRedemptionHistory() {
             <div><p className="font-semibold text-blue-950">{waitingForVendor.length} pesanan sedang disiapkan vendor</p><p className="mt-1 text-sm text-blue-800">Bukti penyaluran tersedia setelah Faskes mengonfirmasi barang diterima lengkap.</p></div>
           </div>
         )}
-        {!loading && !error && familyId && waitingForApproval.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{waitingForApproval.length} permintaan bantuan menunggu persetujuan alokasi Admin. Vendor belum dapat memprosesnya.</div>}
+        {!loading && !error && familyId && waitingForFunding.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{waitingForFunding.length} pesanan lama belum didanai. Batalkan dari halaman Pesanan lalu pesan kembali setelah dana pool tersedia.</div>}
 
         <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">
           <CardHeader className="gap-4 border-b border-border/70 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">

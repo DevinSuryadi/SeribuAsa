@@ -124,7 +124,7 @@ export default function FacilityCatalog() {
         items: cart.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
       });
       setCart([]);
-      toast.success("Permintaan tercatat dan menunggu persetujuan alokasi Admin.");
+      toast.success("Pesanan diteruskan ke vendor dan dana sudah dicadangkan.");
       navigate("/dashboard/health-facility/orders");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Pesanan gagal dibuat");
@@ -172,7 +172,7 @@ export default function FacilityCatalog() {
             <div><label htmlFor="order-family" className="mb-1 block text-sm font-medium">Keluarga penerima</label><select id="order-family" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={selectedFamilyId} disabled={Boolean(familyId)} onChange={(event) => setSelectedFamilyId(event.target.value)}><option value="">Pilih keluarga saat akan memesan</option>{families.map((family) => <option key={family.id} value={family.id}>{family.head_name}</option>)}</select>{familyError && <p className="mt-1 text-xs text-destructive">{familyError}</p>}</div>
             {cart.length ? <div className="space-y-2 border-t pt-3">{cart.map(({ product, quantity }) => <div key={product.id} className="flex justify-between gap-2 text-sm"><span>{quantity}× {product.name}</span><span>{formatIDR(product.price * quantity)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">Pilih pangan untuk mulai memesan. Katalog dapat dilihat tanpa memilih keluarga.</p>}
             <div className="flex justify-between border-t pt-3 font-semibold"><span>Total</span><span>{formatIDR(total)}</span></div>
-            <p className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-primary">Permintaan akan ditinjau Admin. Dana pool baru dicadangkan setelah alokasi disetujui; Vendor dapat memproses pesanan sesudahnya.</p>
+            <p className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-primary">Pesanan langsung diteruskan ke vendor. Dana donasi dicadangkan saat memesan; pastikan produk dan keluarga penerima sudah sesuai.</p>
             <Button className="w-full rounded-xl" disabled={!cart.length || !selectedFamilyId || !familyName || !selectedVendorId || Boolean(familyError) || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
           </CardContent></Card>
         </div>

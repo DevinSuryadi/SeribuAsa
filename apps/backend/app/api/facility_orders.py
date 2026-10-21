@@ -86,10 +86,6 @@ class ReceiptInput(BaseModel):
         return DistributionInput.valid_evidence_url(value) if value else None
 
 
-class AllocationRejectionInput(BaseModel):
-    reason: str = Field(min_length=5, max_length=1000)
-
-
 def _funding_payload(total_amount: Decimal, amounts: dict[str, Decimal]) -> dict:
     reserved = Decimal(amounts.get("reserved") or 0)
     spent = Decimal(amounts.get("spent") or 0)
@@ -328,20 +324,15 @@ def list_facility_redemptions(
     return order_payloads(db, orders)
 
 
-@facility_router.post("", status_code=status.HTTP_201_CREATED)
-def create_facility_order(
-    data: FacilityOrderInput,
-    db: Session = Depends(get_db),
-    facility: HealthFacility = Depends(current_facility),
-):
-    family = owned_family(data.family_id, facility, db)
-    if not valid_area(data.service_province_code, data.service_regency_code):
-        raise HTTPException(status_code=422, detail="Kota/kabupaten tidak sesuai dengan provinsi")
+def _existing_facility_order(
+    db: Session, data: FacilityOrderInput, facility: HealthFacility
+) -> Order | None:
     existing = db.query(Order).filter_by(client_request_id=data.client_request_id).first()
     if existing:
         if (
-            existing.health_facility_id != facility.id
-            or existing.family_id != family.id
+            existing.order_flow != "facility_delivery"
+            or existing.health_facility_id != facility.id
+            or existing.family_id != data.family_id
             or existing.vendor_id != data.vendor_id
             or existing.service_province_code != data.service_province_code
             or existing.service_regency_code != data.service_regency_code
@@ -353,6 +344,20 @@ def create_facility_order(
             raise HTTPException(
                 status_code=409, detail="Identitas permintaan sudah dipakai untuk isi berbeda"
             )
+    return existing
+
+
+@facility_router.post("", status_code=status.HTTP_201_CREATED)
+def create_facility_order(
+    data: FacilityOrderInput,
+    db: Session = Depends(get_db),
+    facility: HealthFacility = Depends(current_facility),
+):
+    family = owned_family(data.family_id, facility, db)
+    if not valid_area(data.service_province_code, data.service_regency_code):
+        raise HTTPException(status_code=422, detail="Kota/kabupaten tidak sesuai dengan provinsi")
+    existing = _existing_facility_order(db, data, facility)
+    if existing:
         return order_payload(db, existing)
 
     quantities: dict[UUID, int] = {}
@@ -370,6 +375,10 @@ def create_facility_order(
         .with_for_update()
         .all()
     )
+    # A concurrent retry can finish while this request waits for the product locks.
+    existing = _existing_facility_order(db, data, facility)
+    if existing:
+        return order_payload(db, existing)
     if len(products) != len(quantities):
         raise HTTPException(status_code=400, detail="Ada produk yang tidak ditemukan")
     if any(product.vendor_id != data.vendor_id for product in products):
@@ -408,37 +417,36 @@ def create_facility_order(
         total_amount=total,
         voucher_used=0,
         cash_paid=0,
-        status="pending_approval",
-        allocation_status="requested",
+        status="pending",
+        allocation_status="automatic",
+        allocation_decided_at=datetime.utcnow(),
         payment_status="pending",
     )
-    db.add(order)
-    db.flush()
-    for product in products:
-        quantity = quantities[product.id]
-        product.stock_quantity -= quantity
-        db.add(
-            OrderItem(
-                order_id=order.id,
-                product_id=product.id,
-                quantity=quantity,
-                price=product.price,
-                subtotal=Decimal(product.price) * quantity,
-            )
-        )
     try:
+        db.add(order)
+        db.flush()
+        for product in products:
+            quantity = quantities[product.id]
+            product.stock_quantity -= quantity
+            db.add(
+                OrderItem(
+                    order_id=order.id,
+                    product_id=product.id,
+                    quantity=quantity,
+                    price=product.price,
+                    subtotal=Decimal(product.price) * quantity,
+                )
+            )
+        # Stock, order, and FIFO funding are committed together. The vendor only
+        # receives an order after its full amount has been reserved from the pool.
+        reserve_order_funding(db, order)
         db.commit()
+    except InsufficientPoolFunds as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except IntegrityError:
         db.rollback()
-        existing = (
-            db.query(Order)
-            .filter_by(
-                client_request_id=data.client_request_id,
-                health_facility_id=facility.id,
-                family_id=family.id,
-            )
-            .first()
-        )
+        existing = _existing_facility_order(db, data, facility)
         if existing:
             return order_payload(db, existing)
         raise HTTPException(status_code=409, detail="Pesanan bersamaan tidak dapat diproses")
@@ -468,7 +476,7 @@ def cancel_facility_order(
         product = db.query(Product).filter_by(id=item.product_id).with_for_update().first()
         product.stock_quantity += item.quantity
     order.status = "cancelled"
-    if order.allocation_status == "requested":
+    if order.allocation_status in {"requested", "automatic"}:
         order.allocation_status = "cancelled"
     release_order_funding(db, order)
     db.commit()
@@ -658,8 +666,6 @@ def dispatch_facility_order(
         raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
     if order.status != "pending":
         raise HTTPException(status_code=409, detail="Pesanan tidak dapat diproses pada status ini")
-    if order.allocation_status not in {"approved", None}:
-        raise HTTPException(status_code=409, detail="Alokasi pesanan belum disetujui Admin")
     if order_funding(db, order)["funding_status"] == "not_connected":
         try:
             reserve_order_funding(db, order)
@@ -686,65 +692,6 @@ def list_admin_facility_orders(
         order_flow="facility_delivery", is_active=True
     )
     if pending_only:
-        query = query.filter(Order.allocation_status == "requested")
+        query = query.filter(Order.status == "pending")
     orders = query.order_by(Order.created_at.desc()).all()
     return order_payloads(db, orders)
-
-
-@admin_router.post("/{order_id}/approve")
-def approve_facility_allocation(
-    order_id: UUID,
-    db: Session = Depends(get_db),
-    user: AuthenticatedUser = Depends(RequireRole(["admin"])),
-):
-    order = db.query(Order).filter_by(id=order_id, order_flow="facility_delivery", is_active=True).with_for_update().first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Permintaan tidak ditemukan")
-    if order.allocation_status == "approved":
-        return order_payload(db, order)
-    if order.status != "pending_approval" or order.allocation_status != "requested":
-        raise HTTPException(status_code=409, detail="Permintaan sudah diputuskan")
-    if order.placed_by_user_id == user.user_id:
-        raise HTTPException(status_code=403, detail="Pengaju tidak dapat menyetujui alokasinya sendiri")
-    vendor = db.query(VendorProfile).filter_by(user_id=order.vendor_id, is_active=True).first()
-    if not vendor or vendor.approval_status != "approved" or vendor.settlement_status != "active":
-        raise HTTPException(status_code=409, detail="Vendor tidak memenuhi syarat")
-    for item in order.items:
-        if not item.product or not item.product.is_active or item.product.approval_status != "approved":
-            raise HTTPException(status_code=409, detail="Ada produk yang tidak lagi disetujui")
-    try:
-        reserve_order_funding(db, order)
-        order.allocation_status = "approved"
-        order.allocation_decided_by_user_id = user.user_id
-        order.allocation_decided_at = datetime.utcnow()
-        order.status = "pending"
-        db.commit()
-    except InsufficientPoolFunds as exc:
-        db.rollback()
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return order_payload(db, order)
-
-
-@admin_router.post("/{order_id}/reject")
-def reject_facility_allocation(
-    order_id: UUID,
-    data: AllocationRejectionInput,
-    db: Session = Depends(get_db),
-    user: AuthenticatedUser = Depends(RequireRole(["admin"])),
-):
-    order = db.query(Order).filter_by(id=order_id, order_flow="facility_delivery", is_active=True).with_for_update().first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Permintaan tidak ditemukan")
-    if order.status != "pending_approval" or order.allocation_status != "requested":
-        raise HTTPException(status_code=409, detail="Permintaan sudah diputuskan")
-    for item in order.items:
-        product = db.query(Product).filter_by(id=item.product_id).with_for_update().first()
-        if product:
-            product.stock_quantity += item.quantity
-    order.status = "rejected"
-    order.allocation_status = "rejected"
-    order.allocation_decided_by_user_id = user.user_id
-    order.allocation_decided_at = datetime.utcnow()
-    order.allocation_reason = data.reason.strip()
-    db.commit()
-    return order_payload(db, order)

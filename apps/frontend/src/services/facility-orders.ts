@@ -14,7 +14,7 @@ export type FacilityOrder = {
   total_amount: number;
   status: "pending_approval" | "pending" | "processing" | "received" | "completed" | "cancelled" | "rejected";
   payment_status: string;
-  allocation_status?: "requested" | "approved" | "rejected" | "cancelled" | null;
+  allocation_status?: "automatic" | "requested" | "approved" | "rejected" | "cancelled" | null;
   allocation_decided_at?: string | null;
   allocation_reason?: string | null;
   funding_status: "not_connected" | "partial" | "reserved" | "spent";
@@ -77,14 +77,12 @@ export const distributeFacilityOrder = (id: string, data: {
     method: "POST",
     body: JSON.stringify(data),
   });
-export const listVendorFacilityOrders = (): Promise<FacilityOrder[]> => apiFetch("/vendor/facility-orders");
+export const listVendorFacilityOrders = (): Promise<FacilityOrder[]> =>
+  apiFetch("/vendor/facility-orders", { cache: "no-store" });
 export const dispatchFacilityOrder = (id: string): Promise<FacilityOrder> =>
   apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/dispatch`, { method: "POST" });
-export const listAdminFacilityOrders = (): Promise<FacilityOrder[]> => apiFetch("/admin/facility-orders");
-export const approveFacilityAllocation = (id: string): Promise<FacilityOrder> =>
-  apiFetch(`/admin/facility-orders/${encodeURIComponent(id)}/approve`, { method: "POST" });
-export const rejectFacilityAllocation = (id: string, reason: string): Promise<FacilityOrder> =>
-  apiFetch(`/admin/facility-orders/${encodeURIComponent(id)}/reject`, { method: "POST", body: JSON.stringify({ reason }) });
+export const listAdminFacilityOrders = (pendingOnly = false): Promise<FacilityOrder[]> =>
+  apiFetch(`/admin/facility-orders${pendingOnly ? "?pending_only=true" : ""}`, { cache: "no-store" });
 
 export type EligibleVendor = { id: string; store_name: string; product_count: number };
 
