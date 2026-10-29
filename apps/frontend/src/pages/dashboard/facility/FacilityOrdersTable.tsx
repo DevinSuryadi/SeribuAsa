@@ -312,7 +312,36 @@ export default function FacilityOrdersTable() {
             <p className="mt-1 text-sm text-slate-500">Pesanan akan muncul otomatis ketika statusnya berubah.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="divide-y divide-slate-100 lg:hidden">
+            {filteredRows.map((order) => (
+              <li key={order.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-3 px-4 py-4 text-left text-sm transition-colors hover:bg-emerald-50/40"
+                  onClick={() => setSelected(order)}
+                >
+                  <span className="min-w-0 flex-1 space-y-2">
+                    <span className="flex flex-wrap items-center justify-between gap-2">
+                      <strong className="text-slate-900">#{shortId(order.id)}</strong>
+                      <Badge variant="outline" className={statusClass(order)}>
+                        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
+                        {statusLabel(order)}
+                      </Badge>
+                    </span>
+                    <span className="block font-medium text-slate-900">{order.family_name || "Keluarga"}</span>
+                    <span className="block truncate text-slate-600">{itemSummary(order)}</span>
+                    <span className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                      <span>{order.vendor_name || "Vendor"} · {formatDate(order.created_at)}</span>
+                      <strong className="text-sm text-slate-900">{formatIDR(order.total_amount)}</strong>
+                    </span>
+                  </span>
+                  <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[920px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
@@ -355,6 +384,7 @@ export default function FacilityOrdersTable() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
 

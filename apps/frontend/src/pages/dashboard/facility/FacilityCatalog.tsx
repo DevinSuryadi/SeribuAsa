@@ -190,7 +190,7 @@ export default function FacilityCatalog() {
             )}
             <div className="flex items-center justify-end gap-3"><Button variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Sebelumnya</Button><span className="text-sm">{page} / {totalPages}</span><Button variant="outline" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Berikutnya</Button></div>
           </div>
-          <Card className="h-fit rounded-2xl border-slate-200 bg-white shadow-sm lg:sticky lg:top-4"><CardHeader><CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900"><ShoppingCart className="h-5 w-5" /> Pesanan</CardTitle></CardHeader><CardContent className="space-y-4">
+          <Card id="order-summary" className="h-fit scroll-mt-4 rounded-2xl border-slate-200 bg-white shadow-sm lg:sticky lg:top-4"><CardHeader><CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900"><ShoppingCart className="h-5 w-5" /> Pesanan</CardTitle></CardHeader><CardContent className="space-y-4">
             <div><label htmlFor="order-family" className="mb-1 block text-sm font-medium">Keluarga penerima</label><select id="order-family" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={selectedFamilyId} disabled={Boolean(familyId)} onChange={(event) => setSelectedFamilyId(event.target.value)}><option value="">Pilih keluarga saat akan memesan</option>{families.map((family) => <option key={family.id} value={family.id}>{family.head_name}</option>)}</select>{familyError && <p className="mt-1 text-xs text-destructive">{familyError}</p>}</div>
             {cart.length ? <div className="space-y-2 border-t pt-3">{cart.map(({ product, quantity }) => <div key={product.id} className="flex justify-between gap-2 text-sm"><span>{quantity}× {product.name}</span><span>{formatIDR(product.price * quantity)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">Pilih pangan untuk mulai memesan. Katalog dapat dilihat tanpa memilih keluarga.</p>}
             <div className="flex justify-between border-t pt-3 font-semibold"><span>Total</span><span>{formatIDR(total)}</span></div>
@@ -198,6 +198,19 @@ export default function FacilityCatalog() {
             <Button className="w-full rounded-xl" disabled={!cart.length || !selectedFamilyId || !familyName || !selectedVendorId || Boolean(familyError) || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
           </CardContent></Card>
         </div>
+        {cart.length > 0 && (
+          <div className="sticky bottom-3 z-20 lg:hidden">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-lg shadow-slate-900/10">
+              <div className="min-w-0 text-sm">
+                <p className="text-xs text-slate-500">{cart.reduce((sum, line) => sum + line.quantity, 0)} item dipilih</p>
+                <p className="font-bold text-slate-900">{formatIDR(total)}</p>
+              </div>
+              <Button className="shrink-0 rounded-xl" onClick={() => document.getElementById("order-summary")?.scrollIntoView({ behavior: "smooth" })}>
+                <ShoppingCart className="mr-2 h-4 w-4" /> Lihat pesanan
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

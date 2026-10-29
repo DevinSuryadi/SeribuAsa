@@ -129,6 +129,22 @@ export default function FamilyListTable() {
     setFormOpen(true);
   };
 
+  const renderDetailButton = (family: Family) =>
+    showingPreview ? (
+      <Button
+        variant="outline"
+        size="sm"
+        className="rounded-lg"
+        onClick={() => toast.info("Detail tersedia untuk data keluarga asli.")}
+      >
+        Detail
+      </Button>
+    ) : (
+      <Button asChild variant="outline" size="sm" className="rounded-lg">
+        <Link to={`/dashboard/health-facility/families/${family.id}`}>Detail</Link>
+      </Button>
+    );
+
   const saveFamily = (saved: Family) => {
     setFamilies((current) =>
       current.some((family) => family.id === saved.id)
@@ -229,8 +245,54 @@ export default function FamilyListTable() {
             <p className="mt-1 text-sm text-slate-500">Coba ubah pencarian atau filter kerentanan.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] border-collapse text-left">
+          <>
+          <ul className="divide-y divide-slate-100 lg:hidden">
+            {visibleRows.map((family) => {
+              const score = family.latest_fies?.score;
+              const meta = getFiesStatus(family.latest_fies?.classification);
+              return (
+                <li key={family.id} className="space-y-3 px-4 py-4 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef1e8] text-xs font-bold text-slate-600">
+                        {initials(family.head_name)}
+                      </span>
+                      <span className="min-w-0">
+                        <strong className="block truncate text-slate-900">{family.head_name}</strong>
+                        <span className="text-xs text-slate-500">{family.kk_number}</span>
+                      </span>
+                    </div>
+                    <Badge variant="outline" className={`shrink-0 ${meta.className}`}>
+                      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
+                      {meta.shortLabel}
+                    </Badge>
+                  </div>
+                  <dl className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <dt className="text-slate-500">Skor FIES</dt>
+                      <dd className="font-semibold text-slate-900">{typeof score === "number" ? `${score}/8` : "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-500">Anggota</dt>
+                      <dd className="font-semibold text-slate-900">{family.family_size ?? "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-500">Bantuan aktif</dt>
+                      <dd className="font-semibold text-slate-900">{activeAssistance.get(family.id) || 0} pesanan</dd>
+                    </div>
+                  </dl>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-500">
+                      Survei: {family.latest_fies ? formatDate(family.latest_fies.survey_date) : "Belum ada"}
+                    </span>
+                    {renderDetailButton(family)}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="w-full min-w-[900px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
                   <th className="px-5 py-3">Kepala keluarga</th>
@@ -286,28 +348,14 @@ export default function FamilyListTable() {
                       <td className="px-4 py-4 text-slate-700">
                         {activeAssistance.get(family.id) || 0} pesanan
                       </td>
-                      <td className="px-4 py-4 text-right">
-                        {showingPreview ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg"
-                            onClick={() => toast.info("Detail tersedia untuk data keluarga asli.")}
-                          >
-                            Detail
-                          </Button>
-                        ) : (
-                          <Button asChild variant="outline" size="sm" className="rounded-lg">
-                            <Link to={`/dashboard/health-facility/families/${family.id}`}>Detail</Link>
-                          </Button>
-                        )}
-                      </td>
+                      <td className="px-4 py-4 text-right">{renderDetailButton(family)}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         <footer className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">

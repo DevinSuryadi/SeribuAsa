@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useEffect, useState, memo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -105,6 +105,15 @@ function DashboardLayout({ children, title, subtitle, actions }: DashboardLayout
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [sidebarOpen]);
 
   const role = userRole || "donor";
   const familyPath = role === "health_facility"
@@ -236,7 +245,12 @@ function DashboardLayout({ children, title, subtitle, actions }: DashboardLayout
             onClick={() => setSidebarOpen(false)}
           />
 
-          <aside className="absolute bottom-0 left-0 top-0 flex w-[82%] max-w-[320px] flex-col overflow-hidden rounded-r-[2rem] border-r border-slate-200 bg-white shadow-2xl shadow-slate-950/20">
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu navigasi"
+            className="absolute bottom-0 left-0 top-0 flex w-[82%] max-w-[320px] flex-col overflow-hidden rounded-r-[2rem] border-r border-slate-200 bg-white shadow-2xl shadow-slate-950/20"
+          >
             <div className="flex h-20 items-center justify-between border-b border-slate-100 px-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm">

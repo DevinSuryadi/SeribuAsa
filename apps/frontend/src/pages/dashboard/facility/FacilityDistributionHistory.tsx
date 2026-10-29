@@ -309,8 +309,46 @@ export default function FacilityDistributionHistory() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1050px] border-collapse text-left">
+            <ul className="divide-y divide-slate-100 lg:hidden">
+              {filteredRows.map((order) => {
+                const distribution = order.distribution;
+                if (!distribution) return null;
+                return (
+                  <li key={order.id}>
+                    <button
+                      type="button"
+                      className="flex w-full items-start gap-3 px-4 py-4 text-left text-sm transition-colors hover:bg-emerald-50/40"
+                      onClick={() => setSelected(order)}
+                    >
+                      {distribution.evidence_url && (
+                        <img
+                          src={distribution.evidence_url}
+                          alt=""
+                          className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover"
+                        />
+                      )}
+                      <span className="min-w-0 flex-1 space-y-1.5">
+                        <span className="flex flex-wrap items-baseline justify-between gap-2">
+                          <strong className="text-slate-900">{order.family_name || "Keluarga"}</strong>
+                          <strong className="text-slate-900">{formatIDR(order.total_amount)}</strong>
+                        </span>
+                        <span className="block text-xs text-slate-500">
+                          {formatDate(distribution.distributed_at)}, pukul {formatTime(distribution.distributed_at)}
+                        </span>
+                        <span className="block truncate text-slate-600">{itemSummary(order)}</span>
+                        <span className="block text-xs text-slate-500">
+                          Diterima {distribution.recipient_name}
+                          {distribution.recipient_relation ? ` (${distribution.recipient_relation})` : ""} · {order.vendor_name || "Vendor"}
+                        </span>
+                      </span>
+                      <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full min-w-[900px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
                     <th className="px-5 py-3">Diterima</th>
