@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
+import { getFiesStatus } from "@/lib/status-config";
 import { listFamilies, type Family } from "@/services/facility-families";
 import { listFacilityOrders, type FacilityOrder } from "@/services/facility-orders";
 import { Plus, Search, Users } from "lucide-react";
@@ -36,25 +37,6 @@ const previewFamilies: Family[] = [
 
 type Vulnerability = "all" | "food_secure" | "moderate" | "severe" | "unassessed";
 type SortMode = "score_desc" | "score_asc" | "name_asc";
-
-const vulnerabilityMeta: Record<string, { label: string; className: string }> = {
-  food_secure: {
-    label: "Rawan rendah",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  },
-  moderate: {
-    label: "Rawan sedang",
-    className: "border-amber-200 bg-amber-50 text-amber-800",
-  },
-  severe: {
-    label: "Rawan tinggi",
-    className: "border-red-200 bg-red-50 text-red-700",
-  },
-  unassessed: {
-    label: "Belum disurvei",
-    className: "border-slate-200 bg-slate-50 text-slate-600",
-  },
-};
 
 function initials(name: string) {
   return name
@@ -264,7 +246,7 @@ export default function FamilyListTable() {
                 {visibleRows.map((family) => {
                   const score = family.latest_fies?.score;
                   const classification = family.latest_fies?.classification || "unassessed";
-                  const meta = vulnerabilityMeta[classification] || vulnerabilityMeta.unassessed;
+                  const meta = getFiesStatus(classification);
                   return (
                     <tr key={family.id} className="border-b border-slate-100 text-sm last:border-0 hover:bg-emerald-50/30">
                       <td className="px-5 py-4">
@@ -295,7 +277,7 @@ export default function FamilyListTable() {
                       <td className="px-4 py-4">
                         <Badge variant="outline" className={meta.className}>
                           <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
-                          {meta.label}
+                          {meta.shortLabel}
                         </Badge>
                       </td>
                       <td className="px-4 py-4 text-slate-700">

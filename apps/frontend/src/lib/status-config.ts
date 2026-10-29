@@ -137,3 +137,62 @@ export const subscriptionStatusConfig: Record<SubscriptionStatus, StatusConfig> 
     icon: XCircle,
   },
 };
+
+// Facility FIES Classification
+export type FiesClassification = "food_secure" | "moderate" | "severe" | "unassessed";
+
+export interface FiesStatusConfig extends StatusConfig {
+  shortLabel: string;
+}
+
+export const fiesStatusConfig: Record<FiesClassification, FiesStatusConfig> = {
+  food_secure: {
+    label: "Ketahanan pangan baik",
+    shortLabel: "Rawan rendah",
+    className: "bg-green-100 text-green-700 border-green-200",
+    icon: CheckCircle,
+  },
+  moderate: {
+    label: "Kerawanan pangan sedang",
+    shortLabel: "Rawan sedang",
+    className: "bg-amber-100 text-amber-700 border-amber-200",
+    icon: AlertCircle,
+  },
+  severe: {
+    label: "Kerawanan pangan tinggi",
+    shortLabel: "Rawan tinggi",
+    className: "bg-red-100 text-red-700 border-red-200",
+    icon: AlertCircle,
+  },
+  unassessed: {
+    label: "Belum disurvei",
+    shortLabel: "Belum disurvei",
+    className: "bg-gray-100 text-gray-700 border-gray-200",
+    icon: Clock,
+  },
+};
+
+export function getFiesStatus(classification?: string | null): FiesStatusConfig {
+  return fiesStatusConfig[(classification || "unassessed") as FiesClassification] || fiesStatusConfig.unassessed;
+}
+
+// Facility Recommendation Priority
+export type FacilityPriority = "high" | "medium" | "low";
+
+export const facilityPriorityConfig: Record<FacilityPriority, StatusConfig> = {
+  high: {
+    label: "Prioritas tinggi",
+    className: "bg-red-100 text-red-700 border-red-200",
+    icon: AlertCircle,
+  },
+  medium: {
+    label: "Prioritas sedang",
+    className: "bg-amber-100 text-amber-700 border-amber-200",
+    icon: Clock,
+  },
+  low: {
+    label: "Prioritas rutin",
+    className: "bg-green-100 text-green-700 border-green-200",
+    icon: CheckCircle,
+  },
+};

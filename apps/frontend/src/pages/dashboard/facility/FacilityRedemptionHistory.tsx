@@ -185,13 +185,13 @@ export default function FacilityRedemptionHistory() {
         ? `Unggah bukti penerimaan dan lihat seluruh bantuan untuk keluarga ${familyName}.`
         : "Arsip lengkap bantuan yang telah diterima seluruh keluarga."}
     >
-      <div className="mx-auto max-w-[1400px] space-y-5">
+      <div className="space-y-6">
         {!loading && !error && familyId && readyForProof.length > 0 && (
           <Card className="overflow-hidden rounded-2xl border-amber-200 shadow-sm">
             <CardHeader className="border-b border-amber-100 bg-amber-50/70 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><Camera className="h-5 w-5" /></span>
-                <div><CardTitle className="text-lg">Perlu bukti penerimaan</CardTitle><p className="mt-1 text-sm text-muted-foreground">Unggah setelah bantuan benar-benar diterima keluarga.</p></div>
+                <div><CardTitle className="text-base font-bold text-slate-900">Perlu bukti penerimaan</CardTitle><p className="mt-1 text-sm text-muted-foreground">Unggah setelah bantuan benar-benar diterima keluarga.</p></div>
               </div>
               <Badge variant="outline" className="w-fit border-amber-200 bg-white text-amber-800">{readyForProof.length} pesanan</Badge>
             </CardHeader>
@@ -217,12 +217,12 @@ export default function FacilityRedemptionHistory() {
         )}
         {!loading && !error && familyId && waitingForFunding.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{waitingForFunding.length} pesanan lama belum didanai. Batalkan dari halaman Pesanan lalu pesan kembali setelah dana pool tersedia.</div>}
 
-        <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">
-          <CardHeader className="gap-4 border-b border-border/70 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+        <Card className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm">
+          <CardHeader className="gap-4 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><History className="h-5 w-5" /></span>
               <div>
-                <div className="flex flex-wrap items-center gap-2"><CardTitle className="text-lg">Riwayat lengkap</CardTitle>{!loading && !error && <Badge variant="secondary">{history.length}</Badge>}{!loading && !error && showingPreview && <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">Data contoh</Badge>}</div>
+                <div className="flex flex-wrap items-center gap-2"><CardTitle className="text-base font-bold text-slate-900">Riwayat lengkap</CardTitle>{!loading && !error && <Badge variant="secondary">{history.length}</Badge>}{!loading && !error && showingPreview && <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">Data contoh</Badge>}</div>
                 <p className="mt-1 text-sm text-muted-foreground">Bukti penerimaan diurutkan dari yang terbaru.</p>
               </div>
             </div>
@@ -255,7 +255,7 @@ export default function FacilityRedemptionHistory() {
             )}
 
             {!loading && !error && !familyId && search.trim() && (
-              <div className="mb-5 rounded-xl border border-border/70 bg-secondary/15 p-3">
+              <div className="mb-5 rounded-xl border border-slate-200 bg-secondary/15 p-3">
                 <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hasil pencarian keluarga</p>
                 {matchingFamilies.length > 0 ? (
                   <div className="divide-y divide-border/70">
@@ -288,8 +288,8 @@ export default function FacilityRedemptionHistory() {
                   const distribution = order.distribution;
                   if (!distribution) return null;
                   return (
-                    <article key={order.id} className="overflow-hidden rounded-2xl border border-border/70 bg-background">
-                      <header className="flex flex-col gap-3 border-b border-border/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <article key={order.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-background">
+                      <header className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                         <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{order.family_name || familyName}</h3><Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700"><CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Diterima</Badge></div><p className="mt-1 text-xs text-muted-foreground">Pesanan #{shortId(order.id)}</p></div>
                         <time className="text-sm font-medium text-muted-foreground" dateTime={distribution.distributed_at}>{formatEventTime(distribution.distributed_at)}</time>
                       </header>
@@ -303,13 +303,13 @@ export default function FacilityRedemptionHistory() {
 
                           <div>
                             <p className="mb-2 flex items-center gap-2 text-sm font-semibold"><Package className="h-4 w-4 text-primary" /> Bantuan yang diterima</p>
-                            <div className="divide-y rounded-xl border border-border/70">{order.items.map((item) => <div key={item.product_id} className="flex justify-between gap-3 px-4 py-3 text-sm"><span>{item.quantity}× {item.product_name}</span><span className="shrink-0 text-muted-foreground">{formatIDR(item.subtotal)}</span></div>)}</div>
+                            <div className="divide-y rounded-xl border border-slate-200">{order.items.map((item) => <div key={item.product_id} className="flex justify-between gap-3 px-4 py-3 text-sm"><span>{item.quantity}× {item.product_name}</span><span className="shrink-0 text-muted-foreground">{formatIDR(item.subtotal)}</span></div>)}</div>
                             <div className="mt-3 flex justify-between text-sm font-semibold"><span>Total bantuan</span><span className="text-primary">{formatIDR(order.total_amount)}</span></div>
                           </div>
                           {distribution.notes && <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950"><p className="font-semibold">Catatan</p><p className="mt-1 leading-6">{distribution.notes}</p></div>}
                         </div>
 
-                        <aside className="border-t border-border/70 bg-slate-50 p-5 lg:border-l lg:border-t-0">
+                        <aside className="border-t border-slate-200 bg-slate-50 p-5 lg:border-l lg:border-t-0">
                           <p className="mb-3 flex items-center gap-2 text-sm font-semibold"><ImageIcon className="h-4 w-4 text-primary" /> Bukti penerimaan</p>
                           {distribution.evidence_url
                             ? <a href={distribution.evidence_url} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded-xl border bg-white"><img src={distribution.evidence_url} alt={`Bukti penerimaan ${order.family_name || familyName}`} loading="lazy" className="aspect-[4/3] w-full object-cover transition-transform group-hover:scale-[1.02]" /><span className="flex items-center justify-center gap-2 border-t px-3 py-2 text-xs font-semibold text-primary">Lihat foto penuh <ExternalLink className="h-3.5 w-3.5" /></span></a>
