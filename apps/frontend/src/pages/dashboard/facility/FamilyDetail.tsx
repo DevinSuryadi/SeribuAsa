@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { ErrorState } from "@/components/dashboard/ErrorState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ArrowRight, Baby, ClipboardList, MapPin, Pencil, Phone, RefreshCw, Sparkles, Users } from "lucide-react";
 import { getFamily, type Family } from "@/services/facility-families";
 import { getFamilyAssessment, type FamilyAssessment, type Priority } from "@/services/facility-assessments";
@@ -85,8 +87,23 @@ export default function FamilyDetail() {
           <Link to="/dashboard/health-facility/families" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ArrowLeft className="h-4 w-4" /> Kembali ke daftar keluarga</Link>
           <div className="flex flex-wrap gap-2"><Button asChild size="sm"><Link to={`${base}/catalog`}>Pilih pangan <ArrowRight className="ml-2 h-4 w-4" /></Link></Button><Button variant="outline" size="sm" onClick={() => setRefreshKey((key) => key + 1)} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Perbarui ringkasan</Button></div>
         </div>
-        {loading && <p className="rounded-2xl border bg-card p-8 text-center text-muted-foreground">Memuat ringkasan keluarga...</p>}
-        {error && !loading && <p className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-destructive">{error}</p>}
+        {loading && (
+          <div className="space-y-4" aria-label="Memuat ringkasan keluarga">
+            <Skeleton className="h-36 rounded-2xl" />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Skeleton className="h-48 rounded-2xl" />
+              <Skeleton className="h-48 rounded-2xl" />
+            </div>
+            <Skeleton className="h-40 rounded-2xl" />
+          </div>
+        )}
+        {error && !loading && (
+          <ErrorState
+            title="Gagal memuat ringkasan keluarga"
+            message={error}
+            onRetry={() => setRefreshKey((key) => key + 1)}
+          />
+        )}
         {!loading && family && assessment && (
           <>
             <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">

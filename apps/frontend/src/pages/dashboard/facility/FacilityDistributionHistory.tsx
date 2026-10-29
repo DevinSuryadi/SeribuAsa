@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { ErrorState } from "@/components/dashboard/ErrorState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +18,7 @@ import {
   Download,
   ExternalLink,
   FileDown,
+  History,
   RefreshCw,
   Search,
   X,
@@ -128,7 +131,7 @@ export default function FacilityDistributionHistory() {
     () => orders.filter((order) => Boolean(order.distribution)),
     [orders],
   );
-  const showingPreview = import.meta.env.DEV && actualRows.length === 0;
+  const showingPreview = import.meta.env.DEV && !loading && !error && actualRows.length === 0;
   const rows = showingPreview ? previewRows : actualRows;
 
   const vendors = useMemo(
@@ -278,18 +281,25 @@ export default function FacilityDistributionHistory() {
           </div>
         </div>
 
-        {error && !showingPreview && (
-          <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
         {loading ? (
           <div className="space-y-2 p-4">
             {[0, 1, 2].map((item) => (
               <Skeleton key={item} className="h-16 rounded-xl" />
             ))}
           </div>
+        ) : error ? (
+          <ErrorState
+            className="m-4"
+            title="Gagal memuat riwayat penyaluran"
+            message={error}
+            onRetry={() => setRefreshKey((key) => key + 1)}
+          />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={<History className="mx-auto mb-3 h-12 w-12 text-muted-foreground opacity-50" />}
+            title="Belum ada riwayat penyaluran"
+            description="Riwayat akan muncul setelah bantuan diterima keluarga dan buktinya disimpan."
+          />
         ) : filteredRows.length === 0 ? (
           <div className="px-5 py-16 text-center">
             <p className="font-semibold text-slate-900">Riwayat tidak ditemukan</p>

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { ErrorState } from "@/components/dashboard/ErrorState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
 import { listFamilies, type Family } from "@/services/facility-families";
 import { listFacilityOrders, type FacilityOrder } from "@/services/facility-orders";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import FamilyForm from "./FamilyForm";
 
@@ -73,12 +75,15 @@ export default function FamilyListTable() {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Family | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [loadedKey, setLoadedKey] = useState<number | null>(null);
+  const loading = loadedKey !== refreshKey;
 
   useEffect(() => {
     let active = true;
-    Promise.all([listFamilies(), listFacilityOrders()])
+    const forceRefresh = refreshKey > 0;
+    Promise.all([listFamilies(forceRefresh), listFacilityOrders(undefined, forceRefresh)])
       .then(([familyRows, orderRows]) => {
         if (active) {
           setFamilies(familyRows);
@@ -92,14 +97,14 @@ export default function FamilyListTable() {
         }
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setLoadedKey(refreshKey);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshKey]);
 
-  const showingPreview = import.meta.env.DEV && families.length === 0;
+  const showingPreview = import.meta.env.DEV && !loading && !error && families.length === 0;
   const rows = showingPreview ? previewFamilies : families;
 
   const activeAssistance = useMemo(() => {
@@ -218,14 +223,24 @@ export default function FamilyListTable() {
           </select>
         </div>
 
-        {error && !showingPreview && (
-          <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
-        )}
-
         {loading ? (
           <div className="space-y-2 p-4">
             {[0, 1, 2].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}
           </div>
+        ) : error ? (
+          <ErrorState
+            className="m-4"
+            title="Gagal memuat daftar keluarga"
+            message={error}
+            onRetry={() => setRefreshKey((key) => key + 1)}
+          />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={<Users className="mx-auto mb-3 h-12 w-12 text-muted-foreground opacity-50" />}
+            title="Belum ada keluarga terdaftar"
+            description="Daftarkan keluarga penerima manfaat untuk mulai mencatat survei FIES dan bantuan."
+            action={{ label: "Daftarkan keluarga", onClick: openRegistration }}
+          />
         ) : visibleRows.length === 0 ? (
           <div className="px-5 py-16 text-center">
             <p className="font-semibold text-slate-900">Keluarga tidak ditemukan</p>

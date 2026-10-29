@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { ErrorState } from "@/components/dashboard/ErrorState";
 import FacilityReceiptDialog from "@/components/order/FacilityReceiptDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,7 @@ import {
   Check,
   ChevronRight,
   Circle,
+  Package,
   Plus,
   RefreshCw,
   X,
@@ -145,6 +148,7 @@ function progressIndex(order: FacilityOrder) {
 }
 
 export default function FacilityOrdersTable() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<FacilityOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -178,7 +182,7 @@ export default function FacilityOrdersTable() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [selected]);
 
-  const showingPreview = import.meta.env.DEV && orders.length === 0;
+  const showingPreview = import.meta.env.DEV && !loading && !error && orders.length === 0;
   const rows = showingPreview ? previewOrders : orders;
 
   const counts = useMemo(() => {
@@ -284,14 +288,24 @@ export default function FacilityOrdersTable() {
           ))}
         </nav>
 
-        {error && !showingPreview && (
-          <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
-        )}
-
         {loading ? (
           <div className="space-y-2 p-4">
             {[0, 1, 2].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}
           </div>
+        ) : error ? (
+          <ErrorState
+            className="m-4"
+            title="Gagal memuat pesanan"
+            message={error}
+            onRetry={() => void refresh(true)}
+          />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={<Package className="mx-auto mb-3 h-12 w-12 text-muted-foreground opacity-50" />}
+            title="Belum ada pesanan"
+            description="Pesan pangan dari katalog untuk keluarga yang terdaftar."
+            action={{ label: "Pesan pangan", onClick: () => navigate("/dashboard/health-facility/catalog") }}
+          />
         ) : filteredRows.length === 0 ? (
           <div className="px-5 py-16 text-center">
             <p className="font-semibold text-slate-900">Tidak ada pesanan pada status ini</p>

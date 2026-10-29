@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { ErrorState } from "@/components/dashboard/ErrorState";
 import FacilityDistributionDialog from "@/components/order/FacilityDistributionDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -143,7 +144,7 @@ export default function FacilityRedemptionHistory() {
   useEffect(() => { setSearch(""); }, [familyId]);
 
   const actualHistory = useMemo(() => orders.filter((order) => Boolean(order.distribution)), [orders]);
-  const showingPreview = import.meta.env.DEV && !familyId && actualHistory.length === 0;
+  const showingPreview = import.meta.env.DEV && !loading && !error && !familyId && actualHistory.length === 0;
   const history = showingPreview ? previewHistory : actualHistory;
   const readyForProof = useMemo(() => familyId
     ? orders.filter((order) => !order.distribution && order.receipt_status === "accepted")
@@ -239,7 +240,13 @@ export default function FacilityRedemptionHistory() {
           </CardHeader>
 
           <CardContent className="p-5 sm:p-6">
-            {error && <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
+            {error && (
+              <ErrorState
+                title="Gagal memuat riwayat penyaluran"
+                message={error}
+                onRetry={() => setRefreshKey((key) => key + 1)}
+              />
+            )}
 
             {loading && (
               <div className="space-y-3" aria-label="Memuat riwayat penyaluran">
