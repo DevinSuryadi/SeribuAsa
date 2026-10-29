@@ -63,15 +63,16 @@ export default function FamilyDetailClean() {
   const [family, setFamily] = useState<Family | null>(null);
   const [assessment, setAssessment] = useState<FamilyAssessment | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  // Loading is derived: true until the request for the current key has settled.
+  const requestKey = `${familyId}:${refreshKey}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== requestKey;
 
   useEffect(() => {
     if (!familyId) return;
     let active = true;
-    setLoading(true);
-    setError("");
     const forceRefresh = refreshKey > 0;
 
     Promise.all([
@@ -82,6 +83,7 @@ export default function FamilyDetailClean() {
         if (active) {
           setFamily(familyData);
           setAssessment(assessmentData);
+          setError("");
         }
       })
       .catch((loadError: unknown) => {
@@ -94,13 +96,13 @@ export default function FamilyDetailClean() {
         }
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setLoadedKey(requestKey);
       });
 
     return () => {
       active = false;
     };
-  }, [familyId, refreshKey]);
+  }, [familyId, refreshKey, requestKey]);
 
   const base = `/dashboard/health-facility/families/${familyId}`;
   const survey = assessment?.fies;

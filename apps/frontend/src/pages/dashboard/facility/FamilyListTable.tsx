@@ -134,10 +134,6 @@ export default function FamilyListTable() {
       });
   }, [rows, search, sort, vulnerability]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, sort, vulnerability]);
-
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const visibleRows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -187,13 +183,19 @@ export default function FamilyListTable() {
                 className="h-10 rounded-xl border-slate-200 pl-9"
                 placeholder="Cari nama atau nomor KK"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
               />
             </div>
             <select
               className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500"
               value={vulnerability}
-              onChange={(event) => setVulnerability(event.target.value as Vulnerability)}
+              onChange={(event) => {
+                setVulnerability(event.target.value as Vulnerability);
+                setPage(1);
+              }}
             >
               <option value="all">Semua kerentanan</option>
               <option value="severe">Rawan tinggi</option>
@@ -205,7 +207,10 @@ export default function FamilyListTable() {
           <select
             className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500"
             value={sort}
-            onChange={(event) => setSort(event.target.value as SortMode)}
+            onChange={(event) => {
+              setSort(event.target.value as SortMode);
+              setPage(1);
+            }}
           >
             <option value="score_desc">Urutkan: skor FIES tertinggi</option>
             <option value="score_asc">Urutkan: skor FIES terendah</option>

@@ -39,21 +39,23 @@ export default function FamilyDetail() {
   const [family, setFamily] = useState<Family | null>(null);
   const [assessment, setAssessment] = useState<FamilyAssessment | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  // Loading is derived: true until the request for the current key has settled.
+  const requestKey = `${familyId}:${refreshKey}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== requestKey;
 
   useEffect(() => {
     if (!familyId) return;
     let active = true;
-    setLoading(true);
-    setError("");
     const forceRefresh = refreshKey > 0;
     Promise.all([getFamily(familyId, forceRefresh), getFamilyAssessment(familyId, forceRefresh)])
       .then(([familyData, assessmentData]) => {
         if (active) {
           setFamily(familyData);
           setAssessment(assessmentData);
+          setError("");
         }
       })
       .catch((err: unknown) => {
@@ -63,9 +65,9 @@ export default function FamilyDetail() {
           setError(err instanceof Error ? err.message : "Gagal memuat ringkasan keluarga");
         }
       })
-      .finally(() => { if (active) setLoading(false); });
+      .finally(() => { if (active) setLoadedKey(requestKey); });
     return () => { active = false; };
-  }, [familyId, refreshKey]);
+  }, [familyId, refreshKey, requestKey]);
 
   const base = `/dashboard/health-facility/families/${familyId}`;
   const survey = assessment?.fies;
@@ -84,7 +86,7 @@ export default function FamilyDetail() {
           <div className="flex flex-wrap gap-2"><Button asChild size="sm"><Link to={`${base}/catalog`}>Pilih pangan <ArrowRight className="ml-2 h-4 w-4" /></Link></Button><Button variant="outline" size="sm" onClick={() => setRefreshKey((key) => key + 1)} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Perbarui ringkasan</Button></div>
         </div>
         {loading && <p className="rounded-2xl border bg-card p-8 text-center text-muted-foreground">Memuat ringkasan keluarga...</p>}
-        {error && <p className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-destructive">{error}</p>}
+        {error && !loading && <p className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-destructive">{error}</p>}
         {!loading && family && assessment && (
           <>
             <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">

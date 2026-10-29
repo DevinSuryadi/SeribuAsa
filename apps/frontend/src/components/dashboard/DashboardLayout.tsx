@@ -117,9 +117,12 @@ function DashboardLayout({ children, title, subtitle, actions }: DashboardLayout
     { label: "Pengukuran Anak", href: `${familyPath}/nutrition`, icon: Activity },
     { label: "Bantuan & Riwayat", href: `${familyPath}/redemptions`, icon: History },
   ] : [];
+  // Older demo sessions in localStorage may still carry `full_name`.
+  const legacyFullName =
+    user && "full_name" in user && typeof user.full_name === "string" ? user.full_name : undefined;
   const displayName =
-    (user as any)?.fullName ||
-    (user as any)?.full_name ||
+    user?.fullName ||
+    legacyFullName ||
     user?.email?.split("@")[0] ||
     "Pengguna";
   const roleImage = RoleImageMap[role];
