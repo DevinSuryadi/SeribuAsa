@@ -198,7 +198,7 @@ class ProductService:
             Order.items
         ).filter(
             Order.items.any(product_id=product_id),
-            Order.status.in_(["pending", "processing"])
+            Order.status.in_(["pending", "processing", "shipped"])
         ).first()
 
         if has_active_orders:

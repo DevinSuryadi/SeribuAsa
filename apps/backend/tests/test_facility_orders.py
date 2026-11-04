@@ -290,6 +290,8 @@ def test_facility_order_distribution_and_stock(monkeypatch):
 
         vendor_url = f"/api/v1/vendor/facility-orders/{order_id}"
         vendor_identity["id"] = other_vendor_user
+        assert client.post(f"{vendor_url}/confirm").status_code == 404
+        assert client.post(f"{vendor_url}/reject", json={"reason": "Tidak tersedia"}).status_code == 404
         assert client.post(f"{vendor_url}/dispatch").status_code == 404
         vendor_identity["id"] = vendor_user
         assert client.get("/api/v1/vendor/facility-orders").json()[0]["family_name"] is None
@@ -309,7 +311,24 @@ def test_facility_order_distribution_and_stock(monkeypatch):
             ).status_code
             == 409
         )
-        assert client.post(f"{vendor_url}/dispatch").status_code == 200
+        assert client.post(f"{vendor_url}/dispatch").status_code == 409
+        confirmed = client.post(f"{vendor_url}/confirm")
+        assert confirmed.status_code == 200, confirmed.text
+        assert confirmed.json()["status"] == "processing"
+        assert confirmed.json()["vendor_confirmed_at"] is not None
+        assert confirmed.json()["dispatched_at"] is None
+        assert client.post(f"{vendor_url}/confirm").json()["vendor_confirmed_at"] == confirmed.json()["vendor_confirmed_at"]
+        assert client.post(f"{vendor_url}/reject", json={"reason": "Tidak tersedia"}).status_code == 409
+        assert client.post(f"{url}/{order_id}/cancel", headers=facility_headers).status_code == 409
+        assert client.post(f"{url}/{order_id}/receipt", json={
+            "arrived_at": datetime.now(timezone.utc).isoformat(), "items_complete": True,
+        }, headers=facility_headers).status_code == 409
+        dispatched = client.post(f"{vendor_url}/dispatch")
+        assert dispatched.status_code == 200, dispatched.text
+        assert dispatched.json()["status"] == "shipped"
+        assert dispatched.json()["dispatched_at"] is not None
+        assert client.post(f"{vendor_url}/dispatch").json()["dispatched_at"] == dispatched.json()["dispatched_at"]
+        assert client.post(f"{vendor_url}/reject", json={"reason": "Tidak tersedia"}).status_code == 409
         assert (
             client.put(
                 f"/api/v1/orders/{order_id}/status", json={"status": "completed"}
@@ -509,6 +528,55 @@ def test_facility_order_distribution_and_stock(monkeypatch):
         assert pool["available_balance"] == 100000
         with sessions() as db:
             assert db.get(Product, product_id).stock_quantity == 3
+
+        rejected_order = client.post(
+            url,
+            json={**payload, "client_request_id": str(uuid4())},
+            headers=facility_headers,
+        )
+        assert rejected_order.status_code == 201, rejected_order.text
+        rejected_id = rejected_order.json()["id"]
+        rejection_url = f"/api/v1/vendor/facility-orders/{rejected_id}/reject"
+        reason = "Kapasitas pengiriman tidak tersedia"
+        with sessions() as db:
+            assert db.get(Product, product_id).stock_quantity == 1
+        assert client.post(rejection_url, json={"reason": "   "}).status_code == 422
+        assert client.post(rejection_url, json={"reason": "x" * 1001}).status_code == 422
+        vendor_identity["role"] = "donor"
+        assert client.post(rejection_url, json={"reason": reason}).status_code == 403
+        vendor_identity["role"] = "vendor"
+        vendor_identity["id"] = other_vendor_user
+        assert client.post(rejection_url, json={"reason": reason}).status_code == 404
+        vendor_identity["id"] = vendor_user
+        rejected = client.post(rejection_url, json={"reason": f"  {reason}  "})
+        assert rejected.status_code == 200, rejected.text
+        assert rejected.json()["status"] == "rejected"
+        assert rejected.json()["vendor_rejection_reason"] == reason
+        assert rejected.json()["vendor_rejected_at"] is not None
+        assert rejected.json()["dispatched_at"] is None
+        assert rejected.json()["funded_amount"] == 0
+        assert client.post(rejection_url, json={"reason": reason}).json()["vendor_rejected_at"] == rejected.json()["vendor_rejected_at"]
+        assert client.post(rejection_url, json={"reason": "Alasan berbeda"}).status_code == 409
+        assert client.post(f"/api/v1/vendor/facility-orders/{rejected_id}/confirm").status_code == 409
+        assert client.post(f"/api/v1/vendor/facility-orders/{rejected_id}/dispatch").status_code == 409
+        assert client.post(f"{url}/{rejected_id}/cancel", headers=facility_headers).status_code == 409
+        assert client.post(f"{url}/{rejected_id}/receipt", json={
+            "arrived_at": datetime.now(timezone.utc).isoformat(), "items_complete": True,
+        }, headers=facility_headers).status_code == 409
+        vendor_rows = client.get("/api/v1/vendor/facility-orders").json()
+        assert next(row for row in vendor_rows if row["id"] == rejected_id)["status"] == "rejected"
+        facility_rows = client.get(url, headers=facility_headers).json()
+        assert next(row for row in facility_rows if row["id"] == rejected_id)["vendor_rejection_reason"] == reason
+        with sessions() as db:
+            assert db.get(Product, product_id).stock_quantity == 3
+            allocations = db.query(OrderFundingAllocation).filter_by(order_id=UUID(rejected_id)).all()
+            assert allocations
+            assert all(row.status == "released" for row in allocations)
+            assert db.query(FacilityVendorPayout).filter_by(order_id=UUID(rejected_id)).count() == 0
+        vendor_identity.update(id=facility_user, role="admin")
+        pool = client.get("/api/v1/funding/admin/pool").json()
+        assert pool["total_reserved"] == 0
+        assert pool["available_balance"] == 100000
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
