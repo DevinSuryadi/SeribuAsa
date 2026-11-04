@@ -17,7 +17,7 @@ export function ErrorState({
   className = "",
 }: ErrorStateProps) {
   return (
-    <div className={`rounded-2xl border border-red-200 bg-red-50 p-6 flex items-start gap-4 ${className}`}>
+    <div role="alert" className={`rounded-2xl border border-red-200 bg-red-50 p-6 flex items-start gap-4 ${className}`}>
       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
         <AlertCircle className="h-5 w-5 text-red-600" />
       </div>

@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { ErrorState } from "@/components/dashboard/ErrorState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
+import { getFiesStatus } from "@/lib/status-config";
 import { listFamilies, type Family } from "@/services/facility-families";
 import { listFacilityOrders, type FacilityOrder } from "@/services/facility-orders";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import FamilyForm from "./FamilyForm";
 
@@ -35,25 +38,6 @@ const previewFamilies: Family[] = [
 type Vulnerability = "all" | "food_secure" | "moderate" | "severe" | "unassessed";
 type SortMode = "score_desc" | "score_asc" | "name_asc";
 
-const vulnerabilityMeta: Record<string, { label: string; className: string }> = {
-  food_secure: {
-    label: "Rawan rendah",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  },
-  moderate: {
-    label: "Rawan sedang",
-    className: "border-amber-200 bg-amber-50 text-amber-800",
-  },
-  severe: {
-    label: "Rawan tinggi",
-    className: "border-red-200 bg-red-50 text-red-700",
-  },
-  unassessed: {
-    label: "Belum disurvei",
-    className: "border-slate-200 bg-slate-50 text-slate-600",
-  },
-};
-
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -73,12 +57,15 @@ export default function FamilyListTable() {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Family | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [loadedKey, setLoadedKey] = useState<number | null>(null);
+  const loading = loadedKey !== refreshKey;
 
   useEffect(() => {
     let active = true;
-    Promise.all([listFamilies(), listFacilityOrders()])
+    const forceRefresh = refreshKey > 0;
+    Promise.all([listFamilies(forceRefresh), listFacilityOrders(undefined, forceRefresh)])
       .then(([familyRows, orderRows]) => {
         if (active) {
           setFamilies(familyRows);
@@ -92,14 +79,14 @@ export default function FamilyListTable() {
         }
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setLoadedKey(refreshKey);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshKey]);
 
-  const showingPreview = import.meta.env.DEV && families.length === 0;
+  const showingPreview = import.meta.env.DEV && !loading && !error && families.length === 0;
   const rows = showingPreview ? previewFamilies : families;
 
   const activeAssistance = useMemo(() => {
@@ -134,10 +121,6 @@ export default function FamilyListTable() {
       });
   }, [rows, search, sort, vulnerability]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, sort, vulnerability]);
-
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const visibleRows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -145,6 +128,22 @@ export default function FamilyListTable() {
     setEditing(null);
     setFormOpen(true);
   };
+
+  const renderDetailButton = (family: Family) =>
+    showingPreview ? (
+      <Button
+        variant="outline"
+        size="sm"
+        className="rounded-lg"
+        onClick={() => toast.info("Detail tersedia untuk data keluarga asli.")}
+      >
+        Detail
+      </Button>
+    ) : (
+      <Button asChild variant="outline" size="sm" className="rounded-lg">
+        <Link to={`/dashboard/health-facility/families/${family.id}`}>Detail</Link>
+      </Button>
+    );
 
   const saveFamily = (saved: Family) => {
     setFamilies((current) =>
@@ -187,13 +186,19 @@ export default function FamilyListTable() {
                 className="h-10 rounded-xl border-slate-200 pl-9"
                 placeholder="Cari nama atau nomor KK"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
               />
             </div>
             <select
               className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500"
               value={vulnerability}
-              onChange={(event) => setVulnerability(event.target.value as Vulnerability)}
+              onChange={(event) => {
+                setVulnerability(event.target.value as Vulnerability);
+                setPage(1);
+              }}
             >
               <option value="all">Semua kerentanan</option>
               <option value="severe">Rawan tinggi</option>
@@ -205,7 +210,10 @@ export default function FamilyListTable() {
           <select
             className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500"
             value={sort}
-            onChange={(event) => setSort(event.target.value as SortMode)}
+            onChange={(event) => {
+              setSort(event.target.value as SortMode);
+              setPage(1);
+            }}
           >
             <option value="score_desc">Urutkan: skor FIES tertinggi</option>
             <option value="score_asc">Urutkan: skor FIES terendah</option>
@@ -213,22 +221,78 @@ export default function FamilyListTable() {
           </select>
         </div>
 
-        {error && !showingPreview && (
-          <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
-        )}
-
         {loading ? (
           <div className="space-y-2 p-4">
             {[0, 1, 2].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}
           </div>
+        ) : error ? (
+          <ErrorState
+            className="m-4"
+            title="Gagal memuat daftar keluarga"
+            message={error}
+            onRetry={() => setRefreshKey((key) => key + 1)}
+          />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={<Users className="mx-auto mb-3 h-12 w-12 text-muted-foreground opacity-50" />}
+            title="Belum ada keluarga terdaftar"
+            description="Daftarkan keluarga penerima manfaat untuk mulai mencatat survei FIES dan bantuan."
+            action={{ label: "Daftarkan keluarga", onClick: openRegistration }}
+          />
         ) : visibleRows.length === 0 ? (
           <div className="px-5 py-16 text-center">
             <p className="font-semibold text-slate-900">Keluarga tidak ditemukan</p>
             <p className="mt-1 text-sm text-slate-500">Coba ubah pencarian atau filter kerentanan.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] border-collapse text-left">
+          <>
+          <ul className="divide-y divide-slate-100 lg:hidden">
+            {visibleRows.map((family) => {
+              const score = family.latest_fies?.score;
+              const meta = getFiesStatus(family.latest_fies?.classification);
+              return (
+                <li key={family.id} className="space-y-3 px-4 py-4 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef1e8] text-xs font-bold text-slate-600">
+                        {initials(family.head_name)}
+                      </span>
+                      <span className="min-w-0">
+                        <strong className="block truncate text-slate-900">{family.head_name}</strong>
+                        <span className="text-xs text-slate-500">{family.kk_number}</span>
+                      </span>
+                    </div>
+                    <Badge variant="outline" className={`shrink-0 ${meta.className}`}>
+                      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
+                      {meta.shortLabel}
+                    </Badge>
+                  </div>
+                  <dl className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <dt className="text-slate-500">Skor FIES</dt>
+                      <dd className="font-semibold text-slate-900">{typeof score === "number" ? `${score}/8` : "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-500">Anggota</dt>
+                      <dd className="font-semibold text-slate-900">{family.family_size ?? "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-500">Bantuan aktif</dt>
+                      <dd className="font-semibold text-slate-900">{activeAssistance.get(family.id) || 0} pesanan</dd>
+                    </div>
+                  </dl>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-500">
+                      Survei: {family.latest_fies ? formatDate(family.latest_fies.survey_date) : "Belum ada"}
+                    </span>
+                    {renderDetailButton(family)}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="w-full min-w-[900px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
                   <th className="px-5 py-3">Kepala keluarga</th>
@@ -244,7 +308,7 @@ export default function FamilyListTable() {
                 {visibleRows.map((family) => {
                   const score = family.latest_fies?.score;
                   const classification = family.latest_fies?.classification || "unassessed";
-                  const meta = vulnerabilityMeta[classification] || vulnerabilityMeta.unassessed;
+                  const meta = getFiesStatus(classification);
                   return (
                     <tr key={family.id} className="border-b border-slate-100 text-sm last:border-0 hover:bg-emerald-50/30">
                       <td className="px-5 py-4">
@@ -275,7 +339,7 @@ export default function FamilyListTable() {
                       <td className="px-4 py-4">
                         <Badge variant="outline" className={meta.className}>
                           <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
-                          {meta.label}
+                          {meta.shortLabel}
                         </Badge>
                       </td>
                       <td className="px-4 py-4 text-slate-700">
@@ -284,28 +348,14 @@ export default function FamilyListTable() {
                       <td className="px-4 py-4 text-slate-700">
                         {activeAssistance.get(family.id) || 0} pesanan
                       </td>
-                      <td className="px-4 py-4 text-right">
-                        {showingPreview ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg"
-                            onClick={() => toast.info("Detail tersedia untuk data keluarga asli.")}
-                          >
-                            Detail
-                          </Button>
-                        ) : (
-                          <Button asChild variant="outline" size="sm" className="rounded-lg">
-                            <Link to={`/dashboard/health-facility/families/${family.id}`}>Detail</Link>
-                          </Button>
-                        )}
-                      </td>
+                      <td className="px-4 py-4 text-right">{renderDetailButton(family)}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         <footer className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">

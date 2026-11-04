@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { ErrorState } from "@/components/dashboard/ErrorState";
 import FacilityReceiptDialog from "@/components/order/FacilityReceiptDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,7 @@ import {
   Check,
   ChevronRight,
   Circle,
+  Package,
   Plus,
   RefreshCw,
   X,
@@ -145,6 +148,7 @@ function progressIndex(order: FacilityOrder) {
 }
 
 export default function FacilityOrdersTable() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<FacilityOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -178,7 +182,7 @@ export default function FacilityOrdersTable() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [selected]);
 
-  const showingPreview = import.meta.env.DEV && orders.length === 0;
+  const showingPreview = import.meta.env.DEV && !loading && !error && orders.length === 0;
   const rows = showingPreview ? previewOrders : orders;
 
   const counts = useMemo(() => {
@@ -284,21 +288,60 @@ export default function FacilityOrdersTable() {
           ))}
         </nav>
 
-        {error && !showingPreview && (
-          <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
-        )}
-
         {loading ? (
           <div className="space-y-2 p-4">
             {[0, 1, 2].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}
           </div>
+        ) : error ? (
+          <ErrorState
+            className="m-4"
+            title="Gagal memuat pesanan"
+            message={error}
+            onRetry={() => void refresh(true)}
+          />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={<Package className="mx-auto mb-3 h-12 w-12 text-muted-foreground opacity-50" />}
+            title="Belum ada pesanan"
+            description="Pesan pangan dari katalog untuk keluarga yang terdaftar."
+            action={{ label: "Pesan pangan", onClick: () => navigate("/dashboard/health-facility/catalog") }}
+          />
         ) : filteredRows.length === 0 ? (
           <div className="px-5 py-16 text-center">
             <p className="font-semibold text-slate-900">Tidak ada pesanan pada status ini</p>
             <p className="mt-1 text-sm text-slate-500">Pesanan akan muncul otomatis ketika statusnya berubah.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="divide-y divide-slate-100 lg:hidden">
+            {filteredRows.map((order) => (
+              <li key={order.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-3 px-4 py-4 text-left text-sm transition-colors hover:bg-emerald-50/40"
+                  onClick={() => setSelected(order)}
+                >
+                  <span className="min-w-0 flex-1 space-y-2">
+                    <span className="flex flex-wrap items-center justify-between gap-2">
+                      <strong className="text-slate-900">#{shortId(order.id)}</strong>
+                      <Badge variant="outline" className={statusClass(order)}>
+                        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
+                        {statusLabel(order)}
+                      </Badge>
+                    </span>
+                    <span className="block font-medium text-slate-900">{order.family_name || "Keluarga"}</span>
+                    <span className="block truncate text-slate-600">{itemSummary(order)}</span>
+                    <span className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                      <span>{order.vendor_name || "Vendor"} · {formatDate(order.created_at)}</span>
+                      <strong className="text-sm text-slate-900">{formatIDR(order.total_amount)}</strong>
+                    </span>
+                  </span>
+                  <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[920px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
@@ -341,6 +384,7 @@ export default function FacilityOrdersTable() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
 
