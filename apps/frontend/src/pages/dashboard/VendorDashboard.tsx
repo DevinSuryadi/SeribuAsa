@@ -18,7 +18,6 @@ import {
   Wallet,
   Package,
   BarChart3,
-  QrCode,
   ArrowRight,
   ArrowDownToLine,
   TrendingUp,
@@ -338,9 +337,9 @@ export default function VendorDashboard() {
                 className="h-10 rounded-[13px] bg-white px-4 text-[12.5px] font-black text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.07)] hover:bg-emerald-50"
                 asChild
               >
-                <Link to="/dashboard/scan-qr">
-                  <QrCode className="mr-2 h-4 w-4" />
-                  Pindai QR
+                <Link to="/dashboard/vendor/facility-orders">
+                  <ShoppingBag className="mr-2 h-4 w-4" />
+                  Pesanan Faskes
                 </Link>
               </Button>
             </div>
@@ -481,12 +480,9 @@ export default function VendorDashboard() {
                               <Button
                                 size="sm"
                                 className="h-8 rounded-lg bg-emerald-600 px-3 text-[11px] font-bold hover:bg-emerald-700"
-                                asChild
+                                onClick={() => handleStatusUpdate(order.id, "completed")}
                               >
-                                <Link to="/dashboard/scan-qr">
-                                  <QrCode className="mr-1 h-3 w-3" />
-                                  Pindai QR
-                                </Link>
+                                Konfirmasi penerimaan
                               </Button>
 
                               <Button
@@ -520,10 +516,10 @@ export default function VendorDashboard() {
 
             <div className="grid flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
               <VendorMenuCard
-                title="Pindai QR"
-                desc="Verifikasi order penerima"
-                href="/dashboard/scan-qr"
-                icon={QrCode}
+                title="Pesanan Faskes"
+                desc="Konfirmasi dan kirim pesanan"
+                href="/dashboard/vendor/facility-orders"
+                icon={ShoppingBag}
                 iconWrapClass="bg-indigo-50"
                 iconClass="text-indigo-600"
                 borderClass="border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/40"
