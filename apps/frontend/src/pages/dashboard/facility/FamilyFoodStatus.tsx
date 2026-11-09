@@ -1,18 +1,19 @@
-import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
-import { fiesStatusConfig, type FiesClassification } from "@/lib/status-config";
+import { fiesStatusConfig, fiesTextClass, type FiesClassification } from "@/lib/status-config";
 import type { Family } from "@/services/facility-families";
 
 export default function FamilyFoodStatus({ family }: { family: Family }) {
   const latest = family.latest_fies;
-  const current = latest ? fiesStatusConfig[latest.classification as FiesClassification] : null;
+  const classification = (latest?.classification || "unassessed") as FiesClassification;
+  const current = latest ? fiesStatusConfig[classification] : null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Badge variant="outline" className={current?.className || fiesStatusConfig.unassessed.className}>
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+      <span className={`inline-flex items-center text-[13px] font-medium ${fiesTextClass[classification] || fiesTextClass.unassessed}`}>
+        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
         {current?.label || (latest ? latest.classification : "Belum ada survei FIES")}
-      </Badge>
+      </span>
       {latest && <span className="text-xs text-muted-foreground">FIES {latest.score}/8 · {formatDate(latest.survey_date)}</span>}
-    </div>
+    </span>
   );
 }

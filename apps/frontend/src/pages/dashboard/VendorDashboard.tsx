@@ -33,7 +33,7 @@ const whiteCardClass = "bg-white ring-1 ring-black/[0.06]";
 
 function orderStatus(order: FacilityOrder) {
   if (order.status === "pending") return { label: "Menunggu proses", className: "text-[#B45309]" };
-  if (order.status === "processing") {
+  if (order.status === "processing" || order.status === "shipped") {
     return order.receipt_status === "discrepancy"
       ? { label: "Barang bermasalah", className: "text-[#C81E1E]" }
       : { label: "Dalam pengiriman", className: "text-[#1D4ED8]" };

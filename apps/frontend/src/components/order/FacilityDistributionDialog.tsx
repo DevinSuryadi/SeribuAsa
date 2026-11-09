@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Camera, Loader2, PackageCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -67,13 +67,13 @@ export default function FacilityDistributionDialog({ order, onClose, onDistribut
 
   return (
     <Dialog open={Boolean(order)} onOpenChange={(open: boolean) => { if (!open && !saving) onClose(); }}>
-      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-2xl">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-[20px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><PackageCheck className="h-5 w-5 text-primary" /> Unggah Bukti Penerimaan</DialogTitle>
+          <DialogTitle>Unggah Bukti Penerimaan</DialogTitle>
           <p className="text-sm text-muted-foreground">Isi setelah seluruh bantuan diserahkan kepada {order?.family_name || "keluarga tujuan"}. Penyimpanan bukti sekaligus menyelesaikan penyaluran.</p>
         </DialogHeader>
         {order && <form className="space-y-4" onSubmit={submit}>
-          <div className="rounded-xl bg-secondary/30 p-4">
+          <div className="rounded-xl bg-[#F4F7F5] p-4">
             <p className="mb-2 text-sm font-semibold">Barang yang diserahkan</p>
             <ul className="space-y-1 text-sm text-muted-foreground">{order.items.map((item) => <li key={item.product_id}>{item.quantity}× {item.product_name}</li>)}</ul>
           </div>
@@ -83,7 +83,7 @@ export default function FacilityDistributionDialog({ order, onClose, onDistribut
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="distribution-relation">Hubungan dengan kepala keluarga</Label>
-            <select id="distribution-relation" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={recipientRelation} onChange={(event) => setRecipientRelation(event.target.value)}>
+            <select id="distribution-relation" className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm" value={recipientRelation} onChange={(event) => setRecipientRelation(event.target.value)}>
               <option value="">Pilih hubungan (opsional)</option>
               <option value="Kepala keluarga">Kepala keluarga</option>
               <option value="Pasangan">Pasangan</option>
@@ -95,7 +95,6 @@ export default function FacilityDistributionDialog({ order, onClose, onDistribut
           <div className="space-y-1.5">
             <Label htmlFor="distribution-photo">Foto bukti penerimaan</Label>
             <label htmlFor="distribution-photo" className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4 text-sm text-primary hover:bg-primary/10">
-              <Camera className="h-5 w-5" />
               <span>{photo ? photo.name : "Ambil atau pilih foto saat bantuan diterima"}</span>
             </label>
             <input id="distribution-photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={(event) => setPhoto(event.target.files?.[0] || null)} />
@@ -110,8 +109,8 @@ export default function FacilityDistributionDialog({ order, onClose, onDistribut
             <span>Saya memastikan seluruh barang telah diterima oleh keluarga yang tercantum.</span>
           </label>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Batal</Button>
-            <Button type="submit" disabled={saving || !recipientName.trim() || !photo || !itemsComplete}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{saving ? "Menyimpan..." : "Simpan Bukti"}</Button>
+            <Button type="button" variant="outline" className="rounded-full" onClick={onClose} disabled={saving}>Batal</Button>
+            <Button type="submit" className="rounded-full" disabled={saving || !recipientName.trim() || !photo || !itemsComplete}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{saving ? "Menyimpan..." : "Simpan Bukti"}</Button>
           </div>
         </form>}
       </DialogContent>

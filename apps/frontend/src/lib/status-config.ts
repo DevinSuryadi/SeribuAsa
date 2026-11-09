@@ -176,6 +176,13 @@ export function getFiesStatus(classification?: string | null): FiesStatusConfig 
   return fiesStatusConfig[(classification || "unassessed") as FiesClassification] || fiesStatusConfig.unassessed;
 }
 
+export const fiesTextClass: Record<FiesClassification, string> = {
+  food_secure: "text-emerald-700",
+  moderate: "text-amber-700",
+  severe: "text-red-600",
+  unassessed: "text-slate-500",
+};
+
 // Facility Recommendation Priority
 export type FacilityPriority = "high" | "medium" | "low";
 

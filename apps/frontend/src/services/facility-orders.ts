@@ -12,7 +12,7 @@ export type FacilityOrder = {
   vendor_name: string | null;
   items: { product_id: string; product_name: string; quantity: number; price: number; subtotal: number }[];
   total_amount: number;
-  status: "pending_approval" | "pending" | "processing" | "received" | "completed" | "cancelled" | "rejected";
+  status: "pending_approval" | "pending" | "processing" | "shipped" | "received" | "completed" | "cancelled" | "rejected";
   payment_status: string;
   allocation_status?: "automatic" | "requested" | "approved" | "rejected" | "cancelled" | null;
   allocation_decided_at?: string | null;

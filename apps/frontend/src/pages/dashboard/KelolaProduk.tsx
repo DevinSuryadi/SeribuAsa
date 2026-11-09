@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { ErrorState } from "@/components/dashboard/ErrorState";
 import { productApprovalConfig } from "@/lib/status-config";
-import { getVisualFromCategory } from "@/components/product/ProductAvatar";
+import { ProductImageTile } from "@/components/product/ProductImageTile";
 
 interface ProductFormState {
   name: string;
@@ -87,32 +87,6 @@ const statusTone: Record<string, string> = {
   pending: "text-amber-700",
   rejected: "text-red-600",
 };
-
-function ProductImage({ product, categoryName }: { product: VendorProduct; categoryName: string }) {
-  const [failed, setFailed] = useState(false);
-  const src = product.images?.[0];
-
-  return (
-    <div className="m-2 mb-0 flex aspect-[3/2] items-center justify-center overflow-hidden rounded-xl bg-[#f5f5f7]">
-      {src && !failed ? (
-        <img
-          src={src}
-          alt={product.name}
-          className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:transform-none"
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <span
-          role="img"
-          aria-label={product.name}
-          className="text-5xl transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transform-none"
-        >
-          {getVisualFromCategory(categoryName).emoji}
-        </span>
-      )}
-    </div>
-  );
-}
 
 const KelolaProduk = () => {
   const { user } = useAuth();
@@ -445,7 +419,7 @@ const KelolaProduk = () => {
                   key={product.id}
                   className="group flex flex-col overflow-hidden rounded-[20px] bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)] transition-shadow duration-300 hover:shadow-[2px_4px_20px_rgba(0,0,0,0.12)]"
                 >
-                  <ProductImage product={product} categoryName={categoryLabel} />
+                  <ProductImageTile images={product.images} name={product.name} categoryName={categoryLabel} />
 
                   <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
                     <p className={`text-xs font-medium ${statusTone[product.approval_status] || statusTone.pending}`}>

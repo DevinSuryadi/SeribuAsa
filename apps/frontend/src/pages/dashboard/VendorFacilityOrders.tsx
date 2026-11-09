@@ -47,6 +47,7 @@ const statusMeta: Record<OrderStatus, { label: string; className: string }> = {
 };
 
 function statusOf(order: FacilityOrder): OrderStatus {
+  if (order.status === "shipped") return "processing";
   if (order.status === "pending" || order.status === "processing" || order.status === "received" || order.status === "completed") {
     return order.status;
   }
@@ -115,7 +116,7 @@ function trackingIndex(order: FacilityOrder) {
   if (order.distribution) return 4;
   if (order.status === "completed" || order.status === "received") return 3;
   if (order.receipt_status === "discrepancy") return 2;
-  if (order.status === "processing") return 1;
+  if (order.status === "processing" || order.status === "shipped") return 1;
   return 0;
 }
 

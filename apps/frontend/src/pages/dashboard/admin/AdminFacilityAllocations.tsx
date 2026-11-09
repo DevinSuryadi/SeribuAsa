@@ -10,6 +10,7 @@ const statusLabels: Record<FacilityOrder["status"], string> = {
   pending_approval: "Pesanan lama belum didanai",
   pending: "Menunggu vendor",
   processing: "Dalam pengiriman",
+  shipped: "Dalam pengiriman",
   received: "Diterima Faskes",
   completed: "Sudah disalurkan",
   cancelled: "Dibatalkan",

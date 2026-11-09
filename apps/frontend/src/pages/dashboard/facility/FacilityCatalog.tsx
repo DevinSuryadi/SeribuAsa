@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { ErrorState } from "@/components/dashboard/ErrorState";
-import { ProductAvatarLarge } from "@/components/product/ProductAvatar";
+import { ProductImageTile } from "@/components/product/ProductImageTile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { createFacilityOrder } from "@/services/facility-orders";
 import { listEligibleVendors, type EligibleVendor } from "@/services/facility-orders";
 import { getProvinces, getRegencies, type Province, type Regency } from "@/services/regions";
 import type { VendorProduct } from "@/types/vendor";
-import { ArrowLeft, Minus, Plus, Search, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 type CartLine = { product: VendorProduct; quantity: number };
@@ -158,7 +158,7 @@ export default function FacilityCatalog() {
     <DashboardLayout title="Katalog Pangan" subtitle="Pilih provinsi, kota/kabupaten, dan vendor sebelum memesan pangan untuk keluarga terdaftar.">
       <div className="space-y-6">
         {familyId && <Button asChild variant="ghost" className="pl-0 text-primary"><Link to={`/dashboard/health-facility/families/${familyId}`}><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke keluarga</Link></Button>}
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm"><CardHeader><CardTitle className="text-base font-bold text-slate-900">Pilih daerah dan vendor</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3">
+        <Card className="rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]"><CardHeader><CardTitle className="text-base font-bold text-slate-900">Pilih daerah dan vendor</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3">
           <div><label htmlFor="catalog-province" className="mb-1 block text-sm font-medium">Provinsi</label><select id="catalog-province" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={provinceCode} onChange={(event) => { setProvinceCode(event.target.value); setRegencies([]); setRegencyCode(""); setVendors([]); setSelectedVendorId(""); setCart([]); setPage(1); }}><option value="">Pilih provinsi</option>{provinces.map((province) => <option key={province.code} value={province.code}>{province.name}</option>)}</select></div>
           <div><label htmlFor="catalog-regency" className="mb-1 block text-sm font-medium">Kota/kabupaten</label><select id="catalog-regency" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={regencyCode} disabled={!provinceCode || !regencies.length} onChange={(event) => { setRegencyCode(event.target.value); setVendors([]); setSelectedVendorId(""); setCart([]); setPage(1); }}><option value="">Pilih kota/kabupaten</option>{regencies.map((regency) => <option key={regency.code} value={regency.code}>{regency.name}</option>)}</select></div>
           <div><label htmlFor="catalog-vendor" className="mb-1 block text-sm font-medium">Vendor</label><select id="catalog-vendor" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={selectedVendorId} disabled={!regencyCode || vendorLoading || !vendors.length} onChange={(event) => { setSelectedVendorId(event.target.value); setCart([]); setPage(1); }}><option value="">{vendorLoading ? "Memuat vendor..." : "Pilih vendor"}</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.store_name} ({vendor.product_count} produk)</option>)}</select></div>
@@ -170,10 +170,10 @@ export default function FacilityCatalog() {
           )}
           {regencyCode && !vendorLoading && !regionError && vendors.length === 0 && <p className="sm:col-span-3 text-sm text-muted-foreground">Belum ada vendor aktif dengan produk tersedia di daerah ini.</p>}
         </CardContent></Card>
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row">
+        <Card className="rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row">
           <form className="flex flex-1 gap-2" onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(searchInput.trim()); }}>
             <Input aria-label="Cari pangan" className="h-10 rounded-xl border-slate-200" placeholder="Cari nama pangan..." value={searchInput} onChange={(event) => setSearchInput(event.target.value)} />
-            <Button type="submit" variant="outline"><Search className="h-4 w-4" /></Button>
+            <Button type="submit" variant="outline" className="rounded-full"><Search className="h-4 w-4" /></Button>
           </form>
           <select aria-label="Kategori" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setPage(1); }}>
             <option value="">Semua kategori</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
@@ -181,14 +181,14 @@ export default function FacilityCatalog() {
         </CardContent></Card>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-4">
-            {!selectedVendorId ? <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Pilih provinsi, kota/kabupaten, lalu vendor untuk melihat produk.</p> : loading ? (
+            {!selectedVendorId ? <p className="rounded-[20px] bg-white p-6 text-sm text-slate-500 shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">Pilih provinsi, kota/kabupaten, lalu vendor untuk melihat produk.</p> : loading ? (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Memuat katalog">
                 {[0, 1, 2].map((item) => <Skeleton key={item} className="h-72 rounded-2xl" />)}
               </div>
             ) : error ? (
               <ErrorState title="Gagal memuat katalog" message={error} onRetry={() => setProductRetryKey((key) => key + 1)} />
             ) : products.length === 0 ? (
-              <div className="rounded-2xl border border-slate-200 bg-white">
+              <div className="rounded-[20px] bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
                 <EmptyState
                   title={search || categoryId ? "Produk tidak ditemukan" : "Belum ada produk"}
                   description={search || categoryId ? "Coba ubah kata pencarian atau kategori." : "Vendor ini belum memiliki produk yang tersedia."}
@@ -197,18 +197,18 @@ export default function FacilityCatalog() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{products.map((product) => {
                 const quantity = cart.find((line) => line.product.id === product.id)?.quantity || 0;
-                return <Card key={product.id} className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm">
-                  <ProductAvatarLarge images={product.images} categoryName={product.category_name} name={product.name} className="h-40 w-full" />
+                return <Card key={product.id} className="group overflow-hidden rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
+                  <ProductImageTile images={product.images} categoryName={product.category_name} name={product.name} />
                   <CardContent className="space-y-3 p-4"><div><p className="text-xs text-muted-foreground">{product.vendor_store_name || "Vendor"}</p><h3 className="font-semibold text-slate-900">{product.name}</h3><p className="line-clamp-2 text-xs text-muted-foreground">{product.description}</p></div>
                     <div className="flex items-end justify-between"><div><p className="font-bold text-primary">{formatIDR(product.price)}</p><p className="text-xs text-muted-foreground">per {product.unit} · stok {product.stock}</p></div>
-                      <div className="flex items-center gap-2"><Button size="icon" variant="outline" aria-label={`Kurangi ${product.name}`} disabled={!quantity} onClick={() => changeQuantity(product, -1)}><Minus className="h-4 w-4" /></Button><span className="w-5 text-center text-sm">{quantity}</span><Button size="icon" variant="outline" aria-label={`Tambah ${product.name}`} disabled={product.stock <= quantity} onClick={() => changeQuantity(product, 1)}><Plus className="h-4 w-4" /></Button></div>
+                      <div className="flex items-center gap-2"><Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Kurangi ${product.name}`} disabled={!quantity} onClick={() => changeQuantity(product, -1)}><Minus className="h-4 w-4" /></Button><span className="w-5 text-center text-sm">{quantity}</span><Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Tambah ${product.name}`} disabled={product.stock <= quantity} onClick={() => changeQuantity(product, 1)}><Plus className="h-4 w-4" /></Button></div>
                     </div>
                   </CardContent></Card>;
               })}</div>
             )}
-            <div className="flex items-center justify-end gap-3"><Button variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Sebelumnya</Button><span className="text-sm">{page} / {totalPages}</span><Button variant="outline" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Berikutnya</Button></div>
+            <div className="flex items-center justify-end gap-3"><Button variant="outline" className="rounded-full" disabled={page <= 1} onClick={() => setPage(page - 1)}>Sebelumnya</Button><span className="text-sm">{page} / {totalPages}</span><Button variant="outline" className="rounded-full" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Berikutnya</Button></div>
           </div>
-          <Card id="order-summary" className="h-fit scroll-mt-4 rounded-2xl border-slate-200 bg-white shadow-sm lg:sticky lg:top-4"><CardHeader><CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900"><ShoppingCart className="h-5 w-5" /> Pesanan</CardTitle></CardHeader><CardContent className="space-y-4">
+          <Card id="order-summary" className="h-fit scroll-mt-4 rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)] lg:sticky lg:top-4"><CardHeader><CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900">Pesanan</CardTitle></CardHeader><CardContent className="space-y-4">
             <div><label htmlFor="order-family" className="mb-1 block text-sm font-medium">Keluarga penerima</label><select id="order-family" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={selectedFamilyId} disabled={Boolean(familyId)} onChange={(event) => setSelectedFamilyId(event.target.value)}><option value="">Pilih keluarga saat akan memesan</option>{families.map((family) => <option key={family.id} value={family.id}>{family.head_name}</option>)}</select>{familyError && <p className="mt-1 text-xs text-destructive">{familyError}</p>}</div>
             {cart.length ? <div className="space-y-2 border-t pt-3">{cart.map(({ product, quantity }) => <div key={product.id} className="flex justify-between gap-2 text-sm"><span>{quantity}× {product.name}</span><span>{formatIDR(product.price * quantity)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">Pilih pangan untuk mulai memesan. Katalog dapat dilihat tanpa memilih keluarga.</p>}
             <div className="flex justify-between border-t pt-3 font-semibold"><span>Total</span><span>{formatIDR(total)}</span></div>
@@ -216,11 +216,11 @@ export default function FacilityCatalog() {
               <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
                 <label htmlFor="facility-address" className="block text-sm font-medium text-amber-900">Alamat faskes belum diisi. Vendor butuh alamat ini untuk mengirim pesanan.</label>
                 <Input id="facility-address" className="h-10 rounded-xl border-amber-200 bg-white" maxLength={500} placeholder="Alamat lengkap faskes" value={addressDraft} onChange={(event) => setAddressDraft(event.target.value)} />
-                <Button type="button" variant="outline" size="sm" className="w-full rounded-xl bg-white" disabled={savingAddress || addressDraft.trim().length < 5} onClick={() => { void saveAddress(); }}>{savingAddress ? "Menyimpan..." : "Simpan alamat"}</Button>
+                <Button type="button" variant="outline" size="sm" className="w-full rounded-full bg-white" disabled={savingAddress || addressDraft.trim().length < 5} onClick={() => { void saveAddress(); }}>{savingAddress ? "Menyimpan..." : "Simpan alamat"}</Button>
               </div>
             )}
             <p className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-primary">Pesanan langsung diteruskan ke vendor. Dana donasi dicadangkan saat memesan; pastikan produk dan keluarga penerima sudah sesuai.</p>
-            <Button className="w-full rounded-xl" disabled={!cart.length || !selectedFamilyId || !familyName || !selectedVendorId || Boolean(familyError) || missingAddress || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
+            <Button className="w-full rounded-full" disabled={!cart.length || !selectedFamilyId || !familyName || !selectedVendorId || Boolean(familyError) || missingAddress || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
           </CardContent></Card>
         </div>
         {cart.length > 0 && (
@@ -230,8 +230,8 @@ export default function FacilityCatalog() {
                 <p className="text-xs text-slate-500">{cart.reduce((sum, line) => sum + line.quantity, 0)} item dipilih</p>
                 <p className="font-bold text-slate-900">{formatIDR(total)}</p>
               </div>
-              <Button className="shrink-0 rounded-xl" onClick={() => document.getElementById("order-summary")?.scrollIntoView({ behavior: "smooth" })}>
-                <ShoppingCart className="mr-2 h-4 w-4" /> Lihat pesanan
+              <Button className="shrink-0 rounded-full" onClick={() => document.getElementById("order-summary")?.scrollIntoView({ behavior: "smooth" })}>
+                Lihat pesanan
               </Button>
             </div>
           </div>
