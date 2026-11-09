@@ -53,7 +53,7 @@ export default function FacilityReceiptDialog({ order, onClose, onSaved }: {
         evidence_url: evidenceUrl,
         notes: notes.trim() || undefined,
       });
-      toast.success(complete ? "Barang diterima lengkap. Pencairan Vendor menunggu persetujuan Admin." : "Ketidaksesuaian barang dicatat. Pencairan ditahan.");
+      toast.success(complete ? "Barang diterima lengkap. Dana untuk Vendor dialokasikan oleh sistem." : "Ketidaksesuaian barang dicatat. Alokasi dana ditahan sampai barang lengkap.");
       onSaved(saved);
       onClose();
     } catch (error) {
@@ -67,7 +67,7 @@ export default function FacilityReceiptDialog({ order, onClose, onSaved }: {
     <DialogContent className="max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Konfirmasi barang tiba di Faskes</DialogTitle>
-        <p className="text-sm text-muted-foreground">Periksa jenis dan jumlah barang sebelum menerima. Batas transfer Vendor dihitung tiga hari sejak waktu barang tiba.</p>
+        <p className="text-sm text-muted-foreground">Periksa jenis dan jumlah barang sebelum menerima. Faskes tidak perlu membayar Vendor, dana dialokasikan oleh sistem setelah barang dinyatakan lengkap.</p>
       </DialogHeader>
       {order && <form className="space-y-4" onSubmit={submit}>
         <ul className="rounded-lg border p-3 text-sm">{order.items.map((item) => <li key={item.product_id}>{item.quantity}× {item.product_name}</li>)}</ul>

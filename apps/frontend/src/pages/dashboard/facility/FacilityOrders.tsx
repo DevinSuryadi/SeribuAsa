@@ -27,9 +27,9 @@ export default function FacilityOrders() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
 
-  async function refresh(forceRefresh = false) {
+  async function refresh() {
     setLoading(true);
-    try { setOrders(await listFacilityOrders(undefined, forceRefresh)); setError(""); }
+    try { setOrders(await listFacilityOrders()); setError(""); }
     catch (err) { setError(err instanceof Error ? err.message : "Gagal memuat pesanan"); }
     finally { setLoading(false); }
   }
@@ -46,7 +46,7 @@ export default function FacilityOrders() {
 
   return <DashboardLayout title="Pesanan Pangan" subtitle="Pantau pesanan dari vendor. Bukti penerimaan dicatat pada halaman bantuan masing-masing keluarga.">
     <div className="mx-auto max-w-[1100px] space-y-5">
-      <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={() => { void refresh(true); }} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Segarkan</Button><Button asChild><Link to="/dashboard/health-facility/catalog"><Plus className="mr-2 h-4 w-4" /> Pesan Pangan</Link></Button></div>
+      <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={() => { void refresh(); }} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Segarkan</Button><Button asChild><Link to="/dashboard/health-facility/catalog"><Plus className="mr-2 h-4 w-4" /> Pesan Pangan</Link></Button></div>
       {error && <p role="alert" className="rounded-xl bg-destructive/5 p-4 text-destructive">{error}</p>}
       {loading ? <p className="p-6 text-muted-foreground">Memuat pesanan...</p> : orders.length === 0 ? <Card className="rounded-2xl"><CardContent className="flex flex-col items-center gap-3 p-10 text-center"><Package className="h-8 w-8 text-primary" /><p>Belum ada pesanan faskes.</p><Button asChild variant="outline"><Link to="/dashboard/health-facility/catalog">Lihat katalog</Link></Button></CardContent></Card> : orders.map((order) => <Card key={order.id} className="rounded-2xl border-border/70 shadow-sm">
         <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle className="text-base">Untuk {order.family_name || "Keluarga"}</CardTitle><p className="mt-1 text-xs text-muted-foreground">Pesanan {order.id.slice(0, 8)} · {formatDate(order.created_at)} · {order.vendor_name || "Vendor"}</p></div><Badge variant="outline">{orderStatus(order)}</Badge></CardHeader>

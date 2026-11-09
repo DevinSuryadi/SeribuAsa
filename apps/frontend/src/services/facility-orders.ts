@@ -27,6 +27,8 @@ export type FacilityOrder = {
   receipt_status?: "accepted" | "discrepancy" | null;
   receipt_evidence_url?: string | null;
   discrepancy_notes?: string | null;
+  facility_phone?: string | null;
+  process_due_at?: string | null;
   receipt_notes: string | null;
   payout_status?: "pending_approval" | "approved" | "paid" | null;
   payout_due_at?: string | null;
@@ -44,8 +46,9 @@ export type FacilityOrder = {
 const refreshOptions = (forceRefresh: boolean): RequestInit | undefined =>
   forceRefresh ? { cache: "no-store" } : undefined;
 
-export const listFacilityOrders = (familyId?: string, forceRefresh = false): Promise<FacilityOrder[]> =>
-  apiFetch(`/facilities/orders${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`, refreshOptions(forceRefresh));
+// Status changes come from the vendor's session, so this list can never be served from cache.
+export const listFacilityOrders = (familyId?: string): Promise<FacilityOrder[]> =>
+  apiFetch(`/facilities/orders${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`, { cache: "no-store" });
 export const listFacilityRedemptions = (familyId?: string, forceRefresh = false): Promise<FacilityOrder[]> =>
   apiFetch(`/facilities/orders/history${familyId ? `?family_id=${encodeURIComponent(familyId)}` : ""}`, refreshOptions(forceRefresh));
 export const createFacilityOrder = (data: {
@@ -81,6 +84,10 @@ export const listVendorFacilityOrders = (): Promise<FacilityOrder[]> =>
   apiFetch("/vendor/facility-orders", { cache: "no-store" });
 export const dispatchFacilityOrder = (id: string): Promise<FacilityOrder> =>
   apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/dispatch`, { method: "POST" });
+export const rejectFacilityOrder = (id: string, reason: string): Promise<FacilityOrder> =>
+  apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/reject`, { method: "POST", body: JSON.stringify({ reason }) });
+export const adminCancelFacilityOrder = (id: string, reason: string): Promise<FacilityOrder> =>
+  apiFetch(`/admin/facility-orders/${encodeURIComponent(id)}/cancel`, { method: "POST", body: JSON.stringify({ reason }) });
 export const listAdminFacilityOrders = (pendingOnly = false): Promise<FacilityOrder[]> =>
   apiFetch(`/admin/facility-orders${pendingOnly ? "?pending_only=true" : ""}`, { cache: "no-store" });
 

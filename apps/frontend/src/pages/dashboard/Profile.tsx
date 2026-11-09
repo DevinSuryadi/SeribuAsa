@@ -22,21 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  User,
-  MapPin,
-  Phone,
-  Mail,
-  Calendar,
-  Edit,
-  LogOut,
-  Lock,
-  Loader2,
-  Landmark,
-  Store,
-  Upload,
-  Star,
-} from "lucide-react";
+import { Loader2, Star, Upload } from "lucide-react";
 import { uploadImage } from "@/services/upload";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
@@ -72,18 +58,14 @@ interface BankFormData {
 interface InfoCardProps {
   label: string;
   value: ReactNode;
-  icon: ReactNode;
-  accent?: "green" | "purple" | "emerald" | "blue";
   className?: string;
 }
 
 interface SectionCardProps {
   title: string;
   description?: string;
-  icon: ReactNode;
   action?: ReactNode;
   children: ReactNode;
-  accent?: "green" | "purple" | "emerald" | "blue" | "red";
 }
 
 const ROLE_LABELS: Record<UserRole | string, string> = {
@@ -100,36 +82,22 @@ const GENDER_LABELS: Record<string, string> = {
   female: "Perempuan",
 };
 
-const ACCENT_STYLES = {
-  green: {
-    icon: "bg-green-50 text-green-700",
-    hover: "hover:border-green-200 hover:bg-green-50/50",
-    label: "group-hover:text-green-700",
-  },
-  purple: {
-    icon: "bg-purple-50 text-purple-700",
-    hover: "hover:border-purple-200 hover:bg-purple-50/50",
-    label: "group-hover:text-purple-700",
-  },
-  emerald: {
-    icon: "bg-emerald-50 text-emerald-700",
-    hover: "hover:border-emerald-200 hover:bg-emerald-50/50",
-    label: "group-hover:text-emerald-700",
-  },
-  blue: {
-    icon: "bg-blue-50 text-blue-700",
-    hover: "hover:border-blue-200 hover:bg-blue-50/50",
-    label: "group-hover:text-blue-700",
-  },
-};
-
-const SECTION_ACCENT_STYLES = {
-  green: "bg-green-50 text-green-700",
-  purple: "bg-purple-50 text-purple-700",
-  emerald: "bg-emerald-50 text-emerald-700",
-  blue: "bg-blue-50 text-blue-700",
-  red: "bg-red-50 text-red-700",
-};
+const shadowClass =
+  "shadow-[0_1px_2px_rgba(16,32,26,0.04),0_10px_24px_-14px_rgba(16,32,26,0.16)]";
+const sectionClass = `rounded-2xl bg-white p-6 ring-1 ring-black/[0.06] ${shadowClass}`;
+const tileClass = "rounded-xl bg-[#F4F7F5] p-4";
+const labelClass = "text-[13px] font-medium text-slate-500";
+const valueClass = "mt-1 break-words text-[15px] font-semibold text-slate-900";
+const primaryButtonClass = "rounded-full bg-[#0B6B4F] px-5 font-bold text-white hover:bg-[#095A43]";
+const secondaryButtonClass = "rounded-full border-slate-200 bg-white px-5 font-semibold text-slate-700 hover:bg-slate-50";
+const fieldLabelClass = "text-[13px] font-semibold text-slate-700";
+const fieldClass = "mt-1.5 h-11 rounded-xl";
+const textareaClass =
+  "mt-1.5 min-h-[88px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-[#0B6B4F] focus:ring-2 focus:ring-[#0B6B4F]/15";
+const selectClass =
+  "mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-[#0B6B4F] focus:ring-2 focus:ring-[#0B6B4F]/15";
+const tabClass =
+  "rounded-full px-4 py-1.5 text-[13px] font-semibold text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.12)]";
 
 const isEmptyDisplay = (value: ReactNode) =>
   value === "Belum diatur" ||
@@ -139,76 +107,30 @@ const isEmptyDisplay = (value: ReactNode) =>
 
 const DisplayValue = ({ value }: { value: ReactNode }) => {
   if (isEmptyDisplay(value)) {
-    return (
-      <span className="text-sm font-medium italic text-slate-400">
-        Belum diatur
-      </span>
-    );
+    return <span className="font-medium text-slate-400">Belum diatur</span>;
   }
 
   return <>{value}</>;
 };
 
-const InfoCard = ({
-  label,
-  value,
-  icon,
-  accent = "green",
-  className = "",
-}: InfoCardProps) => {
-  const style = ACCENT_STYLES[accent];
+const InfoCard = ({ label, value, className = "" }: InfoCardProps) => (
+  <div className={`${tileClass} ${className}`}>
+    <p className={labelClass}>{label}</p>
+    <p className={valueClass}>
+      <DisplayValue value={value} />
+    </p>
+  </div>
+);
 
-  return (
-    <div
-      className={`group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${style.hover} ${className}`}
-    >
-      <div
-        className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${style.icon}`}
-      >
-        {icon}
-      </div>
+const SectionCard = ({ title, description, action, children }: SectionCardProps) => (
+  <section className={sectionClass}>
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h3 className="text-lg font-bold tracking-tight text-slate-900">{title}</h3>
 
-      <p
-        className={`text-xs font-bold uppercase tracking-[0.16em] text-slate-400 transition-colors ${style.label}`}
-      >
-        {label}
-      </p>
-
-      <p className="mt-2 break-words text-sm font-bold leading-relaxed text-slate-900 sm:text-base">
-        <DisplayValue value={value} />
-      </p>
-    </div>
-  );
-};
-
-const SectionCard = ({
-  title,
-  description,
-  icon,
-  action,
-  children,
-  accent = "green",
-}: SectionCardProps) => (
-  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7">
-    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex items-start gap-3">
-        <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${SECTION_ACCENT_STYLES[accent]}`}
-        >
-          {icon}
-        </div>
-
-        <div>
-          <h3 className="text-lg font-black tracking-tight text-slate-950 sm:text-xl">
-            {title}
-          </h3>
-
-          {description && (
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
-              {description}
-            </p>
-          )}
-        </div>
+        {description && (
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">{description}</p>
+        )}
       </div>
 
       {action}
@@ -525,12 +447,12 @@ const Profile = () => {
         subtitle="Kelola informasi pribadi dan pengaturan akun Anda."
       >
         <div className="flex min-h-[420px] items-center justify-center">
-          <div className="rounded-[2rem] border border-slate-200 bg-white px-10 py-8 text-center shadow-sm">
-            <Loader2 className="mx-auto mb-4 h-11 w-11 animate-spin text-emerald-600" />
+          <div className={`${sectionClass} px-10 text-center`}>
+            <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#0B6B4F]" />
             <p className="text-sm font-semibold text-slate-700">
               Memuat profil...
             </p>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-[13px] text-slate-500">
               Mohon tunggu sebentar.
             </p>
           </div>
@@ -545,188 +467,83 @@ const Profile = () => {
       subtitle="Kelola informasi pribadi dan pengaturan akun Anda."
     >
       <div className="w-full space-y-6 pb-10">
-        <section className="relative overflow-hidden rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 shadow-sm sm:p-7 lg:p-8">
-          <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-200/40 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 left-10 h-72 w-72 rounded-full bg-teal-200/30 blur-3xl" />
-
-          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
-              <div className="mx-auto flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.7rem] border border-white bg-white shadow-lg sm:mx-0 sm:h-28 sm:w-28">
-                <div className="flex h-[82%] w-[82%] items-center justify-center overflow-hidden rounded-[1.35rem] bg-emerald-50 text-emerald-600">
-                  <User size={46} strokeWidth={1.8} />
-                </div>
+        <section className={`rounded-2xl bg-[#E6F4EC] p-6 ${shadowClass}`}>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#0B6B4F] text-2xl font-bold text-white">
+                {resolvedName.charAt(0).toUpperCase()}
               </div>
 
-              <div className="min-w-0 text-center sm:text-left">
-                <div className="mb-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                  <Badge className="rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100">
-                    {displayValues.role}
-                  </Badge>
-
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-slate-200 bg-white/80 px-3 py-1 text-xs font-bold text-slate-600"
-                  >
-                    {completedProfileFields}/4 Data Terisi
-                  </Badge>
-                </div>
-
-                <h2 className="break-words text-2xl font-black tracking-tight text-slate-950 sm:text-3xl lg:text-4xl">
+              <div className="min-w-0">
+                <h2 className="break-words text-2xl font-bold tracking-tight text-slate-900">
                   {resolvedName}
                 </h2>
-
-                <div className="mt-3 flex min-w-0 items-center justify-center gap-2 text-sm font-medium text-slate-500 sm:justify-start">
-                  <Mail size={16} className="shrink-0 text-emerald-600" />
-                  <span className="min-w-0 break-all">{user?.email || "-"}</span>
+                <p className="mt-0.5 break-all text-sm text-slate-600">{user?.email || "-"}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge className="rounded-full border-0 bg-[#0B6B4F] px-3 py-0.5 text-xs font-semibold text-white hover:bg-[#0B6B4F]">
+                    {displayValues.role}
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-0 bg-white px-3 py-0.5 text-xs font-semibold text-slate-700">
+                    {completedProfileFields}/4 Data Terisi
+                  </Badge>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:min-w-[300px]">
-              <Button
-                onClick={() => setShowEditModal(true)}
-                className="h-11 rounded-2xl bg-emerald-600 font-bold text-white shadow-sm hover:bg-emerald-700"
-              >
-                <Edit size={17} className="mr-2" />
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => setShowEditModal(true)} className={primaryButtonClass}>
                 Edit Profil
               </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => setShowPasswordModal(true)}
-                className="h-11 rounded-2xl border-slate-200 bg-white/80 font-bold text-slate-700 hover:bg-white"
-              >
-                <Lock size={17} className="mr-2" />
+              <Button variant="outline" onClick={() => setShowPasswordModal(true)} className={secondaryButtonClass}>
                 Keamanan
               </Button>
             </div>
           </div>
 
-          <div className="relative z-10 mt-7 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm backdrop-blur">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                  <Phone size={18} />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
-                    Kontak
-                  </p>
-                  <p className="mt-1 truncate text-sm font-bold text-slate-900">
-                    {displayValues.phone}
-                  </p>
-                </div>
+          <dl className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+            {[
+              { label: "Kontak", value: displayValues.phone },
+              { label: "Role Akun", value: displayValues.role },
+              { label: "Status Profil", value: completedProfileFields === 4 ? "Lengkap" : "Perlu dilengkapi" },
+            ].map((item) => (
+              <div key={item.label} className={`rounded-xl bg-white p-4 ${shadowClass}`}>
+                <dt className={labelClass}>{item.label}</dt>
+                <dd className={`${valueClass} truncate`}>
+                  <DisplayValue value={item.value} />
+                </dd>
               </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm backdrop-blur">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                  <User size={18} />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
-                    Role Akun
-                  </p>
-                  <p className="mt-1 truncate text-sm font-bold text-slate-900">
-                    {displayValues.role}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm backdrop-blur">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                  <Edit size={18} />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
-                    Status Profil
-                  </p>
-                  <p className="mt-1 truncate text-sm font-bold text-slate-900">
-                    {completedProfileFields === 4 ? "Lengkap" : "Perlu dilengkapi"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+            ))}
+          </dl>
         </section>
 
-        <Tabs defaultValue="umum" className="w-full">
-          <TabsList className="mb-6 flex h-auto w-full flex-wrap justify-start gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:w-auto">
-            <TabsTrigger
-              value="umum"
-              className="rounded-xl px-5 py-2.5 text-sm font-bold data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
-            >
-              Umum
-            </TabsTrigger>
+        <Tabs defaultValue="umum" className="w-full space-y-6">
+          <TabsList className="flex h-auto w-fit max-w-full justify-start gap-0 overflow-x-auto rounded-full bg-[#ececef] p-1 [scrollbar-width:none]">
+            <TabsTrigger value="umum" className={tabClass}>Umum</TabsTrigger>
 
             {resolvedRole === "vendor" && (
               <>
-                <TabsTrigger
-                  value="toko"
-                  className="rounded-xl px-5 py-2.5 text-sm font-bold data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 data-[state=active]:shadow-sm"
-                >
-                  Informasi Toko
-                </TabsTrigger>
-
-                <TabsTrigger
-                  value="keuangan"
-                  className="rounded-xl px-5 py-2.5 text-sm font-bold data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
-                >
-                  Keuangan
-                </TabsTrigger>
+                <TabsTrigger value="toko" className={tabClass}>Informasi Toko</TabsTrigger>
+                <TabsTrigger value="keuangan" className={tabClass}>Keuangan</TabsTrigger>
               </>
             )}
 
-            <TabsTrigger
-              value="keamanan"
-              className="rounded-xl px-5 py-2.5 text-sm font-bold data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:shadow-sm"
-            >
-              Keamanan
-            </TabsTrigger>
+            <TabsTrigger value="keamanan" className={tabClass}>Keamanan</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="umum" className="space-y-6">
+          <TabsContent value="umum" className="mt-0 space-y-6">
             <SectionCard
               title="Informasi Pribadi"
               description="Data dasar akun yang digunakan untuk identitas dan kebutuhan transaksi di SeribuAsa."
-              icon={<User size={21} />}
               action={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowEditModal(true)}
-                  className="h-9 rounded-xl border-slate-200 font-bold text-slate-700"
-                >
-                  <Edit size={14} className="mr-2" />
+                <Button variant="outline" size="sm" onClick={() => setShowEditModal(true)} className={secondaryButtonClass}>
                   Edit
                 </Button>
               }
             >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <InfoCard
-                  label="Nomor HP"
-                  value={displayValues.phone}
-                  icon={<Phone size={20} />}
-                />
-
-                <InfoCard
-                  label="Tanggal Lahir"
-                  value={displayValues.dateOfBirth}
-                  icon={<Calendar size={20} />}
-                />
-
-                <InfoCard
-                  label="Jenis Kelamin"
-                  value={displayValues.gender}
-                  icon={<User size={20} />}
-                  className="sm:col-span-2 xl:col-span-1"
-                />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <InfoCard label="Nomor HP" value={displayValues.phone} />
+                <InfoCard label="Tanggal Lahir" value={displayValues.dateOfBirth} />
+                <InfoCard label="Jenis Kelamin" value={displayValues.gender} />
               </div>
             </SectionCard>
 
@@ -734,48 +551,21 @@ const Profile = () => {
               <SectionCard
                 title="Alamat Terdaftar"
                 description="Alamat utama yang tersimpan di akun Anda."
-                icon={<MapPin size={21} />}
                 action={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowEditModal(true)}
-                    className="h-9 rounded-xl border-slate-200 font-bold text-slate-700"
-                  >
-                    <Edit size={14} className="mr-2" />
+                  <Button variant="outline" size="sm" onClick={() => setShowEditModal(true)} className={secondaryButtonClass}>
                     Edit
                   </Button>
                 }
               >
-                <div className="relative overflow-hidden rounded-[1.5rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5 sm:p-6">
-                  <MapPin className="pointer-events-none absolute -bottom-8 -right-6 h-32 w-32 text-emerald-100" />
-
-                  <div className="relative z-10">
-                    <div className="mb-4 flex flex-wrap items-center gap-3">
-                      <p className="text-base font-black text-slate-950">
-                        {resolvedName}
-                      </p>
-
-                      <span className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-bold text-emerald-700">
-                        Alamat Utama
-                      </span>
-                    </div>
-
-                    {displayValues.address !== "Belum diatur" ? (
-                      <p className="max-w-3xl text-sm font-medium leading-7 text-slate-700 sm:text-base">
-                        {displayValues.address}
-                      </p>
-                    ) : (
-                      <div className="rounded-2xl border border-dashed border-emerald-200 bg-white/70 p-4">
-                        <p className="text-sm font-semibold text-slate-500">
-                          Alamat belum diatur.
-                        </p>
-                        <p className="mt-1 text-sm text-slate-400">
-                          Lengkapi alamat agar data profil Anda lebih jelas.
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                <div className={tileClass}>
+                  <p className={labelClass}>Alamat Utama · {resolvedName}</p>
+                  {displayValues.address !== "Belum diatur" ? (
+                    <p className={`${valueClass} max-w-3xl leading-relaxed`}>{displayValues.address}</p>
+                  ) : (
+                    <p className="mt-1 text-[15px] font-medium text-slate-400">
+                      Alamat belum diatur. Lengkapi agar data profil Anda lebih jelas.
+                    </p>
+                  )}
                 </div>
               </SectionCard>
             )}
@@ -783,247 +573,110 @@ const Profile = () => {
 
           {resolvedRole === "vendor" && (
             <>
-              <TabsContent value="toko" className="space-y-6">
+              <TabsContent value="toko" className="mt-0 space-y-6">
                 <SectionCard
                   title="Informasi Toko"
                   description="Data toko vendor yang akan digunakan untuk pengelolaan produk dan transaksi."
-                  icon={<Store size={21} />}
-                  accent="purple"
                   action={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowStoreModal(true)}
-                      className="h-9 rounded-xl border-purple-200 font-bold text-purple-700 hover:bg-purple-50"
-                    >
-                      <Edit size={14} className="mr-2" />
+                    <Button variant="outline" size="sm" onClick={() => setShowStoreModal(true)} className={secondaryButtonClass}>
                       Edit Toko
                     </Button>
                   }
                 >
-                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
-                    <div className="overflow-hidden rounded-[1.6rem] border border-purple-100 bg-purple-50/60">
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+                    <div className="relative flex min-h-[256px] items-center justify-center overflow-hidden rounded-xl bg-[#F4F7F5]">
                       {displayValues.storeImageUrl ? (
-                        <div className="relative h-72 overflow-hidden">
-                          <img
-                            src={displayValues.storeImageUrl}
-                            alt="Foto toko"
-                            className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
-                          />
-
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-6 pt-16">
-                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">
-                              Nama Toko
-                            </p>
-                            <h4 className="mt-1 text-2xl font-black text-white">
-                              <DisplayValue value={displayValues.storeName} />
-                            </h4>
-                          </div>
-
-                          {displayValues.rating !== null && (
-                            <div className="absolute right-4 top-4 flex items-center gap-2 rounded-2xl border border-white/40 bg-white/95 px-4 py-2 shadow-sm backdrop-blur">
-                              <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
-                              <span className="font-black text-slate-900">
-                                {displayValues.rating.toFixed(1)}
-                              </span>
-                              <span className="text-sm font-medium text-slate-500">
-                                ({displayValues.totalTransactions})
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                        <img
+                          src={displayValues.storeImageUrl}
+                          alt="Foto toko"
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
                       ) : (
-                        <div className="flex min-h-[260px] flex-col items-center justify-center p-8 text-center">
-                          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-purple-600 shadow-sm">
-                            <Store size={30} />
-                          </div>
+                        <p className="max-w-xs px-6 text-center text-sm text-slate-500">
+                          Foto toko belum tersedia. Tambahkan foto agar profil toko terlihat lebih jelas.
+                        </p>
+                      )}
 
-                          <p className="text-lg font-black text-purple-950">
-                            <DisplayValue value={displayValues.storeName} />
-                          </p>
-
-                          <p className="mt-2 max-w-md text-sm leading-relaxed text-purple-700/70">
-                            Foto toko belum tersedia. Tambahkan foto agar profil toko
-                            terlihat lebih jelas.
-                          </p>
-
-                          {displayValues.rating !== null && (
-                            <div className="mt-4 flex items-center gap-2 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-2">
-                              <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
-                              <span className="font-black text-amber-900">
-                                {displayValues.rating.toFixed(1)}
-                              </span>
-                              <span className="text-sm font-medium text-amber-700/70">
-                                ({displayValues.totalTransactions})
-                              </span>
-                            </div>
-                          )}
+                      {displayValues.rating !== null && (
+                        <div className={`absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm ${shadowClass}`}>
+                          <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                          <span className="font-bold text-slate-900">{displayValues.rating.toFixed(1)}</span>
+                          <span className="text-slate-500">({displayValues.totalTransactions})</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="space-y-4">
-                      <InfoCard
-                        label="Jam Operasional"
-                        value={displayValues.operatingHours}
-                        icon={<Calendar size={20} />}
-                        accent="purple"
-                      />
-
-                      <InfoCard
-                        label="Alamat Toko"
-                        value={displayValues.storeAddress}
-                        icon={<MapPin size={20} />}
-                        accent="purple"
-                      />
-
-                      <Button
-                        onClick={() => setShowStoreModal(true)}
-                        className="h-12 w-full rounded-2xl bg-purple-600 font-bold text-white hover:bg-purple-700"
-                      >
-                        <Store size={17} className="mr-2" />
-                        Lengkapi Informasi Toko
-                      </Button>
+                    <div className="space-y-3">
+                      <InfoCard label="Nama Toko" value={displayValues.storeName} />
+                      <InfoCard label="Jam Operasional" value={displayValues.operatingHours} />
+                      <InfoCard label="Alamat Toko" value={displayValues.storeAddress} />
                     </div>
                   </div>
                 </SectionCard>
               </TabsContent>
 
-              <TabsContent value="keuangan" className="space-y-6">
+              <TabsContent value="keuangan" className="mt-0 space-y-6">
                 <SectionCard
                   title="Rekening Pencairan"
                   description="Rekening ini digunakan untuk proses pencairan saldo vendor."
-                  icon={<Landmark size={21} />}
-                  accent="emerald"
                   action={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowBankModal(true)}
-                      className="h-9 rounded-xl border-emerald-200 font-bold text-emerald-700 hover:bg-emerald-50"
-                    >
-                      <Edit size={14} className="mr-2" />
-                      Edit Rekening
+                    <Button variant="outline" size="sm" onClick={() => setShowBankModal(true)} className={secondaryButtonClass}>
+                      {profileData?.bank_account_number ? "Ubah Rekening" : "Tambahkan Rekening"}
                     </Button>
                   }
                 >
-                  <div className="relative overflow-hidden rounded-[1.6rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 sm:p-6">
-                    <Landmark className="pointer-events-none absolute -bottom-10 -right-8 h-36 w-36 text-emerald-100" />
-
-                    <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <div className="rounded-2xl border border-emerald-100 bg-white/80 p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
-                          Bank
-                        </p>
-                        <p className="mt-2 break-words text-base font-black text-emerald-950">
-                          <DisplayValue value={displayValues.bankName} />
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl border border-emerald-100 bg-white/80 p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
-                          Pemilik Rekening
-                        </p>
-                        <p className="mt-2 break-words text-base font-black text-emerald-950">
-                          <DisplayValue value={displayValues.bankAccountHolder} />
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl border border-emerald-100 bg-white/80 p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
-                          Nomor Rekening
-                        </p>
-                        <p className="mt-2 break-words font-mono text-base font-black tracking-wider text-emerald-950">
-                          <DisplayValue value={displayValues.bankAccountNumber} />
-                        </p>
-                      </div>
-                    </div>
-
-                    <Button
-                      onClick={() => setShowBankModal(true)}
-                      className="relative z-10 mt-5 h-12 rounded-2xl bg-emerald-600 px-6 font-bold text-white hover:bg-emerald-700"
-                    >
-                      <Landmark size={17} className="mr-2" />
-                      {profileData?.bank_account_number
-                        ? "Ubah Rekening"
-                        : "Tambahkan Rekening"}
-                    </Button>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <InfoCard label="Bank" value={displayValues.bankName} />
+                    <InfoCard label="Pemilik Rekening" value={displayValues.bankAccountHolder} />
+                    <InfoCard label="Nomor Rekening" value={displayValues.bankAccountNumber} />
                   </div>
                 </SectionCard>
               </TabsContent>
             </>
           )}
 
-          <TabsContent value="keamanan" className="space-y-6">
+          <TabsContent value="keamanan" className="mt-0 space-y-6">
             <SectionCard
               title="Keamanan Akun"
               description="Kelola kata sandi akun Anda dari halaman ini."
-              icon={<Lock size={21} />}
-              accent="blue"
+              action={
+                <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)} className={secondaryButtonClass}>
+                  Ubah Kata Sandi
+                </Button>
+              }
             >
-              <button
-                onClick={() => setShowPasswordModal(true)}
-                className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition-all hover:border-blue-200 hover:bg-blue-50 active:scale-[0.98] lg:max-w-xl"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
-                    <Lock size={18} />
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-black text-slate-900">
-                      Ubah Kata Sandi
-                    </p>
-                    <p className="mt-0.5 text-xs font-medium text-slate-500">
-                      Perbarui password akun.
-                    </p>
-                  </div>
-                </div>
-              </button>
+              <InfoCard label="Kata Sandi" value="••••••••" />
             </SectionCard>
           </TabsContent>
         </Tabs>
 
-        <section className="rounded-[1.75rem] border border-red-100 bg-white p-5 shadow-sm sm:p-6 lg:p-7">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
-                <LogOut size={21} />
-              </div>
-
-              <div>
-                <h3 className="text-lg font-black tracking-tight text-red-700 sm:text-xl">
-                  Keluar dari Akun
-                </h3>
-                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
-                  Akhiri sesi akun pada perangkat ini.
-                </p>
-              </div>
-            </div>
-
-            <Button
-              onClick={handleSignOut}
-              variant="outline"
-              className="h-11 rounded-2xl border-red-200 bg-red-50 px-6 font-bold text-red-700 hover:bg-red-100 hover:text-red-800"
-            >
-              <LogOut size={17} className="mr-2" />
-              Keluar
-            </Button>
+        <section className={`${sectionClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
+          <div>
+            <h3 className="text-lg font-bold tracking-tight text-slate-900">Keluar dari Akun</h3>
+            <p className="mt-1 text-sm text-slate-500">Akhiri sesi akun pada perangkat ini.</p>
           </div>
+
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            className="rounded-full border-red-200 bg-white px-5 font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            Keluar
+          </Button>
         </section>
 
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-          <DialogContent className="w-full rounded-3xl sm:max-w-md">
+          <DialogContent className="w-[calc(100vw-2rem)] rounded-2xl sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Edit Profil</DialogTitle>
               <DialogDescription>Perbarui informasi pribadi Anda.</DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <Label
                   htmlFor="fullName"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Nama Lengkap
                 </Label>
@@ -1033,7 +686,7 @@ const Profile = () => {
                   onChange={(e) =>
                     setEditFormData({ ...editFormData, fullName: e.target.value })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                   placeholder="Nama lengkap Anda"
                 />
               </div>
@@ -1041,7 +694,7 @@ const Profile = () => {
               <div>
                 <Label
                   htmlFor="phone"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Nomor HP
                 </Label>
@@ -1053,14 +706,14 @@ const Profile = () => {
                   onChange={(e) =>
                     setEditFormData({ ...editFormData, phone: e.target.value })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                 />
               </div>
 
               <div>
                 <Label
                   htmlFor="address"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Alamat
                 </Label>
@@ -1070,7 +723,7 @@ const Profile = () => {
                   onChange={(e) =>
                     setEditFormData({ ...editFormData, address: e.target.value })
                   }
-                  className="mt-1 min-h-[80px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                  className={textareaClass}
                   placeholder="Masukkan alamat"
                 />
               </div>
@@ -1078,7 +731,7 @@ const Profile = () => {
               <div>
                 <Label
                   htmlFor="dob"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Tanggal Lahir
                 </Label>
@@ -1092,14 +745,14 @@ const Profile = () => {
                       dateOfBirth: e.target.value,
                     })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                 />
               </div>
 
               <div>
                 <Label
                   htmlFor="gender"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Jenis Kelamin
                 </Label>
@@ -1109,7 +762,7 @@ const Profile = () => {
                   onChange={(e) =>
                     setEditFormData({ ...editFormData, gender: e.target.value })
                   }
-                  className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                  className={selectClass}
                 >
                   <option value="">Pilih Jenis Kelamin</option>
                   <option value="male">Laki-laki</option>
@@ -1119,13 +772,13 @@ const Profile = () => {
             </div>
 
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setShowEditModal(false)}>
+              <Button variant="outline" className={secondaryButtonClass} onClick={() => setShowEditModal(false)}>
                 Batal
               </Button>
               <Button
                 onClick={handleEditProfile}
                 disabled={isSubmitting}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className={primaryButtonClass}
               >
                 {isSubmitting ? (
                   <>
@@ -1141,7 +794,7 @@ const Profile = () => {
         </Dialog>
 
         <Dialog open={showBankModal} onOpenChange={setShowBankModal}>
-          <DialogContent className="w-full rounded-3xl sm:max-w-md">
+          <DialogContent className="w-[calc(100vw-2rem)] rounded-2xl sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Rekening Pencairan</DialogTitle>
               <DialogDescription>
@@ -1150,11 +803,11 @@ const Profile = () => {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <Label
                   htmlFor="bankName"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Nama Bank
                 </Label>
@@ -1164,7 +817,7 @@ const Profile = () => {
                   onChange={(e) =>
                     setBankFormData({ ...bankFormData, bankName: e.target.value })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                   placeholder="Contoh: BCA, BRI, Mandiri"
                 />
               </div>
@@ -1172,7 +825,7 @@ const Profile = () => {
               <div>
                 <Label
                   htmlFor="bankAccountNumber"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Nomor Rekening
                 </Label>
@@ -1186,7 +839,7 @@ const Profile = () => {
                       bankAccountNumber: e.target.value,
                     })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                   placeholder="Nomor rekening"
                 />
               </div>
@@ -1194,7 +847,7 @@ const Profile = () => {
               <div>
                 <Label
                   htmlFor="bankAccountHolder"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Nama Pemilik Rekening
                 </Label>
@@ -1207,20 +860,20 @@ const Profile = () => {
                       bankAccountHolder: e.target.value,
                     })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                   placeholder="Sesuai nama di rekening"
                 />
               </div>
             </div>
 
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setShowBankModal(false)}>
+              <Button variant="outline" className={secondaryButtonClass} onClick={() => setShowBankModal(false)}>
                 Batal
               </Button>
               <Button
                 onClick={handleSaveBankAccount}
                 disabled={isSubmitting}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className={primaryButtonClass}
               >
                 {isSubmitting ? (
                   <>
@@ -1236,17 +889,17 @@ const Profile = () => {
         </Dialog>
 
         <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
-          <DialogContent className="w-full rounded-3xl sm:max-w-md">
+          <DialogContent className="w-[calc(100vw-2rem)] rounded-2xl sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Ubah Kata Sandi</DialogTitle>
               <DialogDescription>Perbarui kata sandi akun Anda.</DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <Label
                   htmlFor="currentPassword"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Kata Sandi Saat Ini
                 </Label>
@@ -1260,14 +913,14 @@ const Profile = () => {
                       currentPassword: e.target.value,
                     })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                 />
               </div>
 
               <div>
                 <Label
                   htmlFor="newPassword"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Kata Sandi Baru
                 </Label>
@@ -1282,14 +935,14 @@ const Profile = () => {
                       newPassword: e.target.value,
                     })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                 />
               </div>
 
               <div>
                 <Label
                   htmlFor="confirmPassword"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Konfirmasi Kata Sandi
                 </Label>
@@ -1303,7 +956,7 @@ const Profile = () => {
                       confirmPassword: e.target.value,
                     })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                 />
               </div>
             </div>
@@ -1311,11 +964,12 @@ const Profile = () => {
             <DialogFooter className="gap-2">
               <Button
                 variant="outline"
+                className={secondaryButtonClass}
                 onClick={() => setShowPasswordModal(false)}
               >
                 Batal
               </Button>
-              <Button onClick={handleChangePassword} disabled={isSubmitting}>
+              <Button className={primaryButtonClass} onClick={handleChangePassword} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1330,7 +984,7 @@ const Profile = () => {
         </Dialog>
 
         <Dialog open={showStoreModal} onOpenChange={setShowStoreModal}>
-          <DialogContent className="w-full rounded-3xl sm:max-w-md">
+          <DialogContent className="w-[calc(100vw-2rem)] rounded-2xl sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Informasi Toko</DialogTitle>
               <DialogDescription>
@@ -1338,15 +992,15 @@ const Profile = () => {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="max-h-[60vh] space-y-3 overflow-y-auto px-1">
+            <div className="max-h-[60vh] space-y-4 overflow-y-auto px-1">
               <div>
-                <Label className="mb-2 block text-xs font-bold uppercase tracking-wide">
+                <Label className={fieldLabelClass}>
                   Foto Toko
                 </Label>
 
                 <div className="relative mt-1 flex w-full flex-col items-center justify-center gap-3 sm:items-start">
                   {storeFormData.storeImageUrl ? (
-                    <div className="group relative h-36 w-full overflow-hidden rounded-2xl border border-slate-200 sm:w-40">
+                    <div className="group relative h-36 w-full overflow-hidden rounded-xl sm:w-40">
                       <img
                         src={storeFormData.storeImageUrl}
                         alt="Store preview"
@@ -1365,7 +1019,7 @@ const Profile = () => {
                   ) : (
                     <Label
                       htmlFor="storeImageUpload"
-                      className="flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition-colors hover:bg-slate-100 sm:w-40"
+                      className="flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-[#F4F7F5] transition-colors hover:bg-[#E6F4EC] sm:w-40"
                     >
                       <Upload className="h-6 w-6 text-slate-400" />
                       <span className="text-xs font-bold text-slate-500">
@@ -1384,7 +1038,7 @@ const Profile = () => {
                   />
 
                   {isUploadingStoreImage && (
-                    <div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-700">
+                    <div className="mt-1 flex items-center gap-1.5 text-[13px] text-[#0B6B4F]">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       Sedang mengunggah...
                     </div>
@@ -1395,7 +1049,7 @@ const Profile = () => {
               <div>
                 <Label
                   htmlFor="storeName"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Nama Toko
                 </Label>
@@ -1408,7 +1062,7 @@ const Profile = () => {
                       storeName: e.target.value,
                     })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                   placeholder="Contoh: Toko Sehat Berkah"
                 />
               </div>
@@ -1416,7 +1070,7 @@ const Profile = () => {
               <div>
                 <Label
                   htmlFor="operatingHours"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Jam Operasional
                 </Label>
@@ -1429,7 +1083,7 @@ const Profile = () => {
                       operatingHours: e.target.value,
                     })
                   }
-                  className="mt-1 rounded-xl"
+                  className={fieldClass}
                   placeholder="Contoh: Setiap Hari: 08.00 - 20.00"
                 />
               </div>
@@ -1437,7 +1091,7 @@ const Profile = () => {
               <div>
                 <Label
                   htmlFor="storeAddress"
-                  className="text-xs font-bold uppercase tracking-wide"
+                  className={fieldLabelClass}
                 >
                   Alamat Toko
                 </Label>
@@ -1450,20 +1104,20 @@ const Profile = () => {
                       storeAddress: e.target.value,
                     })
                   }
-                  className="mt-1 min-h-[80px] w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                  className={textareaClass}
                   placeholder="Detail alamat toko Anda"
                 />
               </div>
             </div>
 
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setShowStoreModal(false)}>
+              <Button variant="outline" className={secondaryButtonClass} onClick={() => setShowStoreModal(false)}>
                 Batal
               </Button>
               <Button
                 onClick={handleSaveStoreInfo}
                 disabled={isSubmitting || isUploadingStoreImage}
-                className="bg-purple-600 text-white hover:bg-purple-700"
+                className={primaryButtonClass}
               >
                 {isSubmitting ? (
                   <>

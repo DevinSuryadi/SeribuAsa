@@ -32,6 +32,19 @@ describe("vendor-wallet service", () => {
     expect(result.pending_withdrawals).toBe(100000);
   });
 
+  it("converts decimal strings from the API into numbers", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      balance: "151460.00",
+      minimum_withdrawal_amount: "50000.00",
+    });
+
+    const result = await getWalletBalance();
+
+    expect(result.balance).toBe(151460);
+    expect(result.minimum_withdrawal_amount).toBe(50000);
+    expect(result.balance >= (result.minimum_withdrawal_amount ?? 0)).toBe(true);
+  });
+
   it("creates bank withdrawal request", async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce({
       id: "wd_1",

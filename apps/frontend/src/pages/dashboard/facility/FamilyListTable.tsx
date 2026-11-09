@@ -65,7 +65,7 @@ export default function FamilyListTable() {
   useEffect(() => {
     let active = true;
     const forceRefresh = refreshKey > 0;
-    Promise.all([listFamilies(forceRefresh), listFacilityOrders(undefined, forceRefresh)])
+    Promise.all([listFamilies(forceRefresh), listFacilityOrders()])
       .then(([familyRows, orderRows]) => {
         if (active) {
           setFamilies(familyRows);

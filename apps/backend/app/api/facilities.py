@@ -85,6 +85,19 @@ class FacilityAccount(BaseModel):
     review_reason: str | None = None
 
 
+class FacilityContactUpdate(BaseModel):
+    address: str = Field(min_length=5, max_length=500)
+    phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("address")
+    @classmethod
+    def non_empty_address(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 5:
+            raise ValueError("Alamat terlalu pendek")
+        return value
+
+
 class FacilityRejectionInput(BaseModel):
     reason: str = Field(min_length=5, max_length=1000)
 
@@ -278,4 +291,22 @@ async def get_my_facility(
     facility = db.query(HealthFacility).filter_by(account_user_id=user_id, is_active=True).first()
     if not facility:
         raise HTTPException(status_code=404, detail="Fasilitas kesehatan tidak ditemukan")
+    return facility
+
+
+@router.patch("/me", response_model=FacilityAccount)
+async def update_my_facility_contact(
+    data: FacilityContactUpdate,
+    token_data: dict = Depends(verified_facility_identity),
+    db: Session = Depends(get_db),
+):
+    user_id = UUID(str(token_data["id"]))
+    facility = db.query(HealthFacility).filter_by(account_user_id=user_id, is_active=True).first()
+    if not facility:
+        raise HTTPException(status_code=404, detail="Fasilitas kesehatan tidak ditemukan")
+    facility.address = data.address
+    if data.phone is not None:
+        facility.phone = data.phone.strip() or None
+    db.commit()
+    db.refresh(facility)
     return facility

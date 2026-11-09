@@ -27,9 +27,9 @@ from app.services.regions import valid_area
 from app.services.facility_funding import (
     InsufficientPoolFunds,
     order_funding,
-    release_order_funding,
     reserve_order_funding,
 )
+from app.services.facility_order_lifecycle import PENDING_ORDER_TTL, cancel_facility_order_record
 
 facility_router = APIRouter(prefix="/facilities/orders", tags=["facility orders"])
 catalog_router = APIRouter(prefix="/facilities/catalog", tags=["facility catalog"])
@@ -84,6 +84,18 @@ class ReceiptInput(BaseModel):
     @classmethod
     def valid_evidence_url(cls, value: str | None) -> str | None:
         return DistributionInput.valid_evidence_url(value) if value else None
+
+
+class CancellationInput(BaseModel):
+    reason: str = Field(min_length=5, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def non_empty_reason(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 5:
+            raise ValueError("Alasan terlalu pendek")
+        return value
 
 
 def _funding_payload(total_amount: Decimal, amounts: dict[str, Decimal]) -> dict:
@@ -177,12 +189,16 @@ def order_payload(
         funding = context["funding"][order.id]
     return {
         "id": order.id,
-        "family_id": order.family_id,
+        "family_id": None if vendor_view else order.family_id,
         "family_name": None
         if vendor_view
         else (order.recipient_family.head_name if order.recipient_family else None),
         "health_facility_name": facility.name if facility else None,
-        "delivery_address": order.delivery_address_snapshot,
+        "delivery_address": order.delivery_address_snapshot or (facility.address if facility else None),
+        "facility_phone": facility.phone if facility else None,
+        "process_due_at": (order.created_at + PENDING_ORDER_TTL).replace(tzinfo=timezone.utc)
+        if order.status == "pending" and order.created_at
+        else None,
         "service_province_code": order.service_province_code,
         "service_regency_code": order.service_regency_code,
         "vendor_id": order.vendor_id,
@@ -216,11 +232,12 @@ def order_payload(
         "payout_due_at": payout.due_at.replace(tzinfo=timezone.utc) if payout else None,
         "distribution": {
             "id": distribution.id,
-            "recipient_name": distribution.recipient_name,
-            "recipient_relation": distribution.recipient_relation,
-            "evidence_url": distribution.evidence_url,
+            # Vendors only need to know the handover happened, not who received it.
+            "recipient_name": None if vendor_view else distribution.recipient_name,
+            "recipient_relation": None if vendor_view else distribution.recipient_relation,
+            "evidence_url": None if vendor_view else distribution.evidence_url,
             "items_complete": distribution.items_complete,
-            "notes": distribution.notes,
+            "notes": None if vendor_view else distribution.notes,
             "distributed_at": distribution.distributed_at.replace(tzinfo=timezone.utc),
         }
         if distribution
@@ -359,6 +376,10 @@ def create_facility_order(
     existing = _existing_facility_order(db, data, facility)
     if existing:
         return order_payload(db, existing)
+    if not (facility.address or "").strip():
+        raise HTTPException(
+            status_code=409, detail="Lengkapi alamat faskes agar vendor tahu tujuan pengiriman"
+        )
 
     quantities: dict[UUID, int] = {}
     for line in data.items:
@@ -472,13 +493,7 @@ def cancel_facility_order(
         raise HTTPException(
             status_code=409, detail="Hanya pesanan yang belum diproses dapat dibatalkan"
         )
-    for item in order.items:
-        product = db.query(Product).filter_by(id=item.product_id).with_for_update().first()
-        product.stock_quantity += item.quantity
-    order.status = "cancelled"
-    if order.allocation_status in {"requested", "automatic"}:
-        order.allocation_status = "cancelled"
-    release_order_funding(db, order)
+    cancel_facility_order_record(db, order, "Dibatalkan oleh Faskes.")
     db.commit()
     return order_payload(db, order)
 
@@ -594,9 +609,15 @@ def confirm_facility_receipt(
     if receipt and receipt.status == "accepted":
         return order_payload(db, order)
     if receipt and receipt.status == "discrepancy" and not data.items_complete:
+        # Keep the latest report so the vendor sees what is still wrong.
+        receipt.discrepancy_notes = data.notes.strip()
+        receipt.notes = data.notes.strip()
+        receipt.evidence_url = data.evidence_url or receipt.evidence_url
+        db.commit()
         return order_payload(db, order)
     if receipt and arrival != receipt.arrived_at:
         raise HTTPException(status_code=409, detail="Waktu kedatangan awal tidak dapat diubah")
+    reinspected = receipt is not None
     if not receipt:
         receipt = FacilityOrderReceipt(
             order_id=order.id,
@@ -623,7 +644,8 @@ def confirm_facility_receipt(
             vendor_id=order.vendor_id,
             amount=order.total_amount,
             status="pending_approval",
-            due_at=arrival + timedelta(days=3),
+            # After a discrepancy the goods are only complete at re-inspection.
+            due_at=(now if reinspected else arrival) + timedelta(days=3),
         ))
     try:
         db.commit()
@@ -680,6 +702,56 @@ def dispatch_facility_order(
     order.dispatched_at = datetime.utcnow()
     db.commit()
     return order_payload(db, order, vendor_view=True)
+
+
+@vendor_router.post("/{order_id}/reject")
+def reject_facility_order(
+    order_id: UUID,
+    data: CancellationInput,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    vendor = vendor_account(db, user)
+    order = (
+        db.query(Order)
+        .filter_by(id=order_id, order_flow="facility_delivery", vendor_id=vendor.user_id, is_active=True)
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
+    if order.status != "pending":
+        raise HTTPException(status_code=409, detail="Hanya pesanan yang belum diproses dapat ditolak")
+    cancel_facility_order_record(db, order, f"Ditolak vendor: {data.reason}")
+    db.commit()
+    return order_payload(db, order, vendor_view=True)
+
+
+@admin_router.post("/{order_id}/cancel")
+def admin_cancel_facility_order(
+    order_id: UUID,
+    data: CancellationInput,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(RequireRole(["admin"])),
+):
+    order = (
+        db.query(Order)
+        .filter_by(id=order_id, order_flow="facility_delivery", is_active=True)
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
+    if order.status not in {"pending_approval", "pending", "processing"}:
+        raise HTTPException(status_code=409, detail="Pesanan yang sudah diterima tidak dapat dibatalkan")
+    # Dispatched goods have left the vendor, so only the donated funds are returned.
+    cancel_facility_order_record(
+        db, order, f"Dibatalkan Admin: {data.reason}", restore_stock=order.status != "processing"
+    )
+    order.allocation_decided_by_user_id = user.user_id
+    order.allocation_decided_at = datetime.utcnow()
+    db.commit()
+    return order_payload(db, order)
 
 
 @admin_router.get("")

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatIDR } from "@/lib/format";
 import { getCategories, getProducts, type Category } from "@/services/products";
-import { listFamilies, type Family } from "@/services/facility-families";
+import { getMyFacility, listFamilies, updateMyFacilityContact, type Family } from "@/services/facility-families";
 import { createFacilityOrder } from "@/services/facility-orders";
 import { listEligibleVendors, type EligibleVendor } from "@/services/facility-orders";
 import { getProvinces, getRegencies, type Province, type Regency } from "@/services/regions";
@@ -47,8 +47,26 @@ export default function FacilityCatalog() {
   const [error, setError] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [missingAddress, setMissingAddress] = useState(false);
+  const [addressDraft, setAddressDraft] = useState("");
+  const [savingAddress, setSavingAddress] = useState(false);
 
   useEffect(() => { setSelectedFamilyId(familyId || ""); }, [familyId]);
+
+  useEffect(() => {
+    getMyFacility(true).then((facility) => setMissingAddress(!facility.address?.trim())).catch(() => {});
+  }, []);
+
+  async function saveAddress() {
+    setSavingAddress(true);
+    try {
+      await updateMyFacilityContact({ address: addressDraft.trim() });
+      setMissingAddress(false);
+      toast.success("Alamat faskes disimpan");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan alamat");
+    } finally { setSavingAddress(false); }
+  }
 
   useEffect(() => {
     let active = true;
@@ -194,8 +212,15 @@ export default function FacilityCatalog() {
             <div><label htmlFor="order-family" className="mb-1 block text-sm font-medium">Keluarga penerima</label><select id="order-family" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={selectedFamilyId} disabled={Boolean(familyId)} onChange={(event) => setSelectedFamilyId(event.target.value)}><option value="">Pilih keluarga saat akan memesan</option>{families.map((family) => <option key={family.id} value={family.id}>{family.head_name}</option>)}</select>{familyError && <p className="mt-1 text-xs text-destructive">{familyError}</p>}</div>
             {cart.length ? <div className="space-y-2 border-t pt-3">{cart.map(({ product, quantity }) => <div key={product.id} className="flex justify-between gap-2 text-sm"><span>{quantity}× {product.name}</span><span>{formatIDR(product.price * quantity)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">Pilih pangan untuk mulai memesan. Katalog dapat dilihat tanpa memilih keluarga.</p>}
             <div className="flex justify-between border-t pt-3 font-semibold"><span>Total</span><span>{formatIDR(total)}</span></div>
+            {missingAddress && (
+              <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <label htmlFor="facility-address" className="block text-sm font-medium text-amber-900">Alamat faskes belum diisi. Vendor butuh alamat ini untuk mengirim pesanan.</label>
+                <Input id="facility-address" className="h-10 rounded-xl border-amber-200 bg-white" maxLength={500} placeholder="Alamat lengkap faskes" value={addressDraft} onChange={(event) => setAddressDraft(event.target.value)} />
+                <Button type="button" variant="outline" size="sm" className="w-full rounded-xl bg-white" disabled={savingAddress || addressDraft.trim().length < 5} onClick={() => { void saveAddress(); }}>{savingAddress ? "Menyimpan..." : "Simpan alamat"}</Button>
+              </div>
+            )}
             <p className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-primary">Pesanan langsung diteruskan ke vendor. Dana donasi dicadangkan saat memesan; pastikan produk dan keluarga penerima sudah sesuai.</p>
-            <Button className="w-full rounded-xl" disabled={!cart.length || !selectedFamilyId || !familyName || !selectedVendorId || Boolean(familyError) || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
+            <Button className="w-full rounded-xl" disabled={!cart.length || !selectedFamilyId || !familyName || !selectedVendorId || Boolean(familyError) || missingAddress || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
           </CardContent></Card>
         </div>
         {cart.length > 0 && (

@@ -19,6 +19,8 @@ export type Facility = {
   id: string;
   name: string;
   facility_type: string | null;
+  address?: string | null;
+  phone?: string | null;
   approval_status: string;
   review_reason?: string | null;
 };
@@ -30,6 +32,8 @@ const refreshOptions = (forceRefresh: boolean): RequestInit | undefined =>
 
 export const getMyFacility = (forceRefresh = false): Promise<Facility> =>
   apiFetch("/facilities/me", refreshOptions(forceRefresh));
+export const updateMyFacilityContact = (data: { address: string; phone?: string }): Promise<Facility> =>
+  apiFetch("/facilities/me", { method: "PATCH", body: JSON.stringify(data) });
 export const listFamilies = (forceRefresh = false): Promise<Family[]> =>
   apiFetch("/facilities/families", refreshOptions(forceRefresh));
 export const getFamily = (familyId: string, forceRefresh = false): Promise<Family> =>
