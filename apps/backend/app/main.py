@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from uuid import UUID
 import logging
 
@@ -15,6 +17,16 @@ from app.cron.settlement_cron import SettlementScheduler
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="NutriGuard API", version="1.0.0")
+
+
+@app.exception_handler(SQLAlchemyError)
+async def handle_database_error(_request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    logger.error("Database operation failed", exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Gagal mengakses data. Silakan coba lagi."},
+    )
+
 
 # CORS configuration.
 # Merge .env-configured origins with common frontend dev origins.

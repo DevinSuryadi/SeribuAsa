@@ -254,6 +254,12 @@ async def complete_onboarding(
             raise HTTPException(status_code=404, detail="User profile not found")
 
         google_auth_service.create_role_profile(db, user_id, profile.full_name or "User", data.role)
+        if data.role == "vendor":
+            from app.models.user import VendorProfile
+            db.flush()
+            vendor = db.query(VendorProfile).filter_by(user_id=user_id).one()
+            vendor.province_code = data.province_code
+            vendor.regency_code = data.regency_code
         db.commit()
 
         cache.invalidate("auth", str(user_id))

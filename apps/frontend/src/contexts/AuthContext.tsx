@@ -9,6 +9,8 @@ type SupabaseUserMetadata = {
   address?: string | null;
   facility_name?: string | null;
   facility_type?: string | null;
+  province_code?: string | null;
+  regency_code?: string | null;
 };
 
 type Session = {
@@ -55,7 +57,7 @@ interface AuthContextType {
     password: string,
     fullName: string,
     role: string,
-    profileData?: { phone?: string; address?: string; facilityName?: string; facilityType?: string }
+    profileData?: { phone?: string; address?: string; facilityName?: string; facilityType?: string; provinceCode?: string; regencyCode?: string }
   ) => Promise<{ error: string | null; requiresManualLogin?: boolean }>;
   signInAsDemo: (role: UserRole) => void;
   signOut: () => Promise<void>;
@@ -303,6 +305,8 @@ async function ensureBackendProfileForSessionIfNeeded(
       role: roleToCreate,
       phone,
       address,
+      province_code: normalizeOptionalProfileField(currentSession.user.user_metadata?.province_code),
+      regency_code: normalizeOptionalProfileField(currentSession.user.user_metadata?.regency_code),
     }),
   });
 
@@ -327,6 +331,8 @@ async function syncFacilityProfile(currentSession: Session): Promise<string> {
         facility_type: metadata.facility_type || null,
         phone: normalizeOptionalProfileField(metadata.phone),
         address: normalizeOptionalProfileField(metadata.address),
+        province_code: normalizeOptionalProfileField(metadata.province_code),
+        regency_code: normalizeOptionalProfileField(metadata.regency_code),
       }),
     });
   }
@@ -554,7 +560,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     fullName: string,
     role: string,
-    profileData?: { phone?: string; address?: string; facilityName?: string; facilityType?: string }
+    profileData?: { phone?: string; address?: string; facilityName?: string; facilityType?: string; provinceCode?: string; regencyCode?: string }
   ) => {
     try {
       console.log("[SIGNUP] Starting registration for:", email, "role:", role);
@@ -570,6 +576,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password,
             name: profileData?.facilityName?.trim() || fullName.trim(),
             facility_type: profileData?.facilityType?.trim() || null,
+            province_code: profileData?.provinceCode || null,
+            regency_code: profileData?.regencyCode || null,
             phone: normalizedPhone,
             address: normalizedAddress,
           }),
@@ -611,6 +619,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role,
             phone: normalizedPhone,
             address: normalizedAddress,
+            province_code: profileData?.provinceCode || null,
+            regency_code: profileData?.regencyCode || null,
           },
           emailRedirectTo: `${window.location.origin}/login`,
         },
@@ -648,6 +658,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role,
             phone: normalizedPhone,
             address: normalizedAddress,
+            province_code: profileData?.provinceCode || null,
+            regency_code: profileData?.regencyCode || null,
           }),
         });
 

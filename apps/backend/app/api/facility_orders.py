@@ -88,6 +88,8 @@ class ReceiptInput(BaseModel):
 
 class CancellationInput(BaseModel):
     reason: str = Field(min_length=5, max_length=500)
+class VendorRejectionInput(BaseModel):
+    reason: str = Field(min_length=1, max_length=1000)
 
     @field_validator("reason")
     @classmethod
@@ -95,6 +97,8 @@ class CancellationInput(BaseModel):
         value = value.strip()
         if len(value) < 5:
             raise ValueError("Alasan terlalu pendek")
+        if not value:
+            raise ValueError("Alasan penolakan wajib diisi")
         return value
 
 
@@ -221,6 +225,9 @@ def order_payload(
         "allocation_reason": order.allocation_reason,
         **funding,
         "created_at": order.created_at.replace(tzinfo=timezone.utc) if order.created_at else None,
+        "vendor_confirmed_at": order.vendor_confirmed_at.replace(tzinfo=timezone.utc) if order.vendor_confirmed_at else None,
+        "vendor_rejected_at": order.vendor_rejected_at.replace(tzinfo=timezone.utc) if order.vendor_rejected_at else None,
+        "vendor_rejection_reason": order.vendor_rejection_reason,
         "dispatched_at": order.dispatched_at.replace(tzinfo=timezone.utc) if order.dispatched_at else None,
         "received_at": receipt.received_at.replace(tzinfo=timezone.utc) if receipt else None,
         "arrived_at": receipt.arrived_at.replace(tzinfo=timezone.utc) if receipt and receipt.arrived_at else None,
@@ -283,6 +290,8 @@ def list_eligible_vendors(
             VendorProfile.approval_status == "approved",
             VendorProfile.settlement_status == "active",
             VendorProfile.is_active.is_(True),
+            VendorProfile.province_code == province_code,
+            VendorProfile.regency_code == regency_code,
             Product.approval_status == "approved",
             Product.is_active.is_(True),
             Product.stock_quantity > 0,
@@ -483,7 +492,7 @@ def cancel_facility_order(
 ):
     order = (
         db.query(Order)
-        .filter_by(id=order_id, order_flow="facility_delivery", health_facility_id=facility.id)
+        .filter_by(id=order_id, order_flow="facility_delivery", health_facility_id=facility.id, is_active=True)
         .with_for_update()
         .first()
     )
@@ -494,6 +503,11 @@ def cancel_facility_order(
             status_code=409, detail="Hanya pesanan yang belum diproses dapat dibatalkan"
         )
     cancel_facility_order_record(db, order, "Dibatalkan oleh Faskes.")
+    restore_order_stock(db, order)
+    order.status = "cancelled"
+    if order.allocation_status in {"requested", "automatic"}:
+        order.allocation_status = "cancelled"
+    release_order_funding(db, order)
     db.commit()
     return order_payload(db, order)
 
@@ -596,7 +610,7 @@ def confirm_facility_receipt(
     )
     if not order:
         raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
-    if order.status not in {"processing", "received"}:
+    if order.status not in {"shipped", "received"}:
         raise HTTPException(status_code=409, detail="Vendor harus mengirim pesanan lebih dulu")
     now = datetime.utcnow()
     arrival = data.arrived_at.astimezone(timezone.utc).replace(tzinfo=None) if data.arrived_at.tzinfo else data.arrived_at
@@ -664,11 +678,40 @@ def list_vendor_facility_orders(
         db.query(Order)
         .options(*_order_list_options())
         .filter_by(order_flow="facility_delivery", vendor_id=vendor.user_id, is_active=True)
-        .filter(Order.status.notin_(["pending_approval", "rejected"]))
+        .filter(Order.status != "pending_approval")
         .order_by(Order.created_at.desc())
         .all()
     )
     return order_payloads(db, orders, vendor_view=True)
+
+
+def _locked_vendor_order(db: Session, user: AuthenticatedUser, order_id: UUID) -> Order:
+    vendor = vendor_account(db, user)
+    order = (
+        db.query(Order)
+        .filter_by(id=order_id, order_flow="facility_delivery", vendor_id=vendor.user_id, is_active=True)
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
+    return order
+
+
+@vendor_router.post("/{order_id}/confirm")
+def confirm_facility_order(
+    order_id: UUID,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    order = _locked_vendor_order(db, user, order_id)
+    try:
+        confirm_vendor_order(db, order)
+        db.commit()
+    except (InvalidOrderTransition, InsufficientPoolFunds) as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return order_payload(db, order, vendor_view=True)
 
 
 @vendor_router.post("/{order_id}/dispatch")
@@ -677,30 +720,30 @@ def dispatch_facility_order(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    vendor = vendor_account(db, user)
-    order = (
-        db.query(Order)
-        .filter_by(id=order_id, order_flow="facility_delivery", vendor_id=vendor.user_id)
-        .with_for_update()
-        .first()
-    )
-    if not order:
-        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
-    if order.status != "pending":
-        raise HTTPException(status_code=409, detail="Pesanan tidak dapat diproses pada status ini")
-    if order_funding(db, order)["funding_status"] == "not_connected":
-        try:
-            reserve_order_funding(db, order)
-        except InsufficientPoolFunds as exc:
-            db.rollback()
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
-    if order_funding(db, order)["funding_status"] != "reserved":
-        raise HTTPException(
-            status_code=409, detail="Pesanan belum didanai sepenuhnya oleh pool donasi"
-        )
-    order.status = "processing"
-    order.dispatched_at = datetime.utcnow()
-    db.commit()
+    order = _locked_vendor_order(db, user, order_id)
+    try:
+        dispatch_vendor_order(db, order)
+        db.commit()
+    except (InvalidOrderTransition, InsufficientPoolFunds) as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return order_payload(db, order, vendor_view=True)
+
+
+@vendor_router.post("/{order_id}/reject")
+def reject_facility_order(
+    order_id: UUID,
+    data: VendorRejectionInput,
+    db: Session = Depends(get_db),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    order = _locked_vendor_order(db, user, order_id)
+    try:
+        reject_vendor_order(db, order, data.reason)
+        db.commit()
+    except InvalidOrderTransition as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return order_payload(db, order, vendor_view=True)
 
 

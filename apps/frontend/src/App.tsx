@@ -53,7 +53,6 @@ const CartManagement = lazy(() => import("./pages/dashboard/cart/CartManagement"
 const OrderDetailPage = lazy(() => import("./pages/dashboard/orders/OrderDetailPage"));
 const CheckoutPage = lazy(() => import("./pages/checkout/CheckoutPage"));
 const CheckoutSuccess = lazy(() => import("./pages/checkout/CheckoutSuccess"));
-const VendorQrScanner = lazy(() => import("./pages/dashboard/VendorQrScanner"));
 const HealthFacilityDashboard = lazy(() => import("./pages/dashboard/HealthFacilityDashboard"));
 const FacilityFamilyList = lazy(() => import("./pages/dashboard/facility/FamilyListTable"));
 const FacilityFamilyDetail = lazy(() => import("./pages/dashboard/facility/FamilyDetail"));
@@ -324,21 +323,13 @@ function App() {
             </ProtectedRoute>
           }
         />
-        {/* Legacy penukaran-voucher route redirects to scan-qr */}
         <Route
           path="/dashboard/penukaran-voucher"
-          element={<Navigate to="/dashboard/scan-qr" replace />}
+          element={<Navigate to="/dashboard/vendor/facility-orders" replace />}
         />
-        {/* Dedicated vendor QR scan route */}
         <Route
           path="/dashboard/scan-qr"
-          element={
-            <ProtectedRoute allowedRoles={["vendor", "admin"]}>
-              <Suspense fallback={<PageLoader />}>
-                <VendorQrScanner />
-              </Suspense>
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/dashboard/vendor/facility-orders" replace />}
         />
         <Route
           path="/dashboard/kelola-produk"

@@ -44,7 +44,13 @@ export interface BackendProfile {
   bank_name?: string | null;
   bank_account_number?: string | null;
   bank_account_holder?: string | null;
+  province_code?: string | null;
+  regency_code?: string | null;
+  province_name?: string | null;
+  regency_name?: string | null;
 }
+
+export type ProfileUpdate = Partial<Omit<BackendProfile, "role">> & { full_name: string };
 
 // ============================================
 // NUTRITION TYPES

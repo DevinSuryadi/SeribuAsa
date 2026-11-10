@@ -28,6 +28,11 @@ class HealthFacility(BaseModel):
     __tablename__ = "health_facilities"
     __table_args__ = (
         UniqueConstraint("account_user_id", name="uq_health_facilities_account_user_id"),
+        CheckConstraint(
+            "(province_code IS NULL AND regency_code IS NULL) OR "
+            "(province_code IS NOT NULL AND regency_code IS NOT NULL)",
+            name="ck_health_facilities_region_pair",
+        ),
     )
 
     account_user_id = Column(
@@ -39,6 +44,8 @@ class HealthFacility(BaseModel):
     facility_type = Column(String(100))
     address = Column(Text)
     phone = Column(String(20))
+    province_code = Column(String(2), nullable=True)
+    regency_code = Column(String(5), nullable=True, index=True)
     approval_status = Column(String(30), nullable=False, default="pending")
     reviewed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL"))
     reviewed_at = Column(DateTime)

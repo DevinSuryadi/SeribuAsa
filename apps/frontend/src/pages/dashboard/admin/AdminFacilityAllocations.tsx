@@ -9,11 +9,12 @@ import { toast } from "sonner";
 const statusLabels: Record<FacilityOrder["status"], string> = {
   pending_approval: "Pesanan lama belum didanai",
   pending: "Menunggu vendor",
-  processing: "Dalam pengiriman",
+  processing: "Diproses vendor",
+  shipped: "Dalam pengiriman",
   received: "Diterima Faskes",
   completed: "Sudah disalurkan",
   cancelled: "Dibatalkan",
-  rejected: "Ditolak (riwayat)",
+  rejected: "Ditolak",
 };
 
 const fundingLabels: Record<FacilityOrder["funding_status"], string> = {
@@ -87,6 +88,7 @@ export default function AdminFacilityAllocations() {
             <ul className="text-sm">{order.items.map((item) => <li key={item.product_id}>{item.quantity} x {item.product_name} / {formatIDR(item.subtotal)}</li>)}</ul>
             <p className="text-sm text-muted-foreground">Pendanaan: {fundingLabels[order.funding_status]} / Dicadangkan {formatIDR(Number(order.funded_amount) - Number(order.spent_amount))} / Terpakai {formatIDR(order.spent_amount)}</p>
             {order.allocation_reason && <p className="text-sm text-muted-foreground">Catatan riwayat: {order.allocation_reason}</p>}
+            {order.vendor_rejection_reason && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800">Ditolak Vendor: {order.vendor_rejection_reason}</p>}
             {order.discrepancy_notes && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800">Laporan Faskes: {order.discrepancy_notes}</p>}
             {(order.status === "pending" || order.status === "processing") && <div className="flex justify-end"><Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" disabled={busy === order.id} onClick={() => void cancel(order)}>Batalkan pesanan</Button></div>}
           </article>)}

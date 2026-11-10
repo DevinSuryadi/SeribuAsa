@@ -23,6 +23,8 @@ export type Facility = {
   phone?: string | null;
   approval_status: string;
   review_reason?: string | null;
+  province_code?: string | null;
+  regency_code?: string | null;
 };
 
 const familyPath = (familyId: string) => `/facilities/families/${encodeURIComponent(familyId)}`;

@@ -92,7 +92,7 @@ export default function FamilyListTable() {
   const activeAssistance = useMemo(() => {
     const counts = new Map<string, number>();
     orders.forEach((order) => {
-      if (order.status !== "cancelled" && !order.distribution) {
+      if (order.status !== "cancelled" && order.status !== "rejected" && !order.distribution) {
         counts.set(order.family_id, (counts.get(order.family_id) || 0) + 1);
       }
     });

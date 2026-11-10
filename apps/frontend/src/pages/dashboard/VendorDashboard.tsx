@@ -11,7 +11,21 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import {
+  Store,
+  Wallet,
+  Package,
+  BarChart3,
+  ArrowRight,
+  ArrowDownToLine,
+  TrendingUp,
+  ChevronRight,
+  Boxes,
+  ReceiptText,
+  BanknoteArrowDown,
+  ShoppingBag,
+  Loader2,
+} from "lucide-react";
 import { formatIDR, formatDate } from "@/lib/format";
 import { listVendorFacilityOrders, type FacilityOrder } from "@/services/facility-orders";
 import { listVendorFacilityPayouts, type FacilityPayout } from "@/services/facility-payouts";
@@ -170,25 +184,118 @@ export default function VendorDashboard() {
   }
 
   return (
-    <DashboardLayout title={`Toko ${user?.fullName || "Vendor"}`} subtitle="Saldo dan pesanan toko Anda.">
-      <section className="grid grid-cols-1 items-center gap-4 rounded-2xl bg-[#E6F4EC] px-6 py-3 md:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,0.95fr)_minmax(230px,0.75fr)_180px]">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#0B6B4F]">Saldo tersedia</p>
-          <p className="mt-1 break-words text-[32px] font-bold leading-none tracking-tight text-[#0B6B4F] tabular-nums">
-            {formatIDR(walletBalance)}
-          </p>
-          {!canWithdraw && (
-            <p className="mt-2 text-[13px] text-slate-600">Minimum penarikan {formatIDR(MIN_WITHDRAWAL)}</p>
-          )}
-        </div>
-        <div className="pointer-events-none hidden h-full items-end justify-center lg:flex">
-          <img
-            src={foto}
-            alt="Ilustrasi toko vendor"
-            className="h-[88px] w-full object-contain object-center"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
+    <DashboardLayout
+      title={`Toko ${user?.fullName || "Vendor"}`}
+      subtitle="Kelola produk, pesanan, dan saldo toko Anda."
+    >
+      <div className="flex min-h-[calc(100vh-132px)] w-full max-w-none flex-col gap-3 pb-3">
+        {/* Hero Wallet */}
+        <section className="relative shrink-0 overflow-hidden rounded-[20px] border border-emerald-100/80 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.045)]">
+          <div className="absolute inset-0 bg-[linear-gradient(115deg,#ffffff_0%,#fbfffd_42%,#e9fbf0_100%)]" />
+          <div className="absolute -right-14 bottom-0 h-40 w-40 rounded-full bg-emerald-100/60 blur-2xl" />
+          <div className="absolute right-[34%] top-3 h-24 w-24 rounded-full bg-lime-100/45 blur-2xl" />
+
+          <div className="relative z-10 grid min-h-[132px] grid-cols-1 gap-3 px-4 py-3.5 sm:px-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-center lg:grid-cols-[minmax(0,0.95fr)_minmax(230px,0.75fr)_minmax(160px,0.35fr)] lg:px-5 xl:min-h-[142px]">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-50 shadow-[0_8px_20px_rgba(16,185,129,0.08)] sm:h-14 sm:w-14">
+                <Wallet className="h-6 w-6 text-emerald-700 sm:h-7 sm:w-7" />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-semibold leading-tight text-slate-600 sm:text-[13px]">
+                  Saldo E-Wallet Toko
+                </p>
+
+                <h2 className="mt-1 break-words text-[28px] font-black leading-none tracking-tight text-emerald-800 sm:text-[34px]">
+                  {formatIDR(walletBalance)}
+                </h2>
+
+                <p className="mt-1.5 text-[11.5px] font-medium text-slate-500 sm:text-xs">
+                  Minimum penarikan:{" "}
+                  <span className="font-black text-emerald-700">{formatIDR(MIN_WITHDRAWAL)}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="pointer-events-none hidden h-full items-end justify-center lg:flex">
+              <img
+                src={foto}
+                alt="Ilustrasi toko vendor"
+                className="h-[118px] w-full object-contain object-center xl:h-[128px]"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+
+            <div className="flex w-full flex-col gap-2 sm:flex-row md:flex-col md:justify-self-end lg:ml-auto lg:w-full">
+              <Button
+                className="h-10 rounded-[13px] bg-white px-4 text-[12.5px] font-black text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.07)] hover:bg-emerald-50 disabled:opacity-60"
+                onClick={() => setWithdrawModalOpen(true)}
+                disabled={!canWithdraw}
+              >
+                <ArrowDownToLine className="mr-2 h-4 w-4" />
+                Tarik Dana
+              </Button>
+
+              <Button
+                variant="secondary"
+                className="h-10 rounded-[13px] bg-white px-4 text-[12.5px] font-black text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.07)] hover:bg-emerald-50"
+                asChild
+              >
+                <Link to="/dashboard/vendor/facility-orders">
+                  <ShoppingBag className="mr-2 h-4 w-4" />
+                  Pesanan Faskes
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Metrics */}
+        <section className="grid w-full shrink-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            title="Total Pesanan"
+            value={orders.length.toString()}
+            subtitle={`${pendingOrders} pending`}
+            icon={ShoppingBag}
+            iconWrapClass="bg-indigo-50"
+            iconClass="text-indigo-600"
+            valueClass="text-indigo-600"
+            borderClass="border-indigo-100"
+          />
+
+          <MetricCard
+            title="Pendapatan Bulan Ini"
+            value={formatIDR(totalRevenue)}
+            subtitle="Periode 30 hari"
+            icon={TrendingUp}
+            iconWrapClass="bg-emerald-50"
+            iconClass="text-emerald-600"
+            valueClass="text-emerald-700"
+            borderClass="border-emerald-100"
+          />
+
+          <MetricCard
+            title="Produk Aktif"
+            value={activeProducts.toString()}
+            subtitle={`dari ${products.length} produk`}
+            icon={Package}
+            iconWrapClass="bg-orange-50"
+            iconClass="text-orange-600"
+            valueClass="text-orange-600"
+            borderClass="border-orange-100"
+          />
+
+          <MetricCard
+            title="Status Pencairan"
+            value={orders.length > 0 ? "Aktif" : "-"}
+            subtitle="Periode berjalan"
+            icon={BarChart3}
+            iconWrapClass="bg-violet-50"
+            iconClass="text-violet-600"
+            valueClass="text-violet-600"
+            borderClass="border-violet-100"
           />
         </div>
         <Button
@@ -244,22 +351,126 @@ export default function VendorDashboard() {
                     <p className="truncate font-semibold text-slate-900">{order.health_facility_name || "Faskes"}</p>
                     <p className="text-[13px] text-slate-500">{formatDate(order.created_at)}</p>
                   </div>
-                  <p className="hidden truncate text-[13px] text-slate-600 md:block" title={itemSummary(order)}>{itemSummary(order)}</p>
-                  <p className="text-right font-bold text-slate-900 tabular-nums">{formatIDR(Number(order.total_amount) || 0)}</p>
-                  <p className={`text-[13px] font-semibold ${status.className}`}>{status.label}</p>
-                  <div className="justify-self-end">
-                    {order.status === "pending" && (
-                      <Button size="sm" className="h-8 rounded-full bg-[#0B6B4F] px-3 text-[13px] font-bold hover:bg-[#095A43]" asChild>
-                        <Link to={FACILITY_ORDERS_PATH}>Proses</Link>
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+                </div>
+              ) : (
+                <div className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto">
+                  {orders.slice(0, 6).map((order) => {
+                    const config = orderStatusConfig[order.status] || orderStatusConfig.pending;
+
+                    return (
+                      <div
+                        key={order.id}
+                        className="flex flex-col gap-3 px-3.5 py-3 transition-colors hover:bg-slate-50/70 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-50">
+                            <Store className="h-[18px] w-[18px] text-indigo-500" />
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="truncate text-[12.5px] font-black text-slate-900">
+                              Pesanan #{String(order.id).slice(0, 8)}
+                            </p>
+
+                            <p className="mt-0.5 text-[10.5px] font-medium text-slate-500">
+                              {order.created_at ? formatDate(order.created_at) : "-"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 sm:justify-end">
+                          <div className="text-left sm:text-right">
+                            <p className="text-[12.5px] font-black text-slate-900">
+                              {formatIDR(Number(order.total_amount) || 0)}
+                            </p>
+
+                            <Badge className={`mt-1 ${config.className}`}>{config.label}</Badge>
+                          </div>
+
+                          {order.status === "pending" && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="h-8 rounded-lg bg-emerald-600 px-3 text-[11px] font-bold hover:bg-emerald-700"
+                                onClick={() => handleStatusUpdate(order.id, "completed")}
+                              >
+                                Konfirmasi penerimaan
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-lg px-3 text-[11px] font-bold"
+                                onClick={() => handleStatusUpdate(order.id, "cancelled")}
+                              >
+                                Batal
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Vendor Menu */}
+          <div className="flex min-h-[230px] flex-col rounded-[20px] border border-slate-200/70 bg-white p-3.5 shadow-[0_10px_26px_rgba(15,23,42,0.04)] sm:p-4 lg:min-h-0">
+            <div className="mb-3 shrink-0">
+              <h2 className="text-[16px] font-black tracking-tight text-slate-900">Menu Vendor</h2>
+
+              <p className="mt-0.5 text-[11.5px] font-medium text-slate-500">
+                Akses cepat untuk aktivitas utama toko.
+              </p>
+            </div>
+
+            <div className="grid flex-1 grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
+              <VendorMenuCard
+                title="Pesanan Faskes"
+                desc="Konfirmasi dan kirim pesanan"
+                href="/dashboard/vendor/facility-orders"
+                icon={ShoppingBag}
+                iconWrapClass="bg-indigo-50"
+                iconClass="text-indigo-600"
+                borderClass="border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/40"
+              />
+
+              <VendorMenuCard
+                title="Kelola Produk"
+                desc="Tambah & edit produk toko"
+                href="/dashboard/kelola-produk"
+                icon={Boxes}
+                iconWrapClass="bg-orange-50"
+                iconClass="text-orange-600"
+                borderClass="border-orange-200 hover:border-orange-300 hover:bg-orange-50/40"
+              />
+
+              <VendorMenuCard
+                title="Riwayat Pencairan"
+                desc="Riwayat pencairan dana"
+                href="/dashboard/settlement"
+                icon={ReceiptText}
+                iconWrapClass="bg-violet-50"
+                iconClass="text-violet-600"
+                borderClass="border-violet-200 hover:border-violet-300 hover:bg-violet-50/40"
+              />
+
+              <VendorMenuCard
+                title="Tarik Dana"
+                desc={`Saldo: ${formatIDR(walletBalance)}`}
+                onClick={() => setWithdrawModalOpen(true)}
+                icon={BanknoteArrowDown}
+                iconWrapClass="bg-emerald-50"
+                iconClass="text-emerald-600"
+                borderClass="border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50/40"
+                disabled={!canWithdraw}
+              />
+            </div>
+          </div>
+        </section>
+      </div>
 
       <Dialog open={withdrawModalOpen} onOpenChange={setWithdrawModalOpen}>
         <DialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl">

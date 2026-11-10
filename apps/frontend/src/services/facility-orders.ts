@@ -12,7 +12,7 @@ export type FacilityOrder = {
   vendor_name: string | null;
   items: { product_id: string; product_name: string; quantity: number; price: number; subtotal: number }[];
   total_amount: number;
-  status: "pending_approval" | "pending" | "processing" | "received" | "completed" | "cancelled" | "rejected";
+  status: "pending_approval" | "pending" | "processing" | "shipped" | "received" | "completed" | "cancelled" | "rejected";
   payment_status: string;
   allocation_status?: "automatic" | "requested" | "approved" | "rejected" | "cancelled" | null;
   allocation_decided_at?: string | null;
@@ -21,6 +21,9 @@ export type FacilityOrder = {
   funded_amount: number;
   spent_amount: number;
   created_at: string;
+  vendor_confirmed_at?: string | null;
+  vendor_rejected_at?: string | null;
+  vendor_rejection_reason?: string | null;
   dispatched_at?: string | null;
   received_at: string | null;
   arrived_at?: string | null;
@@ -82,6 +85,13 @@ export const distributeFacilityOrder = (id: string, data: {
   });
 export const listVendorFacilityOrders = (): Promise<FacilityOrder[]> =>
   apiFetch("/vendor/facility-orders", { cache: "no-store" });
+export const confirmVendorFacilityOrder = (id: string): Promise<FacilityOrder> =>
+  apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/confirm`, { method: "POST" });
+export const rejectVendorFacilityOrder = (id: string, reason: string): Promise<FacilityOrder> =>
+  apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
 export const dispatchFacilityOrder = (id: string): Promise<FacilityOrder> =>
   apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/dispatch`, { method: "POST" });
 export const rejectFacilityOrder = (id: string, reason: string): Promise<FacilityOrder> =>

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.svg";
+import RegionFields from "@/components/forms/RegionFields";
 
 function GoogleIcon() {
   return (
@@ -86,6 +87,8 @@ export default function Register() {
   const [facilityName, setFacilityName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [provinceCode, setProvinceCode] = useState("");
+  const [regencyCode, setRegencyCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -111,6 +114,11 @@ export default function Register() {
 
     if (role === "health_facility" && !facilityName.trim()) {
       toast.error("Nama fasilitas kesehatan tidak boleh kosong");
+      return;
+    }
+
+    if ((role === "vendor" || role === "health_facility") && (!provinceCode || !regencyCode)) {
+      toast.error("Pilih provinsi dan kota/kabupaten");
       return;
     }
 
@@ -144,6 +152,8 @@ export default function Register() {
         phone,
         address,
         facilityName,
+        provinceCode: role === "donor" ? undefined : provinceCode,
+        regencyCode: role === "donor" ? undefined : regencyCode,
       });
 
       if (error) {
@@ -601,6 +611,10 @@ export default function Register() {
               />
             </div>
           </div>
+
+          {(role === "vendor" || role === "health_facility") && (
+            <RegionFields idPrefix="register-region" provinceCode={provinceCode} regencyCode={regencyCode} onChange={(province, regency) => { setProvinceCode(province); setRegencyCode(regency); }} required disabled={loading} registration />
+          )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             {/* Password */}
