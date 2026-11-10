@@ -97,8 +97,8 @@ export default function HealthFacilityDashboard() {
   useSmartPolling(async () => { setOrders(await listFacilityOrders()); }, { interval: 30000, enabled: approved });
 
   const pipeline = useMemo(() => ({
-    waiting: orders.filter((order) => order.status === "pending" || order.status === "pending_approval").length,
-    shipped: orders.filter((order) => order.status === "processing" || order.status === "shipped").length,
+    waiting: orders.filter((order) => ["pending", "pending_approval", "processing"].includes(order.status)).length,
+    shipped: orders.filter((order) => order.status === "shipped").length,
     atFacility: orders.filter(isAwaitingProof).length,
     delivered: orders.filter((order) => Boolean(order.distribution)).length,
   }), [orders]);
@@ -122,14 +122,13 @@ export default function HealthFacilityDashboard() {
     };
   }, [orders]);
 
-  const stuckShipments = orders.filter((order) => order.status === "shipped").length;
   const actionItems = [
     {
       key: "confirm",
       short: "konfirmasi barang",
       title: "Barang tiba perlu dikonfirmasi",
       note: "Periksa barang yang sudah dikirim vendor",
-      count: orders.filter((order) => order.status === "processing" && order.receipt_status !== "discrepancy").length,
+      count: orders.filter((order) => order.status === "shipped" && order.receipt_status !== "discrepancy").length,
       to: ORDERS_PATH,
     },
     {
@@ -137,7 +136,7 @@ export default function HealthFacilityDashboard() {
       short: "barang bermasalah",
       title: "Barang bermasalah",
       note: "Periksa ulang setelah vendor melengkapi",
-      count: orders.filter((order) => order.status === "processing" && order.receipt_status === "discrepancy").length,
+      count: orders.filter((order) => order.status === "shipped" && order.receipt_status === "discrepancy").length,
       to: ORDERS_PATH,
     },
     {
@@ -146,14 +145,6 @@ export default function HealthFacilityDashboard() {
       title: "Bukti penyerahan belum diunggah",
       note: "Barang sudah di faskes, belum tercatat ke keluarga",
       count: pipeline.atFacility,
-      to: ORDERS_PATH,
-    },
-    {
-      key: "stuck",
-      short: "cek pengiriman",
-      title: "Pengiriman perlu dicek Admin",
-      note: "Statusnya belum bisa dikonfirmasi dari sini",
-      count: stuckShipments,
       to: ORDERS_PATH,
     },
     {
@@ -193,8 +184,8 @@ export default function HealthFacilityDashboard() {
   const surveyed = families.length - unsurveyed;
   const surveyCoverage = families.length ? Math.round((surveyed / families.length) * 100) : 0;
   const pipelineSteps = [
-    { label: "Menunggu vendor", value: pipeline.waiting, note: "Belum diproses" },
-    { label: "Dikirim", value: pipeline.shipped, note: stuckShipments ? `${stuckShipments} perlu dicek` : "Dalam perjalanan" },
+    { label: "Menunggu vendor", value: pipeline.waiting, note: "Belum dikirim" },
+    { label: "Dikirim", value: pipeline.shipped, note: "Dalam perjalanan" },
     { label: "Tiba di faskes", value: pipeline.atFacility, note: "Belum ke keluarga" },
     { label: "Disalurkan", value: pipeline.delivered, note: "Sudah ke keluarga" },
   ];

@@ -30,9 +30,9 @@ describe("Facility order progress", () => {
   beforeEach(() => vi.resetAllMocks());
 
   it.each([
-    { status: "processing", tab: "Diproses 1", canReceive: false },
+    { status: "processing", tab: "Menunggu 1", canReceive: false },
     { status: "shipped", tab: "Dikirim 1", canReceive: true },
-  ] as const)("shows $status in its own tab and gates receipt confirmation", async ({ status, tab, canReceive }) => {
+  ] as const)("groups $status under its tab and gates receipt confirmation", async ({ status, tab, canReceive }) => {
     const user = userEvent.setup();
     vi.mocked(listFacilityOrders).mockResolvedValue([{ ...order, status }]);
     render(<MemoryRouter><FacilityOrdersTable /></MemoryRouter>);
@@ -50,7 +50,7 @@ describe("Facility order progress", () => {
     }]);
     render(<MemoryRouter><FacilityOrdersTable /></MemoryRouter>);
 
-    await user.click(await screen.findByRole("button", { name: "Ditolak 1" }));
+    await user.click(await screen.findByRole("button", { name: "Dibatalkan 1" }));
     await user.click(screen.getByRole("button", { name: /#order/ }));
     expect(screen.getByText("Ditolak Vendor: Kapasitas pengiriman penuh")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Konfirmasi barang tiba" })).not.toBeInTheDocument();
