@@ -481,23 +481,16 @@ const Profile = () => {
       >
         <div className="flex min-h-[420px] items-center justify-center">
           <div className={`${sectionClass} px-10 text-center`}>
-            <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#0B6B4F]" />
-            <p className="text-sm font-semibold text-slate-700">
-              Memuat profil...
-            </p>
-            <p className="mt-1 text-[13px] text-slate-500">
-              Mohon tunggu sebentar.
-          <div className="rounded-[2rem] border border-slate-200 bg-white px-10 py-8 text-center shadow-sm">
-            {profileLoading && <Loader2 className="mx-auto mb-4 h-11 w-11 animate-spin text-emerald-600" />}
+            {profileLoading && <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#0B6B4F]" />}
             <p className="text-sm font-semibold text-slate-700">
               {profileError || "Memuat profil..."}
             </p>
             {profileError ? (
-              <Button variant="outline" onClick={() => void refetch()} className="mt-4 rounded-xl">
+              <Button variant="outline" onClick={() => void refetch()} className={`mt-4 ${secondaryButtonClass}`}>
                 Coba lagi
               </Button>
             ) : (
-              <p className="mt-1 text-xs text-slate-400">Mohon tunggu sebentar.</p>
+              <p className="mt-1 text-[13px] text-slate-500">Mohon tunggu sebentar.</p>
             )}
           </div>
         </div>
@@ -584,30 +577,16 @@ const Profile = () => {
                 </Button>
               }
             >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <InfoCard
-                  label="Nomor HP"
-                  value={displayValues.phone}
-                  icon={<Phone size={20} />}
-                />
-
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <InfoCard label="Nomor HP" value={displayValues.phone} />
                 {!isOrganization && (
                   <>
-                    <InfoCard
-                      label="Tanggal Lahir"
-                      value={displayValues.dateOfBirth}
-                      icon={<Calendar size={20} />}
-                    />
-                    <InfoCard
-                      label="Jenis Kelamin"
-                      value={displayValues.gender}
-                      icon={<User size={20} />}
-                      className="sm:col-span-2 xl:col-span-1"
-                    />
+                    <InfoCard label="Tanggal Lahir" value={displayValues.dateOfBirth} />
+                    <InfoCard label="Jenis Kelamin" value={displayValues.gender} />
                   </>
                 )}
                 {resolvedRole === "health_facility" && (
-                  <InfoCard label="Wilayah" value={displayValues.region} icon={<MapPin size={20} />} />
+                  <InfoCard label="Wilayah" value={displayValues.region} />
                 )}
               </div>
             </SectionCard>
@@ -671,29 +650,11 @@ const Profile = () => {
                       )}
                     </div>
 
-                    <div className="space-y-4">
-                      <InfoCard
-                        label="Jam Operasional"
-                        value={displayValues.operatingHours}
-                        icon={<Calendar size={20} />}
-                        accent="purple"
-                      />
-
-                      <InfoCard
-                        label="Alamat Toko"
-                        value={displayValues.storeAddress}
-                        icon={<MapPin size={20} />}
-                        accent="purple"
-                      />
-                      <InfoCard label="Wilayah Toko" value={displayValues.region} icon={<MapPin size={20} />} accent="purple" />
-
-                      <Button
-                        onClick={() => setShowStoreModal(true)}
-                        className="h-12 w-full rounded-2xl bg-purple-600 font-bold text-white hover:bg-purple-700"
-                      >
-                        <Store size={17} className="mr-2" />
-                        Lengkapi Informasi Toko
-                      </Button>
+                    <div className="space-y-3">
+                      <InfoCard label="Nama Toko" value={displayValues.storeName} />
+                      <InfoCard label="Jam Operasional" value={displayValues.operatingHours} />
+                      <InfoCard label="Alamat Toko" value={displayValues.storeAddress} />
+                      <InfoCard label="Wilayah Toko" value={displayValues.region} />
                     </div>
                   </div>
                 </SectionCard>
@@ -811,25 +772,6 @@ const Profile = () => {
                   placeholder="Masukkan alamat"
                 />
               </div>
-
-              <div>
-                <Label
-                  htmlFor="dob"
-                  className={fieldLabelClass}
-                >
-                  Tanggal Lahir
-                </Label>
-                <Input
-                  id="dob"
-                  type="date"
-                  value={editFormData.dateOfBirth}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      dateOfBirth: e.target.value,
-                    })
-                  }
-                  className={fieldClass}
               {resolvedRole === "health_facility" && (
                 <RegionFields
                   idPrefix="facility-profile-region"
@@ -848,7 +790,7 @@ const Profile = () => {
                   <div>
                     <Label
                       htmlFor="dob"
-                      className="text-xs font-bold uppercase tracking-wide"
+                      className={fieldLabelClass}
                     >
                       Tanggal Lahir
                     </Label>
@@ -862,14 +804,14 @@ const Profile = () => {
                           dateOfBirth: e.target.value,
                         })
                       }
-                      className="mt-1 rounded-xl"
+                      className={fieldClass}
                     />
                   </div>
 
                   <div>
                     <Label
                       htmlFor="gender"
-                      className="text-xs font-bold uppercase tracking-wide"
+                      className={fieldLabelClass}
                     >
                       Jenis Kelamin
                     </Label>
@@ -879,7 +821,7 @@ const Profile = () => {
                       onChange={(e) =>
                         setEditFormData({ ...editFormData, gender: e.target.value })
                       }
-                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                      className={selectClass}
                     >
                       <option value="">Pilih Jenis Kelamin</option>
                       <option value="male">Laki-laki</option>

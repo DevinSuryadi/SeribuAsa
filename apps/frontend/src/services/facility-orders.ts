@@ -94,8 +94,6 @@ export const rejectVendorFacilityOrder = (id: string, reason: string): Promise<F
   });
 export const dispatchFacilityOrder = (id: string): Promise<FacilityOrder> =>
   apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/dispatch`, { method: "POST" });
-export const rejectFacilityOrder = (id: string, reason: string): Promise<FacilityOrder> =>
-  apiFetch(`/vendor/facility-orders/${encodeURIComponent(id)}/reject`, { method: "POST", body: JSON.stringify({ reason }) });
 export const adminCancelFacilityOrder = (id: string, reason: string): Promise<FacilityOrder> =>
   apiFetch(`/admin/facility-orders/${encodeURIComponent(id)}/cancel`, { method: "POST", body: JSON.stringify({ reason }) });
 export const listAdminFacilityOrders = (pendingOnly = false): Promise<FacilityOrder[]> =>
