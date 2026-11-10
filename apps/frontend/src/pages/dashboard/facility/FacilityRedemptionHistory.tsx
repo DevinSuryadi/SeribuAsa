@@ -110,7 +110,7 @@ export default function FacilityRedemptionHistory() {
         if (familyId) {
           const [familyData, familyOrders] = await Promise.all([
             getFamily(familyId, forceRefresh),
-            listFacilityOrders(familyId, forceRefresh),
+            listFacilityOrders(familyId),
           ]);
           if (active) {
             setFamily(familyData);

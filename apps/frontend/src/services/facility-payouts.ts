@@ -27,7 +27,7 @@ export type FacilityPayout = {
 };
 
 export const listAdminFacilityPayouts = (): Promise<FacilityPayout[]> => apiFetch("/admin/facility-payouts");
-export const listVendorFacilityPayouts = (): Promise<FacilityPayout[]> => apiFetch("/vendor/facility-payouts");
+export const listVendorFacilityPayouts = (): Promise<FacilityPayout[]> => apiFetch("/vendor/facility-payouts", { cache: "no-store" });
 export const approveFacilityPayout = (id: string): Promise<FacilityPayout> =>
   apiFetch(`/admin/facility-payouts/${encodeURIComponent(id)}/approve`, { method: "POST" });
 export const recordFacilityTransfer = (id: string, transferReference: string, transferredAt: string): Promise<FacilityPayout> =>

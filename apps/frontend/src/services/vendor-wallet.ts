@@ -34,8 +34,17 @@ export interface WithdrawalListResponse {
   total_pages: number;
 }
 
+// The API sends money as decimal strings ("151460.00"), which compare alphabetically.
+const toMoney = (value?: number) => (value === undefined || value === null ? value : Number(value));
+
 export async function getWalletBalance(): Promise<WalletBalance> {
-  return apiFetch("/vendor-wallet/balance");
+  const data: WalletBalance = await apiFetch("/vendor-wallet/balance");
+  return {
+    ...data,
+    balance: Number(data.balance),
+    pending_withdrawals: toMoney(data.pending_withdrawals),
+    minimum_withdrawal_amount: toMoney(data.minimum_withdrawal_amount),
+  };
 }
 
 export async function requestWithdrawal(
@@ -67,5 +76,6 @@ export async function getWithdrawalHistory(
   const params = new URLSearchParams();
   params.append("page", page.toString());
   params.append("page_size", pageSize.toString());
-  return apiFetch(`/vendor-wallet/withdrawals?${params.toString()}`);
+  const data: WithdrawalListResponse = await apiFetch(`/vendor-wallet/withdrawals?${params.toString()}`);
+  return { ...data, items: (data.items || []).map((item) => ({ ...item, amount: Number(item.amount) })) };
 }

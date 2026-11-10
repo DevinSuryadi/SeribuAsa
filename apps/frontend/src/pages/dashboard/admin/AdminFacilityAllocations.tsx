@@ -3,7 +3,8 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatIDR } from "@/lib/format";
-import { listAdminFacilityOrders, type FacilityOrder } from "@/services/facility-orders";
+import { adminCancelFacilityOrder, listAdminFacilityOrders, type FacilityOrder } from "@/services/facility-orders";
+import { toast } from "sonner";
 
 const statusLabels: Record<FacilityOrder["status"], string> = {
   pending_approval: "Pesanan lama belum didanai",
@@ -27,6 +28,20 @@ export default function AdminFacilityAllocations() {
   const [orders, setOrders] = useState<FacilityOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+
+  async function cancel(order: FacilityOrder) {
+    const consequence = order.status === "processing"
+      ? "Dana dikembalikan ke pool, stok vendor tidak dikembalikan karena barang sudah dikirim."
+      : "Dana dan stok dikembalikan.";
+    const reason = window.prompt(`Batalkan pesanan #${order.id.slice(0, 8)}? ${consequence}\n\nTulis alasan (minimal 5 karakter):`)?.trim();
+    if (reason === undefined) return;
+    if (reason.length < 5) { toast.error("Alasan minimal 5 karakter"); return; }
+    setBusy(order.id);
+    try { await adminCancelFacilityOrder(order.id, reason); toast.success("Pesanan dibatalkan"); await refresh(); }
+    catch (err) { toast.error(err instanceof Error ? err.message : "Gagal membatalkan pesanan"); }
+    finally { setBusy(""); }
+  }
 
   async function refresh() {
     setLoading(true);
@@ -75,6 +90,7 @@ export default function AdminFacilityAllocations() {
             {order.allocation_reason && <p className="text-sm text-muted-foreground">Catatan riwayat: {order.allocation_reason}</p>}
             {order.vendor_rejection_reason && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800">Ditolak Vendor: {order.vendor_rejection_reason}</p>}
             {order.discrepancy_notes && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800">Laporan Faskes: {order.discrepancy_notes}</p>}
+            {(order.status === "pending" || order.status === "processing") && <div className="flex justify-end"><Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" disabled={busy === order.id} onClick={() => void cancel(order)}>Batalkan pesanan</Button></div>}
           </article>)}
         </>}
       </div>

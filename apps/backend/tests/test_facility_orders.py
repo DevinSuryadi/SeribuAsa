@@ -372,7 +372,7 @@ def test_facility_order_distribution_and_stock(monkeypatch):
         assert accepted.json()["payout_status"] == "pending_approval"
         assert accepted.json()["payment_status"] == "pending"
         assert accepted.json()["funding_status"] == "reserved"
-        assert datetime.fromisoformat(accepted.json()["payout_due_at"]) - datetime.fromisoformat(accepted.json()["arrived_at"]) == timedelta(days=3)
+        assert datetime.fromisoformat(accepted.json()["payout_due_at"]) - datetime.fromisoformat(accepted.json()["received_at"]) == timedelta(days=3)
         assert accepted.json()["discrepancy_notes"] == "Satu barang rusak"
         assert client.post(f"{url}/{order_id}/distribute", json={**distribution_payload, "items_complete": False}, headers=facility_headers).status_code == 422
         assert client.post(receipt_url, json={"arrived_at": arrival, "items_complete": True}, headers=facility_headers).status_code == 200

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { Badge } from "@/components/ui/badge";
+import { ErrorState } from "@/components/dashboard/ErrorState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -49,6 +49,7 @@ export default function VendorFacilityOrders() {
   }
 
   useEffect(() => { void refresh(); }, []);
+  useSmartPolling(async () => { setOrders(await listVendorFacilityOrders()); }, { interval: 30000 });
 
   async function runAction(
     id: string,

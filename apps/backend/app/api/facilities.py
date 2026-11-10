@@ -110,6 +110,19 @@ class FacilityProfileUpdate(ProfileRegion):
         return value.strip()
 
 
+class FacilityContactUpdate(BaseModel):
+    address: str = Field(min_length=5, max_length=500)
+    phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("address")
+    @classmethod
+    def non_empty_address(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 5:
+            raise ValueError("Alamat terlalu pendek")
+        return value
+
+
 class FacilityRejectionInput(BaseModel):
     reason: str = Field(min_length=5, max_length=1000)
 
@@ -329,32 +342,25 @@ def get_my_facility(
     db: Session = Depends(get_db),
 ) -> FacilityProfileResponse:
     user_id = UUID(str(token_data["id"]))
-    return _facility_profile_response(db, _owned_facility(db, user_id))
+    facility = db.query(HealthFacility).filter_by(account_user_id=user_id, is_active=True).first()
+    if not facility:
+        raise HTTPException(status_code=404, detail="Fasilitas kesehatan tidak ditemukan")
+    return facility
 
 
-@router.patch("/me", response_model=FacilityProfileResponse)
-def update_my_facility(
-    data: FacilityProfileUpdate,
+@router.patch("/me", response_model=FacilityAccount)
+async def update_my_facility_contact(
+    data: FacilityContactUpdate,
     token_data: dict = Depends(verified_facility_identity),
     db: Session = Depends(get_db),
-) -> FacilityProfileResponse:
+):
     user_id = UUID(str(token_data["id"]))
-    facility = _owned_facility(db, user_id)
-    account = db.query(UserProfile).filter_by(user_id=user_id).one()
-    payload = data.model_dump(exclude_unset=True)
-
-    if "full_name" in payload:
-        account.full_name = data.full_name
-    for field in ("phone", "address"):
-        if field in payload:
-            value = payload[field]
-            value = (value.strip() or None) if isinstance(value, str) else None
-            setattr(facility, field, value)
-            setattr(account, field, value)
-    if {"province_code", "regency_code"}.intersection(payload):
-        facility.province_code = data.province_code
-        facility.regency_code = data.regency_code
-
+    facility = db.query(HealthFacility).filter_by(account_user_id=user_id, is_active=True).first()
+    if not facility:
+        raise HTTPException(status_code=404, detail="Fasilitas kesehatan tidak ditemukan")
+    facility.address = data.address
+    if data.phone is not None:
+        facility.phone = data.phone.strip() or None
     db.commit()
     db.refresh(facility)
-    return _facility_profile_response(db, facility)
+    return facility

@@ -94,7 +94,16 @@ class SettlementScheduler:
                 misfire_grace_time=120,
             )
 
-            
+            # Hourly: release funds and stock held by facility orders nobody processed
+            cls._scheduler.add_job(
+                func=cls._expire_unprocessed_facility_orders,
+                trigger=CronTrigger(minute=15),
+                id="facility_order_expiry",
+                name="Expire Unprocessed Facility Orders",
+                replace_existing=True,
+                misfire_grace_time=600,
+            )
+
             cls._scheduler.start()
             logger.info("Scheduler initialized successfully")
             
@@ -330,6 +339,22 @@ class SettlementScheduler:
             db.close()
         except Exception as e:
             logger.error("[WALLET_EXPIRY] Error: %s", e, exc_info=True)
+
+    @staticmethod
+    def _expire_unprocessed_facility_orders() -> None:
+        """Hourly: cancel facility orders the vendor has not processed in time."""
+        from app.services.facility_order_lifecycle import expire_unprocessed_facility_orders
+
+        db = SettlementScheduler.db_session_factory()
+        try:
+            expired = expire_unprocessed_facility_orders(db)
+            if expired:
+                logger.info("[FACILITY_ORDER_EXPIRY] Cancelled %s unprocessed orders", expired)
+        except Exception as e:
+            db.rollback()
+            logger.error("[FACILITY_ORDER_EXPIRY] Error: %s", e, exc_info=True)
+        finally:
+            db.close()
 
     @staticmethod
     def _auto_cancel_expired_orders() -> None:

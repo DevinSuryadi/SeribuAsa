@@ -7,6 +7,7 @@ import FacilityReceiptDialog from "@/components/order/FacilityReceiptDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSmartPolling } from "@/hooks/useSmartPolling";
 import { formatDate, formatIDR } from "@/lib/format";
 import {
   cancelFacilityOrder,
@@ -28,7 +29,6 @@ type OrderTab =
   | "all"
   | "waiting"
   | "funding"
-  | "processing"
   | "shipped"
   | "received"
   | "finished"
@@ -88,7 +88,6 @@ const tabItems: { key: OrderTab; label: string }[] = [
   { key: "all", label: "Semua" },
   { key: "funding", label: "Menunggu dana" },
   { key: "waiting", label: "Menunggu vendor" },
-  { key: "processing", label: "Diproses" },
   { key: "shipped", label: "Dikirim" },
   { key: "received", label: "Diterima Faskes" },
   { key: "finished", label: "Selesai" },
@@ -108,7 +107,7 @@ function statusKey(order: FacilityOrder): Exclude<OrderTab, "all"> {
 }
 
 function statusLabel(order: FacilityOrder) {
-  if (order.receipt_status === "discrepancy") return "Barang bermasalah";
+  if (hasOpenIssue(order)) return "Barang bermasalah";
   const key = statusKey(order);
   if (key === "cancelled") return "Dibatalkan";
   if (key === "rejected") return order.vendor_rejected_at ? "Ditolak Vendor" : "Ditolak";
@@ -121,7 +120,7 @@ function statusLabel(order: FacilityOrder) {
 }
 
 function statusClass(order: FacilityOrder) {
-  if (order.receipt_status === "discrepancy") return "border-red-200 bg-red-50 text-red-700";
+  if (hasOpenIssue(order)) return "border-red-200 bg-red-50 text-red-700";
   const key = statusKey(order);
   if (key === "cancelled") return "border-red-200 bg-red-50 text-red-700";
   if (key === "rejected") return "border-red-200 bg-red-50 text-red-700";
@@ -161,10 +160,10 @@ export default function FacilityOrdersTable() {
   const [selected, setSelected] = useState<FacilityOrder | null>(null);
   const [receiptOrder, setReceiptOrder] = useState<FacilityOrder | null>(null);
 
-  async function refresh(forceRefresh = false) {
+  async function refresh() {
     setLoading(true);
     try {
-      setOrders(await listFacilityOrders(undefined, forceRefresh));
+      setOrders(await listFacilityOrders());
       setError("");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Gagal memuat pesanan");
@@ -176,6 +175,12 @@ export default function FacilityOrdersTable() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  useSmartPolling(async () => {
+    const rows = await listFacilityOrders();
+    setOrders(rows);
+    setSelected((current) => (current ? rows.find((order) => order.id === current.id) || current : current));
+  }, { interval: 30000 });
 
   useEffect(() => {
     if (!selected) return;
@@ -194,7 +199,6 @@ export default function FacilityOrdersTable() {
       all: rows.length,
       funding: 0,
       waiting: 0,
-      processing: 0,
       shipped: 0,
       received: 0,
       finished: 0,
@@ -226,7 +230,7 @@ export default function FacilityOrdersTable() {
       await cancelFacilityOrder(order.id);
       toast.success("Pesanan dibatalkan");
       setSelected(null);
-      await refresh(true);
+      await refresh();
     } catch (cancelError) {
       toast.error(cancelError instanceof Error ? cancelError.message : "Gagal membatalkan pesanan");
     } finally {
@@ -237,10 +241,9 @@ export default function FacilityOrdersTable() {
   const steps = selected
     ? [
         { label: "Menunggu vendor", note: "Vendor belum mengonfirmasi" },
-        { label: "Diproses vendor", note: "Belum" },
-        { label: "Dikirim ke faskes", note: "Belum" },
-        { label: "Diterima Faskes", note: "Menunggu pemeriksaan" },
-        { label: "Diterima keluarga", note: "Belum" },
+        { label: "Dikirim ke faskes", note: "Dalam perjalanan ke faskes" },
+        { label: "Diterima Faskes", note: "Barang bermasalah, menunggu vendor melengkapi" },
+        { label: "Diterima keluarga", note: "Menunggu diserahkan kepada keluarga" },
       ]
     : [];
   const currentProgress = selected ? progressIndex(selected) : -1;
@@ -260,7 +263,7 @@ export default function FacilityOrdersTable() {
       subtitle="Pantau pesanan, konfirmasi barang tiba di Faskes, lalu catat penyaluran kepada keluarga."
       actions={
         <>
-          <Button variant="outline" className="rounded-xl bg-white" onClick={() => void refresh(true)} disabled={loading}>
+          <Button variant="outline" className="rounded-xl bg-white" onClick={() => void refresh()} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Perbarui
           </Button>
@@ -301,7 +304,7 @@ export default function FacilityOrdersTable() {
             className="m-4"
             title="Gagal memuat pesanan"
             message={error}
-            onRetry={() => void refresh(true)}
+            onRetry={() => void refresh()}
           />
         ) : rows.length === 0 ? (
           <EmptyState
@@ -437,9 +440,9 @@ export default function FacilityOrdersTable() {
               </section>
 
               <section className="border-b border-slate-100 px-6 py-5">
-                <h3 className="mb-4 text-sm font-bold text-slate-900">Progres</h3>
+                <h3 className="mb-4 text-sm font-bold text-slate-900">Progres</h3>{currentProgress < 0 && <p className="text-sm text-slate-500">Pesanan ini tidak berlanjut ke pengiriman.</p>}
                 <ol className="space-y-0">
-                  {steps.map((step, index) => {
+                  {(currentProgress < 0 ? [] : steps).map((step, index) => {
                     const completed = currentProgress > index;
                     const current = currentProgress === index;
                     return (
@@ -448,9 +451,9 @@ export default function FacilityOrdersTable() {
                           <span className={`absolute left-[7px] top-4 h-full w-px ${completed ? "bg-emerald-400" : "bg-slate-200"}`} />
                         )}
                         <span className={`relative z-10 mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 bg-white ${
-                          completed ? "border-emerald-500 bg-emerald-500 text-white" : current ? "border-amber-500" : "border-slate-300"
+                          completed ? "border-emerald-500 bg-emerald-500 text-white" : current ? (hasOpenIssue(selected) ? "border-red-500" : "border-amber-500") : "border-slate-300"
                         }`}>
-                          {completed ? <Check className="h-2.5 w-2.5" /> : current ? <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> : <Circle className="h-0 w-0" />}
+                          {completed ? <Check className="h-2.5 w-2.5" /> : current ? <span className={`h-1.5 w-1.5 rounded-full ${hasOpenIssue(selected) ? "bg-red-500" : "bg-amber-500"}`} /> : <Circle className="h-0 w-0" />}
                         </span>
                         <div>
                           <p className={`text-sm font-semibold ${current || completed ? "text-slate-900" : "text-slate-500"}`}>{step.label}</p>
