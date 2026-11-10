@@ -1,27 +1,15 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getUserProfile, ensureUserProfile, updateUserProfile } from "@/services/user";
+import { getFacilityProfile, updateFacilityProfile } from "@/services/facility-profile";
 import { toast } from "sonner";
-import type { BackendProfile, UserRole, AsyncState } from "@/types";
+import type { BackendProfile, ProfileUpdate, UserRole, AsyncState } from "@/types";
 import useSWR from "swr";
 
 interface UseProfileReturn extends AsyncState<BackendProfile> {
   isSubmitting: boolean;
   refetch: () => Promise<void>;
-  updateProfile: (profile: {
-    full_name: string;
-    phone?: string | null;
-    address?: string | null;
-    date_of_birth?: string | null;
-    gender?: "male" | "female" | null;
-    store_name?: string | null;
-    store_address?: string | null;
-    store_image_url?: string | null;
-    operating_hours?: string | null;
-    bank_name?: string | null;
-    bank_account_number?: string | null;
-    bank_account_holder?: string | null;
-  }) => Promise<boolean>;
+  updateProfile: (profile: ProfileUpdate) => Promise<boolean>;
 }
 
 export function useProfile(): UseProfileReturn {
@@ -31,6 +19,8 @@ export function useProfile(): UseProfileReturn {
   const fetcher = async () => {
     if (!user?.id) throw new Error("No user ID");
     
+    if (userRole === "health_facility") return getFacilityProfile();
+
     let profileData = await getUserProfile(user.id);
 
     // If profile not found, try to create/sync it
@@ -58,6 +48,10 @@ export function useProfile(): UseProfileReturn {
         bank_name: profileData.bank_name || null,
         bank_account_number: profileData.bank_account_number || null,
         bank_account_holder: profileData.bank_account_holder || null,
+        province_code: profileData.province_code || null,
+        regency_code: profileData.regency_code || null,
+        province_name: profileData.province_name || null,
+        regency_name: profileData.regency_name || null,
       };
       return profile;
     }
@@ -65,25 +59,13 @@ export function useProfile(): UseProfileReturn {
   };
 
   const { data, error, isLoading, mutate } = useSWR<BackendProfile | null>(
-    user?.id ? ["profile", user.id] : null,
-    fetcher
+    user?.id && userRole ? ["profile", user.id, userRole] : null,
+    fetcher,
+    { shouldRetryOnError: false }
   );
 
   const updateProfile = useCallback(
-    async (profile: {
-      full_name: string;
-      phone?: string | null;
-      address?: string | null;
-      date_of_birth?: string | null;
-      gender?: "male" | "female" | null;
-      store_name?: string | null;
-      store_address?: string | null;
-      store_image_url?: string | null;
-      operating_hours?: string | null;
-      bank_name?: string | null;
-      bank_account_number?: string | null;
-      bank_account_holder?: string | null;
-    }): Promise<boolean> => {
+    async (profile: ProfileUpdate): Promise<boolean> => {
       if (!user?.id) {
         toast.error("User tidak ditemukan. Silakan login ulang.");
         return false;
@@ -93,10 +75,12 @@ export function useProfile(): UseProfileReturn {
 
       try {
         // Try to update directly first
-        let updatedProfile = await updateUserProfile(user.id, profile);
+        let updatedProfile = userRole === "health_facility"
+          ? await updateFacilityProfile(profile)
+          : await updateUserProfile(user.id, profile);
 
         // If 404, ensure profile exists then retry
-        if (!updatedProfile) {
+        if (!updatedProfile && userRole !== "health_facility") {
           const ensured = await ensureUserProfile(user.id, profile.full_name, userRole);
           if (ensured) {
             updatedProfile = await updateUserProfile(user.id, profile);
@@ -120,6 +104,10 @@ export function useProfile(): UseProfileReturn {
             bank_name: updatedProfile.bank_name || profile.bank_name || null,
             bank_account_number: updatedProfile.bank_account_number || profile.bank_account_number || null,
             bank_account_holder: updatedProfile.bank_account_holder || profile.bank_account_holder || null,
+            province_code: updatedProfile.province_code ?? null,
+            regency_code: updatedProfile.regency_code ?? null,
+            province_name: updatedProfile.province_name ?? null,
+            regency_name: updatedProfile.regency_name ?? null,
           };
           
           mutate(newProfile, false); // Update local cache without re-fetching
@@ -128,9 +116,9 @@ export function useProfile(): UseProfileReturn {
         }
 
         return false;
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast.error("Gagal memperbarui profil", {
-          description: err.message || "Terjadi kesalahan",
+          description: err instanceof Error ? err.message : "Terjadi kesalahan",
         });
         return false;
       } finally {
@@ -142,7 +130,7 @@ export function useProfile(): UseProfileReturn {
 
   return {
     data: data || null,
-    loading: isLoading,
+    loading: isLoading || Boolean(user?.id && !userRole),
     error: error ? (error.message || "Gagal memuat profil") : null,
     isSubmitting,
     refetch: async () => { await mutate(); },
