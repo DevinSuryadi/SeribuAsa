@@ -149,8 +149,9 @@ export default function FacilityRedemptionHistory() {
   const readyForProof = useMemo(() => familyId
     ? orders.filter((order) => !order.distribution && order.receipt_status === "accepted")
     : [], [familyId, orders]);
+  // Ordered, being prepared, or on the way: the facility can only wait for the vendor.
   const waitingForVendor = useMemo(() => familyId
-    ? orders.filter((order) => !order.distribution && order.status === "pending")
+    ? orders.filter((order) => ["pending", "processing", "shipped"].includes(order.status))
     : [], [familyId, orders]);
   const waitingForFunding = useMemo(() => familyId
     ? orders.filter((order) => order.status === "pending_approval")
@@ -210,7 +211,7 @@ export default function FacilityRedemptionHistory() {
 
         {!loading && !error && familyId && waitingForVendor.length > 0 && (
           <div className="rounded-xl bg-blue-50 px-4 py-3">
-            <div><p className="font-semibold text-blue-950">{waitingForVendor.length} pesanan sedang disiapkan vendor</p><p className="mt-1 text-sm text-blue-800">Bukti penyaluran tersedia setelah Faskes mengonfirmasi barang diterima lengkap.</p></div>
+            <div><p className="font-semibold text-blue-950">{waitingForVendor.length} pesanan belum tiba di Faskes</p><p className="mt-1 text-sm text-blue-800">Bukti penyaluran tersedia setelah Faskes mengonfirmasi barang diterima lengkap.</p></div>
           </div>
         )}
         {!loading && !error && familyId && waitingForFunding.length > 0 && <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{waitingForFunding.length} pesanan lama belum didanai. Batalkan dari halaman Pesanan lalu pesan kembali setelah dana pool tersedia.</div>}
