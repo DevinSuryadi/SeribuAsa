@@ -62,7 +62,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Ringkasan", href: "/dashboard/vendor", icon: LayoutDashboard },
     { label: "Kelola Produk", href: "/dashboard/kelola-produk", icon: Package },
     { label: "Pesanan Faskes", href: "/dashboard/vendor/facility-orders", icon: ShoppingCart },
-    { label: "Pencairan Faskes", href: "/dashboard/vendor/facility-payouts", icon: CreditCard },
+    { label: "Alokasi Dana", href: "/dashboard/vendor/facility-payouts", icon: CreditCard },
     { label: "Pencairan", href: "/dashboard/settlement", icon: CreditCard },
     { label: "Profil", href: "/dashboard/profile", icon: Settings },
   ],

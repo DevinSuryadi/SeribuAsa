@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatIDR } from "@/lib/format";
 import { getCategories, getProducts, type Category } from "@/services/products";
-import { getMyFacility, listFamilies, type Family } from "@/services/facility-families";
+import { getMyFacility, listFamilies, updateMyFacilityContact, type Family } from "@/services/facility-families";
 import { createFacilityOrder } from "@/services/facility-orders";
 import { listEligibleVendors, type EligibleVendor } from "@/services/facility-orders";
 import { getProvinces, getRegencies, type Province, type Regency } from "@/services/regions";
@@ -49,12 +49,16 @@ export default function FacilityCatalog() {
   const [submitting, setSubmitting] = useState(false);
   const regionChanged = useRef(false);
   const [profileRegionError, setProfileRegionError] = useState("");
+  const [missingAddress, setMissingAddress] = useState(false);
+  const [addressDraft, setAddressDraft] = useState("");
+  const [savingAddress, setSavingAddress] = useState(false);
 
   useEffect(() => {
     let active = true;
     getMyFacility(true).then((facility) => {
       if (!active) return;
       setProfileRegionError("");
+      setMissingAddress(!facility.address?.trim());
       if (!regionChanged.current && facility.province_code && facility.regency_code) {
         setProvinceCode(facility.province_code);
         setRegencyCode(facility.regency_code);
@@ -64,10 +68,6 @@ export default function FacilityCatalog() {
   }, [regionRetryKey]);
 
   useEffect(() => { setSelectedFamilyId(familyId || ""); }, [familyId]);
-
-  useEffect(() => {
-    getMyFacility(true).then((facility) => setMissingAddress(!facility.address?.trim())).catch(() => {});
-  }, []);
 
   async function saveAddress() {
     setSavingAddress(true);
@@ -183,7 +183,7 @@ export default function FacilityCatalog() {
     <DashboardLayout title="Katalog Pangan" subtitle="Pilih pangan untuk keluarga terdaftar. Wilayah awal mengikuti profil fasilitas kesehatan.">
       <div className="space-y-6">
         {familyId && <Button asChild variant="ghost" className="pl-0 text-primary"><Link to={`/dashboard/health-facility/families/${familyId}`}><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke keluarga</Link></Button>}
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm"><CardHeader><CardTitle className="text-base font-bold text-slate-900">Pilih daerah dan vendor</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3">
+        <Card className="rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]"><CardHeader><CardTitle className="text-base font-bold text-slate-900">Pilih daerah dan vendor</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3">
           <div><label htmlFor="catalog-province" className="mb-1 block text-sm font-medium">Provinsi</label><select id="catalog-province" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={provinceCode} onChange={(event) => changeRegion(event.target.value, "")}><option value="">Pilih provinsi</option>{provinces.map((province) => <option key={province.code} value={province.code}>{province.name}</option>)}</select></div>
           <div><label htmlFor="catalog-regency" className="mb-1 block text-sm font-medium">Kota/kabupaten</label><select id="catalog-regency" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={regencyCode} disabled={!provinceCode || !regencies.length} onChange={(event) => changeRegion(provinceCode, event.target.value)}><option value="">Pilih kota/kabupaten</option>{regencies.map((regency) => <option key={regency.code} value={regency.code}>{regency.name}</option>)}</select></div>
           <div><label htmlFor="catalog-vendor" className="mb-1 block text-sm font-medium">Vendor</label><select id="catalog-vendor" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={selectedVendorId} disabled={!regencyCode || vendorLoading || !vendors.length} onChange={(event) => { setSelectedVendorId(event.target.value); setCart([]); setPage(1); }}><option value="">{vendorLoading ? "Memuat vendor..." : "Semua vendor"}</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.store_name} ({vendor.product_count} produk)</option>)}</select></div>
@@ -206,7 +206,7 @@ export default function FacilityCatalog() {
         </CardContent></Card>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-4">
-            {!provinceCode || !regencyCode ? <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Pilih provinsi dan kota/kabupaten untuk melihat produk.</p> : loading ? (
+            {!provinceCode || !regencyCode ? <p className="rounded-[20px] bg-white p-6 text-sm text-slate-500 shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">Pilih provinsi dan kota/kabupaten untuk melihat produk.</p> : loading ? (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Memuat katalog">
                 {[0, 1, 2].map((item) => <Skeleton key={item} className="h-72 rounded-2xl" />)}
               </div>
@@ -245,7 +245,7 @@ export default function FacilityCatalog() {
               </div>
             )}
             <p className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-primary">Pesanan langsung diteruskan ke vendor. Dana donasi dicadangkan saat memesan; pastikan produk dan keluarga penerima sudah sesuai.</p>
-            <Button className="w-full rounded-xl" disabled={!cart.length || !selectedFamilyId || !familyName || !vendorId || vendorLoading || Boolean(familyError) || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
+            <Button className="w-full rounded-full" disabled={!cart.length || !selectedFamilyId || !familyName || !vendorId || vendorLoading || Boolean(familyError) || missingAddress || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
           </CardContent></Card>
         </div>
         {cart.length > 0 && (

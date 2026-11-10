@@ -11,14 +11,14 @@ import { getProvinces, getRegencies } from "@/services/regions";
 import type { VendorProduct } from "@/types/vendor";
 
 vi.mock("@/components/dashboard/DashboardLayout", () => ({ default: ({ children }: { children: ReactNode }) => <main>{children}</main> }));
-vi.mock("@/components/product/ProductAvatar", () => ({ ProductAvatarLarge: () => null }));
+vi.mock("@/components/product/ProductImageTile", () => ({ ProductImageTile: () => null }));
 vi.mock("@/services/facility-families", () => ({ getMyFacility: vi.fn(), listFamilies: vi.fn() }));
 vi.mock("@/services/facility-orders", () => ({ createFacilityOrder: vi.fn(), listEligibleVendors: vi.fn() }));
 vi.mock("@/services/products", () => ({ getCategories: vi.fn(), getProducts: vi.fn() }));
 vi.mock("@/services/regions", () => ({ getProvinces: vi.fn(), getRegencies: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const facility: Facility = { id: "facility-1", name: "Faskes A", facility_type: null, approval_status: "approved", province_code: "15", regency_code: "15.71" };
+const facility: Facility = { id: "facility-1", name: "Faskes A", facility_type: null, approval_status: "approved", address: "Jl. Kenanga 12", province_code: "15", regency_code: "15.71" };
 const product: VendorProduct = {
   id: "product-1", vendor_id: "vendor-1", name: "Beras lokal", price: 10000,
   voucher_price: 10000, stock: 5, unit: "kg", category: "category-1",
@@ -58,7 +58,8 @@ describe("Facility catalog profile region", () => {
     const user = userEvent.setup();
     vi.mocked(createFacilityOrder).mockResolvedValue({ id: "order-1" } as FacilityOrder);
     renderCatalog();
-    await user.click(await screen.findByRole("button", { name: "Tambah Beras lokal" }));
+    // Profile, region, vendor, and product requests resolve in sequence before the card appears.
+    await user.click(await screen.findByRole("button", { name: "Tambah Beras lokal" }, { timeout: 3000 }));
     await user.selectOptions(screen.getByLabelText("Keluarga penerima"), "family-1");
     await user.click(screen.getByRole("button", { name: "Pesan untuk Keluarga A" }));
     await waitFor(() => expect(createFacilityOrder).toHaveBeenCalledWith(expect.objectContaining({ vendor_id: "vendor-1", service_province_code: "15", service_regency_code: "15.71", items: [{ product_id: "product-1", quantity: 1 }] })));

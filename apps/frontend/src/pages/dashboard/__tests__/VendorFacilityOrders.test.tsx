@@ -14,6 +14,7 @@ import {
 vi.mock("@/components/dashboard/DashboardLayout", () => ({
   default: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
+vi.mock("@/hooks/useSmartPolling", () => ({ useSmartPolling: vi.fn() }));
 vi.mock("@/services/facility-orders", () => ({
   confirmVendorFacilityOrder: vi.fn(),
   dispatchFacilityOrder: vi.fn(),
@@ -43,61 +44,72 @@ const pendingOrder: FacilityOrder = {
   distribution: null,
 };
 
+// The page renders a mobile list and a desktop table, so each status label appears twice.
+const statusShown = (label: string) => expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+
 describe("Vendor facility order workflow", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(listVendorFacilityOrders).mockResolvedValue([pendingOrder]);
   });
 
-  it("requires confirmation before showing the dispatch action", async () => {
+  it("accepts an order before it can be sent to the facility", async () => {
     const user = userEvent.setup();
     vi.mocked(confirmVendorFacilityOrder).mockResolvedValue({ ...pendingOrder, status: "processing" });
     vi.mocked(dispatchFacilityOrder).mockResolvedValue({ ...pendingOrder, status: "shipped" });
     render(<VendorFacilityOrders />);
 
-    await screen.findByRole("button", { name: "Konfirmasi pesanan" });
-    expect(screen.queryByRole("button", { name: "Kirim pesanan" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Konfirmasi pesanan" }));
-    expect(await screen.findByText("Diproses vendor")).toBeInTheDocument();
-    expect(dispatchFacilityOrder).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Tolak pesanan" })).not.toBeInTheDocument();
+    await screen.findByRole("button", { name: "Terima pesanan" });
+    expect(screen.queryByRole("button", { name: "Kirim ke faskes" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Kirim pesanan" }));
-    expect(await screen.findByText("Dalam pengiriman")).toBeInTheDocument();
+    vi.mocked(listVendorFacilityOrders).mockResolvedValue([{ ...pendingOrder, status: "processing" }]);
+    await user.click(screen.getByRole("button", { name: "Terima pesanan" }));
+    await screen.findByRole("button", { name: "Kirim ke faskes" });
+    statusShown("Siap dikirim");
     expect(confirmVendorFacilityOrder).toHaveBeenCalledWith("order-1");
+    expect(dispatchFacilityOrder).not.toHaveBeenCalled();
+
+    vi.mocked(listVendorFacilityOrders).mockResolvedValue([{ ...pendingOrder, status: "shipped" }]);
+    await user.click(screen.getByRole("button", { name: "Kirim ke faskes" }));
+    await waitFor(() => statusShown("Dalam pengiriman"));
     expect(dispatchFacilityOrder).toHaveBeenCalledWith("order-1");
-    expect(screen.queryByRole("button", { name: "Kirim pesanan" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kirim ke faskes" })).not.toBeInTheDocument();
   });
 
-  it("requires a rejection reason and retains the rejected order in the list", async () => {
+  it("requires a rejection reason and shows it on the rejected order", async () => {
     const user = userEvent.setup();
     const reason = "Kapasitas pengiriman penuh";
-    vi.mocked(rejectVendorFacilityOrder).mockResolvedValue({
-      ...pendingOrder, status: "rejected", vendor_rejection_reason: reason, funded_amount: 0,
-    });
+    const rejected = { ...pendingOrder, status: "rejected" as const, vendor_rejection_reason: reason };
+    vi.mocked(rejectVendorFacilityOrder).mockResolvedValue(rejected);
     render(<VendorFacilityOrders />);
 
-    await user.click(await screen.findByRole("button", { name: "Tolak pesanan" }));
-    const dialog = screen.getByRole("dialog");
+    await user.click((await screen.findAllByText("Puskesmas A"))[0]);
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Tolak" }));
     const submit = within(dialog).getByRole("button", { name: "Tolak pesanan" });
+    const reasonInput = within(dialog).getByLabelText("Alasan penolakan");
+    await user.click(reasonInput);
+    await user.paste("abc");
     expect(submit).toBeDisabled();
-    await user.type(within(dialog).getByLabelText("Alasan penolakan"), reason);
+    await user.clear(reasonInput);
+    await user.paste(reason);
+
+    vi.mocked(listVendorFacilityOrders).mockResolvedValue([rejected]);
     await user.click(submit);
 
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(rejectVendorFacilityOrder).toHaveBeenCalledWith("order-1", reason);
-    expect(screen.getByText("Ditolak")).toBeInTheDocument();
-    expect(screen.getByText(`Alasan penolakan: ${reason}`)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Konfirmasi pesanan" })).not.toBeInTheDocument();
+    await waitFor(() => expect(rejectVendorFacilityOrder).toHaveBeenCalledWith("order-1", reason));
+    expect(await within(dialog).findByText(`Alasan penolakan: ${reason}`)).toBeInTheDocument();
+    statusShown("Ditolak");
+    expect(screen.queryByRole("button", { name: "Terima pesanan" })).not.toBeInTheDocument();
   });
 
-  it("keeps the pending actions available when confirmation fails", async () => {
+  it("keeps the order pending when accepting it fails", async () => {
     const user = userEvent.setup();
     vi.mocked(confirmVendorFacilityOrder).mockRejectedValue(new Error("Pesanan telah dibatalkan"));
     render(<VendorFacilityOrders />);
 
-    await user.click(await screen.findByRole("button", { name: "Konfirmasi pesanan" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Konfirmasi pesanan" })).toBeEnabled());
-    expect(screen.queryByRole("button", { name: "Kirim pesanan" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Terima pesanan" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Terima pesanan" })).toBeEnabled());
+    expect(screen.queryByRole("button", { name: "Kirim ke faskes" })).not.toBeInTheDocument();
   });
 });

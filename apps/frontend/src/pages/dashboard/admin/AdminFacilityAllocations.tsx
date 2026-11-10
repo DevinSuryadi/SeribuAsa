@@ -31,7 +31,7 @@ export default function AdminFacilityAllocations() {
   const [busy, setBusy] = useState("");
 
   async function cancel(order: FacilityOrder) {
-    const consequence = order.status === "processing"
+    const consequence = order.status === "shipped"
       ? "Dana dikembalikan ke pool, stok vendor tidak dikembalikan karena barang sudah dikirim."
       : "Dana dan stok dikembalikan.";
     const reason = window.prompt(`Batalkan pesanan #${order.id.slice(0, 8)}? ${consequence}\n\nTulis alasan (minimal 5 karakter):`)?.trim();
@@ -90,7 +90,7 @@ export default function AdminFacilityAllocations() {
             {order.allocation_reason && <p className="text-sm text-muted-foreground">Catatan riwayat: {order.allocation_reason}</p>}
             {order.vendor_rejection_reason && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800">Ditolak Vendor: {order.vendor_rejection_reason}</p>}
             {order.discrepancy_notes && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800">Laporan Faskes: {order.discrepancy_notes}</p>}
-            {(order.status === "pending" || order.status === "processing") && <div className="flex justify-end"><Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" disabled={busy === order.id} onClick={() => void cancel(order)}>Batalkan pesanan</Button></div>}
+            {(order.status === "pending" || order.status === "processing" || order.status === "shipped") && <div className="flex justify-end"><Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" disabled={busy === order.id} onClick={() => void cancel(order)}>Batalkan pesanan</Button></div>}
           </article>)}
         </>}
       </div>

@@ -29,6 +29,12 @@ from app.services.facility_funding import (
     order_funding,
     reserve_order_funding,
 )
+from app.services.facility_order_workflow import (
+    InvalidOrderTransition,
+    confirm_vendor_order,
+    dispatch_vendor_order,
+    reject_vendor_order,
+)
 from app.services.facility_order_lifecycle import PENDING_ORDER_TTL, cancel_facility_order_record
 
 facility_router = APIRouter(prefix="/facilities/orders", tags=["facility orders"])
@@ -88,8 +94,6 @@ class ReceiptInput(BaseModel):
 
 class CancellationInput(BaseModel):
     reason: str = Field(min_length=5, max_length=500)
-class VendorRejectionInput(BaseModel):
-    reason: str = Field(min_length=1, max_length=1000)
 
     @field_validator("reason")
     @classmethod
@@ -97,8 +101,6 @@ class VendorRejectionInput(BaseModel):
         value = value.strip()
         if len(value) < 5:
             raise ValueError("Alasan terlalu pendek")
-        if not value:
-            raise ValueError("Alasan penolakan wajib diisi")
         return value
 
 
@@ -503,11 +505,6 @@ def cancel_facility_order(
             status_code=409, detail="Hanya pesanan yang belum diproses dapat dibatalkan"
         )
     cancel_facility_order_record(db, order, "Dibatalkan oleh Faskes.")
-    restore_order_stock(db, order)
-    order.status = "cancelled"
-    if order.allocation_status in {"requested", "automatic"}:
-        order.allocation_status = "cancelled"
-    release_order_funding(db, order)
     db.commit()
     return order_payload(db, order)
 
@@ -733,7 +730,7 @@ def dispatch_facility_order(
 @vendor_router.post("/{order_id}/reject")
 def reject_facility_order(
     order_id: UUID,
-    data: VendorRejectionInput,
+    data: CancellationInput,
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user),
 ):
@@ -744,29 +741,6 @@ def reject_facility_order(
     except InvalidOrderTransition as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return order_payload(db, order, vendor_view=True)
-
-
-@vendor_router.post("/{order_id}/reject")
-def reject_facility_order(
-    order_id: UUID,
-    data: CancellationInput,
-    db: Session = Depends(get_db),
-    user: AuthenticatedUser = Depends(get_current_user),
-):
-    vendor = vendor_account(db, user)
-    order = (
-        db.query(Order)
-        .filter_by(id=order_id, order_flow="facility_delivery", vendor_id=vendor.user_id, is_active=True)
-        .with_for_update()
-        .first()
-    )
-    if not order:
-        raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
-    if order.status != "pending":
-        raise HTTPException(status_code=409, detail="Hanya pesanan yang belum diproses dapat ditolak")
-    cancel_facility_order_record(db, order, f"Ditolak vendor: {data.reason}")
-    db.commit()
     return order_payload(db, order, vendor_view=True)
 
 
@@ -785,11 +759,11 @@ def admin_cancel_facility_order(
     )
     if not order:
         raise HTTPException(status_code=404, detail="Pesanan tidak ditemukan")
-    if order.status not in {"pending_approval", "pending", "processing"}:
+    if order.status not in {"pending_approval", "pending", "processing", "shipped"}:
         raise HTTPException(status_code=409, detail="Pesanan yang sudah diterima tidak dapat dibatalkan")
     # Dispatched goods have left the vendor, so only the donated funds are returned.
     cancel_facility_order_record(
-        db, order, f"Dibatalkan Admin: {data.reason}", restore_stock=order.status != "processing"
+        db, order, f"Dibatalkan Admin: {data.reason}", restore_stock=order.status != "shipped"
     )
     order.allocation_decided_by_user_id = user.user_id
     order.allocation_decided_at = datetime.utcnow()
