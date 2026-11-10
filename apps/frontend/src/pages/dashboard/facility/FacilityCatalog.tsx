@@ -8,9 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatIDR } from "@/lib/format";
+import { formatDate, formatIDR } from "@/lib/format";
 import { getCategories, getProducts, type Category } from "@/services/products";
-import { getMyFacility, listFamilies, updateMyFacilityContact, type Family } from "@/services/facility-families";
+import {
+  getFamilyAidQuota,
+  getMyFacility,
+  listFamilies,
+  updateMyFacilityContact,
+  type FamilyAidQuota,
+  type Family,
+} from "@/services/facility-families";
 import { createFacilityOrder } from "@/services/facility-orders";
 import { listEligibleVendors, type EligibleVendor } from "@/services/facility-orders";
 import { getProvinces, getRegencies, type Province, type Regency } from "@/services/regions";
@@ -19,6 +26,15 @@ import { ArrowLeft, Minus, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 type CartLine = { product: VendorProduct; quantity: number };
+type QuotaState = { familyId: string; quota?: FamilyAidQuota; error?: string };
+
+function describeQuotaBasis(quota: FamilyAidQuota) {
+  const beneficiaries = [
+    quota.children_under_two ? `${quota.children_under_two} anak di bawah 2 tahun` : "",
+    quota.unborn_children ? `${quota.unborn_children} anak dalam kandungan` : "",
+  ].filter(Boolean).join(" dan ");
+  return `${beneficiaries} × ${formatIDR(quota.amount_per_beneficiary)} sesuai hasil FIES terakhir.`;
+}
 
 export default function FacilityCatalog() {
   const { familyId } = useParams<{ familyId: string }>();
@@ -47,6 +63,7 @@ export default function FacilityCatalog() {
   const [error, setError] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [quotaState, setQuotaState] = useState<QuotaState | null>(null);
   const regionChanged = useRef(false);
   const [profileRegionError, setProfileRegionError] = useState("");
   const [missingAddress, setMissingAddress] = useState(false);
@@ -125,9 +142,25 @@ export default function FacilityCatalog() {
     return () => { active = false; };
   }, [page, search, categoryId, selectedVendorId, provinceCode, regencyCode, productRetryKey]);
 
+  useEffect(() => {
+    if (!selectedFamilyId) return;
+    let active = true;
+    getFamilyAidQuota(selectedFamilyId)
+      .then((quota) => { if (active) setQuotaState({ familyId: selectedFamilyId, quota }); })
+      .catch((err: unknown) => {
+        if (active) setQuotaState({ familyId: selectedFamilyId, error: err instanceof Error ? err.message : "Kuota bantuan keluarga gagal dimuat." });
+      });
+    return () => { active = false; };
+  }, [selectedFamilyId]);
+
   const vendorId = cart[0]?.product.vendor_id;
   const total = useMemo(() => cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0), [cart]);
   const familyName = families.find((family) => family.id === selectedFamilyId)?.head_name;
+  // Only trust a quota loaded for the family currently selected.
+  const currentQuota = quotaState?.familyId === selectedFamilyId ? quotaState : null;
+  const quota = currentQuota?.quota;
+  const exceedsQuota = Boolean(quota && total > quota.remaining_amount);
+  const quotaAllowsOrder = Boolean(quota?.eligible) && !exceedsQuota;
 
   function changeRegion(province: string, regency: string) {
     regionChanged.current = true;
@@ -237,6 +270,23 @@ export default function FacilityCatalog() {
             <div><label htmlFor="order-family" className="mb-1 block text-sm font-medium">Keluarga penerima</label><select id="order-family" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={selectedFamilyId} disabled={Boolean(familyId)} onChange={(event) => setSelectedFamilyId(event.target.value)}><option value="">Pilih keluarga saat akan memesan</option>{families.map((family) => <option key={family.id} value={family.id}>{family.head_name}</option>)}</select>{familyError && <p className="mt-1 text-xs text-destructive">{familyError}</p>}</div>
             {cart.length ? <div className="space-y-2 border-t pt-3">{cart.map(({ product, quantity }) => <div key={product.id} className="flex justify-between gap-2 text-sm"><span>{quantity}× {product.name}</span><span>{formatIDR(product.price * quantity)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">Pilih pangan untuk mulai memesan. Katalog dapat dilihat tanpa memilih keluarga.</p>}
             <div className="flex justify-between border-t pt-3 font-semibold"><span>Total</span><span>{formatIDR(total)}</span></div>
+            {selectedFamilyId && (
+              currentQuota?.error ? (
+                <p className="text-xs text-destructive">{currentQuota.error}</p>
+              ) : !quota ? (
+                <p className="text-xs text-muted-foreground">Memuat kuota bantuan keluarga...</p>
+              ) : !quota.eligible ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{quota.blocked_reason}</div>
+              ) : (
+                <div className="space-y-2 rounded-xl bg-[#F4F7F5] p-3 text-sm" aria-label="Kuota bantuan mingguan">
+                  <div className="flex justify-between gap-2"><span className="text-muted-foreground">Kuota minggu ini</span><span>{formatIDR(quota.weekly_limit)}</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-muted-foreground">Sudah dipakai</span><span>{formatIDR(quota.used_amount)}</span></div>
+                  <div className="flex justify-between gap-2 font-semibold"><span>Sisa kuota</span><span>{formatIDR(quota.remaining_amount)}</span></div>
+                  <p className="text-xs leading-5 text-muted-foreground">{describeQuotaBasis(quota)} Berlaku {formatDate(quota.period_start)} sampai {formatDate(quota.period_end)}.</p>
+                  {exceedsQuota && <p className="text-xs text-destructive">Total pesanan melebihi sisa kuota mingguan keluarga. Kurangi jumlah pangan sebelum memesan.</p>}
+                </div>
+              )
+            )}
             {missingAddress && (
               <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
                 <label htmlFor="facility-address" className="block text-sm font-medium text-amber-900">Alamat faskes belum diisi. Vendor butuh alamat ini untuk mengirim pesanan.</label>
@@ -245,7 +295,7 @@ export default function FacilityCatalog() {
               </div>
             )}
             <p className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-primary">Pesanan langsung diteruskan ke vendor. Dana donasi dicadangkan saat memesan; pastikan produk dan keluarga penerima sudah sesuai.</p>
-            <Button className="w-full rounded-full" disabled={!cart.length || !selectedFamilyId || !familyName || !vendorId || vendorLoading || Boolean(familyError) || missingAddress || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
+            <Button className="w-full rounded-full" disabled={!cart.length || !selectedFamilyId || !familyName || !vendorId || vendorLoading || Boolean(familyError) || missingAddress || !quotaAllowsOrder || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
           </CardContent></Card>
         </div>
         {cart.length > 0 && (

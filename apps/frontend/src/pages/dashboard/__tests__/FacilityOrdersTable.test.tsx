@@ -30,6 +30,7 @@ describe("Facility order progress", () => {
   beforeEach(() => vi.resetAllMocks());
 
   it.each([
+    { status: "pending", tab: "Menunggu 1", canReceive: false },
     { status: "processing", tab: "Menunggu 1", canReceive: false },
     { status: "shipped", tab: "Dikirim 1", canReceive: true },
   ] as const)("groups $status under its tab and gates receipt confirmation", async ({ status, tab, canReceive }) => {
@@ -40,6 +41,21 @@ describe("Facility order progress", () => {
     await user.click(await screen.findByRole("button", { name: tab }));
     await user.click(screen.getByRole("button", { name: /#order/ }));
     expect(Boolean(screen.queryByRole("button", { name: "Konfirmasi barang tiba" }))).toBe(canReceive);
+  });
+
+  it("follows the five-step order flow while the vendor prepares the goods", async () => {
+    const user = userEvent.setup();
+    vi.mocked(listFacilityOrders).mockResolvedValue([{ ...order, status: "processing", vendor_confirmed_at: "2026-11-04T02:00:00Z" }]);
+    render(<MemoryRouter><FacilityOrdersTable /></MemoryRouter>);
+
+    await user.click(await screen.findByRole("button", { name: /#order/ }));
+
+    const steps = screen.getAllByRole("listitem").filter((item) => item.closest("ol"));
+    expect(steps.map((step) => step.querySelector("p")?.textContent)).toEqual([
+      "Pesanan dibuat", "Disiapkan vendor", "Dalam pengiriman", "Diterima Faskes", "Diterima keluarga",
+    ]);
+    expect(screen.getByText("Disiapkan vendor").closest("li")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText("Vendor sedang menyiapkan pesanan")).toBeInTheDocument();
   });
 
   it("shows the vendor rejection reason without receipt or cancellation actions", async () => {

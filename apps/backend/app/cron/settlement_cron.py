@@ -104,6 +104,16 @@ class SettlementScheduler:
                 misfire_grace_time=600,
             )
 
+            # Daily at 00:10 WIB (17:10 UTC): children past their expected birth date become toddlers
+            cls._scheduler.add_job(
+                func=cls._promote_due_pregnancies,
+                trigger=CronTrigger(hour=17, minute=10),
+                id="pregnancy_birth_promotion",
+                name="Promote Pregnancies Past Their Due Date",
+                replace_existing=True,
+                misfire_grace_time=3600,
+            )
+
             cls._scheduler.start()
             logger.info("Scheduler initialized successfully")
             
@@ -353,6 +363,22 @@ class SettlementScheduler:
         except Exception as e:
             db.rollback()
             logger.error("[FACILITY_ORDER_EXPIRY] Error: %s", e, exc_info=True)
+        finally:
+            db.close()
+
+    @staticmethod
+    def _promote_due_pregnancies() -> None:
+        """Daily: record children past their expected birth date as born on that date."""
+        from app.services.pregnancy import promote_due_pregnancies
+
+        db = SettlementScheduler.db_session_factory()
+        try:
+            promoted = promote_due_pregnancies(db)
+            if promoted:
+                logger.info("[PREGNANCY_PROMOTION] Promoted %s children past their due date", promoted)
+        except Exception as e:
+            db.rollback()
+            logger.error("[PREGNANCY_PROMOTION] Error: %s", e, exc_info=True)
         finally:
             db.close()
 

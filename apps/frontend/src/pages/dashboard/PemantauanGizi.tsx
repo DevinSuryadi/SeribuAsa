@@ -39,15 +39,57 @@ import {
 } from "@/services/nutrition";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
-import { addFamilyChild, addFamilyMeasurement, getFamily, getFamilyChildren, getFamilyMeasurementHistory } from "@/services/facility-families";
+import {
+  addFamilyChild,
+  addFamilyMeasurement,
+  getFamily,
+  getFamilyChildren,
+  getFamilyMeasurementHistory,
+  getFamilyPrenatalHistory,
+  type PrenatalClassification,
+  type PrenatalMeasurement,
+} from "@/services/facility-families";
+import BirthRecordDialog from "@/components/prenatal/BirthRecordDialog";
+import PrenatalGrowthCharts from "@/components/prenatal/PrenatalGrowthCharts";
+import PrenatalHistoryCard from "@/components/prenatal/PrenatalHistoryCard";
+import PrenatalMeasurementDialog from "@/components/prenatal/PrenatalMeasurementDialog";
+import UnbornChildDialog from "@/components/prenatal/UnbornChildDialog";
+import { formatOptional, prenatalStatusConfig } from "@/components/prenatal/prenatal-status";
 
 // ── Types ─────────────────────────────────────────────────────
 type ChildData = {
   id: string;
   full_name: string;
-  date_of_birth: string;
-  age_months: number;
+  date_of_birth: string | null;
+  age_months: number | null;
   gender: string | null;
+  status: "unborn" | "born";
+  mother_name: string | null;
+  last_menstrual_period: string | null;
+  expected_birth_date: string | null;
+  gestational_age_weeks: number | null;
+  birth_details_pending: boolean;
+};
+
+// Children of individual beneficiaries are always born and carry no pregnancy details.
+const toChildData = (child: Partial<ChildData> & Pick<ChildData, "id" | "full_name">): ChildData => ({
+  date_of_birth: null,
+  age_months: null,
+  gender: null,
+  status: "born",
+  mother_name: null,
+  last_menstrual_period: null,
+  expected_birth_date: null,
+  gestational_age_weeks: null,
+  birth_details_pending: false,
+  ...child,
+});
+
+// Latest toddler measurement or antenatal check-up, whichever applies to the child.
+type LatestRecord = {
+  measurement_date: string;
+  classification: string;
+  kind: "growth" | "prenatal";
 };
 
 type Measurement = {
@@ -86,11 +128,24 @@ const getClassCfg = (cl: string) =>
     border: "border-border", desc: "", icon: Activity,
   };
 
+const getLatestCfg = (latest: LatestRecord) =>
+  latest.kind === "prenatal"
+    ? prenatalStatusConfig[latest.classification as PrenatalClassification] ?? getClassCfg(latest.classification)
+    : getClassCfg(latest.classification);
+
 const getGenderLabel = (gender: string | null) => {
   if (gender === "male") return "Laki-laki";
   if (gender === "female") return "Perempuan";
   return "-";
 };
+
+const describeChild = (child: ChildData) => {
+  if (child.status === "unborn") return `Dalam kandungan · ${child.gestational_age_weeks ?? 0} minggu`;
+  if (child.birth_details_pending) return `${child.age_months ?? 0} bulan · Data kelahiran belum lengkap`;
+  return `${child.age_months} bulan · ${getGenderLabel(child.gender)}`;
+};
+
+const canRecordGrowth = (child: ChildData) => child.status === "born" && !child.birth_details_pending;
 
 const getInitial = (name: string) => name?.trim()?.charAt(0)?.toUpperCase() || "A";
 
@@ -104,6 +159,21 @@ const getLatestMeasurementFromList = (items: Measurement[] = []) =>
       new Date(a.measurement_date).getTime()
   )[0];
 
+// ── Notice ────────────────────────────────────────────────────
+function NoticeBox({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-900">
+      <div className="flex gap-2.5">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div>
+          <p className="text-sm font-bold">{title}</p>
+          <div className="mt-1 text-xs leading-relaxed">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Child List Row ────────────────────────────────────────────
 function ChildCard({
   child,
@@ -112,11 +182,11 @@ function ChildCard({
   onClick,
 }: {
   child: ChildData;
-  latestMeasurement: Measurement | undefined;
+  latestMeasurement: LatestRecord | undefined;
   isSelected: boolean;
   onClick: () => void;
 }) {
-  const cfg = latestMeasurement ? getClassCfg(latestMeasurement.classification) : null;
+  const cfg = latestMeasurement ? getLatestCfg(latestMeasurement) : null;
   const StatusIcon = cfg?.icon ?? Baby;
 
   return (
@@ -174,12 +244,14 @@ function ChildCard({
           </div>
 
           <p className="mt-2 text-xs text-muted-foreground">
-            {child.age_months} bulan · {getGenderLabel(child.gender)}
+            {describeChild(child)}
           </p>
         </div>
 
         <div className="col-span-2 rounded-xl bg-background/70 px-3 py-2">
-          <p className="text-[10px] font-medium text-muted-foreground">Pengukuran terakhir</p>
+          <p className="text-[10px] font-medium text-muted-foreground">
+            {child.status === "unborn" ? "Pemeriksaan terakhir" : "Pengukuran terakhir"}
+          </p>
           <p className={`mt-0.5 text-xs font-bold ${latestMeasurement ? "text-primary" : "text-muted-foreground"}`}>
             {latestMeasurement
               ? formatDate(latestMeasurement.measurement_date)
@@ -205,8 +277,9 @@ const PemantauanGizi = () => {
   const [children, setChildren] = useState<ChildData[]>([]);
   const [selectedChild, setSelectedChild] = useState<ChildData | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [prenatalMeasurements, setPrenatalMeasurements] = useState<PrenatalMeasurement[]>([]);
   const [latestMeasurementsByChild, setLatestMeasurementsByChild] = useState<
-    Record<string, Measurement | undefined>
+    Record<string, LatestRecord | undefined>
   >({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -227,6 +300,11 @@ const PemantauanGizi = () => {
   const [childFormGender, setChildFormGender] = useState<"male" | "female">("male");
   const [childFormErrors, setChildFormErrors] = useState<{ name?: string; dob?: string }>({});
 
+  // Pregnancy (facility families only)
+  const [showAddUnborn, setShowAddUnborn] = useState(false);
+  const [showPrenatalForm, setShowPrenatalForm] = useState(false);
+  const [showBirthRecord, setShowBirthRecord] = useState(false);
+
   const fetchLatestMeasurementsForChildren = useCallback(async (childList: ChildData[]) => {
     if (childList.length === 0) {
       setLatestMeasurementsByChild({});
@@ -234,13 +312,18 @@ const PemantauanGizi = () => {
     }
 
     const entries = await Promise.all(
-      childList.map(async (child) => {
+      childList.map(async (child): Promise<[string, LatestRecord | undefined]> => {
         try {
+          if (familyId && child.status === "unborn") {
+            const { measurements: checks } = await getFamilyPrenatalHistory(familyId, child.id);
+            const latestCheck = checks[0];
+            return [child.id, latestCheck && { ...latestCheck, kind: "prenatal" }];
+          }
           const result = familyId ? await getFamilyMeasurementHistory(familyId, child.id) : await getMeasurementHistory(child.id);
           const latest = getLatestMeasurementFromList(result?.measurements || []);
-          return [child.id, latest] as const;
+          return [child.id, latest && { ...latest, kind: "growth" }];
         } catch {
-          return [child.id, undefined] as const;
+          return [child.id, undefined];
         }
       })
     );
@@ -248,14 +331,17 @@ const PemantauanGizi = () => {
     setLatestMeasurementsByChild(Object.fromEntries(entries));
   }, [familyId]);
 
-  const fetchChildren = useCallback(async () => {
+  const fetchChildren = useCallback(async (preferredChildId?: string) => {
     try {
       setLoading(true);
       const data = familyId ? await getFamilyChildren(familyId) : await getChildren();
-      const childList = Array.isArray(data) ? data : [];
+      const childList = (Array.isArray(data) ? data : []).map(toChildData);
 
       setChildren(childList);
-      setSelectedChild((current) => childList.find((child: ChildData) => child.id === current?.id) ?? childList[0] ?? null);
+      setSelectedChild((current) => {
+        const keepId = preferredChildId ?? current?.id;
+        return childList.find((child) => child.id === keepId) ?? childList[0] ?? null;
+      });
       await fetchLatestMeasurementsForChildren(childList);
     } catch (err: unknown) {
       toast.error("Gagal memuat data anak", { description: err instanceof Error ? err.message : undefined });
@@ -273,11 +359,18 @@ const PemantauanGizi = () => {
 
   useEffect(() => { if (user) fetchChildren(); }, [user, fetchChildren]);
 
-  const fetchMeasurements = useCallback(async (childId: string) => {
+  const fetchMeasurements = useCallback(async (child: ChildData) => {
     try {
       setLoading(true);
-      const result = familyId ? await getFamilyMeasurementHistory(familyId, childId) : await getMeasurementHistory(childId);
-      const list = result?.measurements || [];
+      const growthRequest: Promise<Measurement[]> = child.status === "unborn"
+        ? Promise.resolve([])
+        : (familyId ? getFamilyMeasurementHistory(familyId, child.id) : getMeasurementHistory(child.id))
+          .then((result) => result?.measurements || []);
+      // Children registered in the womb keep their antenatal history after birth.
+      const prenatalRequest: Promise<PrenatalMeasurement[]> = familyId && child.last_menstrual_period
+        ? getFamilyPrenatalHistory(familyId, child.id).then((result) => result.measurements)
+        : Promise.resolve([]);
+      const [list, prenatalList] = await Promise.all([growthRequest, prenatalRequest]);
       setMeasurements(
         [...list].sort(
           (a, b) =>
@@ -285,15 +378,23 @@ const PemantauanGizi = () => {
             new Date(a.measurement_date).getTime()
         )
       );
+      setPrenatalMeasurements(prenatalList);
     } catch (err: unknown) {
       toast.error("Gagal memuat data pengukuran", { description: err instanceof Error ? err.message : undefined });
       setMeasurements([]);
+      setPrenatalMeasurements([]);
     } finally {
       setLoading(false);
     }
   }, [familyId]);
 
-  useEffect(() => { if (user && selectedChild) fetchMeasurements(selectedChild.id); }, [user, selectedChild, fetchMeasurements]);
+  useEffect(() => { if (user && selectedChild) fetchMeasurements(selectedChild); }, [user, selectedChild, fetchMeasurements]);
+
+  const refreshSelectedChildRecords = async () => {
+    if (!selectedChild) return;
+    await fetchMeasurements(selectedChild);
+    await fetchLatestMeasurementsForChildren(children);
+  };
 
   const validateForm = (): boolean => {
     const errors: { weight?: string; height?: string; date?: string } = {};
@@ -356,7 +457,7 @@ const PemantauanGizi = () => {
       resetForm();
       setShowForm(false);
 
-      await fetchMeasurements(selectedChild.id);
+      await fetchMeasurements(selectedChild);
       await fetchLatestMeasurementsForChildren(children);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Gagal menyimpan data");
@@ -373,7 +474,7 @@ const PemantauanGizi = () => {
       await deleteMeasurement(deletingMeasurement.id);
       toast.success("Data pengukuran berhasil dihapus");
       setShowDeleteConfirm(false); setDeletingMeasurement(null);
-      if (selectedChild) await fetchMeasurements(selectedChild.id);
+      if (selectedChild) await fetchMeasurements(selectedChild);
       await fetchLatestMeasurementsForChildren(children);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Gagal menghapus data");
@@ -430,7 +531,47 @@ const PemantauanGizi = () => {
   );
 
   const latestCfg = latestMeasurement ? getClassCfg(latestMeasurement.classification) : null;
-  const LatestIcon = latestCfg?.icon ?? Activity;
+
+  // ── Selected child summary (toddler or child in the womb) ────
+  const isUnborn = selectedChild?.status === "unborn";
+  const awaitingBirthRecord = Boolean(selectedChild && selectedChild.status === "born" && selectedChild.birth_details_pending);
+  const canRecordMeasurement = Boolean(selectedChild) && !awaitingBirthRecord;
+  const latestPrenatal = prenatalMeasurements[0];
+  const summaryCfg = isUnborn
+    ? latestPrenatal ? prenatalStatusConfig[latestPrenatal.classification] : null
+    : latestCfg;
+  const SummaryIcon = summaryCfg?.icon ?? Activity;
+  const summaryLines = isUnborn && selectedChild
+    ? [
+        `Usia kehamilan ${selectedChild.gestational_age_weeks ?? 0} minggu`,
+        `Perkiraan lahir ${selectedChild.expected_birth_date ? formatDate(selectedChild.expected_birth_date) : "-"}`,
+        `Ibu ${selectedChild.mother_name || "-"}`,
+      ]
+    : [
+        `${selectedChild?.age_months ?? "-"} bulan${selectedChild?.age_months ? ` (${Math.floor(selectedChild.age_months / 12)} tahun)` : ""}`,
+        getGenderLabel(selectedChild?.gender ?? null),
+      ];
+  const summaryTiles = isUnborn
+    ? [
+        { icon: Scale, label: "Berat Ibu", value: latestPrenatal ? `${latestPrenatal.maternal_weight} kg` : "-" },
+        { icon: Ruler, label: "LiLA Ibu", value: latestPrenatal ? `${latestPrenatal.maternal_muac} cm` : "-" },
+        { icon: Activity, label: "Tinggi Fundus", value: formatOptional(latestPrenatal?.fundal_height, "cm") },
+        { icon: Calendar, label: "Pemeriksaan terakhir", value: latestPrenatal ? formatDate(latestPrenatal.measurement_date) : "-" },
+      ]
+    : [
+        { icon: Scale, label: "Berat", value: latestMeasurement ? `${latestMeasurement.weight} kg` : "-" },
+        { icon: Ruler, label: "Tinggi", value: latestMeasurement ? `${latestMeasurement.height} cm` : "-" },
+        {
+          icon: Activity,
+          label: "Z-Score",
+          value: latestMeasurement?.z_score_weight !== null && latestMeasurement?.z_score_weight !== undefined
+            ? latestMeasurement.z_score_weight
+            : "-",
+        },
+        { icon: Calendar, label: "Pengukuran terakhir", value: latestMeasurement ? formatDate(latestMeasurement.measurement_date) : "-" },
+      ];
+
+  const openMeasurementForm = () => (isUnborn ? setShowPrenatalForm(true) : setShowForm(true));
 
   // ── Skeleton ─────────────────────────────────────────────────
   if (loading && children.length === 0) {
@@ -478,14 +619,36 @@ const PemantauanGizi = () => {
               <Plus className="h-4 w-4" />
               Tambah Anak
             </Button>
+            {familyId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 w-full gap-2 rounded-xl px-4 font-semibold sm:w-auto"
+                onClick={() => setShowAddUnborn(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Tambah Anak dalam Kandungan
+              </Button>
+            )}
+            {familyId && selectedChild?.birth_details_pending && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 w-full gap-2 rounded-xl px-4 font-semibold sm:w-auto"
+                onClick={() => setShowBirthRecord(true)}
+              >
+                <Baby className="h-4 w-4" />
+                Catat Kelahiran
+              </Button>
+            )}
             <Button
               size="sm"
               className="h-10 w-full gap-2 rounded-xl px-4 font-semibold shadow-sm sm:w-auto"
-              onClick={() => setShowForm(true)}
-              disabled={!selectedChild}
+              onClick={openMeasurementForm}
+              disabled={!canRecordMeasurement}
             >
               <Plus className="h-4 w-4" />
-              Input Pengukuran
+              {isUnborn ? "Input Pemeriksaan" : "Input Pengukuran"}
             </Button>
           </div>
         </div>
@@ -498,12 +661,22 @@ const PemantauanGizi = () => {
             </div>
             <h3 className="mb-2 text-lg font-bold text-foreground">Belum Ada Data Anak</h3>
             <p className="mb-5 text-sm text-muted-foreground">
-              Tambahkan data anak untuk memulai pemantauan gizi.
+              {familyId
+                ? "Tambahkan data anak atau anak dalam kandungan untuk memulai pemantauan gizi."
+                : "Tambahkan data anak untuk memulai pemantauan gizi."}
             </p>
-            <Button onClick={() => setShowAddChild(true)} className="rounded-xl">
-              <Plus className="mr-2 h-4 w-4" />
-              Tambah Data Anak
-            </Button>
+            <div className="flex flex-col items-center justify-center gap-2 sm:flex-row">
+              <Button onClick={() => setShowAddChild(true)} className="rounded-xl">
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Data Anak
+              </Button>
+              {familyId && (
+                <Button variant="outline" onClick={() => setShowAddUnborn(true)} className="rounded-xl">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tambah Anak dalam Kandungan
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
           <>
@@ -554,28 +727,26 @@ const PemantauanGizi = () => {
                         <h3 className="text-lg font-bold leading-tight text-foreground sm:text-xl">
                           {selectedChild?.full_name || "-"}
                         </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {selectedChild?.age_months ?? "-"} bulan
-                          {selectedChild?.age_months ? ` (${Math.floor(selectedChild.age_months / 12)} tahun)` : ""}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {getGenderLabel(selectedChild?.gender ?? null)}
-                        </p>
+                        {summaryLines.map((line, index) => (
+                          <p key={line} className={`${index === 0 ? "mt-1 " : ""}text-sm text-muted-foreground`}>
+                            {line}
+                          </p>
+                        ))}
                       </div>
                     </div>
 
                     <div className="flex flex-col items-start gap-2 sm:items-end">
-                      {latestCfg ? (
+                      {summaryCfg ? (
                         <>
                           <Badge
                             variant="outline"
-                            className={`h-8 gap-1.5 rounded-full border px-4 text-xs font-semibold ${latestCfg.bg} ${latestCfg.cls} ${latestCfg.border}`}
+                            className={`h-8 gap-1.5 rounded-full border px-4 text-xs font-semibold ${summaryCfg.bg} ${summaryCfg.cls} ${summaryCfg.border}`}
                           >
-                            <LatestIcon className="h-3.5 w-3.5" />
-                            {latestCfg.label}
+                            <SummaryIcon className="h-3.5 w-3.5" />
+                            {summaryCfg.label}
                           </Badge>
-                          {latestCfg.desc && (
-                            <p className="text-xs text-muted-foreground">{latestCfg.desc}</p>
+                          {summaryCfg.desc && (
+                            <p className="text-xs text-muted-foreground">{summaryCfg.desc}</p>
                           )}
                         </>
                       ) : (
@@ -586,37 +757,30 @@ const PemantauanGizi = () => {
                           >
                           Belum ada data
                           </Badge>
-                          <p className="text-xs text-muted-foreground">Belum ada pengukuran</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isUnborn ? "Belum ada pemeriksaan" : "Belum ada pengukuran"}
+                          </p>
                         </>
                       )}
                     </div>
                   </div>
 
+                  {isUnborn && latestPrenatal && latestPrenatal.findings.length > 0 && (
+                    <NoticeBox title="Catatan pemeriksaan terakhir">
+                      <ul className="list-disc space-y-0.5 pl-4">
+                        {latestPrenatal.findings.map((finding) => <li key={finding}>{finding}</li>)}
+                      </ul>
+                    </NoticeBox>
+                  )}
+                  {awaitingBirthRecord && (
+                    <NoticeBox title="Data kelahiran belum lengkap">
+                      Tanggal lahir sementara mengikuti perkiraan lahir. Catat kelahiran untuk melengkapi
+                      tanggal lahir dan jenis kelamin sebelum mencatat pengukuran balita.
+                    </NoticeBox>
+                  )}
+
                   <div className="grid gap-3 min-[420px]:grid-cols-2 2xl:grid-cols-4">
-                    {[
-                      {
-                        icon: Scale,
-                        label: "Berat",
-                        value: latestMeasurement ? `${latestMeasurement.weight} kg` : "-",
-                      },
-                      {
-                        icon: Ruler,
-                        label: "Tinggi",
-                        value: latestMeasurement ? `${latestMeasurement.height} cm` : "-",
-                      },
-                      {
-                        icon: Activity,
-                        label: "Z-Score",
-                        value: latestMeasurement?.z_score_weight !== null && latestMeasurement?.z_score_weight !== undefined
-                          ? latestMeasurement.z_score_weight
-                          : "-",
-                      },
-                      {
-                        icon: Calendar,
-                        label: "Pengukuran terakhir",
-                        value: latestMeasurement ? formatDate(latestMeasurement.measurement_date) : "-",
-                      },
-                    ].map(({ icon: Icon, label, value }) => (
+                    {summaryTiles.map(({ icon: Icon, label, value }) => (
                       <div
                         key={label}
                         className="rounded-2xl border border-border/80 bg-background p-3 shadow-sm sm:p-4"
@@ -837,21 +1001,68 @@ const PemantauanGizi = () => {
               </Card>
             )}
 
+            {/* ── Antenatal history and charts ── */}
+            {selectedChild && prenatalMeasurements.length > 0 && (
+              <PrenatalHistoryCard
+                childName={selectedChild.full_name}
+                measurements={prenatalMeasurements}
+                onAdd={isUnborn ? () => setShowPrenatalForm(true) : undefined}
+              />
+            )}
+            {selectedChild && isUnborn && (
+              <PrenatalGrowthCharts key={selectedChild.id} childName={selectedChild.full_name} measurements={prenatalMeasurements} />
+            )}
+
             {/* ── Empty measurement state ── */}
-            {measurements.length === 0 && !loading && selectedChild && (
+            {!loading && selectedChild && (isUnborn ? prenatalMeasurements.length === 0 : measurements.length === 0) && (
               <div className="rounded-3xl border border-dashed border-border bg-card px-8 py-14 text-center shadow-sm">
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
                   <Activity className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <p className="mb-1 font-bold text-foreground">Belum Ada Data Pengukuran</p>
-                <p className="mb-5 text-sm text-muted-foreground">
-                  Input data berat dan tinggi badan anak untuk memulai pemantauan.
+                <p className="mb-1 font-bold text-foreground">
+                  {isUnborn ? "Belum Ada Data Pemeriksaan Kehamilan" : "Belum Ada Data Pengukuran"}
                 </p>
-                <Button onClick={() => setShowForm(true)} className="rounded-xl">
+                <p className="mb-5 text-sm text-muted-foreground">
+                  {isUnborn
+                    ? "Input hasil pemeriksaan kehamilan untuk memulai pemantauan anak dalam kandungan."
+                    : awaitingBirthRecord
+                      ? "Lengkapi data kelahiran anak sebelum mencatat pengukuran balita."
+                      : "Input data berat dan tinggi badan anak untuk memulai pemantauan."}
+                </p>
+                <Button onClick={openMeasurementForm} className="rounded-xl" disabled={!canRecordMeasurement}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Input Pengukuran
+                  {isUnborn ? "Input Pemeriksaan" : "Input Pengukuran"}
                 </Button>
               </div>
+            )}
+          </>
+        )}
+
+        {/* ── Pregnancy dialogs (facility families only) ── */}
+        {familyId && (
+          <>
+            <UnbornChildDialog
+              familyId={familyId}
+              open={showAddUnborn}
+              onOpenChange={setShowAddUnborn}
+              onSaved={(child) => fetchChildren(child.id)}
+            />
+            <PrenatalMeasurementDialog
+              familyId={familyId}
+              child={isUnborn ? selectedChild : null}
+              open={showPrenatalForm}
+              onOpenChange={setShowPrenatalForm}
+              onSaved={refreshSelectedChildRecords}
+            />
+            {selectedChild?.birth_details_pending && (
+              <BirthRecordDialog
+                key={selectedChild.id}
+                familyId={familyId}
+                child={selectedChild}
+                open={showBirthRecord}
+                onOpenChange={setShowBirthRecord}
+                onSaved={(child) => fetchChildren(child.id)}
+              />
             )}
           </>
         )}
@@ -888,7 +1099,7 @@ const PemantauanGizi = () => {
                 >
                   <SelectTrigger><SelectValue placeholder="Pilih anak" /></SelectTrigger>
                   <SelectContent>
-                    {children.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
+                    {children.filter(canRecordGrowth).map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

@@ -30,6 +30,7 @@ from app.models.product import (
 )
 from app.models.nutrition import (
     NutritionMeasurement,
+    PrenatalMeasurement,
     FIESSurvey,
     Settlement,
     AuditLog,
@@ -107,6 +108,7 @@ __all__ = [
     
     # Nutrition models
     "NutritionMeasurement",
+    "PrenatalMeasurement",
     "FIESSurvey",
     "Settlement",
     "AuditLog",

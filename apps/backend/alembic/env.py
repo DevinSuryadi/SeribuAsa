@@ -19,7 +19,7 @@ from app.models import (  # noqa: F401
     UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, Child,
     Donation, Voucher, VoucherRedemption,
     Category, Product, Order, OrderItem,
-    NutritionMeasurement, FIESSurvey, Settlement, AuditLog,
+    NutritionMeasurement, PrenatalMeasurement, FIESSurvey, Settlement, AuditLog,
     Withdrawal,
     WalletAllocation, WalletTransaction,
     HealthFacility, RecipientFamily, FamilyAidPlan, OrderFundingAllocation,

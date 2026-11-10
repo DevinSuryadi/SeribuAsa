@@ -151,12 +151,13 @@ function orderNotes(order: FacilityOrder) {
   return notes;
 }
 
+// Same five steps the vendor sees: ordered, prepared, shipped, received by the facility, given to the family.
 function trackingIndex(order: FacilityOrder) {
   if (statusKey(order) === "cancelled" || order.status === "pending_approval") return -1;
-  if (order.distribution) return 4;
-  if (order.status === "completed" || order.status === "received") return 3;
-  if (order.receipt_status === "discrepancy") return 2;
-  if (order.status === "shipped") return 1;
+  if (order.distribution) return 5;
+  if (order.status === "completed" || order.status === "received") return 4;
+  if (order.status === "shipped") return order.receipt_status === "discrepancy" ? 3 : 2;
+  if (order.status === "processing") return 1;
   return 0;
 }
 
@@ -168,14 +169,11 @@ function OrderTracking({ order }: { order: FacilityOrder }) {
 
   const hasIssue = hasOpenIssue(order);
   const steps = [
-    {
-      label: "Pesanan dibuat",
-      time: order.created_at,
-      note: order.status === "processing" ? "Vendor sedang menyiapkan pesanan" : "Menunggu vendor memproses pesanan",
-    },
-    { label: "Dikirim ke faskes", time: order.dispatched_at, note: "Dalam perjalanan ke faskes" },
+    { label: "Pesanan dibuat", time: order.created_at, note: "Menunggu vendor mengonfirmasi pesanan" },
+    { label: "Disiapkan vendor", time: order.vendor_confirmed_at, note: "Vendor sedang menyiapkan pesanan" },
+    { label: "Dalam pengiriman", time: order.dispatched_at, note: "Konfirmasi setelah barang tiba di faskes" },
     { label: "Diterima Faskes", time: order.arrived_at, note: "Barang bermasalah, menunggu vendor melengkapi" },
-    { label: "Diterima keluarga", time: order.distribution?.distributed_at, note: "Menunggu diserahkan kepada keluarga" },
+    { label: "Diterima keluarga", time: order.distribution?.distributed_at, note: "Unggah bukti setelah bantuan diserahkan kepada keluarga" },
   ];
   return (
     <ol className="mt-2">

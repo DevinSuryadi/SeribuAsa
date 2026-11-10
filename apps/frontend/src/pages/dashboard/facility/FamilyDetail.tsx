@@ -115,8 +115,14 @@ export default function FamilyDetail() {
                 <CardContent className="space-y-3">
                   {assessment.children.length === 0 && <p className="text-sm text-muted-foreground">Belum ada anak terdaftar.</p>}
                   {assessment.children.map((child) => <div key={child.child_id} className="rounded-xl bg-[#F4F7F5] p-3 text-sm">
-                    <strong>{child.child_name}</strong><span className="ml-2 text-xs text-muted-foreground">Lahir {formatDate(child.date_of_birth)}</span>
-                    {child.latest_measurement ? <p className="mt-1 text-muted-foreground">{formatDate(child.latest_measurement.measurement_date)} · BB {child.latest_measurement.weight} kg · TB {child.latest_measurement.height} cm · z-score BB {child.latest_measurement.z_score_weight ?? "–"}, TB {child.latest_measurement.z_score_height ?? "–"}</p> : <p className="mt-1 text-muted-foreground">Belum ada pengukuran.</p>}
+                    <strong>{child.child_name}</strong>
+                    {child.status === "unborn" ? <>
+                      <span className="ml-2 text-xs text-muted-foreground">Dalam kandungan · {child.gestational_age_weeks} minggu · Perkiraan lahir {child.expected_birth_date ? formatDate(child.expected_birth_date) : "-"}</span>
+                      {child.latest_prenatal_check ? <p className="mt-1 text-muted-foreground">{formatDate(child.latest_prenatal_check.measurement_date)} · BB ibu {child.latest_prenatal_check.maternal_weight} kg · LiLA {child.latest_prenatal_check.maternal_muac} cm · TFU {child.latest_prenatal_check.fundal_height ?? "–"} cm</p> : <p className="mt-1 text-muted-foreground">Belum ada pemeriksaan kehamilan.</p>}
+                    </> : <>
+                      <span className="ml-2 text-xs text-muted-foreground">Lahir {child.date_of_birth ? formatDate(child.date_of_birth) : "-"}</span>
+                      {child.latest_measurement ? <p className="mt-1 text-muted-foreground">{formatDate(child.latest_measurement.measurement_date)} · BB {child.latest_measurement.weight} kg · TB {child.latest_measurement.height} cm · z-score BB {child.latest_measurement.z_score_weight ?? "–"}, TB {child.latest_measurement.z_score_height ?? "–"}</p> : <p className="mt-1 text-muted-foreground">Belum ada pengukuran.</p>}
+                    </>}
                   </div>)}
                   <p className="text-xs text-muted-foreground">Buka tab Pengukuran Anak di atas untuk menambah anak atau pengukuran.</p>
                 </CardContent>

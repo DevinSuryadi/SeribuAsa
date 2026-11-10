@@ -209,21 +209,48 @@ class Child(BaseModel):
             "(beneficiary_id IS NOT NULL) <> (family_id IS NOT NULL)",
             name="ck_children_one_owner",
         ),
+        CheckConstraint(
+            "date_of_birth IS NOT NULL OR expected_birth_date IS NOT NULL",
+            name="ck_children_birth_or_due_date",
+        ),
+        CheckConstraint(
+            "(last_menstrual_period IS NULL) = (expected_birth_date IS NULL)",
+            name="ck_children_pregnancy_dates",
+        ),
     )
-    
+
     # Foreign key to beneficiary
     beneficiary_id = Column(UUID(as_uuid=True), ForeignKey("beneficiary_profiles.user_id", ondelete="CASCADE"), nullable=True, index=True)
     family_id = Column(UUID(as_uuid=True), ForeignKey("recipient_families.id", ondelete="RESTRICT"), nullable=True, index=True)
-    
-    # Child information
+
+    # Child information. The birth date stays empty while the child is still in the womb.
     full_name = Column(String(255), nullable=False)
-    date_of_birth = Column(Date, nullable=False)
+    date_of_birth = Column(Date, nullable=True)
     gender = Column(Enum(GenderEnum))
-    
+
+    # Pregnancy details, kept after birth for children registered while in the womb.
+    mother_name = Column(String(255))
+    last_menstrual_period = Column(Date)
+    expected_birth_date = Column(Date)
+
     # Relationship
     beneficiary_profile = relationship("BeneficiaryProfile", back_populates="children")
     recipient_family = relationship("RecipientFamily", back_populates="children")
     nutrition_measurements = relationship("NutritionMeasurement", back_populates="child", cascade="all, delete-orphan")
-    
+    prenatal_measurements = relationship("PrenatalMeasurement", back_populates="child", cascade="all, delete-orphan")
+
+    @property
+    def is_unborn(self) -> bool:
+        return self.date_of_birth is None
+
+    @property
+    def registered_in_womb(self) -> bool:
+        return self.last_menstrual_period is not None
+
+    @property
+    def birth_details_pending(self) -> bool:
+        """True when a child registered in the womb has no confirmed birth record yet."""
+        return self.registered_in_womb and (self.date_of_birth is None or self.gender is None)
+
     def __repr__(self):
         return f"<Child {self.full_name}>"
