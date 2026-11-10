@@ -41,6 +41,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Katalog Pangan", href: "/dashboard/health-facility/catalog", icon: Package },
     { label: "Pesanan", href: "/dashboard/health-facility/orders", icon: ShoppingCart },
     { label: "Riwayat Penyaluran", href: "/dashboard/health-facility/redemptions", icon: History },
+    { label: "Profil", href: "/dashboard/profile", icon: Settings },
   ],
   donor: [
     { label: "Ringkasan", href: "/dashboard/donor", icon: LayoutDashboard },
