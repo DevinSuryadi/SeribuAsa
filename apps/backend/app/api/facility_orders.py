@@ -288,6 +288,8 @@ def list_eligible_vendors(
             VendorProfile.approval_status == "approved",
             VendorProfile.settlement_status == "active",
             VendorProfile.is_active.is_(True),
+            VendorProfile.province_code == province_code,
+            VendorProfile.regency_code == regency_code,
             Product.approval_status == "approved",
             Product.is_active.is_(True),
             Product.stock_quantity > 0,
