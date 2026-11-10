@@ -326,7 +326,7 @@ export default function FamilyDetailClean() {
                             {child.child_name}
                           </h3>
                           <p className="mt-0.5 text-xs text-slate-500">
-                            Lahir {formatDate(child.date_of_birth)}
+                            {child.date_of_birth ? `Lahir ${formatDate(child.date_of_birth)}` : "Dalam kandungan"}
                           </p>
                         </div>
                         {child.latest_measurement ? (

@@ -18,7 +18,19 @@ export type FamilyAssessment = {
   children: Array<{
     child_id: string;
     child_name: string;
-    date_of_birth: string;
+    status: "unborn" | "born";
+    date_of_birth: string | null;
+    expected_birth_date: string | null;
+    gestational_age_weeks: number | null;
+    latest_prenatal_check: {
+      id: string;
+      measurement_date: string;
+      gestational_age_weeks: number;
+      maternal_weight: number;
+      maternal_muac: number;
+      fundal_height: number | null;
+      classification: string;
+    } | null;
     latest_measurement: {
       id: string;
       measurement_date: string;
