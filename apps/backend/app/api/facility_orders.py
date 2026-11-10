@@ -20,9 +20,11 @@ from app.models.facility import (
     FacilityVendorPayout,
     HealthFacility,
     OrderFundingAllocation,
+    RecipientFamily,
 )
 from app.models.product import Order, OrderItem, Product
 from app.models.user import VendorProfile
+from app.services.family_aid_quota import AidQuotaError, ensure_order_within_aid_quota
 from app.services.regions import valid_area
 from app.services.facility_funding import (
     InsufficientPoolFunds,
@@ -400,6 +402,8 @@ def create_facility_order(
             )
         quantities[line.product_id] = line.quantity
 
+    # Serialize orders per family so concurrent requests cannot both pass the weekly quota.
+    db.query(RecipientFamily).filter_by(id=family.id).with_for_update().first()
     products = (
         db.query(Product)
         .filter(Product.id.in_(quantities))
@@ -436,6 +440,10 @@ def create_facility_order(
     )
     if total <= 0:
         raise HTTPException(status_code=400, detail="Total pesanan harus lebih dari nol")
+    try:
+        ensure_order_within_aid_quota(db, family.id, total)
+    except AidQuotaError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     order = Order(
         order_flow="facility_delivery",
         client_request_id=data.client_request_id,

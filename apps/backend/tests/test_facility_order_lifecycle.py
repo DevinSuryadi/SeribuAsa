@@ -27,6 +27,7 @@ from app.models.product import Category, Order, OrderItem, Product
 from app.models.user import BeneficiaryProfile, DonorProfile, UserProfile, VendorProfile
 from app.services.facility_order_lifecycle import expire_unprocessed_facility_orders
 from app.services.supabase_auth import supabase_auth
+from tests.aid_eligibility import AID_ELIGIBILITY_MODELS, make_family_eligible
 
 ORDERS = "/api/v1/facilities/orders"
 VENDOR_ORDERS = "/api/v1/vendor/facility-orders"
@@ -41,7 +42,7 @@ def env(monkeypatch):
     for model in (
         UserProfile, BeneficiaryProfile, DonorProfile, VendorProfile, HealthFacility, RecipientFamily,
         Category, Product, Donation, Order, OrderItem, FacilityOrderReceipt, FacilityVendorPayout,
-        OrderFundingAllocation, AidDistribution, AidDistributionItem,
+        OrderFundingAllocation, AidDistribution, AidDistributionItem, *AID_ELIGIBILITY_MODELS,
     ):
         model.__table__.create(engine)
     sessions = sessionmaker(bind=engine)
@@ -71,6 +72,8 @@ def env(monkeypatch):
             approval_status="approved", service_province_code="15", service_regency_code="15.71",
         )
         db.add_all([family, product])
+        db.flush()
+        make_family_eligible(db, family)
         db.commit()
         family_id, product_id, facility_id = family.id, product.id, facility.id
 

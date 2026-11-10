@@ -25,6 +25,7 @@ from app.models.product import Category, Order, OrderItem, Product
 from app.models.user import BeneficiaryProfile, DonorProfile, UserProfile, VendorProfile
 from app.services.report_generator import ReportGenerator
 from app.services.supabase_auth import supabase_auth
+from tests.aid_eligibility import AID_ELIGIBILITY_MODELS, make_family_eligible
 
 
 def test_facility_order_distribution_and_stock(monkeypatch):
@@ -48,6 +49,7 @@ def test_facility_order_distribution_and_stock(monkeypatch):
         OrderFundingAllocation,
         AidDistribution,
         AidDistributionItem,
+        *AID_ELIGIBILITY_MODELS,
     ):
         model.__table__.create(engine)
     sessions = sessionmaker(bind=engine)
@@ -145,6 +147,8 @@ def test_facility_order_distribution_and_stock(monkeypatch):
             service_regency_code="15.72",
         )
         db.add_all([family, other_family, product, other_product])
+        db.flush()
+        make_family_eligible(db, family)
         db.commit()
         family_id, other_family_id, product_id, other_product_id = (
             family.id,

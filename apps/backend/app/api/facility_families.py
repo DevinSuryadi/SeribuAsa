@@ -14,11 +14,16 @@ from app.api.facilities import verified_facility_identity
 from app.database import get_db
 from app.models.facility import HealthFacility, RecipientFamily
 from app.models.nutrition import FIESSurvey, NutritionMeasurement
-from app.models.user import Child, GenderEnum
+from app.models.user import Child
+from app.schemas.aid_quota import FamilyAidQuotaResponse
+from app.schemas.facility_child import ChildCreate, ChildResponse
 from app.schemas.fies import FIESSubmit
 from app.schemas.nutrition import NutritionMeasurementCreate, NutritionMeasurementResponse
+from app.services.family_aid_quota import calculate_family_aid_quota
 from app.services.fies_calculator import FIESCalculator
+from app.services.pregnancy import promote_due_pregnancies
 from app.services.zscore_calculator import ZScoreCalculator
+from app.utils.child_age import age_in_months
 
 router = APIRouter(prefix="/facilities/families", tags=["facility families"])
 
@@ -74,35 +79,6 @@ class FamilyListResponse(FamilyResponse):
     latest_fies: LatestFamilyFIES | None = None
 
 
-class ChildCreate(BaseModel):
-    full_name: str = Field(min_length=1, max_length=255)
-    date_of_birth: date
-    gender: GenderEnum
-
-    @field_validator("full_name")
-    @classmethod
-    def strip_name(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("Nama anak wajib diisi")
-        return value
-
-    @field_validator("date_of_birth")
-    @classmethod
-    def valid_birth_date(cls, value: date) -> date:
-        if value > date.today():
-            raise ValueError("Tanggal lahir tidak boleh di masa depan")
-        return value
-
-
-class ChildResponse(ChildCreate):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    family_id: UUID
-    age_months: int
-
-
 class FamilyFIESResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -145,15 +121,18 @@ def owned_child(child_id: UUID, family: RecipientFamily, db: Session) -> Child:
     return child
 
 
-def child_response(child: Child) -> ChildResponse:
-    today = date.today()
-    months = (today.year - child.date_of_birth.year) * 12 + today.month - child.date_of_birth.month
-    if today.day < child.date_of_birth.day:
-        months -= 1
-    return ChildResponse(
-        id=child.id, family_id=child.family_id, full_name=child.full_name,
-        date_of_birth=child.date_of_birth, gender=child.gender, age_months=max(0, months),
-    )
+def ensure_growth_monitoring_ready(child: Child) -> None:
+    """Toddler growth needs a confirmed birth date and gender for the WHO z-score."""
+    if child.is_unborn:
+        raise HTTPException(
+            status_code=409,
+            detail="Anak masih dalam kandungan. Catat perkembangannya melalui pemeriksaan kehamilan.",
+        )
+    if child.gender is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Lengkapi data kelahiran anak terlebih dahulu sebelum mencatat pengukuran.",
+        )
 
 
 @router.get("", response_model=list[FamilyListResponse])
@@ -236,6 +215,16 @@ def update_family(
     return family
 
 
+@router.get("/{family_id}/aid-quota", response_model=FamilyAidQuotaResponse)
+def get_family_aid_quota(
+    family_id: UUID,
+    db: Session = Depends(get_db),
+    facility: HealthFacility = Depends(current_facility),
+):
+    family = owned_family(family_id, facility, db)
+    return FamilyAidQuotaResponse.from_quota(calculate_family_aid_quota(db, family.id))
+
+
 @router.get("/{family_id}/children", response_model=list[ChildResponse])
 def list_children(
     family_id: UUID,
@@ -243,8 +232,15 @@ def list_children(
     facility: HealthFacility = Depends(current_facility),
 ):
     family = owned_family(family_id, facility, db)
-    children = db.query(Child).filter_by(family_id=family.id, is_active=True).order_by(Child.date_of_birth.desc()).all()
-    return [child_response(child) for child in children]
+    promote_due_pregnancies(db, family_id=family.id)
+    # Children still in the womb come first, followed by the youngest born child.
+    children = (
+        db.query(Child)
+        .filter_by(family_id=family.id, is_active=True)
+        .order_by(Child.date_of_birth.desc().nulls_first(), Child.created_at.desc())
+        .all()
+    )
+    return [ChildResponse.from_child(child) for child in children]
 
 
 @router.post("/{family_id}/children", response_model=ChildResponse, status_code=status.HTTP_201_CREATED)
@@ -259,7 +255,7 @@ def create_child(
     db.add(child)
     db.commit()
     db.refresh(child)
-    return child_response(child)
+    return ChildResponse.from_child(child)
 
 
 @router.get("/{family_id}/children/{child_id}/measurements")
@@ -269,19 +265,23 @@ def list_measurements(
     db: Session = Depends(get_db),
     facility: HealthFacility = Depends(current_facility),
 ):
-    child = owned_child(child_id, owned_family(family_id, facility, db), db)
+    family = owned_family(family_id, facility, db)
+    promote_due_pregnancies(db, family_id=family.id)
+    child = owned_child(child_id, family, db)
     measurements = db.query(NutritionMeasurement).filter_by(child_id=child.id, is_active=True).order_by(
         NutritionMeasurement.measurement_date.desc()
     ).all()
-    age_months = min(child_response(child).age_months, 60)
-    chart = ZScoreCalculator.get_growth_chart_data(age_months, child.gender.value)
-    if len(measurements) >= 2 and measurements[0].z_score_weight is not None and measurements[1].z_score_weight is not None:
-        difference = float(measurements[0].z_score_weight - measurements[1].z_score_weight)
-        chart["trend"] = "improving" if difference > 0.3 else "declining" if difference < -0.3 else "stable"
+    chart = None
+    if not child.is_unborn and child.gender is not None:
+        age_months = min(age_in_months(child.date_of_birth, date.today()), 60)
+        chart = ZScoreCalculator.get_growth_chart_data(age_months, child.gender.value)
+        if len(measurements) >= 2 and measurements[0].z_score_weight is not None and measurements[1].z_score_weight is not None:
+            difference = float(measurements[0].z_score_weight - measurements[1].z_score_weight)
+            chart["trend"] = "improving" if difference > 0.3 else "declining" if difference < -0.3 else "stable"
     return {
         "success": True,
         "data": {
-            "child": child_response(child).model_dump(mode="json"),
+            "child": ChildResponse.from_child(child).model_dump(mode="json"),
             "measurements": [NutritionMeasurementResponse.model_validate(item).model_dump(mode="json") for item in measurements],
             "growth_chart_data": chart,
         },
@@ -296,9 +296,12 @@ def create_measurement(
     db: Session = Depends(get_db),
     facility: HealthFacility = Depends(current_facility),
 ):
-    child = owned_child(child_id, owned_family(family_id, facility, db), db)
+    family = owned_family(family_id, facility, db)
+    promote_due_pregnancies(db, family_id=family.id)
+    child = owned_child(child_id, family, db)
     if data.child_id != child_id:
         raise HTTPException(status_code=422, detail="Anak pada data tidak sesuai")
+    ensure_growth_monitoring_ready(child)
     if data.measurement_date > date.today() or data.measurement_date < child.date_of_birth:
         raise HTTPException(status_code=422, detail="Tanggal pengukuran tidak valid")
     # Serialize writes for the same child so two tabs cannot add the same date at once.
@@ -307,11 +310,8 @@ def create_measurement(
     if existing:
         raise HTTPException(status_code=409, detail="Pengukuran pada tanggal ini sudah ada")
     measured = data.measurement_date
-    age_months = (measured.year - child.date_of_birth.year) * 12 + measured.month - child.date_of_birth.month
-    if measured.day < child.date_of_birth.day:
-        age_months -= 1
     score = ZScoreCalculator.calculate(
-        age_months=min(max(age_months, 0), 60), gender=child.gender.value,
+        age_months=min(age_in_months(child.date_of_birth, measured), 60), gender=child.gender.value,
         weight=float(data.weight), height=float(data.height),
     )
     weight_class = score["weight_classification"]

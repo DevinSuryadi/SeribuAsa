@@ -69,6 +69,35 @@ class NutritionMeasurement(BaseModel):
 
 
 # ============================================
+# PrenatalMeasurement - Antenatal check-up while the child is in the womb
+# ============================================
+class PrenatalMeasurement(BaseModel):
+    __tablename__ = "prenatal_measurements"
+    __table_args__ = (
+        Index("ix_prenatal_measurements_child_date", "child_id", "measurement_date"),
+    )
+
+    child_id = Column(UUID(as_uuid=True), ForeignKey("children.id", ondelete="CASCADE"), nullable=False)
+    recorded_by_user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="SET NULL"), nullable=True)
+
+    measurement_date = Column(Date, nullable=False)
+    gestational_age_weeks = Column(Integer, nullable=False)
+    maternal_weight = Column(Numeric(5, 2), nullable=False)  # kg
+    maternal_muac = Column(Numeric(5, 2), nullable=False)  # Mid-upper arm circumference (LiLA), cm
+    fundal_height = Column(Numeric(5, 2), nullable=True)  # Symphysis-fundal height (TFU), cm
+    fetal_heart_rate = Column(Integer, nullable=True)  # Beats per minute (DJJ)
+    estimated_fetal_weight = Column(Integer, nullable=True)  # Ultrasound estimate (TBJ), grams
+
+    # normal, kek_risk, or needs_review
+    classification = Column(String(30), nullable=False)
+
+    child = relationship("Child", back_populates="prenatal_measurements")
+
+    def __repr__(self):
+        return f"<PrenatalMeasurement {self.child_id} - {self.measurement_date}>"
+
+
+# ============================================
 # FIESSurvey - Food insecurity survey
 # ============================================
 class FIESSurvey(BaseModel):

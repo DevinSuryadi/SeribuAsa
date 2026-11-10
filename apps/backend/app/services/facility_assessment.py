@@ -3,10 +3,12 @@
 from sqlalchemy.orm import Session
 
 from app.models.facility import RecipientFamily
-from app.models.nutrition import FIESSurvey, NutritionMeasurement
+from app.models.nutrition import FIESSurvey, NutritionMeasurement, PrenatalMeasurement
 from app.models.user import Child
 from app.services.fies_calculator import FIESCalculator
+from app.services.pregnancy import gestational_age_weeks
 from app.services.recommendation_engine import RecommendationEngine
+from app.utils.local_time import wib_today
 
 
 FIES_AFFIRMATIVE_LABELS = (
@@ -28,7 +30,12 @@ def build_family_assessment(db: Session, family: RecipientFamily) -> dict:
         .order_by(FIESSurvey.survey_date.desc(), FIESSurvey.created_at.desc())
         .first()
     )
-    children = db.query(Child).filter_by(family_id=family.id, is_active=True).order_by(Child.date_of_birth.desc()).all()
+    children = (
+        db.query(Child)
+        .filter_by(family_id=family.id, is_active=True)
+        .order_by(Child.date_of_birth.desc().nulls_first(), Child.created_at.desc())
+        .all()
+    )
     growth = []
     child_facts = []
     measurement_ids = []
@@ -54,6 +61,9 @@ def build_family_assessment(db: Session, family: RecipientFamily) -> dict:
         summary_lines.append("Belum ada anak terdaftar.")
 
     for child in children:
+        if child.is_unborn:
+            growth.append(_unborn_child_facts(db, child, summary_lines))
+            continue
         measurement = (
             db.query(NutritionMeasurement)
             .filter_by(child_id=child.id, is_active=True)
@@ -93,8 +103,12 @@ def build_family_assessment(db: Session, family: RecipientFamily) -> dict:
         growth.append({
             "child_id": child.id,
             "child_name": child.full_name,
+            "status": "born",
             "date_of_birth": child.date_of_birth,
+            "expected_birth_date": child.expected_birth_date,
+            "gestational_age_weeks": None,
             "latest_measurement": measurement_data,
+            "latest_prenatal_check": None,
         })
 
     recommendations = RecommendationEngine.generate_for_family(survey, child_facts)
@@ -111,4 +125,37 @@ def build_family_assessment(db: Session, family: RecipientFamily) -> dict:
         "suggested_priority": priority,
         "recommendations": recommendations,
         "has_assessment": bool(survey or measurement_ids),
+    }
+
+
+def _unborn_child_facts(db: Session, child: Child, summary_lines: list[str]) -> dict:
+    """Summarise a child still in the womb with the latest antenatal check-up."""
+    weeks = gestational_age_weeks(child.last_menstrual_period, wib_today())
+    check = (
+        db.query(PrenatalMeasurement)
+        .filter_by(child_id=child.id, is_active=True)
+        .order_by(PrenatalMeasurement.measurement_date.desc(), PrenatalMeasurement.created_at.desc())
+        .first()
+    )
+    summary_lines.append(
+        f"{child.full_name}: dalam kandungan, usia kehamilan {weeks} minggu, "
+        f"perkiraan lahir {child.expected_birth_date.isoformat()}."
+    )
+    return {
+        "child_id": child.id,
+        "child_name": child.full_name,
+        "status": "unborn",
+        "date_of_birth": None,
+        "expected_birth_date": child.expected_birth_date,
+        "gestational_age_weeks": weeks,
+        "latest_measurement": None,
+        "latest_prenatal_check": {
+            "id": check.id,
+            "measurement_date": check.measurement_date,
+            "gestational_age_weeks": check.gestational_age_weeks,
+            "maternal_weight": float(check.maternal_weight),
+            "maternal_muac": float(check.maternal_muac),
+            "fundal_height": float(check.fundal_height) if check.fundal_height is not None else None,
+            "classification": check.classification,
+        } if check else None,
     }
