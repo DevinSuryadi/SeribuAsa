@@ -14,6 +14,7 @@ from app.database import get_db
 from app.middleware.auth import AuthenticatedUser, get_current_user
 from app.models.user import UserProfile, DonorProfile, BeneficiaryProfile, VendorProfile, GenderEnum
 from app.models.facility import HealthFacility
+from app.services.regions import area_names
 from app.schemas.user import (
     UserSignUpRequest,
     UserSignUpResponse,
@@ -61,6 +62,12 @@ def _build_user_profile_response(db: Session, user_profile: UserProfile) -> User
     vendor_profile = None
     if resolved_role == "vendor":
         vendor_profile = db.query(VendorProfile).filter(VendorProfile.user_id == user_profile.user_id).first()
+    region_profile = vendor_profile
+    if resolved_role == "health_facility":
+        region_profile = db.query(HealthFacility).filter_by(account_user_id=user_profile.user_id).first()
+    province_code = region_profile.province_code if region_profile else None
+    regency_code = region_profile.regency_code if region_profile else None
+    province_name, regency_name = area_names(province_code, regency_code)
 
     return UserProfileResponse(
         id=user_profile.id,
@@ -85,6 +92,10 @@ def _build_user_profile_response(db: Session, user_profile: UserProfile) -> User
         bank_name=vendor_profile.bank_name if vendor_profile else None,
         bank_account_number=vendor_profile.bank_account_number if vendor_profile else None,
         bank_account_holder=vendor_profile.bank_account_holder if vendor_profile else None,
+        province_code=province_code,
+        regency_code=regency_code,
+        province_name=province_name,
+        regency_name=regency_name,
         created_at=user_profile.created_at,
         updated_at=user_profile.updated_at,
     )
@@ -194,6 +205,8 @@ async def create_user_on_signup(
                 user_id=user_data.user_id,
                 store_name=user_data.full_name,  # Use full_name as default store name
                 store_address="",
+                province_code=user_data.province_code,
+                regency_code=user_data.regency_code,
                 approval_status="pending"
             )
             db.add(vendor_profile)
@@ -263,9 +276,12 @@ async def get_user_profile(
 async def update_user_profile(
     user_id: UUID,
     update_data: UserProfileUpdateRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Update existing user profile fields."""
+    if str(current_user.user_id) != str(user_id) and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Profil hanya dapat diperbarui oleh pemilik akun")
     user_profile = db.query(UserProfile).filter(
         UserProfile.user_id == user_id
     ).first()
@@ -280,6 +296,14 @@ async def update_user_profile(
     if not payload:
         return _build_user_profile_response(db, user_profile)
 
+    facility = db.query(HealthFacility).filter_by(account_user_id=user_id, is_active=True).first()
+    if {"province_code", "regency_code"}.intersection(payload):
+        region_profile = facility or db.query(VendorProfile).filter_by(user_id=user_id, is_active=True).first()
+        if not region_profile:
+            raise HTTPException(status_code=400, detail="Wilayah hanya tersedia untuk vendor dan fasilitas kesehatan")
+        region_profile.province_code = update_data.province_code
+        region_profile.regency_code = update_data.regency_code
+
     if "full_name" in payload:
         full_name = (payload.get("full_name") or "").strip()
         if not full_name:
@@ -292,10 +316,14 @@ async def update_user_profile(
     if "phone" in payload:
         phone = payload.get("phone")
         user_profile.phone = phone.strip() if isinstance(phone, str) and phone.strip() else None
+        if facility:
+            facility.phone = user_profile.phone
 
     if "address" in payload:
         address = payload.get("address")
         user_profile.address = address.strip() if isinstance(address, str) and address.strip() else None
+        if facility:
+            facility.address = user_profile.address
 
     if "date_of_birth" in payload:
         user_profile.date_of_birth = payload.get("date_of_birth")
