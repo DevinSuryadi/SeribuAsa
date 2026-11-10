@@ -98,6 +98,7 @@ def env(monkeypatch):
 
     def dispatched_order():
         order_id = place_order()
+        assert client.post(f"{VENDOR_ORDERS}/{order_id}/confirm").status_code == 200
         assert client.post(f"{VENDOR_ORDERS}/{order_id}/dispatch").status_code == 200
         return order_id
 
@@ -147,8 +148,8 @@ def test_vendor_can_reject_only_unprocessed_orders(env):
 
     rejected = env.client.post(f"{VENDOR_ORDERS}/{order_id}/reject", json={"reason": "Stok rusak di gudang"})
     assert rejected.status_code == 200, rejected.text
-    assert rejected.json()["status"] == "cancelled"
-    assert rejected.json()["allocation_reason"] == "Ditolak vendor: Stok rusak di gudang"
+    assert rejected.json()["status"] == "rejected"
+    assert rejected.json()["vendor_rejection_reason"] == "Stok rusak di gudang"
     assert env.stock() == STOCK
     assert env.allocation_statuses(order_id) == {"released"}
 
