@@ -64,18 +64,18 @@ export default function FacilityReceiptDialog({ order, onClose, onSaved }: {
   }
 
   return <Dialog open={Boolean(order)} onOpenChange={(open: boolean) => { if (!open && !busy) onClose(); }}>
-    <DialogContent className="max-h-[90vh] overflow-y-auto">
+    <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-[20px]">
       <DialogHeader>
         <DialogTitle>Konfirmasi barang tiba di Faskes</DialogTitle>
         <p className="text-sm text-muted-foreground">Periksa jenis dan jumlah barang sebelum menerima. Faskes tidak perlu membayar Vendor, dana dialokasikan oleh sistem setelah barang dinyatakan lengkap.</p>
       </DialogHeader>
       {order && <form className="space-y-4" onSubmit={submit}>
-        <ul className="rounded-lg border p-3 text-sm">{order.items.map((item) => <li key={item.product_id}>{item.quantity}× {item.product_name}</li>)}</ul>
+        <ul className="rounded-xl bg-[#F4F7F5] p-3 text-sm">{order.items.map((item) => <li key={item.product_id}>{item.quantity}× {item.product_name}</li>)}</ul>
         <div className="space-y-1"><Label htmlFor="receipt-arrival">Waktu barang tiba</Label><Input id="receipt-arrival" type="datetime-local" step="1" required value={arrivedAt} disabled={Boolean(order.arrived_at)} onChange={(event) => setArrivedAt(event.target.value)} /></div>
-        <div className="space-y-1"><Label htmlFor="receipt-condition">Hasil pemeriksaan</Label><select id="receipt-condition" className="h-10 w-full rounded-md border px-3 text-sm" value={complete ? "complete" : "discrepancy"} onChange={(event) => setComplete(event.target.value === "complete")}><option value="complete">Barang sesuai dan lengkap</option><option value="discrepancy">Ada barang kurang, rusak, atau tidak sesuai</option></select></div>
+        <div className="space-y-1"><Label htmlFor="receipt-condition">Hasil pemeriksaan</Label><select id="receipt-condition" className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm" value={complete ? "complete" : "discrepancy"} onChange={(event) => setComplete(event.target.value === "complete")}><option value="complete">Barang sesuai dan lengkap</option><option value="discrepancy">Ada barang kurang, rusak, atau tidak sesuai</option></select></div>
         <div className="space-y-1"><Label htmlFor="receipt-notes">Catatan {complete ? "(opsional)" : "(wajib)"}</Label><Textarea id="receipt-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={1000} placeholder={complete ? "Kondisi barang saat tiba" : "Sebutkan barang dan jumlah yang bermasalah"} /></div>
         <div className="space-y-1"><Label htmlFor="receipt-photo">Foto barang saat tiba (opsional)</Label><Input id="receipt-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setPhoto(event.target.files?.[0] || null)} /></div>
-        <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Batal</Button><Button type="submit" disabled={busy || !arrivedAt || (!complete && !notes.trim())}>{busy ? "Menyimpan..." : "Simpan pemeriksaan"}</Button></div>
+        <div className="flex justify-end gap-2"><Button type="button" variant="outline" className="rounded-full" disabled={busy} onClick={onClose}>Batal</Button><Button type="submit" className="rounded-full" disabled={busy || !arrivedAt || (!complete && !notes.trim())}>{busy ? "Menyimpan..." : "Simpan pemeriksaan"}</Button></div>
       </form>}
     </DialogContent>
   </Dialog>;

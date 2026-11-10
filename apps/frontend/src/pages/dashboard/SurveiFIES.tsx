@@ -187,27 +187,24 @@ const SurveiFIES = () => {
         title="Survei FIES"
         subtitle={familyId ? `Survei ketahanan pangan keluarga ${familyName || "terpilih"}.` : "Survei ketahanan pangan bulanan."}
       >
-        <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-4 pb-3 lg:h-[calc(100svh-200px)] lg:max-h-[calc(100svh-200px)] lg:min-h-0 lg:overflow-hidden lg:pb-0">
+        <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-4 pb-3 lg:pb-0">
           {familyId && <Link to={`/dashboard/health-facility/families/${familyId}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ChevronLeft className="h-4 w-4" /> Kembali ke keluarga {familyName}</Link>}
           <Card className="shrink-0 overflow-hidden rounded-[20px] border border-border/70 shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
             <CardContent className="p-0">
               <div className="grid gap-0 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.75fr)]">
-                <div className="relative overflow-hidden bg-gradient-to-br from-primary via-emerald-700 to-emerald-900 px-5 py-5 text-primary-foreground sm:px-6 lg:px-7">
-                  <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/10" />
-                  <div className="absolute -bottom-14 -left-14 h-40 w-40 rounded-full bg-black/10" />
-
-                  <div className="relative flex min-h-[clamp(190px,26svh,250px)] flex-col justify-center">
-                    <div className="max-w-[500px] space-y-3">
+                <div className="bg-[#E6F4EC] p-6">
+                  <div className="flex h-full flex-col justify-center">
+                    <div className="max-w-[500px] space-y-4">
                       <div className="space-y-2">
-                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/70">
-                          Hasil Survei Bulanan
+                        <p className="text-sm font-semibold text-[#0B6B4F]">
+                          Hasil survei bulanan
                         </p>
 
-                        <h2 className="text-[26px] font-bold leading-tight tracking-tight text-white sm:text-[30px]">
+                        <h2 className="text-[32px] font-bold leading-tight tracking-tight text-[#0B6B4F]">
                           Survei Selesai!
                         </h2>
 
-                        <p className="max-w-[460px] text-sm leading-6 text-white/90">
+                        <p className="max-w-[460px] text-sm leading-6 text-slate-700">
                           {familyId
                             ? "Survei ketahanan pangan keluarga ini telah tersimpan. Hasilnya dapat digunakan untuk memantau kondisi pangan keluarga."
                             : "Terima kasih telah mengisi survei ketahanan pangan bulan ini. Hasil Anda akan digunakan untuk membantu menentukan prioritas bantuan."}
@@ -215,11 +212,10 @@ const SurveiFIES = () => {
                       </div>
 
                       <Button
-                        className="h-10 rounded-2xl bg-white px-5 text-sm font-semibold text-primary hover:bg-white/90"
+                        className="rounded-full bg-[#0B6B4F] px-7 font-bold text-white hover:bg-[#095A43]"
                         onClick={() => navigate(familyId ? `/dashboard/health-facility/families/${familyId}` : "/dashboard/beneficiary")}
                       >
                         {familyId ? "Kembali ke Keluarga" : "Kembali ke Dashboard"}
-                        <ChevronRight className="ml-2 h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -311,9 +307,9 @@ const SurveiFIES = () => {
         title="Survei FIES"
         subtitle={familyId ? `Survei ketahanan pangan keluarga ${familyName || "terpilih"}.` : "Survei ketahanan pangan bulanan."}
       >
-        <div className="mx-auto w-full max-w-[1540px] pb-3 lg:h-[calc(100svh-200px)] lg:max-h-[calc(100svh-200px)] lg:min-h-0 lg:overflow-hidden lg:pb-0">
+        <div className="mx-auto w-full max-w-[1540px] pb-3 lg:pb-0">
           {familyId && <Link to={`/dashboard/health-facility/families/${familyId}`} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ChevronLeft className="h-4 w-4" /> Kembali ke keluarga {familyName}</Link>}
-          <div className="grid h-full min-h-0 gap-4 lg:grid-rows-[auto_minmax(0,1fr)]">
+          <div className="grid gap-4">
             <div className="grid min-h-0 w-full shrink-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(360px,424px)]">
               <Card className="h-[300px] overflow-hidden rounded-[18px] border-border/70 bg-background shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
                 <CardContent className="relative h-[230px] overflow-visible bg-gradient-to-br from-primary via-emerald-700 to-emerald-900 p-5 text-primary-foreground sm:p-6">
@@ -327,7 +323,7 @@ const SurveiFIES = () => {
                   <div className="absolute left-[32%] bottom-[-92px] h-48 w-48 rounded-full bg-black/10" />
 
                   <div className="relative z-10 flex h-full flex-col">
-                    
+
 
                     <div className="mt-5 max-w-2xl space-y-2">
                       <h2 className="max-w-xl text-[22px] font-bold leading-tight tracking-tight sm:text-[26px]">
@@ -352,10 +348,10 @@ const SurveiFIES = () => {
                 </CardContent>
               </Card>
 
-              <Card className="h-[300px] overflow-hidden rounded-[18px] border-border/70 shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
-                <CardContent className="h-full overflow-hidden p-5">
-                  <div className="mb-3 flex items-center gap-3">
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <Card className="flex min-h-[300px] rounded-[18px] border-border/70 shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
+                <CardContent className="flex flex-1 flex-col px-5 py-4">
+                  <div className="flex items-center gap-3 pb-2">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
                       <Info className="h-4 w-4 text-primary" />
                     </div>
 
@@ -364,25 +360,25 @@ const SurveiFIES = () => {
                     </h3>
                   </div>
 
-                  <div className="divide-y divide-border/70">
+                  <div className="flex flex-1 flex-col divide-y divide-border/70">
                     {surveyInfo.map((item) => {
                       const Icon = item.icon;
 
                       return (
                         <div
                           key={item.title}
-                          className="flex gap-3 py-[7px] first:pt-0 last:pb-0"
+                          className="flex flex-1 items-center gap-3 py-1"
                         >
                           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
                             <Icon className="h-4 w-4 text-primary" />
                           </div>
 
                           <div className="min-w-0">
-                            <p className="text-[13px] font-bold leading-[16px] text-foreground">
+                            <p className="text-[13px] font-semibold leading-4 text-foreground">
                               {item.title}
                             </p>
 
-                            <p className="mt-0.5 text-[11px] leading-[15px] text-muted-foreground">
+                            <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
                               {item.desc}
                             </p>
                           </div>
@@ -439,7 +435,7 @@ const SurveiFIES = () => {
                   </div>
                 ) : (
                   <div className="min-h-0 flex-1 overflow-hidden rounded-[16px] border border-border/70">
-                    <div className="h-full overflow-y-auto">
+                    <div className="max-h-80 overflow-y-auto">
                       {history.map((h: any) => {
                         const severity = getSeverity(h.score);
 
@@ -483,7 +479,7 @@ const SurveiFIES = () => {
       title="Survei FIES"
       subtitle={familyId ? `Survei ketahanan pangan keluarga ${familyName || "terpilih"}.` : "Survei ketahanan pangan bulanan."}
     >
-      <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-4 pb-3 lg:h-[calc(100svh-200px)] lg:max-h-[calc(100svh-200px)] lg:min-h-0 lg:overflow-hidden lg:pb-0">
+      <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-4 pb-3 lg:min-h-[calc(100svh-200px)] lg:pb-0">
         {familyId && <Link to={`/dashboard/health-facility/families/${familyId}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ChevronLeft className="h-4 w-4" /> Kembali ke keluarga {familyName}</Link>}
         <Card className="shrink-0 rounded-[18px] border-border/70 shadow-[0_6px_18px_rgba(15,23,42,0.045)]">
           <CardContent className="p-4">

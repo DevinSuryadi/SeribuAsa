@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { EmptyState } from "@/components/dashboard/EmptyState";
 import { ErrorState } from "@/components/dashboard/ErrorState";
 import FacilityReceiptDialog from "@/components/order/FacilityReceiptDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSmartPolling } from "@/hooks/useSmartPolling";
 import { formatDate, formatIDR } from "@/lib/format";
@@ -14,26 +15,13 @@ import {
   listFacilityOrders,
   type FacilityOrder,
 } from "@/services/facility-orders";
-import {
-  Check,
-  ChevronRight,
-  Circle,
-  Package,
-  Plus,
-  RefreshCw,
-  X,
-} from "lucide-react";
+import { Check, ChevronRight, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 
-type OrderTab =
-  | "all"
-  | "waiting"
-  | "funding"
-  | "shipped"
-  | "received"
-  | "finished"
-  | "cancelled"
-  | "rejected";
+type OrderStatus = "waiting" | "shipped" | "received" | "finished" | "cancelled";
+type OrderTab = "all" | OrderStatus;
+
+const pageSize = 20;
 
 const previewOrders: FacilityOrder[] = [
   {
@@ -84,15 +72,13 @@ const previewOrders: FacilityOrder[] = [
   },
 ];
 
-const tabItems: { key: OrderTab; label: string }[] = [
+const orderTabs: { key: OrderTab; label: string }[] = [
   { key: "all", label: "Semua" },
-  { key: "funding", label: "Menunggu dana" },
-  { key: "waiting", label: "Menunggu vendor" },
+  { key: "waiting", label: "Menunggu" },
   { key: "shipped", label: "Dikirim" },
-  { key: "received", label: "Diterima Faskes" },
-  { key: "finished", label: "Selesai" },
+  { key: "received", label: "Diterima" },
+  { key: "finished", label: "Disalurkan" },
   { key: "cancelled", label: "Dibatalkan" },
-  { key: "rejected", label: "Ditolak" },
 ];
 
 function statusKey(order: FacilityOrder): Exclude<OrderTab, "all"> {
@@ -119,8 +105,10 @@ function statusLabel(order: FacilityOrder) {
   return "Menunggu vendor";
 }
 
-function statusClass(order: FacilityOrder) {
-  if (hasOpenIssue(order)) return "border-red-200 bg-red-50 text-red-700";
+function displayStatus(order: FacilityOrder) {
+  if (hasOpenIssue(order)) return { label: "Barang bermasalah", className: "text-red-600" };
+  if (order.status === "rejected") return { label: "Ditolak Admin", className: "text-slate-500" };
+  if (order.status === "pending_approval") return { label: "Pesanan lama belum didanai", className: "text-amber-700" };
   const key = statusKey(order);
   if (key === "cancelled") return "border-red-200 bg-red-50 text-red-700";
   if (key === "rejected") return "border-red-200 bg-red-50 text-red-700";
@@ -132,8 +120,13 @@ function statusClass(order: FacilityOrder) {
   return "border-amber-200 bg-amber-50 text-amber-800";
 }
 
-function shortId(value: string) {
-  return value.split("-")[0].slice(0, 8);
+function needsAction(order: FacilityOrder) {
+  if (order.status === "pending_approval" || order.status === "processing") return true;
+  return !order.distribution && (order.status === "received" || order.status === "completed");
+}
+
+function shortId(order: FacilityOrder) {
+  return order.id.split("-")[0].slice(0, 8);
 }
 
 function itemSummary(order: FacilityOrder) {
@@ -157,7 +150,10 @@ export default function FacilityOrdersTable() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [activeTab, setActiveTab] = useState<OrderTab>("all");
-  const [selected, setSelected] = useState<FacilityOrder | null>(null);
+  const [search, setSearch] = useState("");
+  const [period, setPeriod] = useState("all");
+  const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [receiptOrder, setReceiptOrder] = useState<FacilityOrder | null>(null);
 
   async function refresh() {
@@ -176,48 +172,44 @@ export default function FacilityOrdersTable() {
     void refresh();
   }, []);
 
-  useSmartPolling(async () => {
-    const rows = await listFacilityOrders();
-    setOrders(rows);
-    setSelected((current) => (current ? rows.find((order) => order.id === current.id) || current : current));
-  }, { interval: 30000 });
-
-  useEffect(() => {
-    if (!selected) return;
-    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setSelected(null);
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [selected]);
+  useSmartPolling(async () => { setOrders(await listFacilityOrders()); }, { interval: 30000 });
 
   const showingPreview = import.meta.env.DEV && !loading && !error && orders.length === 0;
-  const rows = showingPreview ? previewOrders : orders;
+  const rows = useMemo(() => (showingPreview ? previewOrders : orders), [showingPreview, orders]);
+
+  const scoped = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const cutoff = period === "all" ? null : Date.now() - Number(period) * 24 * 60 * 60 * 1000;
+    return rows
+      .filter((order) => {
+        const matchesTerm =
+          !term ||
+          (order.family_name || "").toLowerCase().includes(term) ||
+          (order.vendor_name || "").toLowerCase().includes(term) ||
+          order.id.toLowerCase().includes(term) ||
+          order.items.some((item) => item.product_name.toLowerCase().includes(term));
+        const matchesPeriod = cutoff === null || new Date(order.created_at).getTime() >= cutoff;
+        return matchesTerm && matchesPeriod;
+      })
+      .sort((a, b) =>
+        Number(needsAction(b)) - Number(needsAction(a)) ||
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+  }, [rows, search, period]);
 
   const counts = useMemo(() => {
-    const result: Record<OrderTab, number> = {
-      all: rows.length,
-      funding: 0,
-      waiting: 0,
-      shipped: 0,
-      received: 0,
-      finished: 0,
-      cancelled: 0,
-      rejected: 0,
-    };
-    rows.forEach((order) => {
-      result[statusKey(order)] += 1;
-    });
+    const result: Record<OrderTab, number> = { all: scoped.length, waiting: 0, shipped: 0, received: 0, finished: 0, cancelled: 0 };
+    scoped.forEach((order) => { result[statusKey(order)] += 1; });
     return result;
-  }, [rows]);
+  }, [scoped]);
 
-  const filteredRows = useMemo(
-    () =>
-      activeTab === "all"
-        ? rows
-        : rows.filter((order) => statusKey(order) === activeTab),
-    [activeTab, rows],
-  );
+  const filtered = activeTab === "all" ? scoped : scoped.filter((order) => statusKey(order) === activeTab);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const firstIndex = (currentPage - 1) * pageSize;
+  const visibleOrders = filtered.slice(firstIndex, firstIndex + pageSize);
+  const selected = rows.find((order) => order.id === selectedId) || null;
+  const hasFilter = Boolean(search.trim()) || period !== "all" || activeTab !== "all";
 
   async function cancel(order: FacilityOrder) {
     if (showingPreview) {
@@ -229,7 +221,6 @@ export default function FacilityOrdersTable() {
     try {
       await cancelFacilityOrder(order.id);
       toast.success("Pesanan dibatalkan");
-      setSelected(null);
       await refresh();
     } catch (cancelError) {
       toast.error(cancelError instanceof Error ? cancelError.message : "Gagal membatalkan pesanan");
@@ -237,16 +228,6 @@ export default function FacilityOrdersTable() {
       setBusy("");
     }
   }
-
-  const steps = selected
-    ? [
-        { label: "Menunggu vendor", note: "Vendor belum mengonfirmasi" },
-        { label: "Dikirim ke faskes", note: "Dalam perjalanan ke faskes" },
-        { label: "Diterima Faskes", note: "Barang bermasalah, menunggu vendor melengkapi" },
-        { label: "Diterima keluarga", note: "Menunggu diserahkan kepada keluarga" },
-      ]
-    : [];
-  const currentProgress = selected ? progressIndex(selected) : -1;
 
   return (
     <DashboardLayout
@@ -263,151 +244,65 @@ export default function FacilityOrdersTable() {
       subtitle="Pantau pesanan, konfirmasi barang tiba di Faskes, lalu catat penyaluran kepada keluarga."
       actions={
         <>
-          <Button variant="outline" className="rounded-xl bg-white" onClick={() => void refresh()} disabled={loading}>
+          <Button variant="outline" className="rounded-full bg-white" onClick={() => void refresh()} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Perbarui
+            Segarkan
           </Button>
-          <Button asChild className="rounded-xl">
-            <Link to="/dashboard/health-facility/catalog">
-              <Plus className="mr-2 h-4 w-4" />
-              Pesan pangan
-            </Link>
+          <Button asChild className="rounded-full">
+            <Link to="/dashboard/health-facility/catalog">Pesan pangan</Link>
           </Button>
         </>
       }
     >
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <nav className="flex overflow-x-auto border-b border-slate-200 px-4" aria-label="Filter status pesanan">
-          {tabItems.filter((tab) => tab.key !== "funding" || counts.funding > 0).map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={`relative shrink-0 px-4 py-4 text-sm font-semibold transition-colors ${
-                activeTab === tab.key ? "text-emerald-700" : "text-slate-500 hover:text-slate-900"
-              }`}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label} {counts[tab.key]}
-              {activeTab === tab.key && (
-                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-emerald-600" />
-              )}
-            </button>
-          ))}
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <nav
+          className="flex w-fit max-w-full overflow-x-auto rounded-full bg-[#ececef] p-1 [scrollbar-width:none]"
+          aria-label="Filter status pesanan"
+        >
+          {orderTabs.map((tab) => {
+            const active = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                aria-pressed={active}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-medium transition-all duration-200 ${
+                  active
+                    ? "bg-white text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  setPage(1);
+                }}
+              >
+                {tab.label} <span className="text-slate-500">{counts[tab.key]}</span>
+              </button>
+            );
+          })}
         </nav>
-
-        {loading ? (
-          <div className="space-y-2 p-4">
-            {[0, 1, 2].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative sm:flex-1 xl:w-64 xl:flex-none">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Input
+              aria-label="Cari pesanan"
+              className="h-9 rounded-full border-0 bg-[#ececef] pl-9 text-sm shadow-none placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-emerald-600/40 focus-visible:ring-offset-0"
+              placeholder="Cari keluarga, nomor, atau produk"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+            />
           </div>
-        ) : error ? (
-          <ErrorState
-            className="m-4"
-            title="Gagal memuat pesanan"
-            message={error}
-            onRetry={() => void refresh()}
-          />
-        ) : rows.length === 0 ? (
-          <EmptyState
-            icon={<Package className="mx-auto mb-3 h-12 w-12 text-muted-foreground opacity-50" />}
-            title="Belum ada pesanan"
-            description="Pesan pangan dari katalog untuk keluarga yang terdaftar."
-            action={{ label: "Pesan pangan", onClick: () => navigate("/dashboard/health-facility/catalog") }}
-          />
-        ) : filteredRows.length === 0 ? (
-          <div className="px-5 py-16 text-center">
-            <p className="font-semibold text-slate-900">Tidak ada pesanan pada status ini</p>
-            <p className="mt-1 text-sm text-slate-500">Pesanan akan muncul otomatis ketika statusnya berubah.</p>
-          </div>
-        ) : (
-          <>
-          <ul className="divide-y divide-slate-100 lg:hidden">
-            {filteredRows.map((order) => (
-              <li key={order.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-start gap-3 px-4 py-4 text-left text-sm transition-colors hover:bg-emerald-50/40"
-                  onClick={() => setSelected(order)}
-                >
-                  <span className="min-w-0 flex-1 space-y-2">
-                    <span className="flex flex-wrap items-center justify-between gap-2">
-                      <strong className="text-slate-900">#{shortId(order.id)}</strong>
-                      <Badge variant="outline" className={statusClass(order)}>
-                        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
-                        {statusLabel(order)}
-                      </Badge>
-                    </span>
-                    <span className="block font-medium text-slate-900">{order.family_name || "Keluarga"}</span>
-                    <span className="block truncate text-slate-600">{itemSummary(order)}</span>
-                    <span className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                      <span>{order.vendor_name || "Vendor"} · {formatDate(order.created_at)}</span>
-                      <strong className="text-sm text-slate-900">{formatIDR(order.total_amount)}</strong>
-                    </span>
-                  </span>
-                  <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-                </button>
-              </li>
-            ))}
-          </ul>
-          <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[920px] border-collapse text-left">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
-                  <th className="px-5 py-3">Pesanan</th>
-                  <th className="px-4 py-3">Keluarga</th>
-                  <th className="px-4 py-3">Isi</th>
-                  <th className="px-4 py-3">Vendor</th>
-                  <th className="px-4 py-3 text-right">Total</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="w-10 px-3 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="cursor-pointer border-b border-slate-100 text-sm transition-colors last:border-0 hover:bg-emerald-50/40"
-                    onClick={() => setSelected(order)}
-                  >
-                    <td className="px-5 py-4 align-top">
-                      <strong className="block text-slate-900">#{shortId(order.id)}</strong>
-                      <span className="text-xs text-slate-500">{formatDate(order.created_at)}</span>
-                    </td>
-                    <td className="px-4 py-4 align-top font-medium text-slate-900">{order.family_name || "Keluarga"}</td>
-                    <td className="max-w-[340px] px-4 py-4 align-top">
-                      <span className="block truncate text-slate-900">{itemSummary(order)}</span>
-                      <span className="text-xs text-slate-500">{order.items.length} item</span>
-                    </td>
-                    <td className="px-4 py-4 align-top text-slate-700">{order.vendor_name || "Vendor"}</td>
-                    <td className="px-4 py-4 text-right align-top font-semibold text-slate-900">{formatIDR(order.total_amount)}</td>
-                    <td className="px-4 py-4 align-top">
-                      <Badge variant="outline" className={statusClass(order)}>
-                        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
-                        {statusLabel(order)}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-4 align-top"><ChevronRight className="h-4 w-4 text-slate-400" /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          </>
-        )}
-      </section>
-
-      {selected && (
-        <div className="fixed inset-0 z-[80] flex justify-end">
-          <button
-            type="button"
-            className="absolute inset-0 bg-transparent"
-            aria-label="Tutup detail pesanan"
-            onClick={() => setSelected(null)}
-          />
-          <aside
-            className="relative z-10 flex h-full w-full max-w-[500px] flex-col border-l border-slate-200 bg-white shadow-[-18px_0_45px_rgba(15,23,42,0.14)]"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="order-detail-title"
+          <select
+            aria-label="Periode pesanan"
+            className="h-9 rounded-full border-0 bg-[#ececef] px-3 text-sm text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40"
+            value={period}
+            onChange={(event) => {
+              setPeriod(event.target.value);
+              setPage(1);
+            }}
           >
             <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div>
@@ -521,11 +416,214 @@ export default function FacilityOrdersTable() {
                   </Link>
                 </Button>
               )}
-            </footer>
-          </aside>
-        </div>
+            </div>
+          ) : (
+            <>
+              <ul className="divide-y divide-slate-100 xl:hidden">
+                {visibleOrders.map((order) => (
+                  <li key={order.id}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50"
+                      onClick={() => setSelectedId(order.id)}
+                    >
+                      <span className="min-w-0 flex-1 space-y-0.5">
+                        <span className="flex items-center justify-between gap-3">
+                          <strong className="truncate text-sm font-semibold text-slate-900">{order.family_name || "Keluarga"}</strong>
+                          <StatusLabel order={order} />
+                        </span>
+                        <span className="block truncate text-[13px] text-slate-700">{itemSummary(order)}</span>
+                        <span className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                          <span className="truncate">#{shortId(order)} · {formatDate(order.created_at)}</span>
+                          <strong className="shrink-0 text-[13px] font-semibold text-slate-900">{formatIDR(order.total_amount)}</strong>
+                        </span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <table className="hidden w-full table-fixed border-collapse text-left xl:table">
+                <thead>
+                  <tr className="border-b border-slate-100 text-xs font-medium text-slate-500">
+                    <th className="w-[140px] px-5 py-3 font-medium">Pesanan</th>
+                    <th className="w-[170px] px-3 py-3 font-medium">Keluarga</th>
+                    <th className="px-3 py-3 font-medium">Isi</th>
+                    <th className="w-[130px] px-3 py-3 font-medium">Vendor</th>
+                    <th className="w-[110px] px-3 py-3 text-right font-medium">Total</th>
+                    <th className="w-[190px] px-3 py-3 font-medium">Status</th>
+                    <th className="w-[52px] px-3 py-3"><span className="sr-only">Detail</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleOrders.map((order) => (
+                    <tr
+                      key={order.id}
+                      className="cursor-pointer border-b border-slate-100 text-[13px] transition-colors last:border-0 hover:bg-slate-50"
+                      onClick={() => setSelectedId(order.id)}
+                    >
+                      <td className="px-5 py-2.5">
+                        <strong className="block font-semibold text-slate-900">#{shortId(order)}</strong>
+                        <span className="text-xs text-slate-500">{formatDate(order.created_at)}</span>
+                      </td>
+                      <td className="truncate px-3 py-2.5 text-slate-900">{order.family_name || "Keluarga"}</td>
+                      <td className="px-3 py-2.5">
+                        <span className="block truncate text-slate-900" title={itemSummary(order)}>{itemSummary(order)}</span>
+                        <span className="text-xs text-slate-500">{order.items.length} item</span>
+                      </td>
+                      <td className="truncate px-3 py-2.5 text-slate-700">{order.vendor_name || "Vendor"}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold text-slate-900">{formatIDR(order.total_amount)}</td>
+                      <td className="px-3 py-2.5"><StatusLabel order={order} /></td>
+                      <td className="px-3 py-2.5 text-right">
+                        <button
+                          type="button"
+                          className="rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                          aria-label={`Lihat detail pesanan ${shortId(order)}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedId(order.id);
+                          }}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <footer className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-2.5 text-[13px] text-slate-500">
+                <span>{firstIndex + 1}–{firstIndex + visibleOrders.length} dari {filtered.length} pesanan</span>
+                {pageCount > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 rounded-full bg-slate-900/[0.06] px-3 text-[13px] font-medium text-slate-900 hover:bg-slate-900/10"
+                      disabled={currentPage <= 1}
+                      onClick={() => setPage(currentPage - 1)}
+                    >
+                      Sebelumnya
+                    </Button>
+                    <span className="hidden tabular-nums sm:inline">{currentPage} / {pageCount}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 rounded-full bg-slate-900/[0.06] px-3 text-[13px] font-medium text-slate-900 hover:bg-slate-900/10"
+                      disabled={currentPage >= pageCount}
+                      onClick={() => setPage(currentPage + 1)}
+                    >
+                      Berikutnya
+                    </Button>
+                  </div>
+                )}
+              </footer>
+            </>
+          )}
+        </section>
       )}
-      <FacilityReceiptDialog order={receiptOrder} onClose={() => setReceiptOrder(null)} onSaved={(updated) => { setSelected(updated); setOrders((rows) => rows.map((row) => row.id === updated.id ? updated : row)); }} />
+
+      <Dialog open={Boolean(selected)} onOpenChange={(open: boolean) => { if (!open) setSelectedId(null); }}>
+        <DialogContent className="left-auto right-3 top-3 flex h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-[440px] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-[20px] p-0 data-[state=closed]:slide-out-to-left-0 data-[state=closed]:slide-out-to-top-0 data-[state=closed]:zoom-out-100 data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-0 data-[state=open]:zoom-in-100 sm:rounded-[20px]">
+          {selected && (
+            <>
+              <header className="border-b border-slate-100 px-5 py-4 pr-12">
+                <DialogTitle className="text-[17px] font-semibold tracking-tight text-slate-900">
+                  {selected.family_name || "Keluarga"}
+                </DialogTitle>
+                <DialogDescription className="mt-0.5 text-[13px] text-slate-500">
+                  #{shortId(selected)} · {formatDate(selected.created_at)}
+                </DialogDescription>
+                <div className="mt-2"><StatusLabel order={selected} /></div>
+              </header>
+
+              <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 text-[13px]">
+                <section>
+                  <h3 className="text-xs font-medium text-slate-500">Progres</h3>
+                  <OrderTracking order={selected} />
+                </section>
+
+                {orderNotes(selected).map((note) => (
+                  <p key={note.text} className={`rounded-xl px-3 py-2 ${note.className}`}>{note.text}</p>
+                ))}
+
+                <section>
+                  <h3 className="text-xs font-medium text-slate-500">Vendor</h3>
+                  <p className="mt-1 text-slate-900">{selected.vendor_name || "Vendor"}</p>
+                </section>
+
+                <section>
+                  <h3 className="text-xs font-medium text-slate-500">Rincian</h3>
+                  <ul className="mt-1 divide-y divide-slate-100">
+                    {selected.items.map((item) => (
+                      <li key={item.product_id} className="flex items-baseline justify-between gap-3 py-2 text-slate-900">
+                        <span className="min-w-0">{item.quantity}× {item.product_name}</span>
+                        <span className="shrink-0">{formatIDR(item.subtotal)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex items-baseline justify-between gap-3 border-t border-slate-200 pt-2 text-[15px] font-semibold tracking-tight text-slate-900">
+                    <span>Total</span>
+                    <span>{formatIDR(selected.total_amount)}</span>
+                  </div>
+                </section>
+              </div>
+
+              {(selected.status === "pending" ||
+                selected.status === "pending_approval" ||
+                (selected.status === "processing" && selected.receipt_status !== "accepted" && !showingPreview) ||
+                selected.status === "received" ||
+                selected.status === "completed") && (
+                <footer className="flex gap-2 border-t border-slate-100 p-4">
+                  {(selected.status === "pending" || selected.status === "pending_approval") && (
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      disabled={busy === selected.id}
+                      onClick={() => void cancel(selected)}
+                    >
+                      Batalkan pesanan
+                    </Button>
+                  )}
+                  {selected.status === "processing" && selected.receipt_status !== "accepted" && !showingPreview && (
+                    <Button className="w-full rounded-full" onClick={() => { setReceiptOrder(selected); setSelectedId(null); }}>
+                      Konfirmasi barang tiba
+                    </Button>
+                  )}
+                  {!selected.distribution && (selected.status === "received" || selected.status === "completed") && (
+                    showingPreview ? (
+                      <Button className="w-full rounded-full" onClick={() => toast.info("Aksi unggah tersedia untuk pesanan asli.")}>
+                        Unggah bukti penerimaan
+                      </Button>
+                    ) : (
+                      <Button asChild className="w-full rounded-full">
+                        <Link to={`/dashboard/health-facility/families/${selected.family_id}/redemptions`}>
+                          Unggah bukti penerimaan
+                        </Link>
+                      </Button>
+                    )
+                  )}
+                  {selected.distribution && (
+                    <Button asChild variant="outline" className="w-full rounded-full">
+                      <Link to={`/dashboard/health-facility/families/${selected.family_id}/redemptions`}>
+                        Lihat bukti penerimaan
+                      </Link>
+                    </Button>
+                  )}
+                </footer>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <FacilityReceiptDialog
+        order={receiptOrder}
+        onClose={() => setReceiptOrder(null)}
+        onSaved={(updated) => {
+          setSelectedId(updated.id);
+          setOrders((current) => current.map((row) => (row.id === updated.id ? updated : row)));
+        }}
+      />
     </DashboardLayout>
   );
 }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
-import { getFiesStatus } from "@/lib/status-config";
+import { fiesTextClass, getFiesStatus, type FiesClassification } from "@/lib/status-config";
 import { listFamilies, type Family } from "@/services/facility-families";
 import { listFacilityOrders, type FacilityOrder } from "@/services/facility-orders";
 import { Plus, Search, Users } from "lucide-react";
@@ -46,6 +46,17 @@ function initials(name: string) {
     .map((part) => part[0])
     .join("")
     .toUpperCase();
+}
+
+function FiesLabel({ classification }: { classification?: string | null }) {
+  const meta = getFiesStatus(classification);
+  const tone = fiesTextClass[(classification || "unassessed") as FiesClassification] || fiesTextClass.unassessed;
+  return (
+    <span className={`inline-flex shrink-0 items-center whitespace-nowrap text-[13px] font-medium ${tone}`}>
+      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
+      {meta.shortLabel}
+    </span>
+  );
 }
 
 export default function FamilyListTable() {
@@ -134,13 +145,13 @@ export default function FamilyListTable() {
       <Button
         variant="outline"
         size="sm"
-        className="rounded-lg"
+        className="rounded-full"
         onClick={() => toast.info("Detail tersedia untuk data keluarga asli.")}
       >
         Detail
       </Button>
     ) : (
-      <Button asChild variant="outline" size="sm" className="rounded-lg">
+      <Button asChild variant="outline" size="sm" className="rounded-full">
         <Link to={`/dashboard/health-facility/families/${family.id}`}>Detail</Link>
       </Button>
     );
@@ -171,56 +182,57 @@ export default function FamilyListTable() {
       }
       subtitle="Daftar keluarga penerima manfaat dan tingkat kerentanannya berdasarkan survei FIES."
       actions={
-        <Button className="rounded-xl" onClick={openRegistration}>
+        <Button className="rounded-full" onClick={openRegistration}>
           <Plus className="mr-2 h-4 w-4" />
           Daftarkan keluarga
         </Button>
       }
     >
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="grid flex-1 gap-2 sm:grid-cols-[minmax(240px,1fr)_190px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                className="h-10 rounded-xl border-slate-200 pl-9"
-                placeholder="Cari nama atau nomor KK"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-            <select
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500"
-              value={vulnerability}
-              onChange={(event) => {
-                setVulnerability(event.target.value as Vulnerability);
-                setPage(1);
-              }}
-            >
-              <option value="all">Semua kerentanan</option>
-              <option value="severe">Rawan tinggi</option>
-              <option value="moderate">Rawan sedang</option>
-              <option value="food_secure">Rawan rendah</option>
-              <option value="unassessed">Belum disurvei</option>
-            </select>
-          </div>
-          <select
-            className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500"
-            value={sort}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative sm:flex-1 lg:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Input
+            aria-label="Cari keluarga"
+            className="h-9 rounded-full border-0 bg-[#ececef] pl-9 text-sm shadow-none placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-emerald-600/40 focus-visible:ring-offset-0"
+            placeholder="Cari nama atau nomor KK"
+            value={search}
             onChange={(event) => {
-              setSort(event.target.value as SortMode);
+              setSearch(event.target.value);
               setPage(1);
             }}
-          >
-            <option value="score_desc">Urutkan: skor FIES tertinggi</option>
-            <option value="score_asc">Urutkan: skor FIES terendah</option>
-            <option value="name_asc">Urutkan: nama A–Z</option>
-          </select>
+          />
         </div>
+        <select
+          aria-label="Filter kerentanan"
+          className="h-9 rounded-full border-0 bg-[#ececef] px-3 text-sm text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40"
+          value={vulnerability}
+          onChange={(event) => {
+            setVulnerability(event.target.value as Vulnerability);
+            setPage(1);
+          }}
+        >
+          <option value="all">Semua kerentanan</option>
+          <option value="severe">Rawan tinggi</option>
+          <option value="moderate">Rawan sedang</option>
+          <option value="food_secure">Rawan rendah</option>
+          <option value="unassessed">Belum disurvei</option>
+        </select>
+        <select
+          aria-label="Urutkan keluarga"
+          className="h-9 rounded-full border-0 bg-[#ececef] px-3 text-sm text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/40 sm:ml-auto"
+          value={sort}
+          onChange={(event) => {
+            setSort(event.target.value as SortMode);
+            setPage(1);
+          }}
+        >
+          <option value="score_desc">Skor FIES tertinggi</option>
+          <option value="score_asc">Skor FIES terendah</option>
+          <option value="name_asc">Nama A–Z</option>
+        </select>
+      </div>
 
+      <section className="overflow-hidden rounded-[20px] bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
         {loading ? (
           <div className="space-y-2 p-4">
             {[0, 1, 2].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}
@@ -249,7 +261,6 @@ export default function FamilyListTable() {
           <ul className="divide-y divide-slate-100 lg:hidden">
             {visibleRows.map((family) => {
               const score = family.latest_fies?.score;
-              const meta = getFiesStatus(family.latest_fies?.classification);
               return (
                 <li key={family.id} className="space-y-3 px-4 py-4 text-sm">
                   <div className="flex items-start justify-between gap-3">
@@ -262,10 +273,7 @@ export default function FamilyListTable() {
                         <span className="text-xs text-slate-500">{family.kk_number}</span>
                       </span>
                     </div>
-                    <Badge variant="outline" className={`shrink-0 ${meta.className}`}>
-                      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
-                      {meta.shortLabel}
-                    </Badge>
+                    <FiesLabel classification={family.latest_fies?.classification} />
                   </div>
                   <dl className="grid grid-cols-3 gap-2 text-xs">
                     <div>
@@ -294,7 +302,7 @@ export default function FamilyListTable() {
           <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[900px] border-collapse text-left">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
+                <tr className="border-b border-slate-100 text-xs font-medium text-slate-500 [&_th]:font-medium">
                   <th className="px-5 py-3">Kepala keluarga</th>
                   <th className="px-4 py-3 text-center">Anggota</th>
                   <th className="px-4 py-3">Skor FIES</th>
@@ -308,10 +316,9 @@ export default function FamilyListTable() {
                 {visibleRows.map((family) => {
                   const score = family.latest_fies?.score;
                   const classification = family.latest_fies?.classification || "unassessed";
-                  const meta = getFiesStatus(classification);
                   return (
-                    <tr key={family.id} className="border-b border-slate-100 text-sm last:border-0 hover:bg-emerald-50/30">
-                      <td className="px-5 py-4">
+                    <tr key={family.id} className="border-b border-slate-100 text-[13px] transition-colors last:border-0 hover:bg-slate-50">
+                      <td className="px-5 py-2.5">
                         <div className="flex items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef1e8] text-xs font-bold text-slate-600">
                             {initials(family.head_name)}
@@ -322,8 +329,8 @@ export default function FamilyListTable() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-center font-medium text-slate-700">{family.family_size ?? "—"}</td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-2.5 text-center font-medium text-slate-700">{family.family_size ?? "—"}</td>
+                      <td className="px-4 py-2.5">
                         {typeof score === "number" ? (
                           <div className="flex items-center gap-3">
                             <span className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
@@ -336,19 +343,16 @@ export default function FamilyListTable() {
                           </div>
                         ) : <span className="text-slate-400">—</span>}
                       </td>
-                      <td className="px-4 py-4">
-                        <Badge variant="outline" className={meta.className}>
-                          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
-                          {meta.shortLabel}
-                        </Badge>
+                      <td className="px-4 py-2.5">
+                        <FiesLabel classification={classification} />
                       </td>
-                      <td className="px-4 py-4 text-slate-700">
+                      <td className="px-4 py-2.5 text-slate-700">
                         {family.latest_fies ? formatDate(family.latest_fies.survey_date) : "Belum ada"}
                       </td>
-                      <td className="px-4 py-4 text-slate-700">
+                      <td className="px-4 py-2.5 text-slate-700">
                         {activeAssistance.get(family.id) || 0} pesanan
                       </td>
-                      <td className="px-4 py-4 text-right">{renderDetailButton(family)}</td>
+                      <td className="px-4 py-2.5 text-right">{renderDetailButton(family)}</td>
                     </tr>
                   );
                 })}
@@ -358,22 +362,22 @@ export default function FamilyListTable() {
           </>
         )}
 
-        <footer className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="flex flex-col gap-3 border-t border-slate-100 px-5 py-2.5 text-[13px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <span>Menampilkan {visibleRows.length} dari {filtered.length} keluarga</span>
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="h-8 rounded-lg bg-white text-xs"
+              className="h-8 rounded-full bg-slate-900/[0.06] px-3 text-[13px] font-medium text-slate-900 hover:bg-slate-900/10"
               disabled={page <= 1}
               onClick={() => setPage((current) => current - 1)}
             >
               Sebelumnya
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="h-8 rounded-lg bg-white text-xs"
+              className="h-8 rounded-full bg-slate-900/[0.06] px-3 text-[13px] font-medium text-slate-900 hover:bg-slate-900/10"
               disabled={page >= pageCount}
               onClick={() => setPage((current) => current + 1)}
             >

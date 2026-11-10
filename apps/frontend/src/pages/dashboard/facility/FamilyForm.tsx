@@ -65,7 +65,7 @@ export default function FamilyForm({ open, onOpenChange, family, onSaved }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-2xl">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-[20px]">
         <DialogHeader>
           <DialogTitle>{family ? "Edit Data Keluarga" : "Daftarkan Keluarga"}</DialogTitle>
         </DialogHeader>
@@ -100,8 +100,8 @@ export default function FamilyForm({ open, onOpenChange, family, onSaved }: {
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Batal</Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="button" variant="outline" className="rounded-full" onClick={() => onOpenChange(false)}>Batal</Button>
+            <Button type="submit" className="rounded-full" disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {family ? "Simpan Perubahan" : "Daftarkan Keluarga"}
             </Button>
