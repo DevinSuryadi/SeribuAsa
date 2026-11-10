@@ -146,6 +146,13 @@ class BeneficiaryProfile(BaseModel):
 # ============================================
 class VendorProfile(BaseModel):
     __tablename__ = "vendor_profiles"
+    __table_args__ = (
+        CheckConstraint(
+            "(province_code IS NULL AND regency_code IS NULL) OR "
+            "(province_code IS NOT NULL AND regency_code IS NOT NULL)",
+            name="ck_vendor_profiles_region_pair",
+        ),
+    )
     
     # Foreign key to user_profiles
     user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.user_id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
@@ -154,6 +161,8 @@ class VendorProfile(BaseModel):
     store_name = Column(String(255), nullable=False)
     store_address = Column(Text, nullable=False)
     store_phone = Column(String(20))
+    province_code = Column(String(2), nullable=True)
+    regency_code = Column(String(5), nullable=True, index=True)
     store_image_url = Column(String(500))
     operating_hours = Column(String(100))
     rating = Column(Numeric(3, 1))
