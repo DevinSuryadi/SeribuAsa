@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Literal
 from datetime import date, datetime
 from uuid import UUID
+from app.schemas.region import ProfileRegion
 
 # Role type
 UserRole = Literal["donor", "corporate_donor", "beneficiary", "vendor", "admin", "government", "health_facility"]
@@ -55,11 +56,15 @@ class UserProfileResponse(BaseModel):
     bank_name: str | None = None
     bank_account_number: str | None = None
     bank_account_holder: str | None = None
+    province_code: str | None = None
+    regency_code: str | None = None
+    province_name: str | None = None
+    regency_name: str | None = None
     created_at: datetime
     updated_at: datetime
 
 
-class UserSignUpRequest(BaseModel):
+class UserSignUpRequest(ProfileRegion):
     """Schema for signup request from frontend"""
     model_config = ConfigDict(
         json_schema_extra={
@@ -88,7 +93,7 @@ class UserSignUpResponse(BaseModel):
     message: str = "User created successfully"
 
 
-class UserProfileUpdateRequest(BaseModel):
+class UserProfileUpdateRequest(ProfileRegion):
     """Schema for updating existing user profile"""
     full_name: str | None = Field(None, min_length=1, max_length=255)
     phone: str | None = Field(None, max_length=20)

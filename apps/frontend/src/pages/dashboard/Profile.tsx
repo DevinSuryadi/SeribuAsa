@@ -41,6 +41,7 @@ import { uploadImage } from "@/services/upload";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/format";
 import type { UserRole } from "@/types";
+import RegionFields from "@/components/forms/RegionFields";
 
 interface EditFormData {
   fullName: string;
@@ -48,6 +49,8 @@ interface EditFormData {
   address: string;
   dateOfBirth: string;
   gender: string;
+  provinceCode: string;
+  regencyCode: string;
 }
 
 interface StoreFormData {
@@ -55,6 +58,8 @@ interface StoreFormData {
   storeAddress: string;
   storeImageUrl: string;
   operatingHours: string;
+  provinceCode: string;
+  regencyCode: string;
 }
 
 interface PasswordFormData {
@@ -87,6 +92,7 @@ interface SectionCardProps {
 }
 
 const ROLE_LABELS: Record<UserRole | string, string> = {
+  health_facility: "Fasilitas Kesehatan",
   donor: "Donatur",
   corporate_donor: "Donatur Korporat",
   beneficiary: "Penerima Manfaat",
@@ -224,7 +230,9 @@ const Profile = () => {
   const {
     data: profileData,
     loading: profileLoading,
+    error: profileError,
     isSubmitting,
+    refetch,
     updateProfile,
   } = useProfile();
 
@@ -240,6 +248,8 @@ const Profile = () => {
     address: "",
     dateOfBirth: "",
     gender: "",
+    provinceCode: "",
+    regencyCode: "",
   });
 
   const [passwordFormData, setPasswordFormData] = useState<PasswordFormData>({
@@ -259,6 +269,8 @@ const Profile = () => {
     storeAddress: "",
     storeImageUrl: "",
     operatingHours: "",
+    provinceCode: "",
+    regencyCode: "",
   });
 
   useEffect(() => {
@@ -269,6 +281,8 @@ const Profile = () => {
         address: profileData.address || "",
         dateOfBirth: profileData.date_of_birth || "",
         gender: profileData.gender || "",
+        provinceCode: profileData.province_code || "",
+        regencyCode: profileData.regency_code || "",
       });
 
       setBankFormData({
@@ -282,11 +296,14 @@ const Profile = () => {
         storeAddress: profileData.store_address || "",
         storeImageUrl: profileData.store_image_url || "",
         operatingHours: profileData.operating_hours || "",
+        provinceCode: profileData.province_code || "",
+        regencyCode: profileData.regency_code || "",
       });
     }
   }, [profileData, user?.fullName]);
 
   const resolvedRole = profileData?.role || userRole;
+  const isOrganization = resolvedRole === "health_facility" || resolvedRole === "vendor";
   const resolvedName = profileData?.full_name || user?.fullName || "Pengguna";
 
   const displayValues = useMemo(
@@ -336,18 +353,22 @@ const Profile = () => {
           ? Number(profileData.total_transactions)
           : 0,
       role: ROLE_LABELS[resolvedRole || ""] || "-",
+      region: [profileData?.regency_name, profileData?.province_name].filter(Boolean).join(", ") || "Belum diatur",
     }),
     [profileLoading, profileData, resolvedRole]
   );
 
   const completedProfileFields = useMemo(() => {
-    return [
-      profileData?.phone,
-      profileData?.address,
-      profileData?.date_of_birth,
-      profileData?.gender,
-    ].filter(Boolean).length;
-  }, [profileData]);
+    const fields = isOrganization
+      ? [
+          profileData?.phone,
+          resolvedRole === "vendor" ? profileData?.store_address : profileData?.address,
+          profileData?.province_code,
+          profileData?.regency_code,
+        ]
+      : [profileData?.phone, profileData?.address, profileData?.date_of_birth, profileData?.gender];
+    return fields.filter(Boolean).length;
+  }, [profileData, isOrganization, resolvedRole]);
 
   const handleSignOut = () => {
     signOut();
@@ -356,6 +377,10 @@ const Profile = () => {
   };
 
   const validateEditForm = (): boolean => {
+    if (resolvedRole === "health_facility" && (!editFormData.provinceCode || !editFormData.regencyCode)) {
+      toast.error("Pilih provinsi dan kota/kabupaten");
+      return false;
+    }
     if (!editFormData.fullName.trim()) {
       toast.error("Nama tidak boleh kosong");
       return false;
@@ -379,8 +404,14 @@ const Profile = () => {
       full_name: editFormData.fullName.trim(),
       phone: editFormData.phone.trim() || null,
       address: editFormData.address.trim() || null,
-      date_of_birth: editFormData.dateOfBirth || null,
-      gender: (editFormData.gender || null) as "male" | "female" | null,
+      ...(!isOrganization ? {
+        date_of_birth: editFormData.dateOfBirth || null,
+        gender: (editFormData.gender || null) as "male" | "female" | null,
+      } : {}),
+      ...(resolvedRole === "health_facility" ? {
+        province_code: editFormData.provinceCode,
+        regency_code: editFormData.regencyCode,
+      } : {}),
     });
 
     if (success) {
@@ -450,8 +481,6 @@ const Profile = () => {
       full_name: profileData?.full_name || user?.fullName || resolvedName,
       phone: profileData?.phone || null,
       address: profileData?.address || null,
-      date_of_birth: profileData?.date_of_birth || null,
-      gender: profileData?.gender || null,
       bank_name: bankFormData.bankName.trim(),
       bank_account_number: bankFormData.bankAccountNumber.trim(),
       bank_account_holder: bankFormData.bankAccountHolder.trim(),
@@ -485,6 +514,10 @@ const Profile = () => {
   };
 
   const validateStoreForm = (): boolean => {
+    if (!storeFormData.provinceCode || !storeFormData.regencyCode) {
+      toast.error("Pilih provinsi dan kota/kabupaten");
+      return false;
+    }
     if (!storeFormData.storeName.trim()) {
       toast.error("Nama toko tidak boleh kosong");
       return false;
@@ -505,12 +538,12 @@ const Profile = () => {
       full_name: profileData?.full_name || user?.fullName || resolvedName,
       phone: profileData?.phone || null,
       address: profileData?.address || null,
-      date_of_birth: profileData?.date_of_birth || null,
-      gender: profileData?.gender || null,
       store_name: storeFormData.storeName.trim(),
       store_address: storeFormData.storeAddress.trim(),
       store_image_url: storeFormData.storeImageUrl.trim() || null,
       operating_hours: storeFormData.operatingHours.trim() || null,
+      province_code: storeFormData.provinceCode,
+      regency_code: storeFormData.regencyCode,
     });
 
     if (success) {
@@ -518,7 +551,7 @@ const Profile = () => {
     }
   };
 
-  if (profileLoading) {
+  if (profileLoading || profileError) {
     return (
       <DashboardLayout
         title="Profil Saya"
@@ -526,13 +559,17 @@ const Profile = () => {
       >
         <div className="flex min-h-[420px] items-center justify-center">
           <div className="rounded-[2rem] border border-slate-200 bg-white px-10 py-8 text-center shadow-sm">
-            <Loader2 className="mx-auto mb-4 h-11 w-11 animate-spin text-emerald-600" />
+            {profileLoading && <Loader2 className="mx-auto mb-4 h-11 w-11 animate-spin text-emerald-600" />}
             <p className="text-sm font-semibold text-slate-700">
-              Memuat profil...
+              {profileError || "Memuat profil..."}
             </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Mohon tunggu sebentar.
-            </p>
+            {profileError ? (
+              <Button variant="outline" onClick={() => void refetch()} className="mt-4 rounded-xl">
+                Coba lagi
+              </Button>
+            ) : (
+              <p className="mt-1 text-xs text-slate-400">Mohon tunggu sebentar.</p>
+            )}
           </div>
         </div>
       </DashboardLayout>
@@ -715,18 +752,24 @@ const Profile = () => {
                   icon={<Phone size={20} />}
                 />
 
-                <InfoCard
-                  label="Tanggal Lahir"
-                  value={displayValues.dateOfBirth}
-                  icon={<Calendar size={20} />}
-                />
-
-                <InfoCard
-                  label="Jenis Kelamin"
-                  value={displayValues.gender}
-                  icon={<User size={20} />}
-                  className="sm:col-span-2 xl:col-span-1"
-                />
+                {!isOrganization && (
+                  <>
+                    <InfoCard
+                      label="Tanggal Lahir"
+                      value={displayValues.dateOfBirth}
+                      icon={<Calendar size={20} />}
+                    />
+                    <InfoCard
+                      label="Jenis Kelamin"
+                      value={displayValues.gender}
+                      icon={<User size={20} />}
+                      className="sm:col-span-2 xl:col-span-1"
+                    />
+                  </>
+                )}
+                {resolvedRole === "health_facility" && (
+                  <InfoCard label="Wilayah" value={displayValues.region} icon={<MapPin size={20} />} />
+                )}
               </div>
             </SectionCard>
 
@@ -876,6 +919,7 @@ const Profile = () => {
                         icon={<MapPin size={20} />}
                         accent="purple"
                       />
+                      <InfoCard label="Wilayah Toko" value={displayValues.region} icon={<MapPin size={20} />} accent="purple" />
 
                       <Button
                         onClick={() => setShowStoreModal(true)}
@@ -1074,48 +1118,64 @@ const Profile = () => {
                   placeholder="Masukkan alamat"
                 />
               </div>
-
-              <div>
-                <Label
-                  htmlFor="dob"
-                  className="text-xs font-bold uppercase tracking-wide"
-                >
-                  Tanggal Lahir
-                </Label>
-                <Input
-                  id="dob"
-                  type="date"
-                  value={editFormData.dateOfBirth}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      dateOfBirth: e.target.value,
-                    })
+              {resolvedRole === "health_facility" && (
+                <RegionFields
+                  idPrefix="facility-profile-region"
+                  provinceCode={editFormData.provinceCode}
+                  regencyCode={editFormData.regencyCode}
+                  onChange={(provinceCode, regencyCode) =>
+                    setEditFormData((current) => ({ ...current, provinceCode, regencyCode }))
                   }
-                  className="mt-1 rounded-xl"
+                  required
+                  disabled={isSubmitting}
                 />
-              </div>
+              )}
 
-              <div>
-                <Label
-                  htmlFor="gender"
-                  className="text-xs font-bold uppercase tracking-wide"
-                >
-                  Jenis Kelamin
-                </Label>
-                <select
-                  id="gender"
-                  value={editFormData.gender}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, gender: e.target.value })
-                  }
-                  className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
-                >
-                  <option value="">Pilih Jenis Kelamin</option>
-                  <option value="male">Laki-laki</option>
-                  <option value="female">Perempuan</option>
-                </select>
-              </div>
+              {!isOrganization && (
+                <>
+                  <div>
+                    <Label
+                      htmlFor="dob"
+                      className="text-xs font-bold uppercase tracking-wide"
+                    >
+                      Tanggal Lahir
+                    </Label>
+                    <Input
+                      id="dob"
+                      type="date"
+                      value={editFormData.dateOfBirth}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          dateOfBirth: e.target.value,
+                        })
+                      }
+                      className="mt-1 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <Label
+                      htmlFor="gender"
+                      className="text-xs font-bold uppercase tracking-wide"
+                    >
+                      Jenis Kelamin
+                    </Label>
+                    <select
+                      id="gender"
+                      value={editFormData.gender}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, gender: e.target.value })
+                      }
+                      className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                    >
+                      <option value="">Pilih Jenis Kelamin</option>
+                      <option value="male">Laki-laki</option>
+                      <option value="female">Perempuan</option>
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
 
             <DialogFooter className="gap-2">
@@ -1454,6 +1514,17 @@ const Profile = () => {
                   placeholder="Detail alamat toko Anda"
                 />
               </div>
+              <RegionFields
+                idPrefix="store-profile-region"
+                provinceCode={storeFormData.provinceCode}
+                regencyCode={storeFormData.regencyCode}
+                onChange={(provinceCode, regencyCode) =>
+                  setStoreFormData((current) => ({ ...current, provinceCode, regencyCode }))
+                }
+                required
+                disabled={isSubmitting}
+                accent="purple"
+              />
             </div>
 
             <DialogFooter className="gap-2">

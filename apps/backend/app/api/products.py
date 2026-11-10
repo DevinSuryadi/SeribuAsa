@@ -55,6 +55,7 @@ def list_products(
     max_price: Optional[str] = None,
     in_stock_only: bool = False,
     service_regency_code: Optional[str] = None,
+    vendor_regency_code: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: Optional[AuthenticatedUser] = Depends(OptionalAuth),
 ):
@@ -69,9 +70,12 @@ def list_products(
         max_price=Decimal(max_price) if max_price else None,
         in_stock_only=in_stock_only,
         service_regency_code=service_regency_code,
+        vendor_regency_code=vendor_regency_code,
     )
     if service_regency_code and service_regency_code not in REGENCIES:
         raise HTTPException(status_code=422, detail="Kota/kabupaten tidak valid")
+    if vendor_regency_code and vendor_regency_code not in REGENCIES:
+        raise HTTPException(status_code=422, detail="Wilayah vendor tidak valid")
 
     include_unapproved = bool(
         current_user

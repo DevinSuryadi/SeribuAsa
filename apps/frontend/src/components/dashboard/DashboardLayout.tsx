@@ -20,7 +20,6 @@ import {
   Activity,
   CreditCard,
   ShoppingCart,
-  QrCode,
 } from "lucide-react";
 import roleDonatur from "@/assets/role-donatur.svg";
 import rolePenerima from "@/assets/role-penerima.svg";
@@ -64,7 +63,6 @@ const navByRole: Record<string, NavItem[]> = {
     { label: "Kelola Produk", href: "/dashboard/kelola-produk", icon: Package },
     { label: "Pesanan Faskes", href: "/dashboard/vendor/facility-orders", icon: ShoppingCart },
     { label: "Pencairan Faskes", href: "/dashboard/vendor/facility-payouts", icon: CreditCard },
-    { label: "Scan QR Pickup", href: "/dashboard/scan-qr", icon: QrCode },
     { label: "Pencairan", href: "/dashboard/settlement", icon: CreditCard },
     { label: "Profil", href: "/dashboard/profile", icon: Settings },
   ],

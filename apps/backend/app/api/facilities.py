@@ -19,14 +19,16 @@ from app.middleware.auth import AuthenticatedUser, RequireRole
 from app.models.facility import HealthFacility
 from app.models.user import UserProfile
 from app.services.supabase_auth import supabase_auth
+from app.services.regions import area_names
 from app.utils.cache import get_app_cache
+from app.schemas.region import ProfileRegion
 
 router = APIRouter(prefix="/facilities", tags=["facilities"])
 admin_router = APIRouter(prefix="/admin/facilities", tags=["admin facilities"])
 security = HTTPBearer(auto_error=True)
 
 
-class FacilityRegistration(BaseModel):
+class FacilityRegistration(ProfileRegion):
     full_name: str = Field(min_length=1, max_length=255)
     name: str = Field(min_length=1, max_length=255)
     facility_type: str | None = Field(default=None, max_length=100)
@@ -42,7 +44,7 @@ class FacilityRegistration(BaseModel):
         return value
 
 
-class FacilitySignupRequest(BaseModel):
+class FacilitySignupRequest(ProfileRegion):
     email: str = Field(max_length=320)
     password: SecretStr = Field(min_length=8)
     name: str = Field(min_length=1, max_length=255)
@@ -83,10 +85,51 @@ class FacilityAccount(BaseModel):
     phone: str | None
     approval_status: str
     review_reason: str | None = None
+    province_code: str | None = None
+    regency_code: str | None = None
+
+
+class FacilityProfileResponse(FacilityAccount):
+    full_name: str
+    province_name: str | None = None
+    regency_name: str | None = None
+
+
+class FacilityProfileUpdate(ProfileRegion):
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str | None = Field(default=None, min_length=1, max_length=255)
+    address: str | None = None
+    phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("full_name")
+    @classmethod
+    def non_empty_name(cls, value: str | None) -> str:
+        if value is None or not value.strip():
+            raise ValueError("Nama tidak boleh kosong")
+        return value.strip()
 
 
 class FacilityRejectionInput(BaseModel):
     reason: str = Field(min_length=5, max_length=1000)
+
+
+def _owned_facility(db: Session, user_id: UUID) -> HealthFacility:
+    facility = db.query(HealthFacility).filter_by(account_user_id=user_id, is_active=True).first()
+    if not facility:
+        raise HTTPException(status_code=404, detail="Fasilitas kesehatan tidak ditemukan")
+    return facility
+
+
+def _facility_profile_response(db: Session, facility: HealthFacility) -> FacilityProfileResponse:
+    account = db.query(UserProfile).filter_by(user_id=facility.account_user_id).one()
+    province_name, regency_name = area_names(facility.province_code, facility.regency_code)
+    return FacilityProfileResponse(
+        **FacilityAccount.model_validate(facility).model_dump(),
+        full_name=account.full_name,
+        province_name=province_name,
+        regency_name=regency_name,
+    )
 
 
 def admin_facility_payload(facility: HealthFacility) -> dict:
@@ -190,6 +233,8 @@ async def signup_facility(
                 "facility_type": data.facility_type,
                 "phone": data.phone,
                 "address": data.address,
+                "province_code": data.province_code,
+                "regency_code": data.regency_code,
             },
         })
 
@@ -212,6 +257,8 @@ async def signup_facility(
             facility_type=data.facility_type,
             address=data.address,
             phone=data.phone,
+            province_code=data.province_code,
+            regency_code=data.regency_code,
         ),
         token_data={"id": auth_response.user.id, "user_metadata": {"role": "health_facility"}},
         db=db,
@@ -234,6 +281,11 @@ async def register_facility(
     if existing_facility:
         if not existing_facility.is_active:
             raise HTTPException(status_code=403, detail="Akun fasilitas tidak aktif")
+        if data.province_code and not existing_facility.province_code:
+            existing_facility.province_code = data.province_code
+            existing_facility.regency_code = data.regency_code
+            db.commit()
+            db.refresh(existing_facility)
         return existing_facility
     if db.query(UserProfile).filter_by(user_id=user_id).first():
         raise HTTPException(status_code=409, detail="Akun ini sudah memiliki peran lain")
@@ -253,6 +305,8 @@ async def register_facility(
             address=data.address,
             phone=data.phone,
             approval_status="pending",
+            province_code=data.province_code,
+            regency_code=data.regency_code,
         )
         db.add(facility)
         db.commit()
@@ -269,13 +323,38 @@ async def register_facility(
         raise HTTPException(status_code=409, detail="Akun fasilitas sudah terdaftar") from exc
 
 
-@router.get("/me", response_model=FacilityAccount)
-async def get_my_facility(
+@router.get("/me", response_model=FacilityProfileResponse)
+def get_my_facility(
     token_data: dict = Depends(verified_facility_identity),
     db: Session = Depends(get_db),
-):
+) -> FacilityProfileResponse:
     user_id = UUID(str(token_data["id"]))
-    facility = db.query(HealthFacility).filter_by(account_user_id=user_id, is_active=True).first()
-    if not facility:
-        raise HTTPException(status_code=404, detail="Fasilitas kesehatan tidak ditemukan")
-    return facility
+    return _facility_profile_response(db, _owned_facility(db, user_id))
+
+
+@router.patch("/me", response_model=FacilityProfileResponse)
+def update_my_facility(
+    data: FacilityProfileUpdate,
+    token_data: dict = Depends(verified_facility_identity),
+    db: Session = Depends(get_db),
+) -> FacilityProfileResponse:
+    user_id = UUID(str(token_data["id"]))
+    facility = _owned_facility(db, user_id)
+    account = db.query(UserProfile).filter_by(user_id=user_id).one()
+    payload = data.model_dump(exclude_unset=True)
+
+    if "full_name" in payload:
+        account.full_name = data.full_name
+    for field in ("phone", "address"):
+        if field in payload:
+            value = payload[field]
+            value = (value.strip() or None) if isinstance(value, str) else None
+            setattr(facility, field, value)
+            setattr(account, field, value)
+    if {"province_code", "regency_code"}.intersection(payload):
+        facility.province_code = data.province_code
+        facility.regency_code = data.regency_code
+
+    db.commit()
+    db.refresh(facility)
+    return _facility_profile_response(db, facility)
