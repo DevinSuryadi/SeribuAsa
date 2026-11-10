@@ -110,3 +110,4 @@ class ProductQueryParams(BaseModel):
     max_price: Optional[Decimal] = None
     in_stock_only: bool = False
     service_regency_code: Optional[str] = None
+    vendor_regency_code: Optional[str] = None

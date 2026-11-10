@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { EmptyState } from "@/components/dashboard/EmptyState";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatIDR } from "@/lib/format";
 import { getCategories, getProducts, type Category } from "@/services/products";
-import { getMyFacility, listFamilies, updateMyFacilityContact, type Family } from "@/services/facility-families";
+import { getMyFacility, listFamilies, type Family } from "@/services/facility-families";
 import { createFacilityOrder } from "@/services/facility-orders";
 import { listEligibleVendors, type EligibleVendor } from "@/services/facility-orders";
 import { getProvinces, getRegencies, type Province, type Regency } from "@/services/regions";
@@ -47,9 +47,21 @@ export default function FacilityCatalog() {
   const [error, setError] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [missingAddress, setMissingAddress] = useState(false);
-  const [addressDraft, setAddressDraft] = useState("");
-  const [savingAddress, setSavingAddress] = useState(false);
+  const regionChanged = useRef(false);
+  const [profileRegionError, setProfileRegionError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getMyFacility(true).then((facility) => {
+      if (!active) return;
+      setProfileRegionError("");
+      if (!regionChanged.current && facility.province_code && facility.regency_code) {
+        setProvinceCode(facility.province_code);
+        setRegencyCode(facility.regency_code);
+      }
+    }).catch(() => { if (active) setProfileRegionError("Wilayah profil gagal dimuat. Pilih wilayah secara manual."); });
+    return () => { active = false; };
+  }, [regionRetryKey]);
 
   useEffect(() => { setSelectedFamilyId(familyId || ""); }, [familyId]);
 
@@ -101,20 +113,33 @@ export default function FacilityCatalog() {
   }, [provinceCode, regencyCode, regionRetryKey]);
 
   useEffect(() => {
-    if (!selectedVendorId || !regencyCode) { setProducts([]); setTotalPages(1); setLoading(false); return; }
+    if (!provinceCode || !regencyCode) { setProducts([]); setTotalPages(1); setLoading(false); return; }
     let active = true;
     setLoading(true);
     getProducts({ page, page_size: 12, search: search || undefined, category_id: categoryId || undefined,
-      vendor_id: selectedVendorId, service_regency_code: regencyCode, in_stock_only: true })
+      vendor_id: selectedVendorId || undefined, service_regency_code: regencyCode,
+      vendor_regency_code: regencyCode, in_stock_only: true })
       .then((result) => { if (active) { setProducts(result.items); setTotalPages(Math.max(1, result.total_pages)); setError(""); } })
       .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : "Gagal memuat katalog"); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [page, search, categoryId, selectedVendorId, regencyCode, productRetryKey]);
+  }, [page, search, categoryId, selectedVendorId, provinceCode, regencyCode, productRetryKey]);
 
   const vendorId = cart[0]?.product.vendor_id;
   const total = useMemo(() => cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0), [cart]);
   const familyName = families.find((family) => family.id === selectedFamilyId)?.head_name;
+
+  function changeRegion(province: string, regency: string) {
+    regionChanged.current = true;
+    setProfileRegionError("");
+    if (province !== provinceCode) setRegencies([]);
+    setProvinceCode(province);
+    setRegencyCode(regency);
+    setVendors([]);
+    setSelectedVendorId("");
+    setCart([]);
+    setPage(1);
+  }
 
   function changeQuantity(product: VendorProduct, delta: number) {
     if (delta > 0 && vendorId && vendorId !== product.vendor_id) {
@@ -133,14 +158,14 @@ export default function FacilityCatalog() {
     if (submitting || !cart.length) return;
     if (!selectedFamilyId) { toast.error("Pilih keluarga sebelum memesan."); return; }
     if (familyError || !families.some((family) => family.id === selectedFamilyId)) { toast.error("Keluarga belum dapat diverifikasi."); return; }
-    if (!provinceCode || !regencyCode || !selectedVendorId || cart.some(({ product }) => product.vendor_id !== selectedVendorId || product.service_regency_code !== regencyCode)) {
+    if (!provinceCode || !regencyCode || !vendorId || !vendors.some((vendor) => vendor.id === vendorId) || cart.some(({ product }) => product.vendor_id !== vendorId || product.service_regency_code !== regencyCode)) {
       toast.error("Pilih daerah dan vendor yang sesuai dengan seluruh produk."); return;
     }
     setSubmitting(true);
     try {
       await createFacilityOrder({
         family_id: selectedFamilyId,
-        vendor_id: selectedVendorId,
+        vendor_id: vendorId,
         service_province_code: provinceCode,
         service_regency_code: regencyCode,
         client_request_id: crypto.randomUUID(),
@@ -155,16 +180,16 @@ export default function FacilityCatalog() {
   }
 
   return (
-    <DashboardLayout title="Katalog Pangan" subtitle="Pilih provinsi, kota/kabupaten, dan vendor sebelum memesan pangan untuk keluarga terdaftar.">
+    <DashboardLayout title="Katalog Pangan" subtitle="Pilih pangan untuk keluarga terdaftar. Wilayah awal mengikuti profil fasilitas kesehatan.">
       <div className="space-y-6">
         {familyId && <Button asChild variant="ghost" className="pl-0 text-primary"><Link to={`/dashboard/health-facility/families/${familyId}`}><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke keluarga</Link></Button>}
-        <Card className="rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]"><CardHeader><CardTitle className="text-base font-bold text-slate-900">Pilih daerah dan vendor</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3">
-          <div><label htmlFor="catalog-province" className="mb-1 block text-sm font-medium">Provinsi</label><select id="catalog-province" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={provinceCode} onChange={(event) => { setProvinceCode(event.target.value); setRegencies([]); setRegencyCode(""); setVendors([]); setSelectedVendorId(""); setCart([]); setPage(1); }}><option value="">Pilih provinsi</option>{provinces.map((province) => <option key={province.code} value={province.code}>{province.name}</option>)}</select></div>
-          <div><label htmlFor="catalog-regency" className="mb-1 block text-sm font-medium">Kota/kabupaten</label><select id="catalog-regency" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={regencyCode} disabled={!provinceCode || !regencies.length} onChange={(event) => { setRegencyCode(event.target.value); setVendors([]); setSelectedVendorId(""); setCart([]); setPage(1); }}><option value="">Pilih kota/kabupaten</option>{regencies.map((regency) => <option key={regency.code} value={regency.code}>{regency.name}</option>)}</select></div>
-          <div><label htmlFor="catalog-vendor" className="mb-1 block text-sm font-medium">Vendor</label><select id="catalog-vendor" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={selectedVendorId} disabled={!regencyCode || vendorLoading || !vendors.length} onChange={(event) => { setSelectedVendorId(event.target.value); setCart([]); setPage(1); }}><option value="">{vendorLoading ? "Memuat vendor..." : "Pilih vendor"}</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.store_name} ({vendor.product_count} produk)</option>)}</select></div>
-          {regionError && (
+        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm"><CardHeader><CardTitle className="text-base font-bold text-slate-900">Pilih daerah dan vendor</CardTitle></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3">
+          <div><label htmlFor="catalog-province" className="mb-1 block text-sm font-medium">Provinsi</label><select id="catalog-province" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={provinceCode} onChange={(event) => changeRegion(event.target.value, "")}><option value="">Pilih provinsi</option>{provinces.map((province) => <option key={province.code} value={province.code}>{province.name}</option>)}</select></div>
+          <div><label htmlFor="catalog-regency" className="mb-1 block text-sm font-medium">Kota/kabupaten</label><select id="catalog-regency" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={regencyCode} disabled={!provinceCode || !regencies.length} onChange={(event) => changeRegion(provinceCode, event.target.value)}><option value="">Pilih kota/kabupaten</option>{regencies.map((regency) => <option key={regency.code} value={regency.code}>{regency.name}</option>)}</select></div>
+          <div><label htmlFor="catalog-vendor" className="mb-1 block text-sm font-medium">Vendor</label><select id="catalog-vendor" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" value={selectedVendorId} disabled={!regencyCode || vendorLoading || !vendors.length} onChange={(event) => { setSelectedVendorId(event.target.value); setCart([]); setPage(1); }}><option value="">{vendorLoading ? "Memuat vendor..." : "Semua vendor"}</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.store_name} ({vendor.product_count} produk)</option>)}</select></div>
+          {(profileRegionError || regionError) && (
             <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive sm:col-span-3">
-              <span>{regionError}</span>
+              <span>{profileRegionError || regionError}</span>
               <Button type="button" variant="outline" size="sm" onClick={() => setRegionRetryKey((key) => key + 1)}>Coba lagi</Button>
             </div>
           )}
@@ -181,7 +206,7 @@ export default function FacilityCatalog() {
         </CardContent></Card>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-4">
-            {!selectedVendorId ? <p className="rounded-[20px] bg-white p-6 text-sm text-slate-500 shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">Pilih provinsi, kota/kabupaten, lalu vendor untuk melihat produk.</p> : loading ? (
+            {!provinceCode || !regencyCode ? <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Pilih provinsi dan kota/kabupaten untuk melihat produk.</p> : loading ? (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Memuat katalog">
                 {[0, 1, 2].map((item) => <Skeleton key={item} className="h-72 rounded-2xl" />)}
               </div>
@@ -191,7 +216,7 @@ export default function FacilityCatalog() {
               <div className="rounded-[20px] bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
                 <EmptyState
                   title={search || categoryId ? "Produk tidak ditemukan" : "Belum ada produk"}
-                  description={search || categoryId ? "Coba ubah kata pencarian atau kategori." : "Vendor ini belum memiliki produk yang tersedia."}
+                  description={search || categoryId ? "Coba ubah kata pencarian atau kategori." : selectedVendorId ? "Vendor ini belum memiliki produk yang tersedia." : "Belum ada produk yang tersedia di wilayah ini."}
                 />
               </div>
             ) : (
@@ -220,7 +245,7 @@ export default function FacilityCatalog() {
               </div>
             )}
             <p className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-primary">Pesanan langsung diteruskan ke vendor. Dana donasi dicadangkan saat memesan; pastikan produk dan keluarga penerima sudah sesuai.</p>
-            <Button className="w-full rounded-full" disabled={!cart.length || !selectedFamilyId || !familyName || !selectedVendorId || Boolean(familyError) || missingAddress || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
+            <Button className="w-full rounded-xl" disabled={!cart.length || !selectedFamilyId || !familyName || !vendorId || vendorLoading || Boolean(familyError) || submitting} onClick={submitOrder}>{submitting ? "Menyimpan..." : `Pesan untuk ${familyName || "keluarga"}`}</Button>
           </CardContent></Card>
         </div>
         {cart.length > 0 && (

@@ -108,6 +108,8 @@ def test_facility_signup_creates_confirmed_auth_user_and_profile(monkeypatch):
             assert attributes["email_confirm"] is True
             assert attributes["user_metadata"]["role"] == "health_facility"
             assert attributes["user_metadata"]["facility_name"] == "Puskesmas Mawar"
+            assert attributes["user_metadata"]["province_code"] == "15"
+            assert attributes["user_metadata"]["regency_code"] == "15.71"
             assert attributes["password"] == "Password1!"
             return SimpleNamespace(user=SimpleNamespace(id=user_id))
 
@@ -126,6 +128,7 @@ def test_facility_signup_creates_confirmed_auth_user_and_profile(monkeypatch):
         client = TestClient(app)
         response = client.post("/api/v1/facilities/signup", json={
             "email": "faskes@example.com", "password": "Password1!", "name": "Puskesmas Mawar",
+            "province_code": "15", "regency_code": "15.71",
         })
         assert response.status_code == 201, response.text
         assert response.json()["user_id"] == str(user_id)
@@ -133,6 +136,8 @@ def test_facility_signup_creates_confirmed_auth_user_and_profile(monkeypatch):
             facility = db.query(HealthFacility).filter_by(account_user_id=user_id).one()
             assert facility.name == "Puskesmas Mawar"
             assert facility.approval_status == "pending"
+            assert facility.province_code == "15"
+            assert facility.regency_code == "15.71"
             assert db.query(UserProfile).filter_by(user_id=user_id).count() == 1
 
         def duplicate_client(_url, _key):

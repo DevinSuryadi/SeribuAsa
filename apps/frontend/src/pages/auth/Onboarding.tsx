@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Heart, Store, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/services/api";
+import RegionFields from "@/components/forms/RegionFields";
 
 type Role = "donor" | "vendor";
 
@@ -17,6 +18,8 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [provinceCode, setProvinceCode] = useState("");
+  const [regencyCode, setRegencyCode] = useState("");
 
   useEffect(() => {
     if (!authLoading && userRole !== "unassigned") {
@@ -26,18 +29,25 @@ export default function Onboarding() {
 
   const handleSubmit = async () => {
     if (!selectedRole) return;
+    if (selectedRole === "vendor" && (!provinceCode || !regencyCode)) {
+      toast.error("Pilih provinsi dan kota/kabupaten");
+      return;
+    }
     setSubmitting(true);
 
     try {
       await apiFetch("/auth/complete-onboarding", {
         method: "POST",
-        body: JSON.stringify({ role: selectedRole }),
+        body: JSON.stringify({
+          role: selectedRole,
+          ...(selectedRole === "vendor" ? { province_code: provinceCode, regency_code: regencyCode } : {}),
+        }),
       });
       toast.success("Profil berhasil dibuat!");
       window.location.href = "/dashboard";
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("Gagal menyimpan profil", {
-        description: err.message || "Silakan coba lagi",
+        description: err instanceof Error ? err.message : "Silakan coba lagi",
       });
       setSubmitting(false);
     }
@@ -92,6 +102,8 @@ export default function Onboarding() {
             );
           })}
         </div>
+
+        {selectedRole === "vendor" && <div className="mb-6"><RegionFields idPrefix="onboarding-region" provinceCode={provinceCode} regencyCode={regencyCode} onChange={(province, regency) => { setProvinceCode(province); setRegencyCode(regency); }} required disabled={submitting} registration /></div>}
 
         <button
           onClick={handleSubmit}

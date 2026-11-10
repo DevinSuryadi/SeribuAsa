@@ -15,9 +15,12 @@ import { toast } from "sonner";
 
 function orderStatus(order: FacilityOrder) {
   if (order.status === "cancelled") return "Dibatalkan";
+  if (order.status === "rejected") return "Ditolak Vendor";
   if (order.distribution) return "Sudah disalurkan";
   if (order.status === "completed") return "Menunggu bukti";
-  if (order.status === "processing") return "Dikirim vendor";
+  if (order.status === "received") return "Diterima Faskes";
+  if (order.status === "shipped") return "Dikirim vendor";
+  if (order.status === "processing") return "Diproses vendor";
   return "Menunggu vendor";
 }
 
@@ -52,11 +55,12 @@ export default function FacilityOrders() {
         <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle className="text-base">Untuk {order.family_name || "Keluarga"}</CardTitle><p className="mt-1 text-xs text-muted-foreground">Pesanan {order.id.slice(0, 8)} · {formatDate(order.created_at)} · {order.vendor_name || "Vendor"}</p></div><Badge variant="outline">{orderStatus(order)}</Badge></CardHeader>
         <CardContent className="space-y-3"><div className="space-y-1">{order.items.map((item) => <div key={item.product_id} className="flex justify-between gap-3 text-sm"><span>{item.quantity}× {item.product_name}</span><span>{formatIDR(item.subtotal)}</span></div>)}</div>
           <div className="flex justify-between border-t pt-3 font-semibold"><span>Total</span><span>{formatIDR(order.total_amount)}</span></div>
-          {order.status === "processing" && <p className="rounded-xl bg-blue-50 p-3 text-xs text-blue-800">Pesanan sedang dikirim vendor. Setelah bantuan benar-benar diserahkan kepada keluarga, unggah bukti penerimaannya pada halaman keluarga.</p>}
+          {order.status === "shipped" && <p className="rounded-xl bg-blue-50 p-3 text-xs text-blue-800">Pesanan sedang dikirim vendor. Konfirmasikan barang tiba dari halaman pesanan sebelum mencatat penyaluran kepada keluarga.</p>}
+          {order.vendor_rejection_reason && <p className="rounded-xl bg-red-50 p-3 text-xs text-red-800">Ditolak Vendor: {order.vendor_rejection_reason}</p>}
           {order.status === "completed" && !order.distribution && <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Pesanan lama ini belum memiliki bukti penerimaan keluarga. Lengkapi bukti melalui halaman keluarga.</p>}
           {order.distribution && <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800"><p className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4" /> Bantuan sudah disalurkan</p><p className="mt-1 text-xs">Diterima oleh {order.distribution.recipient_name || "anggota keluarga"} pada {formatDate(order.distribution.distributed_at)}.</p></div>}
           {order.status === "pending" && <Button variant="outline" disabled={busy === order.id} onClick={() => { void cancel(order.id); }}>Batalkan pesanan</Button>}
-          {(order.status === "processing" || (order.status === "completed" && !order.distribution)) && <Button asChild><Link to={`/dashboard/health-facility/families/${order.family_id}/redemptions`}>Buka bantuan keluarga <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>}
+          {(order.status === "received" || (order.status === "completed" && !order.distribution)) && <Button asChild><Link to={`/dashboard/health-facility/families/${order.family_id}/redemptions`}>Buka bantuan keluarga <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>}
           {order.distribution && <Button asChild variant="outline"><Link to={`/dashboard/health-facility/families/${order.family_id}/redemptions`}>Lihat bukti penerimaan</Link></Button>}
         </CardContent>
       </Card>)}

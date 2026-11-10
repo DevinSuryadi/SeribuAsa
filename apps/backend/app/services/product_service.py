@@ -60,6 +60,8 @@ class ProductService:
             query = query.filter(Product.vendor_id == params.vendor_id)
         if params.service_regency_code:
             query = query.filter(Product.service_regency_code == params.service_regency_code)
+        if params.vendor_regency_code:
+            query = query.filter(Product.vendor_profile.has(VendorProfile.regency_code == params.vendor_regency_code))
         if params.search:
             query = query.filter(Product.name.ilike(f"%{params.search}%"))
         if params.min_price is not None:
@@ -100,6 +102,8 @@ class ProductService:
             query = query.filter(Product.vendor_id == params.vendor_id)
         if params.service_regency_code:
             query = query.filter(Product.service_regency_code == params.service_regency_code)
+        if params.vendor_regency_code:
+            query = query.filter(Product.vendor_profile.has(VendorProfile.regency_code == params.vendor_regency_code))
         if params.search:
             query = query.filter(Product.name.ilike(f"%{params.search}%"))
         if params.min_price is not None:
@@ -198,7 +202,7 @@ class ProductService:
             Order.items
         ).filter(
             Order.items.any(product_id=product_id),
-            Order.status.in_(["pending", "processing"])
+            Order.status.in_(["pending", "processing", "shipped"])
         ).first()
 
         if has_active_orders:

@@ -81,23 +81,28 @@ const orderTabs: { key: OrderTab; label: string }[] = [
   { key: "cancelled", label: "Dibatalkan" },
 ];
 
-const periodOptions = [
-  { value: "all", label: "Semua waktu" },
-  { value: "7", label: "7 hari terakhir" },
-  { value: "30", label: "30 hari terakhir" },
-  { value: "90", label: "90 hari terakhir" },
-];
-
-function statusKey(order: FacilityOrder): OrderStatus {
-  if (order.status === "cancelled" || order.status === "rejected") return "cancelled";
+function statusKey(order: FacilityOrder): Exclude<OrderTab, "all"> {
+  if (order.status === "cancelled") return "cancelled";
+  if (order.status === "rejected") return "rejected";
+  if (order.status === "pending_approval") return "funding";
   if (order.distribution || order.status === "completed") return "finished";
   if (order.status === "received") return "received";
-  if (order.status === "processing" || order.status === "shipped") return "shipped";
+  if (order.status === "shipped") return "shipped";
+  if (order.status === "processing") return "processing";
   return "waiting";
 }
 
-function hasOpenIssue(order: FacilityOrder) {
-  return order.receipt_status === "discrepancy" && order.status === "processing";
+function statusLabel(order: FacilityOrder) {
+  if (hasOpenIssue(order)) return "Barang bermasalah";
+  const key = statusKey(order);
+  if (key === "cancelled") return "Dibatalkan";
+  if (key === "rejected") return order.vendor_rejected_at ? "Ditolak Vendor" : "Ditolak";
+  if (key === "funding") return "Pesanan lama belum didanai";
+  if (key === "finished") return order.distribution ? "Selesai" : "Menunggu bukti";
+  if (key === "received") return "Diterima Faskes";
+  if (key === "shipped") return "Dikirim";
+  if (key === "processing") return "Diproses vendor";
+  return "Menunggu vendor";
 }
 
 function displayStatus(order: FacilityOrder) {
@@ -105,15 +110,14 @@ function displayStatus(order: FacilityOrder) {
   if (order.status === "rejected") return { label: "Ditolak Admin", className: "text-slate-500" };
   if (order.status === "pending_approval") return { label: "Pesanan lama belum didanai", className: "text-amber-700" };
   const key = statusKey(order);
-  if (key === "cancelled") return { label: "Dibatalkan", className: "text-slate-500" };
-  if (key === "finished") {
-    return order.distribution
-      ? { label: "Sudah disalurkan", className: "text-emerald-700" }
-      : { label: "Menunggu bukti", className: "text-amber-700" };
-  }
-  if (key === "received") return { label: "Diterima Faskes", className: "text-teal-700" };
-  if (key === "shipped") return { label: "Dalam pengiriman", className: "text-blue-700" };
-  return { label: "Menunggu vendor", className: "text-amber-700" };
+  if (key === "cancelled") return "border-red-200 bg-red-50 text-red-700";
+  if (key === "rejected") return "border-red-200 bg-red-50 text-red-700";
+  if (key === "funding") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (key === "finished") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (key === "received") return "border-teal-200 bg-teal-50 text-teal-700";
+  if (key === "shipped") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (key === "processing") return "border-blue-200 bg-blue-50 text-blue-700";
+  return "border-amber-200 bg-amber-50 text-amber-800";
 }
 
 function needsAction(order: FacilityOrder) {
@@ -129,87 +133,14 @@ function itemSummary(order: FacilityOrder) {
   return order.items.map((item) => `${item.quantity}× ${item.product_name}`).join(", ");
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "Selesai";
-  return new Date(value).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-function orderNotes(order: FacilityOrder) {
-  const notes: { text: string; className: string }[] = [];
-  if (statusKey(order) === "cancelled" && order.allocation_reason) {
-    notes.push({ text: order.allocation_reason, className: "bg-slate-100 text-slate-700" });
-  }
-  if (hasOpenIssue(order)) {
-    notes.push({ text: `Ketidaksesuaian: ${order.discrepancy_notes}. Periksa kembali setelah Vendor melengkapi barang.`, className: "bg-red-50 text-red-800" });
-  }
-  return notes;
-}
-
-function trackingIndex(order: FacilityOrder) {
-  if (statusKey(order) === "cancelled" || order.status === "pending_approval") return -1;
-  if (order.distribution) return 4;
-  if (order.status === "completed" || order.status === "received") return 3;
-  if (order.receipt_status === "discrepancy") return 2;
-  if (order.status === "processing" || order.status === "shipped") return 1;
-  return 0;
-}
-
-function OrderTracking({ order }: { order: FacilityOrder }) {
-  const currentIndex = trackingIndex(order);
-  if (currentIndex < 0) {
-    return <p className="mt-1 text-slate-900">Pesanan ini tidak berlanjut ke pengiriman.</p>;
-  }
-
-  const hasIssue = hasOpenIssue(order);
-  const steps = [
-    { label: "Pesanan dibuat", time: order.created_at, note: "Menunggu vendor memproses pesanan" },
-    { label: "Dikirim ke faskes", time: order.dispatched_at, note: "Dalam perjalanan ke faskes" },
-    { label: "Diterima Faskes", time: order.arrived_at, note: "Barang bermasalah, menunggu vendor melengkapi" },
-    { label: "Diterima keluarga", time: order.distribution?.distributed_at, note: "Menunggu diserahkan kepada keluarga" },
-  ];
-  return (
-    <ol className="mt-2">
-      {steps.map((step, index) => {
-        const completed = index < currentIndex;
-        const current = index === currentIndex;
-        return (
-          <li key={step.label} aria-current={current ? "step" : undefined} className="relative flex gap-3 pb-3 last:pb-0">
-            {index < steps.length - 1 && (
-              <span className={`absolute left-[7px] top-4 h-full w-px ${completed ? "bg-emerald-400" : "bg-slate-200"}`} />
-            )}
-            <span
-              className={`relative z-10 mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
-                completed
-                  ? "border-emerald-500 bg-emerald-500 text-white"
-                  : current
-                    ? `bg-white ${hasIssue ? "border-red-500" : "border-amber-500"}`
-                    : "border-slate-300 bg-white"
-              }`}
-            >
-              {completed && <Check className="h-2.5 w-2.5" />}
-              {current && <span className={`h-1.5 w-1.5 rounded-full ${hasIssue ? "bg-red-500" : "bg-amber-500"}`} />}
-            </span>
-            <div className="min-w-0">
-              <p className={`font-medium ${completed || current ? "text-slate-900" : "text-slate-500"}`}>{step.label}</p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {completed ? formatDateTime(step.time) : current ? step.note : "Belum"}
-              </p>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function StatusLabel({ order }: { order: FacilityOrder }) {
-  const meta = displayStatus(order);
-  return (
-    <span className={`inline-flex items-center whitespace-nowrap text-[13px] font-medium ${meta.className}`}>
-      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
-      {meta.label}
-    </span>
-  );
+function progressIndex(order: FacilityOrder) {
+  if (order.status === "cancelled" || order.status === "rejected") return -1;
+  if (order.distribution || order.status === "completed") return 4;
+  if (order.status === "received") return 3;
+  if (order.status === "shipped") return 2;
+  if (order.status === "processing") return 1;
+  if (order.status === "pending") return 0;
+  return -1;
 }
 
 export default function FacilityOrdersTable() {
@@ -373,30 +304,116 @@ export default function FacilityOrdersTable() {
               setPage(1);
             }}
           >
-            {periodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </div>
-      </div>
+            <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+              <div>
+                <p className="text-xs text-slate-500">Pesanan</p>
+                <h2 id="order-detail-title" className="mt-0.5 text-xl font-bold text-slate-950">#{shortId(selected.id)}</h2>
+                <Badge variant="outline" className={`mt-2 ${statusClass(selected)}`}>
+                  <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
+                  {statusLabel(selected)}
+                </Badge>
+              </div>
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={() => setSelected(null)} aria-label="Tutup">
+                <X className="h-4 w-4" />
+              </Button>
+            </header>
 
-      {error && <ErrorState title="Gagal memuat pesanan" message={error} onRetry={() => void refresh()} />}
+            <div className="flex-1 overflow-y-auto">
+              <section className="grid grid-cols-3 gap-4 border-b border-slate-100 px-6 py-5">
+                <div>
+                  <p className="text-xs text-slate-500">Keluarga</p>
+                  <p className="mt-1 font-semibold text-slate-900">{selected.family_name || "Keluarga"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Vendor</p>
+                  <p className="mt-1 font-semibold text-slate-900">{selected.vendor_name || "Vendor"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Dibuat</p>
+                  <p className="mt-1 font-semibold text-slate-900">{formatDate(selected.created_at)}</p>
+                </div>
+              </section>
 
-      {!(error && rows.length === 0) && (
-        <section className="overflow-hidden rounded-[20px] bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
-          {loading && rows.length === 0 ? (
-            <div className="space-y-2 p-4">
-              {[0, 1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-12 rounded-xl" />)}
+              <section className="border-b border-slate-100 px-6 py-5">
+                <h3 className="mb-4 text-sm font-bold text-slate-900">Progres</h3>{currentProgress < 0 && <p className="text-sm text-slate-500">Pesanan ini tidak berlanjut ke pengiriman.</p>}
+                <ol className="space-y-0">
+                  {(currentProgress < 0 ? [] : steps).map((step, index) => {
+                    const completed = currentProgress > index;
+                    const current = currentProgress === index;
+                    return (
+                      <li key={step.label} className="relative flex gap-3 pb-5 last:pb-0">
+                        {index < steps.length - 1 && (
+                          <span className={`absolute left-[7px] top-4 h-full w-px ${completed ? "bg-emerald-400" : "bg-slate-200"}`} />
+                        )}
+                        <span className={`relative z-10 mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 bg-white ${
+                          completed ? "border-emerald-500 bg-emerald-500 text-white" : current ? (hasOpenIssue(selected) ? "border-red-500" : "border-amber-500") : "border-slate-300"
+                        }`}>
+                          {completed ? <Check className="h-2.5 w-2.5" /> : current ? <span className={`h-1.5 w-1.5 rounded-full ${hasOpenIssue(selected) ? "bg-red-500" : "bg-amber-500"}`} /> : <Circle className="h-0 w-0" />}
+                        </span>
+                        <div>
+                          <p className={`text-sm font-semibold ${current || completed ? "text-slate-900" : "text-slate-500"}`}>{step.label}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {completed ? "Selesai" : current ? step.note : "Belum"}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+
+              <section className="px-6 py-5">
+                {selected.allocation_status === "rejected" && <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">Alokasi ditolak: {selected.allocation_reason || "Tidak memenuhi syarat"}</p>}
+                {selected.vendor_rejection_reason && <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">Ditolak Vendor: {selected.vendor_rejection_reason}</p>}
+                {selected.receipt_status === "discrepancy" && <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">Ketidaksesuaian: {selected.discrepancy_notes}. Periksa kembali setelah Vendor melengkapi barang.</p>}
+                {selected.arrived_at && <p className="mb-3 text-sm text-slate-600">Barang tiba: {new Date(selected.arrived_at).toLocaleString("id-ID")}. {selected.payout_due_at && `Batas transfer Vendor: ${new Date(selected.payout_due_at).toLocaleString("id-ID")}.`}</p>}
+                <h3 className="mb-3 text-sm font-bold text-slate-900">Rincian</h3>
+                <div className="divide-y divide-slate-100">
+                  {selected.items.map((item) => (
+                    <div key={item.product_id} className="flex items-center justify-between gap-4 py-3 text-sm">
+                      <span className="text-slate-700">{item.quantity}× {item.product_name}</span>
+                      <span className="font-medium text-slate-900">{formatIDR(item.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-sm font-bold">
+                  <span>Total</span>
+                  <span>{formatIDR(selected.total_amount)}</span>
+                </div>
+              </section>
             </div>
-          ) : visibleOrders.length === 0 ? (
-            <div className="px-5 py-14 text-center">
-              <p className="text-[15px] font-semibold tracking-tight text-slate-900">
-                {rows.length === 0 ? "Belum ada pesanan" : "Pesanan tidak ditemukan"}
-              </p>
-              <p className="mt-1 text-[13px] text-slate-500">
-                {hasFilter ? "Coba ubah kata kunci, periode, atau status." : "Pesan pangan dari katalog untuk keluarga yang terdaftar."}
-              </p>
-              {!hasFilter && (
-                <Button size="sm" className="mt-4 rounded-full" onClick={() => navigate("/dashboard/health-facility/catalog")}>
-                  Pesan pangan
+
+            <footer className="flex items-center justify-between gap-3 border-t border-slate-200 bg-white px-6 py-4">
+              {(selected.status === "pending" || selected.status === "pending_approval") ? (
+                <Button
+                  variant="outline"
+                  className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  disabled={busy === selected.id}
+                  onClick={() => void cancel(selected)}
+                >
+                  Batalkan pesanan
+                </Button>
+              ) : <span />}
+
+              {selected.status === "shipped" && selected.receipt_status !== "accepted" && !showingPreview && <Button className="rounded-xl" onClick={() => { setReceiptOrder(selected); setSelected(null); }}>Konfirmasi barang tiba</Button>}
+              {!selected.distribution && (selected.status === "received" || selected.status === "completed") && (
+                showingPreview ? (
+                  <Button className="rounded-xl" onClick={() => toast.info("Aksi unggah tersedia untuk pesanan asli.")}>
+                    Unggah bukti penerimaan
+                  </Button>
+                ) : (
+                  <Button asChild className="rounded-xl">
+                    <Link to={`/dashboard/health-facility/families/${selected.family_id}/redemptions`}>
+                      Unggah bukti penerimaan
+                    </Link>
+                  </Button>
+                )
+              )}
+              {selected.distribution && (
+                <Button asChild variant="outline" className="rounded-xl">
+                  <Link to={`/dashboard/health-facility/families/${selected.family_id}/redemptions`}>
+                    Lihat bukti penerimaan
+                  </Link>
                 </Button>
               )}
             </div>
