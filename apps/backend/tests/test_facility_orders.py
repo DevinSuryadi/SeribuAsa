@@ -109,9 +109,9 @@ def test_facility_order_distribution_and_stock(monkeypatch):
             [
                 facility,
                 other_facility,
-                VendorProfile(user_id=vendor_user, store_name="Toko A", store_address="Jalan A", approval_status="approved", bank_name="Bank Uji", bank_account_number="1234567890", bank_account_holder="Toko A"),
+                VendorProfile(user_id=vendor_user, store_name="Toko A", store_address="Jalan A", province_code="15", regency_code="15.71", approval_status="approved", bank_name="Bank Uji", bank_account_number="1234567890", bank_account_holder="Toko A"),
                 VendorProfile(
-                    user_id=other_vendor_user, store_name="Toko B", store_address="Jalan B", approval_status="approved"
+                    user_id=other_vendor_user, store_name="Toko B", store_address="Jalan B", province_code="15", regency_code="15.72", approval_status="approved"
                 ),
             ]
         )
