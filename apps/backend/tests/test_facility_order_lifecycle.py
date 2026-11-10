@@ -32,6 +32,7 @@ from tests.aid_eligibility import AID_ELIGIBILITY_MODELS, make_family_eligible
 ORDERS = "/api/v1/facilities/orders"
 VENDOR_ORDERS = "/api/v1/vendor/facility-orders"
 ADMIN_ORDERS = "/api/v1/admin/facility-orders"
+ADMIN_PAYOUTS = "/api/v1/admin/facility-payouts"
 HEADERS = {"Authorization": "Bearer facility"}
 STOCK = 10
 
@@ -237,3 +238,113 @@ def test_order_requires_address_and_facility_can_add_it(env):
     assert updated.status_code == 200, updated.text
     assert updated.json()["address"] == "Jl. Melati 8"
     assert env.place_order()
+
+
+def receive(env, order_id):
+    return env.client.post(f"{ORDERS}/{order_id}/receipt", headers=HEADERS, json={"arrived_at": now_iso(), "items_complete": True})
+
+
+def distribute(env, order_id):
+    return env.client.post(f"{ORDERS}/{order_id}/distribute", headers=HEADERS, json={
+        "recipient_name": "Ibu A", "evidence_url": "https://example.org/bukti.jpg", "items_complete": True,
+    })
+
+
+def vendor_action(env, order_id, action):
+    return env.client.post(f"{VENDOR_ORDERS}/{order_id}/{action}")
+
+
+def order_status(env, order_id):
+    with env.sessions() as db:
+        return db.get(Order, UUID(order_id)).status
+
+
+def test_each_role_waits_for_the_previous_step(env):
+    order_id = env.place_order()
+
+    # Ordered: the facility cannot report arrival and the vendor cannot ship unconfirmed goods.
+    assert receive(env, order_id).status_code == 409
+    assert distribute(env, order_id).status_code == 409
+    assert vendor_action(env, order_id, "dispatch").status_code == 409
+    assert order_status(env, order_id) == "pending"
+
+    # Confirmed and being prepared: still no arrival, and the order can no longer be withdrawn.
+    assert vendor_action(env, order_id, "confirm").status_code == 200
+    assert receive(env, order_id).status_code == 409
+    assert env.client.post(f"{ORDERS}/{order_id}/cancel", headers=HEADERS).status_code == 409
+    assert env.client.post(f"{VENDOR_ORDERS}/{order_id}/reject", json={"reason": "Stok habis di gudang"}).status_code == 409
+    assert order_status(env, order_id) == "processing"
+
+    # Shipped: only the facility moves it forward, by confirming arrival.
+    assert vendor_action(env, order_id, "dispatch").status_code == 200
+    assert distribute(env, order_id).status_code == 409
+    assert env.client.post(f"{ORDERS}/{order_id}/cancel", headers=HEADERS).status_code == 409
+    assert receive(env, order_id).status_code == 200
+    assert order_status(env, order_id) == "received"
+
+    # Repeated vendor clicks cannot move a received order backwards.
+    assert vendor_action(env, order_id, "confirm").status_code == 200
+    assert vendor_action(env, order_id, "dispatch").status_code == 200
+    assert order_status(env, order_id) == "received"
+
+    assert distribute(env, order_id).status_code == 200
+    assert order_status(env, order_id) == "completed"
+
+
+def test_vendor_cannot_revive_an_order_the_facility_cancelled(env):
+    order_id = env.place_order()
+    assert env.client.post(f"{ORDERS}/{order_id}/cancel", headers=HEADERS).status_code == 200
+
+    assert vendor_action(env, order_id, "confirm").status_code == 409
+    assert vendor_action(env, order_id, "dispatch").status_code == 409
+    assert env.client.post(f"{VENDOR_ORDERS}/{order_id}/reject", json={"reason": "Stok habis di gudang"}).status_code == 409
+    assert receive(env, order_id).status_code == 409
+    assert order_status(env, order_id) == "cancelled"
+    assert env.stock() == STOCK
+    assert env.allocation_statuses(order_id) == {"released"}
+
+
+def test_expiry_leaves_orders_the_vendor_already_confirmed(env):
+    order_id = env.place_order()
+    with env.sessions() as db:
+        db.get(Order, UUID(order_id)).created_at = datetime.utcnow() - timedelta(days=4)
+        db.commit()
+    assert vendor_action(env, order_id, "confirm").status_code == 200
+
+    with env.sessions() as db:
+        assert expire_unprocessed_facility_orders(db) == 0
+
+    assert order_status(env, order_id) == "processing"
+    assert env.allocation_statuses(order_id) == {"reserved"}
+
+
+def test_vendor_is_paid_from_the_pool_only_after_the_facility_confirms_arrival(env):
+    with env.sessions() as db:
+        vendor = db.query(VendorProfile).one()
+        vendor.bank_name, vendor.bank_account_number, vendor.bank_account_holder = "Bank Uji", "1234567890", "Toko A"
+        db.commit()
+    order_id = env.dispatched_order()
+    env.identity.update(id=env.admin_user, role="admin")
+
+    # Dispatched goods are not yet a debt: donations stay reserved and there is nothing to pay.
+    assert env.client.get(ADMIN_PAYOUTS).json() == []
+    assert env.allocation_statuses(order_id) == {"reserved"}
+
+    assert receive(env, order_id).status_code == 200
+    payout = env.client.get(ADMIN_PAYOUTS).json()[0]
+    assert payout["status"] == "pending_approval"
+    assert float(payout["amount"]) == 20000
+    assert env.allocation_statuses(order_id) == {"reserved"}
+
+    assert env.client.post(f"{ADMIN_PAYOUTS}/{payout['id']}/approve").status_code == 200
+    transfer = {"transfer_reference": "TRF-0001", "transferred_at": now_iso()}
+    paid = env.client.post(f"{ADMIN_PAYOUTS}/{payout['id']}/record-transfer", json=transfer)
+    assert paid.status_code == 200, paid.text
+    assert paid.json()["status"] == "paid"
+    # The donation is marked spent exactly once, when the transfer is recorded.
+    assert env.allocation_statuses(order_id) == {"spent"}
+    assert env.client.post(f"{ADMIN_PAYOUTS}/{payout['id']}/record-transfer", json=transfer).status_code == 200
+    assert env.client.post(
+        f"{ADMIN_PAYOUTS}/{payout['id']}/record-transfer", json={**transfer, "transfer_reference": "TRF-0002"}
+    ).status_code == 409
+
