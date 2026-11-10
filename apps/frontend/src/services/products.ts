@@ -64,6 +64,7 @@ export async function getProducts(params?: {
   max_price?: string;
   in_stock_only?: boolean;
   service_regency_code?: string;
+  vendor_regency_code?: string;
 }): Promise<ProductsResponse> {
   const qs = new URLSearchParams();
   if (params) {
