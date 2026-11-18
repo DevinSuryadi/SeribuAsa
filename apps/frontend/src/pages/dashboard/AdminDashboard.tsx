@@ -1,3 +1,4 @@
+import ImpactDashboard from "@/components/dashboard/ImpactDashboard";
 import useSWR from "swr";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -61,6 +62,7 @@ function AdminDashboardContent() {
 
         {/* KPI Cards */}
         <KPICards stats={stats} />
+        <ImpactDashboard compact admin />
 
         {/* Priority Tasks & User Composition */}
         <section className="grid items-stretch gap-2.5 xl:grid-cols-[minmax(0,1.04fr)_minmax(320px,0.96fr)]">

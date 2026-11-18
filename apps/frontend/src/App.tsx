@@ -18,6 +18,7 @@ import BeneficiaryDashboard from "./pages/dashboard/BeneficiaryDashboard";
 import DonorRiwayat from "./pages/dashboard/DonorRiwayat";
 import Profile from "./pages/dashboard/Profile";
 import VendorDashboard from "./pages/dashboard/VendorDashboard";
+import AdminImpact from "./pages/dashboard/admin/AdminImpact";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import AdminUsersPage from "./pages/dashboard/admin/AdminUsersPage";
 import AdminProductsPage from "./pages/dashboard/admin/AdminProductsPage";
@@ -371,6 +372,7 @@ function App() {
         />
         <Route path="/dashboard/admin/facility-payouts" element={<ProtectedRoute allowedRoles={["admin"]}><FacilityPayouts /></ProtectedRoute>} />
         <Route path="/dashboard/admin/facility-allocations" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFacilityAllocations /></ProtectedRoute>} />
+        <Route path="/dashboard/admin/impact" element={<ProtectedRoute allowedRoles={["admin"]}><AdminImpact /></ProtectedRoute>} />
         <Route path="/dashboard/admin/facilities" element={<ProtectedRoute allowedRoles={["admin"]}><AdminFacilities /></ProtectedRoute>} />
         <Route
           path="/dashboard/admin/users"

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -17,13 +17,13 @@ import {
   Users,
   BarChart3,
   ArrowRight,
-  TrendingUp,
   Plus,
 } from "lucide-react";
 import { formatIDR, formatDate } from "@/lib/format";
 import { useStaggerChildren } from "@/hooks/useStaggerChildren";
 import { useDonations } from "@/hooks/useDonations";
-import { useImpactReport } from "@/hooks/useImpactReport";
+import { useImpactDashboard } from "@/services/impact-dashboard";
+import ImpactDashboard from "@/components/dashboard/ImpactDashboard";
 import { useSmartPolling } from "@/hooks/useSmartPolling";
 import { ErrorState } from "@/components/dashboard/ErrorState";
 import { PageSkeleton } from "@/components/dashboard/LoadingSkeleton";
@@ -44,19 +44,7 @@ export default function DonorDashboard() {
     refetchMetrics,
   } = useDonations();
 
-  const [{ startDate, endDate }] = useState(() => {
-    const end = new Date().toISOString().split("T")[0];
-    const start = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
-
-    return { startDate: start, endDate: end };
-  });
-
-  const { data: report, refetch: refetchReport } = useImpactReport(
-    startDate,
-    endDate
-  );
+  const { data: impact, mutate: refetchReport } = useImpactDashboard();
 
   useSmartPolling(
     async () => {
@@ -65,33 +53,10 @@ export default function DonorDashboard() {
     { interval: 30000, enabled: !!user, onVisible: true }
   );
 
-  const totalDonated = useMemo(() => {
-    if (report?.summary?.total_donated) return report.summary.total_donated;
-
-    return donations
-      .filter((d) => d.status === "success")
-      .reduce((sum, d) => sum + (d.amount || 0), 0);
-  }, [report, donations]);
-
-  const childrenHelped = useMemo(() => {
-    if (report?.summary?.total_children_helped) {
-      return report.summary.total_children_helped;
-    }
-
-    return donations.filter((d) => d.recipient_id).length;
-  }, [report, donations]);
-
-  const redemptionRate = useMemo(() => {
-    if (donations.length > 0) {
-      return Math.round(
-        (donations.filter((d) => d.status === "success").length /
-          donations.length) *
-          100
-      );
-    }
-
-    return 0;
-  }, [donations]);
+  const totalDonated = useMemo(() => donations.filter(d => d.status === "success").reduce((sum, d) => sum + (d.amount || 0), 0), [donations]);
+  const familiesHelped = impact?.summary.families;
+  const received = Number(impact?.summary.pooled_received || 0);
+  const distributionRate = impact ? (received > 0 ? Math.round(Number(impact.summary.distributed) / received * 100) : 0) : undefined;
 
   const isLoading = authLoading || donationsLoading;
 
@@ -128,7 +93,7 @@ export default function DonorDashboard() {
       label: "Total Donasi",
       value: formatIDR(totalDonated),
       subtitle: "Akumulasi donasi berhasil",
-      helper: "Bulan ini",
+      helper: "Seluruh periode",
       icon: Heart,
       iconWrapClass: "bg-rose-50 text-rose-500",
       valueClass: "text-rose-600",
@@ -147,9 +112,9 @@ export default function DonorDashboard() {
       borderClass: "border-blue-100",
     },
     {
-      label: "Penerima Didukung",
-      value: `${childrenHelped} Anak`,
-      subtitle: "Penerima manfaat dari donasi Anda",
+      label: "Keluarga Terjangkau",
+      value: familiesHelped === undefined ? "?" : `${familiesHelped} Keluarga`,
+      subtitle: "Keluarga dengan penyerahan tercatat",
       helper: "Penerima",
       icon: Users,
       iconWrapClass: "bg-emerald-50 text-emerald-500",
@@ -157,9 +122,9 @@ export default function DonorDashboard() {
       borderClass: "border-emerald-100",
     },
     {
-      label: "Voucher Digunakan",
-      value: `${redemptionRate}%`,
-      subtitle: "Persentase voucher yang telah dimanfaatkan",
+      label: "Dana Diserahkan",
+      value: distributionRate === undefined ? "?" : `${distributionRate}%`,
+      subtitle: "Porsi dana bersama diserahkan ke keluarga",
       helper: "Penggunaan",
       icon: BarChart3,
       iconWrapClass: "bg-violet-50 text-violet-500",
@@ -168,48 +133,11 @@ export default function DonorDashboard() {
     },
   ] as const;
 
-  const impactItems = [
-    {
-      label: "Voucher ditukarkan",
-      value: `${
-        (metrics as unknown as {
-          monthly_stats?: { vouchers_redeemed?: number };
-        })?.monthly_stats?.vouchers_redeemed ?? 0
-      } voucher`,
-      icon: CreditCard,
-    },
-    {
-      label: "Anak mendapat nutrisi",
-      value: `${
-        (metrics as unknown as {
-          monthly_stats?: { children_received_nutrition?: number };
-        })?.monthly_stats?.children_received_nutrition ?? 0
-      } anak`,
-      icon: Users,
-    },
-    {
-      label: "Peningkatan skor pangan",
-      value: `+${
-        (metrics as unknown as {
-          monthly_stats?: { nutrition_score_improvement?: number };
-        })?.monthly_stats?.nutrition_score_improvement ?? 0
-      }%`,
-      icon: TrendingUp,
-    },
-    {
-      label: "Kategori terbanyak",
-      value:
-        (metrics as unknown as {
-          monthly_stats?: { top_category?: string };
-        })?.monthly_stats?.top_category ?? "Pangan Umum",
-      icon: BarChart3,
-    },
-  ] as const;
 
   return (
     <DashboardLayout
       title="Dashboard Donatur"
-      subtitle="Ringkasan donasi dan dampak Anda bulan ini."
+      subtitle="Ringkasan donasi dan dampak Anda."
     >
       <div className="space-y-3">
         {/* Header Actions */}
@@ -252,8 +180,7 @@ export default function DonorDashboard() {
                 </p>
 
                 <p className="mt-2 max-w-lg text-sm font-medium leading-6 text-slate-700 sm:text-[15px]">
-                  Dukungan Anda membantu lebih banyak anak menerima nutrisi bulan
-                  ini.
+                  Pantau perjalanan donasi Anda hingga bantuan diserahkan ke keluarga.
                 </p>
               </div>
             </div>
@@ -405,54 +332,7 @@ export default function DonorDashboard() {
             </CardContent>
           </Card>
 
-          {/* Impact Summary */}
-          <Card className="rounded-[18px] border border-slate-200 bg-white shadow-sm">
-            <CardHeader className="pb-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50">
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
-                </div>
-
-                <div>
-                  <CardTitle className="text-base font-bold text-slate-900">
-                    Dampak Bulan Ini
-                  </CardTitle>
-                  <CardDescription className="mt-0.5 text-xs text-slate-500">
-                    Statistik dampak donasi Anda
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="pt-0">
-              <div className="space-y-2">
-                {impactItems.map((item) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <div
-                      key={item.label}
-                      className="flex min-h-[44px] items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-[0_1px_4px_rgba(15,23,42,0.03)]"
-                    >
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-50">
-                        <Icon className="h-3.5 w-3.5 text-emerald-600" />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-slate-600 sm:text-sm">
-                          {item.label}
-                        </p>
-                      </div>
-
-                      <div className="shrink-0 text-right text-xs font-bold text-slate-900 sm:text-sm">
-                        {item.value}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          <ImpactDashboard compact />
         </div>
       </div>
     </DashboardLayout>

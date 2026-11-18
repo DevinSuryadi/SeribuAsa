@@ -69,6 +69,7 @@ const navByRole: Record<string, NavItem[]> = {
   ],
   admin: [
     { label: "Dashboard Admin", href: "/dashboard/admin", icon: LayoutDashboard },
+    { label: "Dashboard Dampak", href: "/dashboard/admin/impact", icon: TrendingUp },
     { label: "Kelola Pengguna", href: "/dashboard/admin/users", icon: Users },
     { label: "Kelola Produk", href: "/dashboard/admin/products", icon: Package },
     { label: "Kelayakan Penerima", href: "/dashboard/admin/beneficiaries", icon: ClipboardList },
