@@ -5,9 +5,8 @@ import { ErrorState } from "@/components/dashboard/ErrorState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, RefreshCw } from "lucide-react";
 import { getFamily, type Family } from "@/services/facility-families";
 import {
   getFamilyAssessment,
@@ -17,7 +16,7 @@ import {
   type MemberReasons,
 } from "@/services/facility-assessments";
 import { formatDate, formatIDR } from "@/lib/format";
-import { facilityPriorityConfig, fiesStatusConfig, type FiesClassification } from "@/lib/status-config";
+import { fiesStatusConfig, type FiesClassification } from "@/lib/status-config";
 import FamilyForm from "./FamilyForm";
 
 function currentMonth() {
@@ -32,19 +31,67 @@ const recommendationSourceLabels: Record<string, string> = {
   aturan_fies: "Hasil FIES",
 };
 
-const foodLevelBadges = {
-  priority: { label: "Prioritas", className: facilityPriorityConfig.medium.className },
-  recommended: { label: "Dianjurkan", className: facilityPriorityConfig.low.className },
-};
+// The summary shows one child; the others are revealed with the expand toggle.
+const CHILDREN_COLLAPSED = 1;
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-function MemberReasonList({ items }: { items: MemberReasons[] }) {
+function MemberReasons({ items }: { items: MemberReasons[] }) {
+  if (items.length === 0) return null;
   return (
-    <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">
-      {items.map((item) => <li key={item.member}><strong className="font-medium">{item.member}</strong>{item.reasons.length > 0 && `: ${item.reasons.join("; ")}`}</li>)}
-    </ul>
+    <p className="mt-1 text-xs leading-5 text-slate-500">
+      {items.map((item, index) => (
+        <span key={item.member}>
+          {index > 0 && <span className="mx-1.5 text-slate-300">/</span>}
+          <span className="font-medium text-slate-700">{item.member}</span>
+          {item.reasons.length > 0 && <> · {item.reasons.join(", ").replace(/>=/g, "≥").replace(/<=/g, "≤")}</>}
+        </span>
+      ))}
+    </p>
   );
+}
+
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
+  return <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">{children}</p>;
+}
+
+const recoCardClass = "flex flex-col rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]";
+
+/** Header shared by both recommendation cards so their lists start at the same height. */
+function RecoHeader({ title, aside }: { title: string; aside?: React.ReactNode }) {
+  return (
+    <CardHeader className="space-y-0 px-5 pb-3 pt-4">
+      <SectionEyebrow>Saran AI</SectionEyebrow>
+      <div className="mt-1.5 flex items-baseline justify-between gap-4">
+        <CardTitle className="text-base font-bold leading-6 tracking-tight text-slate-900">{title}</CardTitle>
+        {aside}
+      </div>
+    </CardHeader>
+  );
+}
+
+/** One numbered row: index, title (+ inline tag), right-hand meta, then supporting lines. */
+function RecoRow({ index, title, tag, aside, children }: { index: number; title: string; tag?: React.ReactNode; aside?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <li className="grid flex-1 grid-cols-[1.5rem_minmax(0,1fr)] content-start py-2.5 first:pt-0 last:pb-0">
+      <span className="text-sm font-medium leading-5 tabular-nums text-slate-400">{String(index + 1).padStart(2, "0")}</span>
+      <div>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="text-sm font-semibold leading-5 text-slate-900">
+            {title}
+            {tag && <span className="ml-2 align-[1px] text-[10px] font-semibold uppercase tracking-wider">{tag}</span>}
+          </h3>
+          {aside && <div className="shrink-0">{aside}</div>}
+        </div>
+        {children}
+      </div>
+    </li>
+  );
+}
+
+/** Footer row with a fixed height so both cards' dividers line up. */
+function RecoFooter({ children }: { children: React.ReactNode }) {
+  return <div className="mt-auto flex min-h-[2.5rem] flex-wrap items-end justify-between gap-3 border-t border-slate-100 pt-2.5">{children}</div>;
 }
 
 export default function FamilyDetail() {
@@ -53,6 +100,7 @@ export default function FamilyDetail() {
   const [assessment, setAssessment] = useState<FamilyAssessment | null>(null);
   const [recommendation, setRecommendation] = useState<FamilyAiRecommendation | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [childrenExpanded, setChildrenExpanded] = useState(false);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   // Loading is derived: true until the request for the current key has settled.
@@ -95,7 +143,7 @@ export default function FamilyDetail() {
   const surveyStatus = !survey
     ? "Belum pernah diisi"
     : surveyCompletedThisMonth
-      ? "Sudah diisi bulan ini"
+      ? "Sudah diisi"
       : "Belum diisi bulan ini";
   const neededFoods = recommendation?.food_groups.filter((group) => group.level > 0) ?? [];
 
@@ -125,85 +173,179 @@ export default function FamilyDetail() {
         )}
         {!loading && family && assessment && recommendation && (
           <>
-            <Card className="overflow-hidden rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div><p className="text-[13px] font-medium text-slate-500">Keluarga penerima manfaat</p><CardTitle className="mt-2 text-2xl font-bold text-slate-900">{family.head_name}</CardTitle><p className="mt-1 text-sm text-muted-foreground">Nomor KK {family.kk_number}</p></div>
-                <Button variant="outline" className="rounded-full" onClick={() => setEditOpen(true)}>Edit data keluarga</Button>
-              </CardHeader>
-              <CardContent className="grid gap-4 border-t border-slate-100 pt-5 text-sm sm:grid-cols-3">
-                <div><span className="block text-muted-foreground">Anggota keluarga</span><strong>{family.family_size ?? "Belum diisi"}</strong></div>
-                <div><span className="block text-muted-foreground">Telepon</span><strong>{family.phone || "Belum diisi"}</strong></div>
-                <div><span className="block text-muted-foreground">Alamat</span><strong>{family.address || "Belum diisi"}</strong></div>
+            <Card className="rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
+              <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:gap-8">
+                <div className="min-w-0 lg:w-64 lg:shrink-0">
+                  <p className="text-xs font-medium text-slate-500">Keluarga penerima manfaat</p>
+                  <CardTitle className="mt-1 text-lg font-bold text-slate-900">{family.head_name}</CardTitle>
+                </div>
+                <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+                  <div><dt className="text-xs text-muted-foreground">Nomor KK</dt><dd className="font-semibold tabular-nums text-slate-900">{family.kk_number}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Anggota keluarga</dt><dd className="font-semibold text-slate-900">{family.family_size ?? "Belum diisi"}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Telepon</dt><dd className="font-semibold tabular-nums text-slate-900">{family.phone || "Belum diisi"}</dd></div>
+                  <div className="min-w-0"><dt className="text-xs text-muted-foreground">Alamat</dt><dd className="truncate font-semibold text-slate-900" title={family.address || undefined}>{family.address || "Belum diisi"}</dd></div>
+                </dl>
+                <Button variant="outline" size="sm" className="h-8 shrink-0 self-start rounded-full px-3.5 text-[13px] lg:self-center" onClick={() => setEditOpen(true)}>Edit data keluarga</Button>
               </CardContent>
             </Card>
 
-            <section className="grid gap-4 lg:grid-cols-2">
-              <Card className="rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
-                <CardHeader><CardTitle className="text-base font-bold text-slate-900">FIES Terakhir</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <Badge variant="outline" className={surveyCompletedThisMonth ? fiesStatusConfig.food_secure.className : fiesStatusConfig.moderate.className}>{surveyStatus}</Badge>
-                  {survey ? <div className="flex flex-wrap items-center gap-3"><strong className="text-3xl">{survey.score}/8</strong><span className="text-sm font-medium">{fiesStatusConfig[survey.classification as FiesClassification]?.label || survey.classification}</span></div> : <p className="text-sm text-muted-foreground">Belum ada survei FIES untuk keluarga ini.</p>}
-                  {survey && <p className="text-sm text-muted-foreground">Terakhir diisi {formatDate(survey.survey_date)}</p>}
-                  <p className="text-xs text-muted-foreground">Buka tab Survei FIES di atas untuk melihat riwayat atau mengisi survei.</p>
+            <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              <Card className="flex flex-col rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
+                <CardContent className="flex flex-1 flex-col gap-2 px-5 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="text-sm font-bold text-slate-900">FIES Terakhir</CardTitle>
+                    <Link to={`${base}/fies`} className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                      {surveyCompletedThisMonth ? "Lihat riwayat" : "Isi survei bulan ini"} <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                  <div className="flex items-end justify-between gap-3">
+                    {survey ? (
+                      <div>
+                        <p className="flex items-baseline gap-2.5">
+                          <strong className="text-2xl font-bold tabular-nums text-slate-900">{survey.score}/8</strong>
+                          <span className="text-sm font-medium text-slate-900">{fiesStatusConfig[survey.classification as FiesClassification]?.label || survey.classification}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">Diisi {formatDate(survey.survey_date)}</p>
+                      </div>
+                    ) : <p className="text-sm text-muted-foreground">Belum ada survei FIES untuk keluarga ini.</p>}
+                    <Badge variant="outline" className={`shrink-0 px-2 py-0 text-[11px] ${surveyCompletedThisMonth ? fiesStatusConfig.food_secure.className : fiesStatusConfig.moderate.className}`}>{surveyStatus}</Badge>
+                  </div>
                 </CardContent>
               </Card>
-              <Card className="rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
-                <CardHeader><CardTitle className="text-base font-bold text-slate-900">Pengukuran Gizi Terakhir</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  {assessment.children.length === 0 && <p className="text-sm text-muted-foreground">Belum ada anak terdaftar.</p>}
-                  {assessment.children.map((child) => <div key={child.child_id} className="rounded-xl bg-[#F4F7F5] p-3 text-sm">
-                    <strong>{child.child_name}</strong>
-                    {child.status === "unborn" ? <>
-                      <span className="ml-2 text-xs text-muted-foreground">Dalam kandungan · {child.gestational_age_weeks} minggu · Perkiraan lahir {child.expected_birth_date ? formatDate(child.expected_birth_date) : "-"}</span>
-                      {child.latest_prenatal_check ? <p className="mt-1 text-muted-foreground">{formatDate(child.latest_prenatal_check.measurement_date)} · BB ibu {child.latest_prenatal_check.maternal_weight} kg · LiLA {child.latest_prenatal_check.maternal_muac} cm · TFU {child.latest_prenatal_check.fundal_height ?? "–"} cm</p> : <p className="mt-1 text-muted-foreground">Belum ada pemeriksaan kehamilan.</p>}
-                    </> : <>
-                      <span className="ml-2 text-xs text-muted-foreground">Lahir {child.date_of_birth ? formatDate(child.date_of_birth) : "-"}</span>
-                      {child.latest_measurement ? <p className="mt-1 text-muted-foreground">{formatDate(child.latest_measurement.measurement_date)} · BB {child.latest_measurement.weight} kg · TB {child.latest_measurement.height} cm · z-score BB {child.latest_measurement.z_score_weight ?? "–"}, TB {child.latest_measurement.z_score_height ?? "–"}</p> : <p className="mt-1 text-muted-foreground">Belum ada pengukuran.</p>}
-                    </>}
-                  </div>)}
-                  <p className="text-xs text-muted-foreground">Buka tab Pengukuran Anak di atas untuk menambah anak atau pengukuran.</p>
+
+              <Card className="flex flex-col rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
+                <CardContent className="flex flex-1 flex-col gap-2 px-5 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="text-sm font-bold text-slate-900">
+                      Pengukuran Gizi Terakhir
+                      {assessment.children.length > 0 && <span className="ml-2 text-xs font-medium text-muted-foreground">{assessment.children.length} anak</span>}
+                    </CardTitle>
+                    <Link to={`${base}/nutrition`} className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                      Lihat semua <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                  {assessment.children.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Belum ada anak terdaftar.</p>
+                  ) : (
+                    <ul className="divide-y divide-slate-100 text-[13px]">
+                      {assessment.children.slice(0, childrenExpanded ? undefined : CHILDREN_COLLAPSED).map((child) => {
+                        const unborn = child.status === "unborn";
+                        const check = unborn ? child.latest_prenatal_check : child.latest_measurement;
+                        const summary = unborn
+                          ? child.latest_prenatal_check && `BB ibu ${child.latest_prenatal_check.maternal_weight} kg · LiLA ${child.latest_prenatal_check.maternal_muac} cm`
+                          : child.latest_measurement && `BB ${child.latest_measurement.weight} kg · TB ${child.latest_measurement.height} cm`;
+                        return (
+                          <li key={child.child_id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 first:pt-1 last:pb-0 sm:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)_7.5rem] sm:items-baseline">
+                            <span className="truncate font-semibold text-slate-900" title={child.child_name}>{child.child_name}</span>
+                            <span className="col-start-1 row-start-2 truncate text-xs text-muted-foreground sm:col-start-auto sm:row-start-auto">
+                              {unborn ? `Kandungan ${child.gestational_age_weeks} mgg` : `Lahir ${child.date_of_birth ? formatDate(child.date_of_birth) : "-"}`}
+                            </span>
+                            <span className={`col-start-1 row-start-3 truncate sm:col-start-auto sm:row-start-auto ${summary ? "text-slate-600" : "text-slate-400"}`}>
+                              {summary || (unborn ? "Belum ada pemeriksaan" : "Belum ada pengukuran")}
+                            </span>
+                            <span className="col-start-2 row-start-1 text-right text-xs tabular-nums text-muted-foreground sm:col-start-auto sm:row-start-auto">
+                              {check ? formatDate(check.measurement_date) : "—"}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {assessment.children.length > CHILDREN_COLLAPSED && (
+                    <button
+                      type="button"
+                      className="inline-flex w-fit items-center gap-1 pt-1 text-xs font-medium text-muted-foreground hover:text-primary"
+                      aria-expanded={childrenExpanded}
+                      onClick={() => setChildrenExpanded((open) => !open)}
+                    >
+                      {childrenExpanded ? "Sembunyikan" : `${assessment.children.length - CHILDREN_COLLAPSED} anak lainnya`}
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${childrenExpanded ? "rotate-180" : ""}`} />
+                    </button>
+                  )}
                 </CardContent>
               </Card>
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-2">
-              <Card className="rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
-                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div><CardTitle className="text-base font-bold text-slate-900">Rekomendasi Tindakan</CardTitle><p className="mt-1 text-sm text-muted-foreground">Saran model AI dari FIES, pertumbuhan anak, dan pemeriksaan kehamilan. Faskes menentukan tindak lanjut; hasil ini bukan diagnosis.</p></div>
-                  <Badge variant="outline" className={`shrink-0 ${facilityPriorityConfig[recommendation.priority].className}`}>{facilityPriorityConfig[recommendation.priority].label}</Badge>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {recommendation.data_checks.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                    <p className="font-medium">Lengkapi data agar saran lebih tepat:</p>
-                    <ul className="mt-1 list-disc space-y-1 pl-5">{recommendation.data_checks.map((check) => <li key={`${check.key}-${check.member}`}>{check.label} ({check.member})</li>)}</ul>
-                  </div>}
-                  {recommendation.actions.length === 0 && <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">{neededFoods.length > 0 ? "Belum ada tindakan khusus. Lanjutkan pemantauan rutin." : "Isi FIES atau pengukuran gizi melalui tab di atas untuk menampilkan saran."}</p>}
-                  {recommendation.actions.map((action) => <article key={action.key} className="rounded-xl bg-[#F4F7F5] p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-2"><h3 className="font-semibold text-slate-900">{action.label}</h3><span className="text-xs text-muted-foreground">{action.sources.map((source) => recommendationSourceLabels[source] ?? source).join(" · ")}</span></div>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{action.description}</p>
-                    <MemberReasonList items={action.member_reasons} />
-                  </article>)}
-                  {recommendation.model_version && <p className="text-xs text-muted-foreground">Versi model: {recommendation.model_version}</p>}
+            <section className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+              <Card className={recoCardClass}>
+                <RecoHeader title="Tindakan" />
+                <CardContent className="flex flex-1 flex-col gap-3 px-5 pb-4">
+                  {recommendation.actions.length === 0 && recommendation.data_checks.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">{neededFoods.length > 0 ? "Belum ada tindakan khusus. Lanjutkan pemantauan rutin." : "Isi FIES atau pengukuran gizi untuk menampilkan saran."}</p>
+                  ) : (
+                    <ol className="flex flex-1 flex-col divide-y divide-slate-100">
+                      {[
+                        ...recommendation.data_checks.map((check) => ({
+                          key: `data-${check.key}-${check.member}`,
+                          tag: "Data",
+                          label: check.label,
+                          description: `Data ${check.member} belum lengkap, saran bisa kurang tepat.`,
+                          reasons: [] as MemberReasons[],
+                        })),
+                        ...recommendation.actions.map((action) => ({
+                          key: action.key,
+                          tag: action.sources.map((source) => recommendationSourceLabels[source] ?? source).join(" · "),
+                          label: action.label,
+                          description: action.description,
+                          reasons: action.member_reasons,
+                        })),
+                      ].map((item, index) => (
+                        <RecoRow key={item.key} index={index} title={item.label} aside={<span className="text-[10px] uppercase tracking-wider text-slate-400">{item.tag}</span>}>
+                          <p className="mt-0.5 text-[13px] leading-5 text-slate-600">{item.description}</p>
+                          <MemberReasons items={item.reasons} />
+                        </RecoRow>
+                      ))}
+                    </ol>
+                  )}
+                  <RecoFooter>
+                    <p className="text-[11px] leading-5 text-slate-400">Bukan diagnosis, keputusan tetap di faskes{recommendation.model_version && <> · {recommendation.model_version}</>}</p>
+                  </RecoFooter>
                 </CardContent>
               </Card>
-              <Card className="rounded-[20px] border-0 bg-white shadow-[2px_4px_12px_rgba(0,0,0,0.06)]">
-                <CardHeader><div><CardTitle className="text-base font-bold text-slate-900">Rekomendasi Pangan</CardTitle><p className="mt-1 text-sm text-muted-foreground">Kelompok pangan yang perlu dibeli, dihitung dari kebutuhan semua anak dan kehamilan di keluarga ini.</p></div></CardHeader>
-                <CardContent className="space-y-3">
-                  {neededFoods.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">Belum ada anak di bawah 2 tahun atau kehamilan yang terdaftar. Tambahkan melalui tab Pengukuran Anak di atas.</p> : <>
-                    <p className="text-sm text-muted-foreground">{recommendation.weekly_budget ? <>Pembagian sisa kuota minggu ini <strong className="text-slate-900">{formatIDR(recommendation.weekly_budget)}</strong>.</> : "Nominal per kelompok muncul saat keluarga memiliki sisa kuota minggu ini."}</p>
-                    {neededFoods.map((group) => {
-                      const badge = group.level === 2 ? foodLevelBadges.priority : foodLevelBadges.recommended;
-                      return <article key={group.key} className="rounded-xl bg-[#F4F7F5] p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-2"><h3 className="font-semibold text-slate-900">{group.label}</h3><Badge variant="outline" className={badge.className}>{badge.label}</Badge></div>
-                        <p className="mt-1 text-xs text-muted-foreground">{capitalize(group.examples)} · Kategori katalog: {group.catalog_categories.map(capitalize).join(", ")}</p>
-                        <div className="mt-3 flex items-center gap-3"><Progress value={group.share * 100} className="h-2 bg-white" aria-label={`Porsi ${group.label}`} /><span className="shrink-0 text-sm font-semibold">{Math.round(group.share * 100)}%{group.budget != null && ` · ${formatIDR(group.budget)}`}</span></div>
-                        <MemberReasonList items={group.members} />
-                      </article>;
-                    })}
-                  </>}
-                  {recommendation.excluded_members.length > 0 && <p className="text-xs text-muted-foreground">Tidak dihitung: {recommendation.excluded_members.map((item) => `${item.member} (${item.reason})`).join("; ")}</p>}
-                  <p className="text-xs text-muted-foreground">Tidak dianjurkan: {recommendation.not_recommended.map((item) => `${capitalize(item.category)}. ${item.reason}`).join(" ")}</p>
-                  <Button asChild size="sm" className="rounded-full"><Link to={`${base}/catalog`}>Lihat katalog keluarga</Link></Button>
+
+              <Card className={recoCardClass}>
+                <RecoHeader
+                  title="Belanja Pangan"
+                  aside={recommendation.weekly_budget != null && recommendation.weekly_budget > 0 && (
+                    <p className="shrink-0 tabular-nums">
+                      <span className="mr-2 text-[11px] text-slate-400">Sisa kuota minggu ini</span>
+                      <span className="text-base font-bold tracking-tight text-slate-900">{formatIDR(recommendation.weekly_budget)}</span>
+                    </p>
+                  )}
+                />
+                <CardContent className="flex flex-1 flex-col gap-3 px-5 pb-4">
+                  {neededFoods.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Belum ada anak di bawah 2 tahun atau kehamilan yang terdaftar.</p>
+                  ) : (
+                    <ol className="flex flex-1 flex-col divide-y divide-slate-100">
+                      {neededFoods.map((group, index) => (
+                        <RecoRow
+                          key={group.key}
+                          index={index}
+                          title={group.label}
+                          tag={group.level === 2 ? <span className="text-primary">Prioritas</span> : undefined}
+                          aside={
+                            <p className="tabular-nums">
+                              <span className="text-sm font-semibold leading-5 text-slate-900">{group.budget != null ? formatIDR(group.budget) : `${Math.round(group.share * 100)}%`}</span>
+                              {group.budget != null && <span className="ml-1.5 inline-block w-8 text-right text-xs text-slate-400">{Math.round(group.share * 100)}%</span>}
+                            </p>
+                          }
+                        >
+                          <p className="mt-0.5 text-[13px] leading-5 text-slate-600">{capitalize(group.examples)}</p>
+                          <MemberReasons items={group.members} />
+                        </RecoRow>
+                      ))}
+                    </ol>
+                  )}
+                  <RecoFooter>
+                    <div className="space-y-0.5 text-[11px] leading-5 text-slate-400">
+                      {recommendation.not_recommended.length > 0 && <p>Hindari: {recommendation.not_recommended.map((item) => capitalize(item.category)).join(", ")}</p>}
+                      {recommendation.excluded_members.length > 0 && <p>Tidak dihitung: {recommendation.excluded_members.map((item) => `${item.member} (${item.reason})`).join("; ")}</p>}
+                    </div>
+                    <Button asChild size="sm" className="h-8 rounded-full px-3.5 text-[13px]">
+                      <Link to={`${base}/catalog`}>Lihat katalog keluarga <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
+                    </Button>
+                  </RecoFooter>
                 </CardContent>
               </Card>
             </section>
