@@ -90,30 +90,37 @@ describe("Family detail AI recommendation", () => {
   it("shows model actions with the reason for each family member", async () => {
     renderPage();
 
-    const action = (await screen.findByText("Makanan tambahan (PMT) ibu hamil KEK")).closest("article")!;
+    const action = (await screen.findByRole("heading", { name: "Makanan tambahan (PMT) ibu hamil KEK" })).closest("li")!;
     expect(within(action).getByText("Model AI")).toBeInTheDocument();
     expect(within(action).getByText("Bayi Ny. Siti")).toBeInTheDocument();
-    expect(within(action).getByText(`: ${kek}`, { exact: false })).toBeInTheDocument();
+    expect(within(action).getByText(`· ${kek}`, { exact: false })).toBeInTheDocument();
     expect(screen.getByText("Hasil FIES")).toBeInTheDocument();
-    expect(screen.getByText("Prioritas tinggi")).toBeInTheDocument();
-    expect(screen.getByText("Ukur ulang pertumbuhan (Budi)")).toBeInTheDocument();
+    // FIES thresholds are shown with proper comparison symbols.
+    expect(screen.getByText("· Keluarga rawan pangan berat (FIES ≥ 6)", { exact: false })).toBeInTheDocument();
+    // Missing data is listed as the first action.
+    const dataCheck = screen.getByRole("heading", { name: "Ukur ulang pertumbuhan" }).closest("li")!;
+    expect(within(dataCheck).getByText("Data")).toBeInTheDocument();
+    expect(within(dataCheck).getByText("Data Budi belum lengkap, saran bisa kurang tepat.")).toBeInTheDocument();
+    // The rule-based priority is not shown on this page.
+    expect(screen.queryByText("Prioritas tinggi")).not.toBeInTheDocument();
   });
 
   it("lists only the food groups to buy with their share of the weekly quota", async () => {
     renderPage();
 
-    const protein = (await screen.findByRole("heading", { name: "Protein hewani" })).closest("article")!;
+    const protein = (await screen.findByRole("heading", { name: /^Protein hewani/ })).closest("li")!;
     expect(within(protein).getByText("Prioritas")).toBeInTheDocument();
     // formatIDR puts a non-breaking space after "Rp"; the text matcher normalises it to a space.
-    expect(within(protein).getByText(/^48% · Rp\s96\.000$/)).toBeInTheDocument();
-    expect(within(protein).getByText(/Kategori katalog: Protein/)).toBeInTheDocument();
+    expect(within(protein).getByText(/^Rp\s96\.000$/)).toBeInTheDocument();
+    expect(within(protein).getByText("48%")).toBeInTheDocument();
+    expect(within(protein).getByText("Telur, ikan, ayam, daging")).toBeInTheDocument();
     expect(within(protein).getByText("Budi")).toBeInTheDocument();
-    const vegetables = screen.getByRole("heading", { name: "Sayuran" }).closest("article")!;
-    expect(within(vegetables).getByText("Dianjurkan")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Susu dan olahannya" })).not.toBeInTheDocument();
+    const vegetables = screen.getByRole("heading", { name: "Sayuran" }).closest("li")!;
+    expect(within(vegetables).queryByText("Prioritas")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Susu dan olahannya/ })).not.toBeInTheDocument();
     expect(screen.getByText(/^Rp\s200\.000$/)).toBeInTheDocument();
     expect(screen.getByText(/Tidak dihitung: Kakak/)).toBeInTheDocument();
-    expect(screen.getByText(/Tidak dianjurkan: Gula/)).toBeInTheDocument();
+    expect(screen.getByText(/Hindari: Gula/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Lihat katalog keluarga" })).toHaveAttribute(
       "href", "/dashboard/health-facility/families/family-1/catalog",
     );
