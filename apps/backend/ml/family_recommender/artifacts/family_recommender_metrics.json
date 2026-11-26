@@ -1,0 +1,500 @@
+{
+  "model_version": "family-reco-v1-synthetic",
+  "trained_at": "2026-11-19T12:37:48+00:00",
+  "data": {
+    "families": 8000,
+    "members": {
+      "child": 7368,
+      "pregnancy": 3540
+    },
+    "split": {
+      "train": 5600,
+      "val": 1200,
+      "test": 1200
+    },
+    "quality": [
+      {
+        "indikator": "Keluarga",
+        "nilai": 8000,
+        "rentang target": null,
+        "status": ""
+      },
+      {
+        "indikator": "Sasaran: anak / kehamilan",
+        "nilai": "7,368 / 3,540",
+        "rentang target": null,
+        "status": ""
+      },
+      {
+        "indikator": "Keluarga dengan >1 sasaran",
+        "nilai": "31.4%",
+        "rentang target": [
+          0.25,
+          0.4
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "FIES belum ada",
+        "nilai": "5.2%",
+        "rentang target": [
+          0.03,
+          0.07
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "FIES sedang atau berat (>= 3)",
+        "nilai": "62.0%",
+        "rentang target": [
+          0.5,
+          0.7
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "FIES berat (>= 6)",
+        "nilai": "15.1%",
+        "rentang target": [
+          0.12,
+          0.28
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "Anak belum diukur",
+        "nilai": "7.2%",
+        "rentang target": [
+          0.04,
+          0.1
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "Stunting (z-score TB < -2)",
+        "nilai": "21.4%",
+        "rentang target": [
+          0.2,
+          0.3
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "Stunting berat (z-score TB < -3)",
+        "nilai": "4.5%",
+        "rentang target": [
+          0.03,
+          0.09
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "BB kurang (z-score BB < -2)",
+        "nilai": "15.8%",
+        "rentang target": [
+          0.12,
+          0.22
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "LiLA anak < 12,5 cm (yang tercatat)",
+        "nilai": "9.6%",
+        "rentang target": [
+          0.06,
+          0.16
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "Kehamilan belum diperiksa",
+        "nilai": "11.5%",
+        "rentang target": [
+          0.08,
+          0.16
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "KEK ibu hamil (LiLA < 23,5)",
+        "nilai": "18.9%",
+        "rentang target": [
+          0.15,
+          0.25
+        ],
+        "status": "OK"
+      },
+      {
+        "indikator": "Pemeriksaan perlu ditinjau",
+        "nilai": "7.9%",
+        "rentang target": [
+          0.05,
+          0.14
+        ],
+        "status": "OK"
+      }
+    ]
+  },
+  "member_level_test": [
+    {
+      "sasaran": "child",
+      "keputusan": "food_protein_hewani_prio",
+      "prevalensi": 0.7008,
+      "AUC": 0.9516,
+      "presisi": 0.9507,
+      "recall": 0.9728,
+      "F1": 0.9616,
+      "akurasi": 0.9456,
+      "Brier": 0.0512,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.7008,
+      "AUC gradient boosting": 0.956
+    },
+    {
+      "sasaran": "child",
+      "keputusan": "food_makanan_pokok_prio",
+      "prevalensi": 0.2448,
+      "AUC": 0.9561,
+      "presisi": 0.939,
+      "recall": 0.8556,
+      "F1": 0.8953,
+      "akurasi": 0.951,
+      "Brier": 0.0455,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.7552,
+      "AUC gradient boosting": 0.9571
+    },
+    {
+      "sasaran": "child",
+      "keputusan": "food_susu_rec",
+      "prevalensi": 0.4923,
+      "AUC": 0.9886,
+      "presisi": 0.9801,
+      "recall": 1.0,
+      "F1": 0.99,
+      "akurasi": 0.99,
+      "Brier": 0.01,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.5077,
+      "AUC gradient boosting": 0.9878
+    },
+    {
+      "sasaran": "child",
+      "keputusan": "food_susu_prio",
+      "prevalensi": 0.1505,
+      "AUC": 0.9813,
+      "presisi": 0.9012,
+      "recall": 0.8795,
+      "F1": 0.8902,
+      "akurasi": 0.9674,
+      "Brier": 0.0298,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.8495,
+      "AUC gradient boosting": 0.9818
+    },
+    {
+      "sasaran": "child",
+      "keputusan": "food_minyak_rec",
+      "prevalensi": 0.3908,
+      "AUC": 0.9891,
+      "presisi": 0.9809,
+      "recall": 0.9513,
+      "F1": 0.9658,
+      "akurasi": 0.9737,
+      "Brier": 0.0246,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.6092,
+      "AUC gradient boosting": 0.9885
+    },
+    {
+      "sasaran": "child",
+      "keputusan": "food_minyak_prio",
+      "prevalensi": 0.1478,
+      "AUC": 0.9496,
+      "presisi": 0.9028,
+      "recall": 0.7975,
+      "F1": 0.8469,
+      "akurasi": 0.9574,
+      "Brier": 0.0381,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.8522,
+      "AUC gradient boosting": 0.9521
+    },
+    {
+      "sasaran": "child",
+      "keputusan": "act_rujuk_nakes",
+      "prevalensi": 0.0888,
+      "AUC": 0.9259,
+      "presisi": 0.95,
+      "recall": 0.7755,
+      "F1": 0.8539,
+      "akurasi": 0.9764,
+      "Brier": 0.0223,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.9112,
+      "AUC gradient boosting": 0.9286
+    },
+    {
+      "sasaran": "child",
+      "keputusan": "act_pantau_ketat",
+      "prevalensi": 0.398,
+      "AUC": 0.957,
+      "presisi": 0.9211,
+      "recall": 0.9043,
+      "F1": 0.9126,
+      "akurasi": 0.9311,
+      "Brier": 0.0605,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.602,
+      "AUC gradient boosting": 0.9679
+    },
+    {
+      "sasaran": "child",
+      "keputusan": "act_konseling_gizi",
+      "prevalensi": 0.5929,
+      "AUC": 0.9579,
+      "presisi": 0.9427,
+      "recall": 0.9557,
+      "F1": 0.9491,
+      "akurasi": 0.9393,
+      "Brier": 0.0561,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.5929,
+      "AUC gradient boosting": 0.9627
+    },
+    {
+      "sasaran": "child",
+      "keputusan": "act_pmt_balita",
+      "prevalensi": 0.2049,
+      "AUC": 0.9586,
+      "presisi": 0.8824,
+      "recall": 0.8628,
+      "F1": 0.8725,
+      "akurasi": 0.9483,
+      "Brier": 0.045,
+      "akurasi vs pedoman": 0.9991,
+      "recall vs pedoman": 0.9955,
+      "F1 vs pedoman": 0.9977,
+      "akurasi baseline mayoritas": 0.7951,
+      "AUC gradient boosting": 0.9692
+    },
+    {
+      "sasaran": "pregnancy",
+      "keputusan": "food_protein_hewani_prio",
+      "prevalensi": 0.7804,
+      "AUC": 0.953,
+      "presisi": 0.9677,
+      "recall": 0.9767,
+      "F1": 0.9722,
+      "akurasi": 0.9564,
+      "Brier": 0.0409,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.7804,
+      "AUC gradient boosting": 0.9525
+    },
+    {
+      "sasaran": "pregnancy",
+      "keputusan": "food_makanan_pokok_prio",
+      "prevalensi": 0.2886,
+      "AUC": 0.955,
+      "presisi": 0.947,
+      "recall": 0.8994,
+      "F1": 0.9226,
+      "akurasi": 0.9564,
+      "Brier": 0.0407,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.7114,
+      "AUC gradient boosting": 0.946
+    },
+    {
+      "sasaran": "pregnancy",
+      "keputusan": "food_susu_rec",
+      "prevalensi": 0.1851,
+      "AUC": 0.9219,
+      "presisi": 0.9247,
+      "recall": 0.8431,
+      "F1": 0.8821,
+      "akurasi": 0.9583,
+      "Brier": 0.0389,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.8149,
+      "AUC gradient boosting": 0.9187
+    },
+    {
+      "sasaran": "pregnancy",
+      "keputusan": "food_minyak_rec",
+      "prevalensi": 0.1779,
+      "AUC": 0.9562,
+      "presisi": 0.9355,
+      "recall": 0.8878,
+      "F1": 0.911,
+      "akurasi": 0.9691,
+      "Brier": 0.0284,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.8221,
+      "AUC gradient boosting": 0.9366
+    },
+    {
+      "sasaran": "pregnancy",
+      "keputusan": "act_rujuk_nakes",
+      "prevalensi": 0.0926,
+      "AUC": 0.8751,
+      "presisi": 1.0,
+      "recall": 0.8039,
+      "F1": 0.8913,
+      "akurasi": 0.9819,
+      "Brier": 0.018,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.9074,
+      "AUC gradient boosting": 0.8886
+    },
+    {
+      "sasaran": "pregnancy",
+      "keputusan": "act_pantau_ketat",
+      "prevalensi": 0.2432,
+      "AUC": 0.9542,
+      "presisi": 0.9528,
+      "recall": 0.903,
+      "F1": 0.9272,
+      "akurasi": 0.9655,
+      "Brier": 0.032,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.7568,
+      "AUC gradient boosting": 0.9517
+    },
+    {
+      "sasaran": "pregnancy",
+      "keputusan": "act_konseling_gizi",
+      "prevalensi": 0.6388,
+      "AUC": 0.9752,
+      "presisi": 0.9659,
+      "recall": 0.9659,
+      "F1": 0.9659,
+      "akurasi": 0.9564,
+      "Brier": 0.0408,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.6388,
+      "AUC gradient boosting": 0.9723
+    },
+    {
+      "sasaran": "pregnancy",
+      "keputusan": "act_pmt_ibu_hamil",
+      "prevalensi": 0.1942,
+      "AUC": 0.9263,
+      "presisi": 0.9355,
+      "recall": 0.8131,
+      "F1": 0.87,
+      "akurasi": 0.9528,
+      "Brier": 0.0435,
+      "akurasi vs pedoman": 1.0,
+      "recall vs pedoman": 1.0,
+      "F1 vs pedoman": 1.0,
+      "akurasi baseline mayoritas": 0.8058,
+      "AUC gradient boosting": 0.9273
+    }
+  ],
+  "family_level_test": {
+    "overall": {
+      "pangan_protein_hewani": 1.0,
+      "pangan_makanan_pokok": 1.0,
+      "pangan_sayuran": 1.0,
+      "pangan_buah": 1.0,
+      "pangan_susu": 1.0,
+      "pangan_minyak": 1.0,
+      "semua_pangan_sama": 1.0,
+      "tindakan_sama": 0.9992,
+      "prioritas_sama": 1.0
+    },
+    "by_number_of_targets": [
+      {
+        "n_sasaran": 1,
+        "semua_pangan_sama": 1.0,
+        "tindakan_sama": 1.0,
+        "prioritas_sama": 1.0
+      },
+      {
+        "n_sasaran": 2,
+        "semua_pangan_sama": 1.0,
+        "tindakan_sama": 0.9968,
+        "prioritas_sama": 1.0
+      },
+      {
+        "n_sasaran": 3,
+        "semua_pangan_sama": 1.0,
+        "tindakan_sama": 1.0,
+        "prioritas_sama": 1.0
+      }
+    ],
+    "override_rate": 0.0
+  },
+  "scenarios": [
+    {
+      "skenario": "Ibu hamil KEK trimester 3, FIES sedang",
+      "hasil": "LULUS"
+    },
+    {
+      "skenario": "Bayi 3 bulan normal, keluarga aman pangan",
+      "hasil": "LULUS"
+    },
+    {
+      "skenario": "Anak 9 bulan stunting, FIES berat",
+      "hasil": "LULUS"
+    },
+    {
+      "skenario": "Anak 18 bulan masih normal tetapi tren turun",
+      "hasil": "LULUS"
+    },
+    {
+      "skenario": "Anak 7 bulan LiLA 11,2 cm (gizi buruk)",
+      "hasil": "LULUS"
+    },
+    {
+      "skenario": "Pemeriksaan kehamilan perlu ditinjau (DJJ menyimpang)",
+      "hasil": "LULUS"
+    },
+    {
+      "skenario": "Akumulasi: ibu hamil normal + anak 14 bulan pendek, FIES sedang",
+      "hasil": "LULUS"
+    },
+    {
+      "skenario": "Anak 30 bulan di luar sasaran + bayi 2 bulan",
+      "hasil": "LULUS"
+    },
+    {
+      "skenario": "FIES belum diisi, anak 10 bulan belum diukur",
+      "hasil": "LULUS"
+    }
+  ]
+}

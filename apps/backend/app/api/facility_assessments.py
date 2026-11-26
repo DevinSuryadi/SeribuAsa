@@ -1,4 +1,4 @@
-"""Read-only FIES and growth summary for a facility-owned family."""
+"""Read-only FIES and growth summary, and AI recommendation, for a facility-owned family."""
 
 from uuid import UUID
 
@@ -9,6 +9,7 @@ from app.api.facility_families import current_facility, owned_family
 from app.database import get_db
 from app.models.facility import HealthFacility
 from app.services.facility_assessment import build_family_assessment
+from app.services.facility_recommendation import build_family_recommendation
 from app.services.pregnancy import promote_due_pregnancies
 
 router = APIRouter(prefix="/facilities/families", tags=["facility assessments"])
@@ -23,3 +24,15 @@ def get_family_assessment(
     family = owned_family(family_id, facility, db)
     promote_due_pregnancies(db, family_id=family.id)
     return build_family_assessment(db, family)
+
+
+@router.get("/{family_id}/recommendation")
+def get_family_recommendation(
+    family_id: UUID,
+    db: Session = Depends(get_db),
+    facility: HealthFacility = Depends(current_facility),
+):
+    """Actions and food groups to buy, accumulated over every child and pregnancy."""
+    family = owned_family(family_id, facility, db)
+    promote_due_pregnancies(db, family_id=family.id)
+    return build_family_recommendation(db, family)

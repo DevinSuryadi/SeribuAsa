@@ -52,3 +52,41 @@ const assessmentPath = (familyId: string) =>
 
 export const getFamilyAssessment = (familyId: string, forceRefresh = false): Promise<FamilyAssessment> =>
   apiFetch(assessmentPath(familyId), forceRefresh ? { cache: "no-store" } : undefined);
+
+export type MemberReasons = { member: string; reasons: string[] };
+
+/** Output of the family recommender model, accumulated over every child and pregnancy. */
+export type FamilyAiRecommendation = {
+  priority: Priority;
+  model_version: string | null;
+  weekly_budget: number | null;
+  actions: Array<{
+    key: string;
+    label: string;
+    description: string;
+    members: string[];
+    member_reasons: MemberReasons[];
+    sources: string[];
+  }>;
+  food_groups: Array<{
+    key: string;
+    label: string;
+    examples: string;
+    catalog_categories: string[];
+    level: 0 | 1 | 2;
+    level_label: string;
+    score: number;
+    share: number;
+    budget: number | null;
+    members: Array<MemberReasons & { level: string }>;
+  }>;
+  data_checks: Array<{ key: string; label: string; member: string }>;
+  excluded_members: Array<{ member: string; reason: string }>;
+  not_recommended: Array<{ category: string; reason: string }>;
+};
+
+const recommendationPath = (familyId: string) =>
+  `/facilities/families/${encodeURIComponent(familyId)}/recommendation`;
+
+export const getFamilyRecommendation = (familyId: string, forceRefresh = false): Promise<FamilyAiRecommendation> =>
+  apiFetch(recommendationPath(familyId), forceRefresh ? { cache: "no-store" } : undefined);
